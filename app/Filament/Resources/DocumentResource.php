@@ -3,16 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DocumentResource\Pages;
-use App\Filament\Resources\DocumentResource\RelationManagers;
 use App\Models\Document;
 use App\Models\User;
 use Filament\Forms;
+use Filament\Forms\Components\SpatieMediaLibraryFileUpload;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class DocumentResource extends Resource
 {
@@ -38,11 +36,13 @@ class DocumentResource extends Resource
                     /*->formatStateUsing(function ($record) {
                         return $record?->users->pluck('id_user') ?? [];
                     })*/
-                    ->options(User::get()->pluck('email', 'id')),
+                    ->options(User::select('email', 'id')->pluck('email', 'id')->toArray()),
                 Forms\Components\DateTimePicker::make('valid_from_dtm')
                     ->required(),
                 Forms\Components\DateTimePicker::make('valid_to_dtm'),
                 Forms\Components\DateTimePicker::make('expires_at'),
+                SpatieMediaLibraryFileUpload::make('attachment')
+                    ->columnSpanFull(),
             ]);
     }
 
