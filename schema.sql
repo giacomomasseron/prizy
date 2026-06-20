@@ -132,6 +132,7 @@ CREATE TABLE workspaces (
     name                VARCHAR(255)    NOT NULL,
     slug                VARCHAR(63)     NOT NULL UNIQUE,     -- subdomain
     custom_domain       VARCHAR(253)    UNIQUE,              -- optional CNAME
+    logo_url            VARCHAR(2048),                       -- workspace logo
     plan                workspace_plan  NOT NULL DEFAULT 'starter',
     timezone            VARCHAR(64)     NOT NULL DEFAULT 'UTC',
     locale              VARCHAR(10)     NOT NULL DEFAULT 'en',

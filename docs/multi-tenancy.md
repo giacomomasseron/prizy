@@ -117,6 +117,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string      $name
  * @property string      $slug          — used as subdomain (e.g. acme → acme.app.com)
  * @property string|null $custom_domain — optional CNAME
+ * @property string|null $logo_url      — workspace logo URL
  * @property string      $plan
  * @property string      $timezone
  * @property string      $locale
@@ -134,6 +135,7 @@ final class Workspace extends Tenant
         'name',
         'slug',
         'custom_domain',
+        'logo_url',
         'plan',
         'timezone',
         'locale',
