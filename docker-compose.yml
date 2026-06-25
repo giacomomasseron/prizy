@@ -1,0 +1,69 @@
+services:
+  app:
+    build:
+      context: .
+      args:
+        UID: "1000"   # change if `id -u` is not 1000
+        GID: "1000"   # change if `id -g` is not 1000
+    image: prizy/app:dev
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8001:8000"
+    depends_on:
+      - postgres
+      - redis
+    env_file: .env
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: prizy
+      POSTGRES_USER: prizy
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6380:6379"
+
+  reverb:
+    image: prizy/app:dev
+    profiles: ["full"]
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app
+      - redis
+    env_file: .env
+
+  horizon:
+    image: prizy/app:dev
+    profiles: ["full"]
+    command: php artisan horizon
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - app
+      - redis
+      - postgres
+    env_file: .env
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    profiles: ["full"]
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili:/meili_data
+
+volumes:
+  pgdata:
+  meili:
