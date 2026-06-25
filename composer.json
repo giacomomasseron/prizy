@@ -10,7 +10,8 @@
         "giacomomasseron/laravel-models-generator": "^3.0",
         "giacomomasseron/php-clean-architecture": "^0.0.2",
         "laravel/framework": "^13.8",
-        "laravel/tinker": "^3.0"
+        "laravel/tinker": "^3.0",
+        "spatie/laravel-multitenancy": "^4.1"
     },
     "require-dev": {
         "carthage-software/mago": "^1.40",
