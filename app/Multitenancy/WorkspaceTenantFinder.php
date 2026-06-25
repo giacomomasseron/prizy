@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Multitenancy;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Spatie\Multitenancy\Contracts\IsTenant;
 use Spatie\Multitenancy\TenantFinder\TenantFinder;
 use App\Models\Workspace;
@@ -27,7 +28,7 @@ final class WorkspaceTenantFinder extends TenantFinder
         // 2. Fall back to subdomain slug (strip the base domain).
         // Base domain is derived from APP_BASE_DOMAIN, e.g. "app.com".
         $baseDomain = config('app.base_domain'); // e.g. "app.com"
-        $subdomain  = str_before($host, '.' . $baseDomain);
+        $subdomain  = Str::before($host, '.' . $baseDomain);
 
         if ($subdomain === $host) {
             // No subdomain detected — host IS the base domain (landing page, API, etc.)
