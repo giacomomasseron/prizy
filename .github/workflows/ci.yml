@@ -1,0 +1,41 @@
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare env file
+        run: cp .env.example .env
+
+      - name: Build app image
+        run: docker compose build app
+
+      - name: Start core services (app + postgres + redis)
+        run: docker compose up -d
+
+      - name: Install dependencies
+        run: docker compose exec -T app composer install --no-interaction --prefer-dist
+
+      - name: Generate app key
+        run: docker compose exec -T app php artisan key:generate
+
+      - name: Create test database
+        run: docker compose exec -T postgres psql -U prizy -d prizy -c "CREATE DATABASE prizy_test;" || true
+
+      - name: Architecture gate (deptrac — BLOCKING)
+        run: docker compose exec -T app vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress
+
+      - name: Lint (mago — non-blocking baseline)
+        run: docker compose exec -T app vendor/bin/mago lint || true
+
+      - name: Rector dry-run (non-blocking baseline)
+        run: docker compose exec -T app vendor/bin/rector process --dry-run || true
+
+      - name: Migrate (sanity, dev DB)
+        run: docker compose exec -T app php artisan migrate --force
+
+      - name: Run tests
+        run: docker compose exec -T app php artisan test
