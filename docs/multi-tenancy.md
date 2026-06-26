@@ -71,18 +71,15 @@ return [
     'tenant_finder' => \App\Multitenancy\WorkspaceTenantFinder::class,
 
     /*
-     * Tasks executed (in order) every time the current tenant is set.
+     * Tasks executed for tenant switching. spatie/laravel-multitenancy v4 builds
+     * ONE task collection from this key and runs each task's makeCurrent() when a
+     * tenant is set and forgetCurrent() when it is forgotten (end of request).
+     * There is no separate forget_current_tenant_tasks key in v4 — the unset logic
+     * lives in SetWorkspaceScopeTask::forgetCurrent() below.
      */
     'switch_tenant_tasks' => [
         \App\Multitenancy\Tasks\SetWorkspaceScopeTask::class,
         \App\Multitenancy\Tasks\BindWorkspaceToContainerTask::class,
-    ],
-
-    /*
-     * Tasks executed when the current tenant is forgotten (e.g. end of request).
-     */
-    'forget_current_tenant_tasks' => [
-        \App\Multitenancy\Tasks\UnsetWorkspaceScopeTask::class,
     ],
 
     /*
@@ -301,31 +298,10 @@ final class BindWorkspaceToContainerTask implements SwitchTenantTask
 }
 ```
 
-### UnsetWorkspaceScopeTask
-
-```php
-<?php
-
-declare(strict_types=1);
-
-namespace App\Multitenancy\Tasks;
-
-use Illuminate\Support\Facades\DB;
-use Spatie\Multitenancy\Contracts\IsTenant;
-use Spatie\Multitenancy\Tasks\SwitchTenantTask;
-use App\Scopes\WorkspaceScope;
-
-final class UnsetWorkspaceScopeTask implements SwitchTenantTask
-{
-    public function makeCurrent(IsTenant $tenant): void {}
-
-    public function forgetCurrent(): void
-    {
-        WorkspaceScope::clearCurrentWorkspaceId();
-        DB::statement("SELECT set_config('app.current_workspace_id', '', false)");
-    }
-}
-```
+> **Teardown:** there is no separate "unset" task. spatie v4 runs each
+> `switch_tenant_tasks` entry's `forgetCurrent()` when the tenant is forgotten,
+> so `SetWorkspaceScopeTask::forgetCurrent()` (above) is what clears the
+> `WorkspaceScope` static and resets the `app.current_workspace_id` GUC.
 
 ---
 
