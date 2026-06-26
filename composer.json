@@ -7,8 +7,6 @@
     "license": "MIT",
     "require": {
         "php": "^8.3",
-        "giacomomasseron/laravel-models-generator": "^3.0",
-        "giacomomasseron/php-clean-architecture": "^0.0.2",
         "laravel/framework": "^13.8",
         "laravel/tinker": "^3.0",
         "spatie/laravel-multitenancy": "^4.1"
@@ -17,6 +15,8 @@
         "carthage-software/mago": "^1.40",
         "deptrac/deptrac": "^4.6",
         "fakerphp/faker": "^1.23",
+        "giacomomasseron/laravel-models-generator": "^3.0",
+        "giacomomasseron/php-clean-architecture": "^0.0.2",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",

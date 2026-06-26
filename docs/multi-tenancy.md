@@ -107,6 +107,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Spatie\Multitenancy\Models\Tenant;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -124,6 +125,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 final class Workspace extends Tenant
 {
+    use HasFactory;
     use SoftDeletes;
 
     protected $table = 'workspaces';
@@ -340,6 +342,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Scopes\WorkspaceScope;
@@ -350,6 +353,18 @@ use App\Scopes\WorkspaceScope;
  */
 abstract class TenantAwareEntity extends Model
 {
+    use HasFactory;
+
+    /**
+     * Every Prizy tenant table uses a UUID primary key (DEFAULT gen_random_uuid()),
+     * so the key is a non-incrementing string. Generated subclasses also carry a
+     * #[Table(keyType: 'string', incrementing: false)] attribute; these properties
+     * make the base class authoritative for any hand-written tenant entity.
+     */
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
     protected static function booted(): void
     {
         // Apply the global WorkspaceScope to every subclass automatically.

@@ -3,10 +3,14 @@
 declare(strict_types=1);
 
 // config for GiacomoMasseroni/LaravelModelsGenerator
-use GiacomoMasseroni\LaravelModelsGenerator\Enums\RelationshipsNameCaseTypeEnum;
+//
+// NOTE: this file is loaded on every application boot. It intentionally avoids
+// referencing any GiacomoMasseroni\LaravelModelsGenerator\* class so the package
+// can live in require-dev (it is a code-generation tool, never used at runtime).
+// See 'relationships_name_case_type' below.
 
 return [
-    'clean_models_directory_before_generation' => true,
+    'clean_models_directory_before_generation' => false,
 
     'generate_views' => false,
 
@@ -71,8 +75,14 @@ return [
     |
     | Add the $attributes array for default values
     |
+    | Disabled for Prizy: the generator stringifies SQL-expression defaults
+    | (e.g. id => 'gen_random_uuid()', created_at => 'now()') and emits empty
+    | strings for boolean columns, which are invalid as PHP-level defaults.
+    | All column defaults are already enforced by the PostgreSQL schema, so we
+    | rely on the database defaults instead. (SPIKE #1 finding.)
+    |
     */
-    'attributes' => true,
+    'attributes' => false,
 
     /*
     |--------------------------------------------------------------------------
@@ -166,8 +176,11 @@ return [
     | Define the way relation name is created.
     | Possible values: "camel_case", "snake_case"
     |
+    | Use the plain string value (not the package enum) so this config has no
+    | runtime dependency on the require-dev generator package.
+    |
     */
-    'relationships_name_case_type' => RelationshipsNameCaseTypeEnum::CAMEL_CASE,
+    'relationships_name_case_type' => 'camel_case',
 
     /*
     |--------------------------------------------------------------------------
@@ -360,6 +373,11 @@ return [
         'password_resets',
         'personal_access_tokens',
         'password_reset_tokens',
+        // Framework infrastructure tables — no Eloquent model needed.
+        'cache',
+        'cache_locks',
+        'jobs',
+        'job_batches',
     ],
 
     /*
@@ -406,5 +424,8 @@ return [
     |
     */
     'exclude_relationships' => [
+        // personal_access_tokens is excluded (no model); drop the dangling
+        // User hasMany that would otherwise reference a non-existent class.
+        'personal_access_tokens' => ['users'],
     ],
 ];
