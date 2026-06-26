@@ -6,6 +6,7 @@ services:
         UID: "1000"   # change if `id -u` is not 1000
         GID: "1000"   # change if `id -g` is not 1000
     image: prizy/app:dev
+    container_name: prizy-app
     volumes:
       - .:/var/www/html
     ports:
@@ -17,6 +18,7 @@ services:
 
   postgres:
     image: postgres:16
+    container_name: prizy-postgres
     environment:
       POSTGRES_DB: prizy
       POSTGRES_USER: prizy
@@ -28,6 +30,7 @@ services:
 
   redis:
     image: redis:7
+    container_name: prizy-redis
     ports:
       - "6380:6379"
 
