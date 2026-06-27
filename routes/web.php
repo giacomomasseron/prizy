@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
 use App\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
@@ -23,10 +24,21 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
     Route::get('/verify-email/{id}/{hash}', [EmailVerificationController::class, 'verify'])
         ->middleware('signed')
         ->name('verification.verify');
+
+    // Magic-link consume — user may click from any device or host with no tenant
+    // session. UUID is globally unique; RLS permissive when GUC is unset.
+    Route::get('/magic-link/consume', [MagicLinkController::class, 'consume'])
+        ->middleware('signed')
+        ->name('magic-link.consume');
 });
 
 // Tenant web routes — resolved under a workspace host (NeedsTenant + tenant.session from web group).
 // Login must NOT be gated by 'verified'; any member may log in regardless of email verification.
+
+// Magic-link request — tenant route so the user lookup is workspace-scoped.
+// "Forgot password" reuses this same endpoint (no separate flow needed).
+Route::post('/magic-link', [MagicLinkController::class, 'request']);
+
 Route::post('/login', [LoginController::class, 'store']);
 Route::post('/logout', [LoginController::class, 'destroy']);
 
