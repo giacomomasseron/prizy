@@ -1,10 +1,12 @@
 <?php
 
+use App\Http\Controllers\Auth\AcceptInviteController;
 use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
@@ -30,6 +32,12 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
     Route::get('/magic-link/consume', [MagicLinkController::class, 'consume'])
         ->middleware('signed')
         ->name('magic-link.consume');
+
+    // Accept invite — landlord route because the invitee has no tenant session
+    // yet. The raw token is looked up by sha256 hash (RLS permissive when GUC
+    // is unset), so the row is reachable from any workspace context.
+    Route::post('/invitations/{token}/accept', [AcceptInviteController::class, 'store'])
+        ->name('invitations.accept');
 });
 
 // Tenant web routes — resolved under a workspace host (NeedsTenant + tenant.session from web group).
@@ -46,3 +54,10 @@ Route::post('/logout', [LoginController::class, 'destroy']);
 Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
     ->middleware(['auth', 'throttle:6,1'])
     ->name('verification.send');
+
+// Member invite — tenant web route; only verified owners/admins may invite.
+// 'verified' enforces email verification (carries-forward from Task 7);
+// 'can:invite,App\Models\User' enforces MemberPolicy@invite (admin_level check).
+Route::post('/invitations', [MemberController::class, 'store'])
+    ->middleware(['auth', 'verified', 'can:invite,App\\Models\\User'])
+    ->name('invitations.store');
