@@ -896,6 +896,37 @@ CREATE TABLE notifications (
 );
 
 -- =============================================================================
+-- SECTION 8 — INVITATIONS
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- invitations
+-- Pending member invites for a workspace.  One unaccepted invite per email
+-- per workspace (enforced by the partial-unique index idx_invitations_pending).
+-- The token_hash stores the SHA-256 hex of the invite token; the plaintext is
+-- sent only in the invite email and never stored.
+-- This is the only schema addition in Plan 2 (Auth & RBAC), making 17 RLS tables.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE invitations (
+    id            UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id  UUID            NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    email         CITEXT          NOT NULL,
+    admin_level   admin_level     NOT NULL DEFAULT 'member',
+    is_developer  BOOLEAN         NOT NULL DEFAULT FALSE,
+    is_agent      BOOLEAN         NOT NULL DEFAULT FALSE,
+    token_hash    VARCHAR(64)     NOT NULL UNIQUE,   -- sha256 hex of the invite token
+    invited_by    UUID            NOT NULL REFERENCES users(id),
+    expires_at    TIMESTAMPTZ     NOT NULL,
+    accepted_at   TIMESTAMPTZ,
+    created_at    TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+-- one pending (unaccepted) invite per email per workspace:
+CREATE UNIQUE INDEX idx_invitations_pending ON invitations (workspace_id, email) WHERE accepted_at IS NULL;
+CREATE INDEX idx_invitations_workspace ON invitations (workspace_id);
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 
@@ -959,7 +990,8 @@ BEGIN
     FOREACH tenant_table IN ARRAY ARRAY[
         'users', 'teams', 'webhooks', 'labels', 'projects', 'issues',
         'contacts', 'agent_groups', 'business_hour_schedules', 'sla_policies',
-        'tags', 'tickets', 'macros', 'automations', 'kb_categories', 'notifications'
+        'tags', 'tickets', 'macros', 'automations', 'kb_categories', 'notifications',
+        'invitations'
     ]
     LOOP
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tenant_table);
