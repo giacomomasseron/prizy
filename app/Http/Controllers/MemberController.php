@@ -27,7 +27,7 @@ final class MemberController extends Controller
     {
         $data = $request->validate([
             'email'        => ['required', 'email', 'max:255'],
-            'admin_level'  => ['required', 'string', 'in:owner,admin,member,viewer'],
+            'admin_level'  => ['required', 'string', 'in:admin,member,viewer'],
             'is_developer' => ['boolean'],
             'is_agent'     => ['boolean'],
         ]);

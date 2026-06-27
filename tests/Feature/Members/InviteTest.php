@@ -235,6 +235,32 @@ it('accepting the same token twice fails on the second attempt', function (): vo
 });
 
 // ---------------------------------------------------------------------------
+// 8. Privilege escalation: inviting with admin_level=owner → 422
+// ---------------------------------------------------------------------------
+it('inviting with admin_level owner is rejected with 422 (privilege escalation guard)', function (): void {
+    Notification::fake();
+
+    $workspace = Workspace::factory()->create();
+    $this->actingInWorkspace($workspace);
+
+    $owner = User::factory()->for($workspace, 'workspace')->create([
+        'admin_level'       => 'owner',
+        'email_verified_at' => now(),
+    ]);
+
+    $response = $this->actingAs($owner)->postJson('/invitations', [
+        'email'       => 'second-owner@example.com',
+        'admin_level' => 'owner',
+    ]);
+
+    $response->assertStatus(422);
+    $this->assertDatabaseMissing('invitations', ['email' => 'second-owner@example.com']);
+    Notification::assertNothingSent();
+
+    Workspace::forgetCurrent();
+});
+
+// ---------------------------------------------------------------------------
 // 7. Expired invitation → fails
 // ---------------------------------------------------------------------------
 it('accepting an expired invitation fails with 422', function (): void {

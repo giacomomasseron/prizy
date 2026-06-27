@@ -32,6 +32,13 @@ final class InviteMember
         $isDeveloper  = (bool) ($data['is_developer'] ?? false);
         $isAgent      = (bool) ($data['is_agent'] ?? false);
 
+        // roles.md: ownership cannot be assigned via invitation (exactly one owner per workspace)
+        if ($adminLevel === 'owner') {
+            throw ValidationException::withMessages([
+                'admin_level' => ['Ownership cannot be assigned via invitation.'],
+            ]);
+        }
+
         // roles.md: a member with no capability and not a viewer is invalid
         if ($adminLevel === 'member' && ! $isDeveloper && ! $isAgent) {
             throw ValidationException::withMessages([
