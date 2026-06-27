@@ -80,6 +80,33 @@ it('IssuePolicy: sweeps all 16 admin_level × is_developer × is_agent combos', 
     Workspace::forgetCurrent();
 });
 
+it('IssuePolicy: denies an owner of ws-A from instance abilities on models in ws-B (Gate::before cross-ws guard)', function (): void {
+    $ws1 = Workspace::factory()->create();
+    $ws2 = Workspace::factory()->create();
+
+    $ws1->makeCurrent();
+    $team1    = Team::factory()->for($ws1, 'workspace')->create();
+    $creator1 = mkUser($ws1, 'owner', true, true);
+    $issue1   = Issue::create(['team_id' => $team1->id, 'title' => 'WS1 Issue', 'created_by' => $creator1->id]);
+    Workspace::forgetCurrent();
+
+    // Owner in ws2 must be denied ALL instance-level abilities on ws1 models
+    // (the workspace-bounded Gate::before must return false, not true).
+    $ws2->makeCurrent();
+    $ownerWs2 = mkUser($ws2, 'owner', false, false);
+
+    expect($ownerWs2->can('view',   $issue1))->toBeFalse('owner cross-ws view');
+    expect($ownerWs2->can('update', $issue1))->toBeFalse('owner cross-ws update');
+    expect($ownerWs2->can('delete', $issue1))->toBeFalse('owner cross-ws delete');
+
+    // Class-level abilities (no model argument) are still allowed for an owner
+    // within their own workspace (Gate::before returns true when $model is null).
+    expect($ownerWs2->can('viewAny', Issue::class))->toBeTrue('owner class-level viewAny still allowed');
+    expect($ownerWs2->can('create',  Issue::class))->toBeTrue('owner class-level create still allowed');
+
+    Workspace::forgetCurrent();
+});
+
 it('IssuePolicy: denies model abilities across workspace boundary', function (): void {
     $ws1 = Workspace::factory()->create();
     $ws2 = Workspace::factory()->create();

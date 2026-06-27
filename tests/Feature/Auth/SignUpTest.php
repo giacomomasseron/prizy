@@ -75,3 +75,23 @@ it('rejects a password shorter than 8 characters with 422', function (): void {
     $response->assertStatus(422)
         ->assertJsonValidationErrors(['password']);
 });
+
+it('regenerates the session id on signup to prevent session fixation', function (): void {
+    // Establish a session before signup so we have a pre-signup session ID to compare.
+    // /health is a landlord route that goes through the web middleware group (StartSession)
+    // but skips NeedsTenant, so it reliably starts a session in any test context.
+    $this->get('/health');
+    $preSignupId = session()->getId();
+
+    $this->postJson('/workspaces', [
+        'workspace_name' => 'Beta Corp',
+        'slug'           => 'beta',
+        'name'           => 'Dave',
+        'email'          => 'dave@example.com',
+        'password'       => 'password123',
+    ])->assertStatus(201);
+
+    // The session ID must be rotated so a planted (pre-signup) session ID cannot
+    // survive authentication (session fixation defence).
+    expect(session()->getId())->not->toBe($preSignupId);
+});

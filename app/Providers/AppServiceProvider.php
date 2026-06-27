@@ -31,8 +31,23 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Owner short-circuit: owners bypass every policy check.
-        Gate::before(fn (User $user) => $user->admin_level === 'owner' ? true : null);
+        // Owner short-circuit: owners bypass every policy check WITHIN their own
+        // workspace. Cross-tenant access is explicitly denied so that an owner
+        // session replayed against another workspace host cannot elevate privilege.
+        Gate::before(function (User $user, string $ability, array $arguments = []) {
+            if ($user->admin_level !== 'owner') {
+                return null; // not owner: let the policies decide
+            }
+            $model = $arguments[0] ?? null;
+            // An owner can do anything WITHIN their own workspace, but not across tenants.
+            if ($model instanceof \Illuminate\Database\Eloquent\Model
+                && isset($model->workspace_id)
+                && (string) $model->workspace_id !== (string) $user->workspace_id) {
+                return false;
+            }
+
+            return true;
+        });
 
         Gate::policy(Issue::class,     IssuePolicy::class);
         Gate::policy(Ticket::class,    TicketPolicy::class);

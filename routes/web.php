@@ -37,6 +37,7 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
     // yet. The raw token is looked up by sha256 hash (RLS permissive when GUC
     // is unset), so the row is reachable from any workspace context.
     Route::post('/invitations/{token}/accept', [AcceptInviteController::class, 'store'])
+        ->middleware(['throttle:10,1'])
         ->name('invitations.accept');
 });
 

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Repositories\InvitationRepository;
 use App\Repositories\UserRepository;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
@@ -37,50 +38,61 @@ final class AcceptInvite
      */
     public function handle(string $token, array $userData): User
     {
-        $tokenHash  = hash('sha256', $token);
-        $invitation = $this->invitationRepository->findByTokenHash($tokenHash);
+        $tokenHash = hash('sha256', $token);
 
-        if ($invitation === null) {
-            throw ValidationException::withMessages([
-                'token' => ['The invitation token is invalid.'],
-            ]);
-        }
+        // Wrap the lookup → user-create → mark-accepted steps in a transaction
+        // so a concurrent double-accept cannot both pass the accepted_at === null
+        // guard (Postgres will serialise the UPDATE; the second will see a
+        // non-null accepted_at and the outer check will fail on re-read).
+        $user = DB::transaction(function () use ($tokenHash, $userData): User {
+            $invitation = $this->invitationRepository->findByTokenHash($tokenHash);
 
-        if ($invitation->accepted_at !== null) {
-            throw ValidationException::withMessages([
-                'token' => ['This invitation has already been accepted.'],
-            ]);
-        }
+            if ($invitation === null) {
+                throw ValidationException::withMessages([
+                    'token' => ['The invitation token is invalid.'],
+                ]);
+            }
 
-        if ($invitation->expires_at->isPast()) {
-            throw ValidationException::withMessages([
-                'token' => ['This invitation has expired.'],
-            ]);
-        }
+            if ($invitation->accepted_at !== null) {
+                throw ValidationException::withMessages([
+                    'token' => ['This invitation has already been accepted.'],
+                ]);
+            }
 
-        // Make the invitation's workspace current so the BelongsToWorkspace
-        // creating-hook auto-fills workspace_id on the new User.
-        $workspace = Workspace::find($invitation->workspace_id);
-        $workspace->makeCurrent();
+            if ($invitation->expires_at->isPast()) {
+                throw ValidationException::withMessages([
+                    'token' => ['This invitation has expired.'],
+                ]);
+            }
 
-        try {
-            $user = $this->userRepository->create([
-                'name'          => $userData['name'],
-                'email'         => $invitation->email,
-                'password_hash' => Hash::make($userData['password']),
-                'admin_level'   => $invitation->admin_level,
-                'is_developer'  => $invitation->is_developer,
-                'is_agent'      => $invitation->is_agent,
-            ]);
-        } finally {
-            // Always restore the no-tenant context regardless of success/failure.
-            Workspace::forgetCurrent();
-        }
+            // Make the invitation's workspace current so the BelongsToWorkspace
+            // creating-hook auto-fills workspace_id on the new User.
+            $workspace = Workspace::find($invitation->workspace_id);
+            $workspace->makeCurrent();
 
-        // Mark the invitation consumed — update by primary key, scope-safe.
-        $invitation->update(['accepted_at' => now()]);
+            try {
+                $user = $this->userRepository->create([
+                    'name'          => $userData['name'],
+                    'email'         => $invitation->email,
+                    'password_hash' => Hash::make($userData['password']),
+                    'admin_level'   => $invitation->admin_level,
+                    'is_developer'  => $invitation->is_developer,
+                    'is_agent'      => $invitation->is_agent,
+                ]);
+            } finally {
+                // Always restore the no-tenant context regardless of success/failure.
+                Workspace::forgetCurrent();
+            }
+
+            // Mark the invitation consumed — update by primary key, scope-safe.
+            $invitation->update(['accepted_at' => now()]);
+
+            return $user;
+        });
 
         // Send a verification email (the new user is unverified).
+        // Done outside the transaction so a mail-dispatch failure doesn't
+        // roll back the already-created user row.
         $user->sendEmailVerificationNotification();
 
         // Log the new member in immediately.

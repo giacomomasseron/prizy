@@ -261,6 +261,98 @@ it('inviting with admin_level owner is rejected with 422 (privilege escalation g
 });
 
 // ---------------------------------------------------------------------------
+// 9. Session fixation: accept-invite rotates the session id
+// ---------------------------------------------------------------------------
+it('accepting an invitation regenerates the session id to prevent session fixation', function (): void {
+    Notification::fake();
+
+    $workspace = Workspace::factory()->create();
+    $workspace->makeCurrent();
+    $owner = User::factory()->for($workspace, 'workspace')->create([
+        'admin_level'      => 'owner',
+        'email_verified_at' => now(),
+    ]);
+
+    $rawToken  = Str::random(40);
+    $tokenHash = hash('sha256', $rawToken);
+
+    Invitation::forceCreate([
+        'id'           => (string) Str::uuid(),
+        'workspace_id' => $workspace->id,
+        'email'        => 'session-fix@example.com',
+        'admin_level'  => 'member',
+        'is_developer' => true,
+        'is_agent'     => false,
+        'token_hash'   => $tokenHash,
+        'invited_by'   => $owner->id,
+        'expires_at'   => now()->addHours(72),
+    ]);
+    Workspace::forgetCurrent();
+
+    // Establish a session before the accept so we have a pre-accept session ID.
+    $this->get('/health');
+    $preAcceptId = session()->getId();
+
+    $this->postJson("/invitations/{$rawToken}/accept", [
+        'name'     => 'Session User',
+        'password' => 'password123',
+    ])->assertStatus(200);
+
+    // The session ID must be rotated after the invite is accepted (session fixation defence).
+    expect(session()->getId())->not->toBe($preAcceptId);
+});
+
+// ---------------------------------------------------------------------------
+// 10. Re-invite (Spec §5): second invite to same email updates pending row
+// ---------------------------------------------------------------------------
+it('re-inviting a pending email updates the existing row and resends the notification', function (): void {
+    Notification::fake();
+
+    $workspace = Workspace::factory()->create();
+    $this->actingInWorkspace($workspace);
+
+    $owner = User::factory()->for($workspace, 'workspace')->create([
+        'admin_level'      => 'owner',
+        'email_verified_at' => now(),
+    ]);
+
+    // First invite
+    $this->actingAs($owner)->postJson('/invitations', [
+        'email'        => 'reinvite@example.com',
+        'admin_level'  => 'member',
+        'is_developer' => true,
+        'is_agent'     => false,
+    ])->assertStatus(201);
+
+    // Second invite to the same email (re-invite)
+    $response = $this->actingAs($owner)->postJson('/invitations', [
+        'email'        => 'reinvite@example.com',
+        'admin_level'  => 'admin',
+        'is_developer' => false,
+        'is_agent'     => false,
+    ]);
+
+    $response->assertStatus(201);
+
+    // Exactly ONE pending invitation row for this email (updated, not duplicated)
+    $pendingCount = Invitation::whereNull('accepted_at')
+        ->where('email', 'reinvite@example.com')
+        ->count();
+    expect($pendingCount)->toBe(1, 'only one pending invitation row should exist after re-invite');
+
+    // The row was updated with the new role
+    $invitation = Invitation::whereNull('accepted_at')
+        ->where('email', 'reinvite@example.com')
+        ->firstOrFail();
+    expect($invitation->admin_level)->toBe('admin');
+
+    // Two notifications sent (once for each invite)
+    Notification::assertSentOnDemandTimes(WorkspaceInvitation::class, 2);
+
+    Workspace::forgetCurrent();
+});
+
+// ---------------------------------------------------------------------------
 // 7. Expired invitation → fails
 // ---------------------------------------------------------------------------
 it('accepting an expired invitation fails with 422', function (): void {

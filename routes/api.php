@@ -8,6 +8,7 @@ use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
+use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 
 /*
 |--------------------------------------------------------------------------
@@ -35,7 +36,7 @@ Route::prefix('v1')->group(function (): void {
     // Without EncryptCookies + StartSession the guard sees no session and
     // returns 401 even when the user holds a valid session cookie.
     // -----------------------------------------------------------------------
-    Route::middleware([EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, 'auth:web'])
+    Route::middleware([EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, EnsureValidTenantSession::class, 'auth:web'])
         ->group(function (): void {
             Route::post('/auth/tokens', [TokenController::class, 'store'])->middleware('throttle:6,1');
             Route::get('/auth/tokens', [TokenController::class, 'index'])->middleware('throttle:30,1');

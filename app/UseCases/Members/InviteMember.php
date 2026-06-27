@@ -52,18 +52,39 @@ final class InviteMember
         $rawToken  = Str::random(40);
         $tokenHash = hash('sha256', $rawToken);
 
-        // Inject the UUID in PHP — never rely on Eloquent reading it back
-        // from the Postgres DEFAULT gen_random_uuid().
-        $invitation = Invitation::forceCreate([
-            'id'          => (string) Str::uuid(),
-            'email'       => $data['email'],
-            'admin_level' => $adminLevel,
-            'is_developer' => $isDeveloper,
-            'is_agent'    => $isAgent,
-            'token_hash'  => $tokenHash,
-            'invited_by'  => $inviter->id,
-            'expires_at'  => now()->addHours(72),
-        ]);
+        // Spec §5: "Re-invite before expiry updates the existing pending row."
+        // If a pending (not yet accepted) invitation exists for this email in
+        // the current workspace, update it in place rather than inserting a
+        // duplicate (which would violate the idx_invitations_pending partial
+        // unique index and return a 500).
+        $existingInvitation = Invitation::whereNull('accepted_at')
+            ->where('email', $data['email'])
+            ->first();
+
+        if ($existingInvitation !== null) {
+            $existingInvitation->update([
+                'admin_level'  => $adminLevel,
+                'is_developer' => $isDeveloper,
+                'is_agent'     => $isAgent,
+                'token_hash'   => $tokenHash,
+                'invited_by'   => $inviter->id,
+                'expires_at'   => now()->addHours(72),
+            ]);
+            $invitation = $existingInvitation;
+        } else {
+            // Inject the UUID in PHP — never rely on Eloquent reading it back
+            // from the Postgres DEFAULT gen_random_uuid().
+            $invitation = Invitation::forceCreate([
+                'id'           => (string) Str::uuid(),
+                'email'        => $data['email'],
+                'admin_level'  => $adminLevel,
+                'is_developer' => $isDeveloper,
+                'is_agent'     => $isAgent,
+                'token_hash'   => $tokenHash,
+                'invited_by'   => $inviter->id,
+                'expires_at'   => now()->addHours(72),
+            ]);
+        }
 
         // The raw token goes ONLY in the email; the hash is stored in the DB.
         $acceptUrl = url("/invitations/{$rawToken}/accept");

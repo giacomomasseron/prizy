@@ -32,6 +32,10 @@ final class AcceptInviteController extends Controller
 
         $user = $this->acceptInvite->handle($token, $data);
 
+        // Rotate the session ID after the invite is accepted to prevent
+        // session fixation (the invitee now holds an authenticated session).
+        $request->session()->regenerate();
+
         return response()->json([
             'user' => $user->only([
                 'id', 'workspace_id', 'name', 'email',
