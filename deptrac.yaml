@@ -17,9 +17,13 @@ deptrac:
     - name: Entity
       collectors:
         - { type: directory, value: app/Models/.* }
+    - name: Policy
+      collectors:
+        - { type: directory, value: app/Policies/.* }
   ruleset:
     Controller: [UseCase]
     UseCase: [Repository, Service]
     Repository: [Entity, Service]
     Service: [Entity]
     Entity: []
+    Policy: [Entity]
