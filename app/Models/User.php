@@ -291,6 +291,14 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
+     * @return HasMany<PersonalAccessToken, $this>
+     */
+    public function personalAccessTokens(): HasMany
+    {
+        return $this->hasMany(PersonalAccessToken::class, 'user_id', 'id');
+    }
+
+    /**
      * @return BelongsTo<Workspace, $this>
      */
     public function workspace(): BelongsTo

@@ -37,8 +37,14 @@ return [
 
     'guards' => [
         'web' => [
-            'driver' => 'session',
+            'driver'   => 'session',
             'provider' => 'users',
+        ],
+
+        // Custom Bearer-token guard backed by personal_access_tokens.
+        // Registered via Auth::extend('token-bearer', ...) in AppServiceProvider.
+        'token' => [
+            'driver' => 'token-bearer',
         ],
     ],
 
