@@ -32,6 +32,10 @@ final class LoginController extends Controller
 
         $user = $this->logIn->handle($data['email'], $data['password']);
 
+        // Rotate the session ID after successful authentication to prevent session fixation:
+        // a planted session ID (e.g. via a sibling-subdomain cookie) must not survive login.
+        $request->session()->regenerate();
+
         return response()->json([
             'user' => $user->only([
                 'id', 'workspace_id', 'name', 'email', 'admin_level',

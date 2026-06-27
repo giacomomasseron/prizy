@@ -82,6 +82,33 @@ it('cannot log into workspace A with credentials belonging to workspace B (cross
     Workspace::forgetCurrent();
 });
 
+it('regenerates the session id on login to prevent session fixation', function (): void {
+    $workspace = Workspace::factory()->create();
+    $this->actingInWorkspace($workspace);
+
+    User::factory()->for($workspace, 'workspace')->create([
+        'email'         => 'alice@example.com',
+        'password_hash' => Hash::make('secret-123'),
+    ]);
+
+    // Establish a session before login to capture a pre-login session ID.
+    // The /health route goes through the web middleware group (StartSession) but
+    // skips NeedsTenant, so it reliably starts a session in any test context.
+    $this->get('/health');
+    $preLoginId = session()->getId();
+
+    $this->postJson('/login', [
+        'email'    => 'alice@example.com',
+        'password' => 'secret-123',
+    ])->assertStatus(200);
+
+    // The session ID must be rotated so a planted (pre-login) session ID cannot
+    // survive authentication (session fixation defence).
+    expect(session()->getId())->not->toBe($preLoginId);
+
+    Workspace::forgetCurrent();
+});
+
 it('logout invalidates the session and clears authentication', function (): void {
     $workspace = Workspace::factory()->create();
     $this->actingInWorkspace($workspace);
