@@ -33,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     timestamps: false,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'user_id', 'type', 'subject_type', 'subject_id', 'read_at'])]
+#[Fillable(['id', 'user_id', 'type', 'subject_type', 'subject_id', 'read_at'])]
 class Notification extends TenantAwareEntity
 {
     /**

@@ -35,7 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'name', 'timezone'])]
+#[Fillable(['id', 'name', 'timezone'])]
 class BusinessHourSchedule extends TenantAwareEntity
 {
     /**

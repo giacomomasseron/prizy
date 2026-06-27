@@ -34,7 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'name', 'color'])]
+#[Fillable(['id', 'name', 'color'])]
 class Label extends TenantAwareEntity
 {
     /**

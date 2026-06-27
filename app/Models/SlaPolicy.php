@@ -41,7 +41,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'name', 'first_reply_minutes', 'next_reply_minutes', 'resolution_minutes', 'schedule_id'])]
+#[Fillable(['id', 'name', 'first_reply_minutes', 'next_reply_minutes', 'resolution_minutes', 'schedule_id'])]
 class SlaPolicy extends TenantAwareEntity
 {
     /**

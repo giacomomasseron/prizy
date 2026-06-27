@@ -59,7 +59,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'requester_id', 'assignee_id', 'agent_group_id', 'sla_policy_id', 'subject', 'status', 'priority', 'channel', 'csat_rating', 'csat_responded_at', 'first_replied_at', 'resolved_at'])]
+#[Fillable(['id', 'requester_id', 'assignee_id', 'agent_group_id', 'sla_policy_id', 'subject', 'status', 'priority', 'channel', 'csat_rating', 'csat_responded_at', 'first_replied_at', 'resolved_at'])]
 class Ticket extends TenantAwareEntity
 {
     use SoftDeletes;

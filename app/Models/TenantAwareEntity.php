@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Scopes\WorkspaceScope;
 
 /**
  * Base entity for all tenant-scoped Eloquent models.
@@ -15,6 +14,7 @@ use App\Scopes\WorkspaceScope;
  */
 abstract class TenantAwareEntity extends Model
 {
+    use BelongsToWorkspace;
     use HasFactory;
 
     /**
@@ -26,22 +26,4 @@ abstract class TenantAwareEntity extends Model
     public $incrementing = false;
 
     protected $keyType = 'string';
-
-    protected static function booted(): void
-    {
-        // Apply the global WorkspaceScope to every subclass automatically.
-        static::addGlobalScope(new WorkspaceScope());
-
-        // Auto-fill workspace_id on model creation.
-        static::creating(function (self $model): void {
-            if (empty($model->workspace_id)) {
-                $model->workspace_id = WorkspaceScope::getCurrentWorkspaceId();
-            }
-        });
-    }
-
-    public function workspace(): \Illuminate\Database\Eloquent\Relations\BelongsTo
-    {
-        return $this->belongsTo(Workspace::class, 'workspace_id');
-    }
 }

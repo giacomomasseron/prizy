@@ -34,7 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'url', 'secret_hash', 'is_active'])]
+#[Fillable(['id', 'url', 'secret_hash', 'is_active'])]
 class Webhook extends TenantAwareEntity
 {
     /**

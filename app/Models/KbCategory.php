@@ -33,7 +33,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'name', 'slug', 'position'])]
+#[Fillable(['id', 'name', 'slug', 'position'])]
 class KbCategory extends TenantAwareEntity
 {
     /**

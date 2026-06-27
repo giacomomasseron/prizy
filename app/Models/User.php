@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Concerns\BelongsToWorkspace;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Connection;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
 
 /**
  * Class User
@@ -87,10 +91,22 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'name', 'email', 'email_verified_at', 'password_hash', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at'])]
-class User extends TenantAwareEntity
+#[Fillable(['id', 'name', 'email', 'email_verified_at', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at'])]
+class User extends Authenticatable
 {
+    use BelongsToWorkspace;
+    use HasFactory;
+    use Notifiable;
     use SoftDeletes;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    public function getAuthPassword(): string
+    {
+        return (string) $this->password_hash;
+    }
 
     /**
      * @return array<string, string>

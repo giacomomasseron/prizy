@@ -52,7 +52,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'team_id', 'name', 'description', 'icon', 'color', 'status', 'start_date', 'target_date', 'created_by'])]
+#[Fillable(['id', 'team_id', 'name', 'description', 'icon', 'color', 'status', 'start_date', 'target_date', 'created_by'])]
 class Project extends TenantAwareEntity
 {
     use SoftDeletes;

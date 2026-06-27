@@ -34,7 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'created_by', 'name', 'body'])]
+#[Fillable(['id', 'created_by', 'name', 'body'])]
 class Macro extends TenantAwareEntity
 {
     /**

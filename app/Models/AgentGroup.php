@@ -38,7 +38,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'name'])]
+#[Fillable(['id', 'name'])]
 class AgentGroup extends TenantAwareEntity
 {
     /**

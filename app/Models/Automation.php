@@ -36,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'workspace_id', 'created_by', 'name', 'trigger_event', 'is_active'])]
+#[Fillable(['id', 'created_by', 'name', 'trigger_event', 'is_active'])]
 class Automation extends TenantAwareEntity
 {
     /**
