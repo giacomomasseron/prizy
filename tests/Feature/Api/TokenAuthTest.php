@@ -6,6 +6,7 @@ use App\Models\PersonalAccessToken;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -187,6 +188,54 @@ it('lists the current user\'s tokens without exposing token_hash or plaintext', 
         expect($token)->toHaveKey('name');
         expect($token)->toHaveKey('id');
     }
+
+    Workspace::forgetCurrent();
+});
+
+// ---------------------------------------------------------------------------
+// 7. Real session-cookie path (production path, not actingAs)
+//
+// This test proves the EncryptCookies + StartSession stack on the
+// token-management routes actually works end-to-end:
+//   1. Log in via POST /login (web group — has StartSession, sets cookie).
+//   2. Carry the encrypted session cookie to POST /v1/auth/tokens.
+//   3. EncryptCookies decrypts it → StartSession hydrates auth:web → 201.
+//
+// Without the session middleware on the api route this test returns 401
+// because the session cookie is ignored and auth:web sees no user.
+// ---------------------------------------------------------------------------
+it('creates a token via real session cookie without actingAs (production path)', function (): void {
+    $workspace = Workspace::factory()->create();
+    $this->actingInWorkspace($workspace);
+    $user = User::factory()->for($workspace, 'workspace')->create([
+        'password_hash' => Hash::make('secret-123'),
+    ]);
+
+    // Step 1: Log in via the real session login endpoint (web group has
+    // EncryptCookies + StartSession). CSRF is bypassed in tests automatically.
+    $loginResponse = $this->postJson('/login', [
+        'email'    => $user->email,
+        'password' => 'secret-123',
+    ]);
+    $loginResponse->assertStatus(200);
+
+    // Step 2: Extract the encrypted session cookie exactly as the server sent
+    // it. decrypt:false returns the raw ciphertext (not the plain session ID).
+    $cookieName          = config('session.cookie');
+    $encryptedSessionCookie = $loginResponse->getCookie($cookieName, decrypt: false);
+
+    // Step 3: POST to the token-management endpoint carrying the session cookie.
+    // withUnencryptedCookies passes the already-encrypted value unmodified so
+    // EncryptCookies middleware (added in Fix 1) can decrypt it → StartSession
+    // hydrates the web guard → auth:web authenticates the user → 201.
+    // No actingAs — this is the real production flow.
+    $response = $this->withUnencryptedCookies([$cookieName => $encryptedSessionCookie])
+        ->postJson('/v1/auth/tokens', ['name' => 'prod-path-token']);
+
+    $response->assertStatus(201);
+    $plain = $response->json('token');
+    expect($plain)->toBeString()->not->toBeEmpty();
+    expect($response->json('name'))->toBe('prod-path-token');
 
     Workspace::forgetCurrent();
 });

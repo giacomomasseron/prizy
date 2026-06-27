@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
+use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
+use Illuminate\Cookie\Middleware\EncryptCookies;
+use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,16 +29,18 @@ Route::prefix('v1')->group(function (): void {
     // -----------------------------------------------------------------------
     // Token management — SESSION-authenticated (web guard).
     //
-    // A logged-in web user creates or revokes their own API tokens.
-    // The session guard works via actingAs() in tests; in production the
-    // browser session authenticates the user.
+    // The api middleware group has no StartSession, so we inject the full
+    // cookie + session stack here so that a real browser session cookie is
+    // decrypted and hydrated before auth:web runs (production path).
+    // Without EncryptCookies + StartSession the guard sees no session and
+    // returns 401 even when the user holds a valid session cookie.
     // -----------------------------------------------------------------------
-    Route::middleware(['auth:web'])->group(function (): void {
-        Route::post('/auth/tokens', [TokenController::class, 'store'])
-            ->middleware('throttle:6,1');
-        Route::get('/auth/tokens', [TokenController::class, 'index']);
-        Route::delete('/auth/tokens/{id}', [TokenController::class, 'destroy']);
-    });
+    Route::middleware([EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, 'auth:web'])
+        ->group(function (): void {
+            Route::post('/auth/tokens', [TokenController::class, 'store'])->middleware('throttle:6,1');
+            Route::get('/auth/tokens', [TokenController::class, 'index'])->middleware('throttle:30,1');
+            Route::delete('/auth/tokens/{id}', [TokenController::class, 'destroy'])->middleware('throttle:30,1');
+        });
 
     // -----------------------------------------------------------------------
     // Me — BEARER-TOKEN authenticated (custom token guard).
