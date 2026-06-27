@@ -18,7 +18,7 @@ Route::get('/', function () {
 // Landlord routes — exempt from both tenant middlewares (no workspace is resolved yet).
 Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])->group(function (): void {
     Route::get('/health', HealthController::class);
-    Route::post('/workspaces', SignUpController::class);
+    Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
 
     // Email verification — landlord route because the user may click the link
     // on any device or host with no tenant session. WorkspaceScope is a no-op
@@ -45,9 +45,9 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
 
 // Magic-link request — tenant route so the user lookup is workspace-scoped.
 // "Forgot password" reuses this same endpoint (no separate flow needed).
-Route::post('/magic-link', [MagicLinkController::class, 'request']);
+Route::post('/magic-link', [MagicLinkController::class, 'request'])->middleware(['throttle:6,1']);
 
-Route::post('/login', [LoginController::class, 'store']);
+Route::post('/login', [LoginController::class, 'store'])->middleware(['throttle:10,1']);
 Route::post('/logout', [LoginController::class, 'destroy']);
 
 // Resend verification email (tenant, authenticated, throttled).
