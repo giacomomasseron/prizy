@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Models\Concerns\BelongsToWorkspace;
+use App\Notifications\VerifyEmail;
 use Carbon\Carbon;
+use Illuminate\Auth\MustVerifyEmail;
+use Illuminate\Contracts\Auth\MustVerifyEmail as MustVerifyEmailContract;
 use Illuminate\Database\Eloquent\Attributes\Connection;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
@@ -92,10 +95,11 @@ use Illuminate\Notifications\Notifiable;
 )]
 #[Connection('pgsql')]
 #[Fillable(['id', 'name', 'email', 'email_verified_at', 'password_hash', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at'])]
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmailContract
 {
     use BelongsToWorkspace;
     use HasFactory;
+    use MustVerifyEmail;
     use Notifiable;
     use SoftDeletes;
 
@@ -106,6 +110,15 @@ class User extends Authenticatable
     public function getAuthPassword(): string
     {
         return (string) $this->password_hash;
+    }
+
+    /**
+     * Send the email verification notification using our custom VerifyEmail notification
+     * (overrides the MustVerifyEmail trait default which would use Laravel's built-in).
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmail());
     }
 
     /**

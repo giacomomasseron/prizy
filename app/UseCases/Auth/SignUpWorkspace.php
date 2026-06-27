@@ -20,14 +20,17 @@ final class SignUpWorkspace
     ) {}
 
     /**
-     * Create a new Workspace and its owner User in a single transaction.
+     * Create a new Workspace and its owner User in a single transaction,
+     * then log the user in and dispatch the verification notification OUTSIDE
+     * the transaction so a mail-driver failure cannot roll back a valid signup
+     * or leave the session pointing at a rolled-back user.
      *
      * @param  array<string, mixed>  $data  Validated input (workspace_name, slug, name, email, password)
      * @return array{workspace: Workspace, user: User}
      */
     public function handle(array $data): array
     {
-        $result = DB::transaction(function () use ($data): array {
+        [$workspace, $user] = DB::transaction(function () use ($data): array {
             // Generate the UUID in PHP so the model has its key immediately;
             // Eloquent does not fetch the Postgres-generated UUID back for
             // non-incrementing models, so $workspace->id would be null otherwise.
@@ -48,13 +51,15 @@ final class SignUpWorkspace
                 'admin_level'   => 'owner',
             ]);
 
-            Auth::login($user);
-
-            $user->notify(new VerifyEmail());
-
-            return ['workspace' => $workspace, 'user' => $user];
+            return [$workspace, $user];
         });
 
-        return $result;
+        // Authenticate and notify AFTER the transaction commits so a mail-driver
+        // exception cannot roll back the user/workspace rows or leave an auth
+        // session pointing at a non-existent user.
+        Auth::login($user);
+        $user->notify(new VerifyEmail());
+
+        return ['workspace' => $workspace, 'user' => $user];
     }
 }
