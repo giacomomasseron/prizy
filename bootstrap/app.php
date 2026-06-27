@@ -24,7 +24,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', EnsureValidTenantSession::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // Render exceptions as JSON for API routes or any request that sends Accept: application/json.
+        // This ensures landlord JSON endpoints (e.g. POST /workspaces) return 422 JSON on validation
+        // failure rather than redirecting back (which would only make sense for HTML forms).
         $exceptions->shouldRenderJsonWhen(
-            fn (Request $request) => $request->is('api/*'),
+            fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();

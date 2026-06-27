@@ -22,7 +22,7 @@ deptrac:
         - { type: directory, value: app/Policies/.* }
   ruleset:
     Controller: [UseCase]
-    UseCase: [Repository, Service]
+    UseCase: [Repository, Service, Entity]
     Repository: [Entity, Service]
     Service: [Entity]
     Entity: []

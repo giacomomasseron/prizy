@@ -91,7 +91,7 @@ use Illuminate\Notifications\Notifiable;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'name', 'email', 'email_verified_at', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at'])]
+#[Fillable(['id', 'name', 'email', 'email_verified_at', 'password_hash', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at'])]
 class User extends Authenticatable
 {
     use BelongsToWorkspace;
