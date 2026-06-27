@@ -6,16 +6,19 @@
 -- connect as a *non*-superuser ('prizy_app') so the workspace-isolation
 -- RLS policies actually filter rows.
 --
--- Privileges needed:
---   • CONNECT on the database
---   • CREATE, USAGE on the public schema  (migrations create tables)
---   • DEFAULT PRIVILEGES for all tables / sequences / functions created
---     by 'prizy' in the public schema (migration runner is 'prizy_app' so
---     it will own its own objects; ALTER DEFAULT PRIVILEGES covers any
---     superuser-owned objects that get re-used)
+-- Privileges needed by prizy_app:
+--   • CONNECT + ALL PRIVILEGES on both 'prizy' and 'prizy_test' databases
+--   • CREATE, USAGE on the public schema in each database  (migrations create
+--     tables as prizy_app, so prizy_app owns those objects — FORCE ROW LEVEL
+--     SECURITY therefore enforces on them)
 --
--- The prizy_test database (used by the test suite via DB_DATABASE_TEST)
--- gets the same treatment via the LOOP below.
+-- The ALTER DEFAULT PRIVILEGES lines below cover any superuser-owned objects
+-- that might be created in the public schema.  They are not load-bearing for
+-- the current setup (prizy_app runs the migrations and owns its objects), but
+-- are left as a safety net.
+--
+-- This script runs once on a FRESH volume via /docker-entrypoint-initdb.d,
+-- connected to POSTGRES_DB ('prizy') as the superuser ('prizy').
 
 DO $$
 BEGIN
@@ -24,6 +27,8 @@ BEGIN
     END IF;
 END
 $$;
+
+-- ── prizy (dev database) ─────────────────────────────────────────────────────
 
 -- Database-level privileges
 GRANT CONNECT ON DATABASE prizy TO prizy_app;
@@ -39,3 +44,10 @@ ALTER DEFAULT PRIVILEGES FOR ROLE prizy IN SCHEMA public
     GRANT ALL ON SEQUENCES TO prizy_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE prizy IN SCHEMA public
     GRANT EXECUTE ON FUNCTIONS TO prizy_app;
+
+-- ── prizy_test (test database) ───────────────────────────────────────────────
+
+CREATE DATABASE prizy_test;
+GRANT ALL PRIVILEGES ON DATABASE prizy_test TO prizy_app;
+\c prizy_test
+GRANT ALL ON SCHEMA public TO prizy_app;
