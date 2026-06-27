@@ -22,8 +22,20 @@ jobs:
       - name: Generate app key
         run: docker compose exec -T app php artisan key:generate
 
-      - name: Create test database
-        run: docker compose exec -T postgres psql -U prizy -d prizy -c "CREATE DATABASE prizy_test;" || true
+      - name: Create test database and grant app role privileges
+        run: |
+          docker compose exec -T postgres psql -U prizy -d prizy -c "CREATE DATABASE prizy_test;" || true
+          docker compose exec -T postgres psql -U prizy -d prizy_test -c "
+            GRANT CONNECT ON DATABASE prizy_test TO prizy_app;
+            GRANT ALL PRIVILEGES ON DATABASE prizy_test TO prizy_app;
+            GRANT ALL ON SCHEMA public TO prizy_app;
+            ALTER DEFAULT PRIVILEGES FOR ROLE prizy IN SCHEMA public
+              GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES TO prizy_app;
+            ALTER DEFAULT PRIVILEGES FOR ROLE prizy IN SCHEMA public
+              GRANT ALL ON SEQUENCES TO prizy_app;
+            ALTER DEFAULT PRIVILEGES FOR ROLE prizy IN SCHEMA public
+              GRANT EXECUTE ON FUNCTIONS TO prizy_app;
+          "
 
       - name: Architecture gate (deptrac — BLOCKING)
         run: docker compose exec -T app vendor/bin/deptrac analyse --config-file=deptrac.yaml --no-progress

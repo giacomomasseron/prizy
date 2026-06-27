@@ -21,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->appendToGroup('api', NeedsTenant::class);
         $middleware->appendToGroup('web', NeedsTenant::class);
+        $middleware->appendToGroup('web', EnsureValidTenantSession::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
