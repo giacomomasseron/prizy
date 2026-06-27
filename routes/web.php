@@ -34,8 +34,3 @@ Route::post('/logout', [LoginController::class, 'destroy']);
 Route::post('/email/verification-notification', [EmailVerificationController::class, 'resend'])
     ->middleware(['auth', 'throttle:6,1'])
     ->name('verification.send');
-
-// Minimal route used only to demonstrate (and test) the soft verified gate.
-// Unverified users → 403; verified users → 200.
-Route::get('/test-verified-gate', fn () => response()->json(['ok' => true]))
-    ->middleware(['auth', 'verified']);

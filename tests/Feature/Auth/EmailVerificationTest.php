@@ -7,6 +7,7 @@ use App\Models\Workspace;
 use App\Notifications\VerifyEmail;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -152,13 +153,19 @@ it('resend dispatches a VerifyEmail notification for an unverified user', functi
 // ---------------------------------------------------------------------------
 
 it('the verified gate blocks an authenticated but unverified user with 403', function (): void {
+    // Register a throw-away probe route in-test so no permanent production
+    // route is needed.  The ['auth','verified'] middleware stack is what's
+    // under test, not the handler itself.
+    Route::middleware(['auth', 'verified'])
+        ->get('/__verified_probe', fn () => response()->json(['ok' => true]));
+
     $workspace = Workspace::factory()->create();
     $this->actingInWorkspace($workspace);
     $user = User::factory()->for($workspace, 'workspace')->create([
         'email_verified_at' => null,
     ]);
 
-    $response = $this->actingAs($user)->getJson('/test-verified-gate');
+    $response = $this->actingAs($user)->getJson('/__verified_probe');
     $response->assertStatus(403);
 
     Workspace::forgetCurrent();
@@ -169,13 +176,16 @@ it('the verified gate blocks an authenticated but unverified user with 403', fun
 // ---------------------------------------------------------------------------
 
 it('the verified gate allows an authenticated and verified user', function (): void {
+    Route::middleware(['auth', 'verified'])
+        ->get('/__verified_probe', fn () => response()->json(['ok' => true]));
+
     $workspace = Workspace::factory()->create();
     $this->actingInWorkspace($workspace);
     $user = User::factory()->for($workspace, 'workspace')->create([
         'email_verified_at' => now(),
     ]);
 
-    $response = $this->actingAs($user)->getJson('/test-verified-gate');
+    $response = $this->actingAs($user)->getJson('/__verified_probe');
     $response->assertStatus(200);
 
     Workspace::forgetCurrent();

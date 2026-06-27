@@ -996,11 +996,16 @@ BEGIN
     LOOP
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tenant_table);
         EXECUTE format('ALTER TABLE %I FORCE  ROW LEVEL SECURITY;', tenant_table);
+        -- Use NULLIF + text comparison instead of ::uuid cast.
+        -- Postgres does not guarantee OR short-circuit, so `current_setting(...)::uuid`
+        -- can be evaluated even when an earlier branch is already true, crashing with
+        -- "invalid input syntax for type uuid: """ when the GUC is the empty string
+        -- (set by forgetCurrent() on landlord routes).  Casting workspace_id::text is
+        -- safe because all stored UUIDs are canonical lowercase — both sides match.
         EXECUTE format(
             'CREATE POLICY %1$s_workspace_isolation ON %1$I USING ('
-            || 'current_setting(''app.current_workspace_id'', true) IS NULL OR '
-            || 'current_setting(''app.current_workspace_id'', true) = '''' OR '
-            || 'workspace_id = current_setting(''app.current_workspace_id'', true)::uuid);',
+            || 'NULLIF(current_setting(''app.current_workspace_id'', true), '''') IS NULL OR '
+            || 'workspace_id::text = current_setting(''app.current_workspace_id'', true));',
             tenant_table
         );
     END LOOP;
