@@ -7,6 +7,15 @@ namespace App\Repositories;
 use App\Models\IssueBlocker;
 use Illuminate\Support\Collection;
 
+/**
+ * Repository for the issue_blockers join table.
+ *
+ * IMPORTANT INVARIANT: this table has no workspace_id column and is NOT covered
+ * by Row-Level Security. All queries here are GLOBALLY UNSCOPED across tenants.
+ * Every caller MUST validate the parent issue(s) via IssueRepository::findInWorkspace
+ * before reading or writing edges, so that tenant isolation is enforced at the
+ * use-case layer rather than at the DB level.
+ */
 final class IssueBlockerRepository
 {
     public function exists(string $blocking, string $blocked): bool

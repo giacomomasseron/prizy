@@ -30,6 +30,11 @@ final class RemoveIssueBlocker
             throw ValidationException::withMessages(['blocked_issue_id' => ['The selected issue is invalid.']]);
         }
 
+        // Defense-in-depth: validate the blocking endpoint is also in the current workspace.
+        if ($this->issues->findInWorkspace($blockingId) === null) {
+            throw ValidationException::withMessages(['blocking_issue_id' => ['The selected issue is invalid.']]);
+        }
+
         if (! $this->blockers->exists($blockingId, $blockedId)) {
             throw ValidationException::withMessages(['blocked_issue_id' => ['This blocker does not exist.']]);
         }

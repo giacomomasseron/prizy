@@ -42,16 +42,22 @@ final class TransitionIssueStatus
         $from = $issue->status;
         $this->assertTransitionAllowed($from, $to);
 
-        DB::transaction(function () use ($issue, $actor, $from, $to): void {
+        $unblockEvents = [];
+
+        DB::transaction(function () use ($issue, $actor, $from, $to, &$unblockEvents): void {
             $this->issues->update($issue, ['status' => $to]);
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {
-                $this->resolveBlockers->handle($issue);
+                $unblockEvents = $this->resolveBlockers->resolve($issue)['events'];
             }
         });
 
         event(new IssueStatusChanged($issue, $from, $to));
+
+        foreach ($unblockEvents as $event) {
+            event($event);
+        }
 
         return $issue;
     }

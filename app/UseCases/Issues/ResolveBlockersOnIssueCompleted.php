@@ -22,47 +22,57 @@ final class ResolveBlockersOnIssueCompleted
     ) {}
 
     /**
-     * Drop the completed issue as a blocker everywhere and notify assignees of
-     * issues that become fully unblocked.
+     * Standalone entry point: resolve in its own transaction, then dispatch the
+     * unblock broadcasts AFTER commit.
      *
      * @return list<string> ids of issues that are now fully unblocked
      */
     public function handle(Issue $completed): array
     {
+        $result = DB::transaction(fn (): array => $this->resolve($completed));
+
+        foreach ($result['events'] as $event) {
+            event($event);
+        }
+
+        return $result['unblocked'];
+    }
+
+    /**
+     * Perform the blocker-resolution DB writes for a completed issue WITHOUT
+     * opening a transaction and WITHOUT dispatching events. Returns the
+     * newly-unblocked issue ids plus the IssueUnblocked events the caller must
+     * dispatch AFTER commit.
+     *
+     * Call this (not handle()) when composing inside an outer transaction
+     * (e.g. TransitionIssueStatus), so broadcasts fire only after the outer
+     * commit.
+     *
+     * @return array{unblocked: list<string>, events: list<IssueUnblocked>}
+     */
+    public function resolve(Issue $completed): array
+    {
         $edges = $this->blockers->blocking($completed->id);
 
-        if ($edges->isEmpty()) {
-            return [];
-        }
+        $unblocked = [];
+        $events = [];
 
-        $newlyUnblocked = [];
+        foreach ($edges as $edge) {
+            $blockedId = $edge->blocked_issue_id;
+            $this->blockers->delete($completed->id, $blockedId);
+            $this->activities->log($blockedId, null, 'blocker_resolved', $completed->id, null);
 
-        $toNotify = DB::transaction(function () use ($completed, $edges, &$newlyUnblocked): array {
-            $notify = [];
+            if ($this->blockers->blockersOf($blockedId)->isEmpty()) {
+                $unblocked[] = $blockedId;
 
-            foreach ($edges as $edge) {
-                $blockedId = $edge->blocked_issue_id;
-                $this->blockers->delete($completed->id, $blockedId);
-                $this->activities->log($blockedId, null, 'blocker_resolved', $completed->id, null);
-
-                if ($this->blockers->blockersOf($blockedId)->isEmpty()) {
-                    $newlyUnblocked[] = $blockedId;
-
-                    $blocked = $this->issues->findInWorkspace($blockedId);
-                    if ($blocked !== null && $blocked->assignee_id !== null) {
-                        $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id);
-                        $notify[] = $blocked;
-                    }
+                $blocked = $this->issues->findInWorkspace($blockedId);
+                if ($blocked !== null && $blocked->assignee_id !== null) {
+                    $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id);
+                    $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
                 }
             }
-
-            return $notify;
-        });
-
-        foreach ($toNotify as $blocked) {
-            event(new IssueUnblocked($blocked, $blocked->assignee_id));
         }
 
-        return $newlyUnblocked;
+        return ['unblocked' => $unblocked, 'events' => $events];
     }
 }

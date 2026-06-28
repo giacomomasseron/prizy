@@ -79,3 +79,27 @@ it('rejects an assignee from another workspace', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('rejects a project_id not in the workspace', function (): void {
+    [$ws, $actor, $team] = makeWorkspaceWithActor();
+
+    expect(fn () => app(CreateIssue::class)->handle($actor, [
+        'team_id'    => $team->id,
+        'title'      => 'x',
+        'project_id' => (string) Str::uuid(),
+    ]))->toThrow(ValidationException::class);
+
+    Workspace::forgetCurrent();
+});
+
+it('rejects a cycle_id not in the workspace', function (): void {
+    [$ws, $actor, $team] = makeWorkspaceWithActor();
+
+    expect(fn () => app(CreateIssue::class)->handle($actor, [
+        'team_id'  => $team->id,
+        'title'    => 'x',
+        'cycle_id' => (string) Str::uuid(),
+    ]))->toThrow(ValidationException::class);
+
+    Workspace::forgetCurrent();
+});
