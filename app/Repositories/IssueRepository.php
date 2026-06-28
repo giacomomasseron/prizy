@@ -16,7 +16,10 @@ final class IssueRepository
             $attributes['id'] = (string) Str::uuid();
         }
 
-        return Issue::create($attributes);
+        $issue = Issue::create($attributes);
+        $issue->refresh();
+
+        return $issue;
     }
 
     /** @param array<string, mixed> $attributes */
