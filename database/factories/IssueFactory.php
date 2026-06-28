@@ -23,4 +23,9 @@ final class IssueFactory extends Factory
             'created_by' => User::factory(),
         ];
     }
+
+    public function status(string $status): static
+    {
+        return $this->state(fn (): array => ['status' => $status]);
+    }
 }
