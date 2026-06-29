@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\Api\V1\IssueActivityController;
+use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -69,5 +71,8 @@ Route::prefix('v1')->group(function (): void {
         Route::put('/issues/{issue}/status', [IssueController::class, 'status'])->middleware('verified');
         Route::put('/issues/{issue}/assignee', [IssueController::class, 'assignee'])->middleware('verified');
         Route::post('/issues/{issue}/archive', [IssueController::class, 'archive'])->middleware('verified');
+        Route::post('/issues/{issue}/comments', [IssueCommentController::class, 'store'])->middleware('verified');
+        Route::get('/issues/{issue}/comments', [IssueCommentController::class, 'index']);
+        Route::get('/issues/{issue}/activities', [IssueActivityController::class, 'index']);
     });
 });
