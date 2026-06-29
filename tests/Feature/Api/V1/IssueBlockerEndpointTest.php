@@ -6,7 +6,6 @@ use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Repositories\IssueBlockerRepository;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithTenant;

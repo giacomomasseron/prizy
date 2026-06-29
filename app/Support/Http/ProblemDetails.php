@@ -45,7 +45,7 @@ final class ProblemDetails
         return match (true) {
             $e instanceof ValidationException => [422, 'validation', 'The given data was invalid.', $e->errors()],
             $e instanceof AuthenticationException => [401, 'unauthenticated', 'Unauthenticated.', null],
-            $e instanceof AuthorizationException => [403, 'forbidden', $e->getMessage() ?: 'This action is unauthorized.', null],
+            $e instanceof AuthorizationException => [403, 'forbidden', 'This action is unauthorized.', null],
             $e instanceof ModelNotFoundException => [404, 'not-found', 'Resource not found.', null],
             $e instanceof HttpExceptionInterface => [
                 $e->getStatusCode(),
