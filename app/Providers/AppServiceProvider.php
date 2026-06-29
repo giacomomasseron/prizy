@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Auth\TokenGuard;
+use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\Issue;
 use App\Models\Ticket;
 use App\Models\User;
@@ -53,6 +54,15 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(Ticket::class,    TicketPolicy::class);
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(User::class,      MemberPolicy::class);
+
+        // Allow API docs access in every non-production environment so that the
+        // testing environment (and local) can hit /docs/api* without a logged-in
+        // user.  RestrictedDocsAccess already short-circuits for 'local'; this
+        // Gate covers 'testing' and any other non-prod env.  Production keeps its
+        // existing default-deny behaviour (Gate::allows('viewApiDocs') → false).
+        // The nullable ?Authenticatable is required so Laravel's Gate treats this
+        // as guest-accessible (callbackAllowsGuests checks parameters[0]->allowsNull()).
+        Gate::define('viewApiDocs', static fn (?Authenticatable $user): bool => ! app()->isProduction());
 
         // Register the custom Bearer-token guard driver.
         // config/auth.php declares 'token' => ['driver' => 'token-bearer'].
