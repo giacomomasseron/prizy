@@ -66,5 +66,8 @@ Route::prefix('v1')->group(function (): void {
             ->middleware(['verified', 'can:create,App\\Models\\Issue']);
         Route::patch('/issues/{issue}', [IssueController::class, 'update'])
             ->middleware('verified');
+        Route::put('/issues/{issue}/status', [IssueController::class, 'status'])->middleware('verified');
+        Route::put('/issues/{issue}/assignee', [IssueController::class, 'assignee'])->middleware('verified');
+        Route::post('/issues/{issue}/archive', [IssueController::class, 'archive'])->middleware('verified');
     });
 });
