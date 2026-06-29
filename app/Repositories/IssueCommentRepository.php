@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\IssueComment;
+use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 
 final class IssueCommentRepository
@@ -17,5 +18,13 @@ final class IssueCommentRepository
         }
 
         return IssueComment::create($attributes);
+    }
+
+    public function paginateForIssue(string $issueId, int $limit): CursorPaginator
+    {
+        return IssueComment::where('issue_id', $issueId)
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->cursorPaginate(perPage: $limit, cursorName: 'after');
     }
 }
