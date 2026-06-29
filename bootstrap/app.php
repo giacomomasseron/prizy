@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
@@ -33,4 +34,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // RFC 7807 Problem Details for the v1 API surface.
+        $exceptions->render(function (Throwable $e, Request $request): ?JsonResponse {
+            if ($request->is('v1/*')) {
+                return \App\Support\Http\ProblemDetails::render($e, $request);
+            }
+
+            return null;
+        });
     })->create();
