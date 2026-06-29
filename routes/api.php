@@ -62,5 +62,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
         Route::get('/issues/{issue}', [IssueController::class, 'show']);
+        Route::post('/issues', [IssueController::class, 'store'])
+            ->middleware(['verified', 'can:create,App\\Models\\Issue']);
+        Route::patch('/issues/{issue}', [IssueController::class, 'update'])
+            ->middleware('verified');
     });
 });
