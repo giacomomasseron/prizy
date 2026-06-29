@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\Api\V1\IssueController;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -52,5 +53,14 @@ Route::prefix('v1')->group(function (): void {
     // -----------------------------------------------------------------------
     Route::middleware(['auth:token'])->group(function (): void {
         Route::get('/me', MeController::class);
+    });
+
+    // -----------------------------------------------------------------------
+    // Issues API — BEARER-TOKEN authenticated. Writes also require `verified`.
+    // -----------------------------------------------------------------------
+    Route::middleware(['auth:token'])->group(function (): void {
+        Route::get('/issues', [IssueController::class, 'index'])
+            ->middleware('can:viewAny,App\\Models\\Issue');
+        Route::get('/issues/{issue}', [IssueController::class, 'show']);
     });
 });
