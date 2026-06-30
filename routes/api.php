@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
+use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
@@ -49,27 +50,28 @@ Route::prefix('v1')->group(function (): void {
         });
 
     // -----------------------------------------------------------------------
-    // Me — BEARER-TOKEN authenticated (custom token guard).
+    // Me + Issues API — DUAL auth: Bearer token OR workspace session.
     //
-    // Resolves the user from the Authorization: Bearer <token> header.
-    // The TokenGuard hashes the token, looks up the row, checks expiry,
-    // and loads the owner via the workspace-scoped User query.
+    // The session stack (cookies + StartSession) lets the `web` guard read a
+    // first-party SPA session; VerifyCsrfToken protects session writes while
+    // exempting stateless Bearer requests. `auth:token,web` accepts either.
     // -----------------------------------------------------------------------
-    Route::middleware(['auth:token'])->group(function (): void {
+    Route::middleware([
+        EncryptCookies::class,
+        AddQueuedCookiesToResponse::class,
+        StartSession::class,
+        EnsureValidTenantSession::class,
+        VerifyCsrfToken::class,
+        'auth:token,web',
+    ])->group(function (): void {
         Route::get('/me', MeController::class);
-    });
 
-    // -----------------------------------------------------------------------
-    // Issues API — BEARER-TOKEN authenticated. Writes also require `verified`.
-    // -----------------------------------------------------------------------
-    Route::middleware(['auth:token'])->group(function (): void {
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
         Route::get('/issues/{issue}', [IssueController::class, 'show']);
         Route::post('/issues', [IssueController::class, 'store'])
             ->middleware(['verified', 'can:create,App\\Models\\Issue']);
-        Route::patch('/issues/{issue}', [IssueController::class, 'update'])
-            ->middleware('verified');
+        Route::patch('/issues/{issue}', [IssueController::class, 'update'])->middleware('verified');
         Route::put('/issues/{issue}/status', [IssueController::class, 'status'])->middleware('verified');
         Route::put('/issues/{issue}/assignee', [IssueController::class, 'assignee'])->middleware('verified');
         Route::post('/issues/{issue}/archive', [IssueController::class, 'archive'])->middleware('verified');
