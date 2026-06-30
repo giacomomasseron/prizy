@@ -48,3 +48,11 @@ it('returns items + next cursor from page()', async () => {
     expect(page.items).toHaveLength(1);
     expect(page.next).toBe('/v1/issues?after=xyz');
 });
+
+it('redirects to /login and throws on 401', async () => {
+    const assign = vi.fn();
+    Object.defineProperty(window, 'location', { value: { assign } as unknown as Location, writable: true });
+    vi.stubGlobal('fetch', mockFetch(401, { title: 'Unauthorized', detail: 'expired' }));
+    await expect(api.get('/issues')).rejects.toBeInstanceOf(ApiError);
+    expect(assign).toHaveBeenCalledWith('/login');
+});
