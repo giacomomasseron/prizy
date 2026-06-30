@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { Issue, IssueStatus } from '../../lib/types';
+import type { Issue, IssueStatus, IssueComment, IssueActivity } from '../../lib/types';
 
 export interface IssueFilters { status?: IssueStatus }
 
@@ -60,5 +60,41 @@ export function useTransitionStatus() {
             ctx?.snapshots.forEach(([key, page]) => qc.setQueryData(key, page));
         },
         onSettled: () => qc.invalidateQueries({ queryKey: ['issues'] }),
+    });
+}
+
+export function useIssue(id: string) {
+    return useQuery({ queryKey: ['issue', id], queryFn: () => api.get<Issue>(`/issues/${id}`) });
+}
+
+export function useComments(id: string) {
+    return useQuery({ queryKey: ['issue', id, 'comments'], queryFn: () => api.page<IssueComment>(`/issues/${id}/comments`) });
+}
+
+export function useActivities(id: string) {
+    return useQuery({ queryKey: ['issue', id, 'activities'], queryFn: () => api.page<IssueActivity>(`/issues/${id}/activities`) });
+}
+
+export function useAddComment(id: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (body: string) => api.post<IssueComment>(`/issues/${id}/comments`, { body }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['issue', id, 'comments'] }),
+    });
+}
+
+export function useUpdateIssue(id: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (data: Partial<Pick<Issue, 'title' | 'description' | 'priority'>>) => api.patch<Issue>(`/issues/${id}`, data),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['issue', id] }); qc.invalidateQueries({ queryKey: ['issues'] }); },
+    });
+}
+
+export function useArchiveIssue(id: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: () => api.post<Issue>(`/issues/${id}/archive`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['issue', id] }); qc.invalidateQueries({ queryKey: ['issues'] }); },
     });
 }
