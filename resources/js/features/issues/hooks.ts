@@ -25,3 +25,40 @@ export function useCreateIssue() {
         onSuccess: () => qc.invalidateQueries({ queryKey: ['issues'] }),
     });
 }
+
+export const STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
+
+export function groupByStatus(issues: Issue[]): Record<IssueStatus, Issue[]> {
+    const buckets = Object.fromEntries(STATUSES.map((s) => [s, [] as Issue[]])) as Record<IssueStatus, Issue[]>;
+    for (const issue of issues) {
+        (buckets[issue.status] ??= []).push(issue);
+    }
+    return buckets;
+}
+
+type IssuePage = { items: Issue[]; next: string | null };
+
+export function applyStatusOptimistic(page: IssuePage | undefined, id: string, status: IssueStatus): IssuePage {
+    if (!page) return { items: [], next: null };
+    return { ...page, items: page.items.map((i) => (i.id === id ? { ...i, status } : i)) };
+}
+
+export function useTransitionStatus() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; status: IssueStatus }) =>
+            api.put<Issue>(`/issues/${vars.id}/status`, { status: vars.status }),
+        onMutate: async (vars) => {
+            await qc.cancelQueries({ queryKey: ['issues'] });
+            const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
+            for (const [key, page] of snapshots) {
+                qc.setQueryData(key, applyStatusOptimistic(page, vars.id, vars.status));
+            }
+            return { snapshots };
+        },
+        onError: (_err, _vars, ctx) => {
+            ctx?.snapshots.forEach(([key, page]) => qc.setQueryData(key, page));
+        },
+        onSettled: () => qc.invalidateQueries({ queryKey: ['issues'] }),
+    });
+}
