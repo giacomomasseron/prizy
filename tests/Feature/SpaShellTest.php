@@ -17,3 +17,9 @@ it('serves the SPA shell on the workspace host', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('serves the SPA shell on the landlord host for /signup (no tenant)', function (): void {
+    // No actingInWorkspace — /signup must be reachable on the base/landlord host
+    // without a tenant being resolved (NeedsTenant bypassed).
+    $this->get('/signup')->assertStatus(200)->assertSee('id="app"', false);
+});

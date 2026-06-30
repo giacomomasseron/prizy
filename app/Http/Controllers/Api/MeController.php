@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 /**
  * Returns the authenticated user for the current workspace.
  *
- * Guarded by auth:token — only a valid Bearer token grants access.
+ * Guarded by auth:token,web — a valid Bearer token OR an authenticated
+ * session cookie grants access.
  */
 final class MeController extends Controller
 {

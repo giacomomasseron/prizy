@@ -13,7 +13,7 @@ use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
 Route::view('/', 'app');
 Route::view('/login', 'app');
-Route::view('/signup', 'app');
+Route::view('/signup', 'app')->withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class]);
 Route::view('/board', 'app');
 Route::view('/issues/{issue}', 'app');
 

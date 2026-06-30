@@ -6,7 +6,6 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Foundation\Http\Middleware\ValidateCsrfToken;
-use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -15,6 +14,12 @@ use Symfony\Component\HttpFoundation\Response;
  * is authenticated by the custom token guard and needs no CSRF token; a
  * cookie/session request (the SPA) is validated normally and receives the
  * refreshed XSRF-TOKEN cookie.
+ *
+ * CORS INVARIANT — this Bearer exemption is safe ONLY because `/v1/*` has no
+ * permissive CORS: a browser cannot set the `Authorization` header cross-site.
+ * If a future `config/cors.php` ever covers `v1/*` with `supports_credentials`,
+ * a reflected/wildcard origin, AND `Authorization` in `allowed_headers`, this
+ * exemption becomes a CSRF bypass and must be revisited.
  */
 final class VerifyCsrfToken extends ValidateCsrfToken
 {
