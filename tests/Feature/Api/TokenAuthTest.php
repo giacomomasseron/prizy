@@ -60,8 +60,8 @@ it('authenticates via Bearer token on GET /v1/me and updates last_used_at', func
     $meResponse = $this->withToken($plain)->getJson('/v1/me');
     $meResponse->assertStatus(200);
 
-    // Response contains the user's id
-    expect($meResponse->json('id'))->toBe($user->id);
+    // Response contains the user's id (wrapped in {data: {...}} envelope)
+    expect($meResponse->json('data.id'))->toBe($user->id);
 
     // last_used_at was updated
     $stored = PersonalAccessToken::where('user_id', $user->id)->first();
