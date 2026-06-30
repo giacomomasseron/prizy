@@ -7,7 +7,7 @@
         "dev": "vite",
         "typecheck": "tsc --noEmit",
         "test": "vitest run",
-        "test:e2e": "playwright test"
+        "test:e2e": "LD_LIBRARY_PATH=/home/giacomo/.playwright-libs/extracted/usr/lib/x86_64-linux-gnu playwright test"
     },
     "devDependencies": {
         "@playwright/test": "^1.61.1",

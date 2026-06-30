@@ -17,8 +17,8 @@ final class MeController extends Controller
 {
     public function __invoke(Request $request): JsonResponse
     {
-        return response()->json(
-            $request->user()->only([
+        return response()->json([
+            'data' => $request->user()->only([
                 'id',
                 'workspace_id',
                 'name',
@@ -31,7 +31,7 @@ final class MeController extends Controller
                 'email_verified_at',
                 'last_seen_at',
                 'created_at',
-            ])
-        );
+            ]),
+        ]);
     }
 }
