@@ -60,3 +60,29 @@ it('forbids a viewer from creating a project (403)', function (): void {
     $this->withToken($token)->postJson('/v1/projects', ['name' => 'X'])->assertStatus(403);
     Workspace::forgetCurrent();
 });
+
+it('records created_by as the acting user', function (): void {
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $user = User::factory()->for($ws, 'workspace')->create([
+        'email_verified_at' => now(),
+        'is_developer'      => true,
+        'admin_level'       => 'member',
+    ]);
+    $team  = Team::factory()->for($ws, 'workspace')->create();
+    $token = app(CreatePersonalAccessToken::class)->handle($user, 't', null)['token'];
+
+    $response = $this->withToken($token)->postJson('/v1/projects', [
+        'name'    => 'Created-By Test',
+        'team_id' => $team->id,
+    ]);
+
+    $response->assertStatus(201);
+    expect($response->json('data.created_by'))->toBe($user->id);
+    $this->assertDatabaseHas('projects', [
+        'id'         => $response->json('data.id'),
+        'created_by' => $user->id,
+    ]);
+
+    Workspace::forgetCurrent();
+});
