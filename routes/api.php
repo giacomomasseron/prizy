@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\LabelController;
+use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -88,5 +89,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/labels', [LabelController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Label']);
         Route::patch('/labels/{label}', [LabelController::class, 'update'])->middleware('verified');
         Route::delete('/labels/{label}', [LabelController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
+        Route::get('/teams/{team}', [TeamController::class, 'show']);
+        Route::post('/teams', [TeamController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Team']);
+        Route::patch('/teams/{team}', [TeamController::class, 'update'])->middleware('verified');
+        Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
     });
 });
