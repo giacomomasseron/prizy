@@ -69,6 +69,7 @@ Route::prefix('v1')->group(function (): void {
         EnsureValidTenantSession::class,
         VerifyCsrfToken::class,
         'auth:token,web',
+        'throttle:v1',
     ])->group(function (): void {
         Route::get('/me', MeController::class);
 

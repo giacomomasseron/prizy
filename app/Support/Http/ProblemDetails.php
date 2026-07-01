@@ -34,7 +34,16 @@ final class ProblemDetails
             $body['errors'] = $errors;
         }
 
-        return new JsonResponse($body, $status, ['Content-Type' => 'application/problem+json']);
+        $response = new JsonResponse($body, $status, ['Content-Type' => 'application/problem+json']);
+
+        if ($e instanceof HttpExceptionInterface) {
+            // Preserve Retry-After / X-RateLimit-* (and any other HTTP-exception
+            // headers) without letting them override the problem+json content type.
+            $response->headers->add($e->getHeaders());
+            $response->headers->set('Content-Type', 'application/problem+json');
+        }
+
+        return $response;
     }
 
     /**

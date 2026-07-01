@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Providers;
 
 use App\Auth\TokenGuard;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\Cycle;
 use App\Models\Issue;
@@ -23,8 +26,10 @@ use App\Policies\TeamPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\WorkspacePolicy;
 use App\Repositories\PersonalAccessTokenRepository;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -78,6 +83,18 @@ class AppServiceProvider extends ServiceProvider
         // The nullable ?Authenticatable is required so Laravel's Gate treats this
         // as guest-accessible (callbackAllowsGuests checks parameters[0]->allowsNull()).
         Gate::define('viewApiDocs', static fn (?Authenticatable $user): bool => ! app()->isProduction());
+
+        // Per-user rate limiting for the authenticated /v1 API group. Reads and
+        // writes get independent buckets so a read burst (e.g. loading a board)
+        // never starves the write allowance. Keyed per user (Bearer or session),
+        // falling back to IP. Limits are intentionally generous for reads.
+        RateLimiter::for('v1', function (Request $request) {
+            $key = (string) ($request->user()?->getAuthIdentifier() ?? $request->ip());
+
+            return $request->isMethodSafe()
+                ? Limit::perMinute(300)->by("v1-read:{$key}")
+                : Limit::perMinute(60)->by("v1-write:{$key}");
+        });
 
         // Register the custom Bearer-token guard driver.
         // config/auth.php declares 'token' => ['driver' => 'token-bearer'].
