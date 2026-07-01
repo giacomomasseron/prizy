@@ -58,6 +58,21 @@ it('rejects a duplicate identifier (422)', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('allows reusing an identifier after the original team is soft-deleted', function (): void {
+    [$token] = teamWorld(['admin_level' => 'admin']);
+
+    $first = $this->withToken($token)->postJson('/v1/teams', ['name' => 'Engineering', 'identifier' => 'ENG']);
+    $first->assertStatus(201);
+    $id = $first->json('data.id');
+
+    $this->withToken($token)->deleteJson("/v1/teams/{$id}")->assertStatus(204);
+    $this->assertSoftDeleted('teams', ['id' => $id]);
+
+    $this->withToken($token)->postJson('/v1/teams', ['name' => 'Engineering 2', 'identifier' => 'ENG'])->assertStatus(201);
+
+    Workspace::forgetCurrent();
+});
+
 it('refuses to delete a team that still has issues (422)', function (): void {
     [$token, $ws] = teamWorld(['admin_level' => 'admin']);
     $team = Team::factory()->for($ws, 'workspace')->create();

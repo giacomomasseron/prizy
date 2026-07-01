@@ -22,7 +22,7 @@ final class StoreTeamRequest extends FormRequest
 
         return [
             'name'       => ['required', 'string', 'max:255'],
-            'identifier' => ['required', 'string', 'max:8', 'regex:/^[A-Z0-9]+$/', Rule::unique('teams', 'identifier')->where('workspace_id', $workspaceId)],
+            'identifier' => ['required', 'string', 'max:8', 'regex:/^[A-Z0-9]+$/', Rule::unique('teams', 'identifier')->where('workspace_id', $workspaceId)->whereNull('deleted_at')],
             'color'      => ['sometimes', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ];
     }

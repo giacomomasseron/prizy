@@ -23,7 +23,7 @@ final class UpdateTeamRequest extends FormRequest
 
         return [
             'name'       => ['sometimes', 'string', 'max:255'],
-            'identifier' => ['sometimes', 'string', 'max:8', 'regex:/^[A-Z0-9]+$/', Rule::unique('teams', 'identifier')->where('workspace_id', $workspaceId)->ignore($teamId)],
+            'identifier' => ['sometimes', 'string', 'max:8', 'regex:/^[A-Z0-9]+$/', Rule::unique('teams', 'identifier')->where('workspace_id', $workspaceId)->ignore($teamId)->whereNull('deleted_at')],
             'color'      => ['sometimes', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ];
     }
