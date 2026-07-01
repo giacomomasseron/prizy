@@ -9,6 +9,7 @@ services:
     container_name: prizy-app
     volumes:
       - .:/var/www/html
+      - ./docker/php/zz-memory.ini:/usr/local/etc/php/conf.d/zz-memory.ini:ro
     ports:
       - "8001:8000"
     depends_on:
