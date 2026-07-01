@@ -216,8 +216,7 @@ CREATE TABLE teams (
     color               CHAR(7)         NOT NULL DEFAULT '#6366f1',  -- hex color
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
-    deleted_at          TIMESTAMPTZ,
-    UNIQUE (workspace_id, identifier)
+    deleted_at          TIMESTAMPTZ
 );
 
 -- ---------------------------------------------------------------------------
@@ -934,6 +933,7 @@ CREATE INDEX idx_invitations_workspace ON invitations (workspace_id);
 CREATE INDEX idx_users_workspace           ON users(workspace_id);
 CREATE INDEX idx_users_email               ON users(email);
 CREATE INDEX idx_teams_workspace           ON teams(workspace_id);
+CREATE UNIQUE INDEX teams_workspace_id_identifier_active_uidx ON teams (workspace_id, identifier) WHERE deleted_at IS NULL;
 
 -- Issue tracker
 CREATE INDEX idx_issues_workspace          ON issues(workspace_id);

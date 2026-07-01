@@ -50,6 +50,19 @@ it('rejects ends_at not after starts_at (422)', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('forbids a viewer from creating a cycle (403)', function (): void {
+    [$token, , $team] = cycleWorld(['admin_level' => 'viewer', 'is_developer' => false]);
+    $this->withToken($token)->postJson("/v1/teams/{$team->id}/cycles", ['name' => 'S', 'starts_at' => '2026-01-01', 'ends_at' => '2026-01-14'])->assertStatus(403);
+    Workspace::forgetCurrent();
+});
+
+it('returns 422 (not 500) when PATCH sends only ends_at before existing starts_at', function (): void {
+    [$token, , $team] = cycleWorld();
+    $id = $this->withToken($token)->postJson("/v1/teams/{$team->id}/cycles", ['name' => 'S', 'starts_at' => '2026-03-01', 'ends_at' => '2026-03-15'])->json('data.id');
+    $this->withToken($token)->patchJson("/v1/cycles/{$id}", ['ends_at' => '2026-01-01'])->assertStatus(422);
+    Workspace::forgetCurrent();
+});
+
 it('returns 404 for a cycle whose team is in another workspace (transitive isolation)', function (): void {
     $wsB = Workspace::factory()->create();
     $wsB->makeCurrent();

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
@@ -58,6 +59,13 @@ it('rejects a bad status, target_date before start_date, and a foreign team_id',
 it('forbids a viewer from creating a project (403)', function (): void {
     [$token] = projectWorld(['admin_level' => 'viewer', 'is_developer' => false]);
     $this->withToken($token)->postJson('/v1/projects', ['name' => 'X'])->assertStatus(403);
+    Workspace::forgetCurrent();
+});
+
+it('returns 422 (not 500) when PATCH sends target_date before existing start_date', function (): void {
+    [$token, $ws, $team] = projectWorld();
+    $id = $this->withToken($token)->postJson('/v1/projects', ['name' => 'Dated', 'team_id' => $team->id, 'start_date' => '2026-03-01', 'target_date' => '2026-06-01'])->json('data.id');
+    $this->withToken($token)->patchJson("/v1/projects/{$id}", ['target_date' => '2026-01-01'])->assertStatus(422);
     Workspace::forgetCurrent();
 });
 

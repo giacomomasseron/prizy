@@ -8,6 +8,7 @@ use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
 use App\Repositories\ProjectRepository;
+use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateProject
@@ -23,6 +24,14 @@ final class UpdateProject
         }
         if (array_key_exists('team_id', $data) && $data['team_id'] !== null && Team::find($data['team_id']) === null) {
             throw ValidationException::withMessages(['team_id' => ['The selected team is invalid.']]);
+        }
+
+        $startDate  = $data['start_date']  ?? $project->start_date;
+        $targetDate = $data['target_date'] ?? $project->target_date;
+        if ($startDate !== null && $targetDate !== null) {
+            if (Carbon::parse($targetDate)->lessThan(Carbon::parse($startDate))) {
+                throw ValidationException::withMessages(['target_date' => ['The target date must be a date after or equal to start date.']]);
+            }
         }
 
         return $this->projects->update($project, array_intersect_key(

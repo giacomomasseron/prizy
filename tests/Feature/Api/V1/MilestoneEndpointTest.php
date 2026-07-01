@@ -43,6 +43,19 @@ it('creates, lists (per project), updates and hard-deletes a milestone', functio
     Workspace::forgetCurrent();
 });
 
+it('forbids a viewer from creating a milestone (403)', function (): void {
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $user    = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'viewer', 'is_developer' => false]);
+    $team    = Team::factory()->for($ws, 'workspace')->create();
+    $project = Project::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id, 'name' => 'P', 'created_by' => $user->id]);
+    $token   = app(CreatePersonalAccessToken::class)->handle($user, 't', null)['token'];
+
+    $this->withToken($token)->postJson("/v1/projects/{$project->id}/milestones", ['name' => 'M', 'target_date' => '2026-03-01'])->assertStatus(403);
+
+    Workspace::forgetCurrent();
+});
+
 it('returns 404 for a milestone whose project is in another workspace', function (): void {
     $wsB = Workspace::factory()->create();
     $wsB->makeCurrent();
