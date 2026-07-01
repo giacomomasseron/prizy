@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Auth\TokenGuard;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\Issue;
+use App\Models\Label;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Policies\IssuePolicy;
+use App\Policies\LabelPolicy;
 use App\Policies\MemberPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\WorkspacePolicy;
@@ -51,6 +53,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Gate::policy(Issue::class,     IssuePolicy::class);
+        Gate::policy(Label::class,     LabelPolicy::class);
         Gate::policy(Ticket::class,    TicketPolicy::class);
         Gate::policy(Workspace::class, WorkspacePolicy::class);
         Gate::policy(User::class,      MemberPolicy::class);

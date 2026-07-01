@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
+use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -81,5 +82,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/issues/{issue}/blockers', [IssueBlockerController::class, 'store'])->middleware('verified');
         Route::delete('/issues/{issue}/blockers/{blockingIssue}', [IssueBlockerController::class, 'destroy'])->middleware('verified');
         Route::post('/issues/{issue}/ticket-links', [IssueTicketLinkController::class, 'store'])->middleware('verified');
+
+        Route::get('/labels', [LabelController::class, 'index'])->middleware('can:viewAny,App\\Models\\Label');
+        Route::get('/labels/{label}', [LabelController::class, 'show']);
+        Route::post('/labels', [LabelController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Label']);
+        Route::patch('/labels/{label}', [LabelController::class, 'update'])->middleware('verified');
+        Route::delete('/labels/{label}', [LabelController::class, 'destroy'])->middleware('verified');
     });
 });
