@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\V1\CycleController;
+use App\Http\Controllers\Api\V1\MilestoneController;
 use App\Http\Controllers\Api\V1\IssueActivityController;
 use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
@@ -108,5 +109,10 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/teams/{team}/cycles', [CycleController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Cycle']);
         Route::patch('/cycles/{cycle}', [CycleController::class, 'update'])->middleware('verified');
         Route::delete('/cycles/{cycle}', [CycleController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index']);
+        Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Milestone']);
+        Route::patch('/milestones/{milestone}', [MilestoneController::class, 'update'])->middleware('verified');
+        Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->middleware('verified');
     });
 });
