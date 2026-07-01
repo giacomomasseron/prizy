@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\LabelController;
+use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -95,5 +96,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/teams', [TeamController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Team']);
         Route::patch('/teams/{team}', [TeamController::class, 'update'])->middleware('verified');
         Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/projects', [ProjectController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
+        Route::get('/projects/{project}', [ProjectController::class, 'show']);
+        Route::post('/projects', [ProjectController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Project']);
+        Route::patch('/projects/{project}', [ProjectController::class, 'update'])->middleware('verified');
+        Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->middleware('verified');
     });
 });

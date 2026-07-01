@@ -6,6 +6,7 @@ use App\Auth\TokenGuard;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\Issue;
 use App\Models\Label;
+use App\Models\Project;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\User;
@@ -13,6 +14,7 @@ use App\Models\Workspace;
 use App\Policies\IssuePolicy;
 use App\Policies\LabelPolicy;
 use App\Policies\MemberPolicy;
+use App\Policies\ProjectPolicy;
 use App\Policies\TeamPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\WorkspacePolicy;
@@ -56,6 +58,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(Issue::class,     IssuePolicy::class);
         Gate::policy(Label::class,     LabelPolicy::class);
+        Gate::policy(Project::class,   ProjectPolicy::class);
         Gate::policy(Team::class,      TeamPolicy::class);
         Gate::policy(Ticket::class,    TicketPolicy::class);
         Gate::policy(Workspace::class, WorkspacePolicy::class);
