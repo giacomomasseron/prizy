@@ -44,9 +44,14 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     }
 
     function applySavedView(view: SavedView) {
-        applyFilters({ ...view.definition.filter, sort: view.definition.sort } as IssueFilters);
+        const next = { ...view.definition.filter, sort: view.definition.sort } as IssueFilters;
         setViewsOpen(false);
-        if (view.definition.view_type !== viewType) navigate(view.definition.view_type === 'board' ? '/board' : '/');
+        const search = filtersToParams(next).toString();
+        if (view.definition.view_type !== viewType) {
+            navigate({ pathname: view.definition.view_type === 'board' ? '/board' : '/', search });
+        } else {
+            setSearchParams(filtersToParams(next));
+        }
     }
 
     async function saveView() {

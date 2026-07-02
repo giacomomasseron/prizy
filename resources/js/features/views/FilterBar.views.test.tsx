@@ -35,6 +35,7 @@ describe('FilterBar views', () => {
 
     it('applies the My Issues built-in (assignee_id = current user)', async () => {
         renderBar('/');
+        await screen.findByRole('button', { name: 'Save view' });
         await userEvent.click(screen.getByRole('button', { name: 'Views' }));
         await userEvent.click(await screen.findByRole('menuitem', { name: 'My Issues' }));
         expect(screen.getByTestId('qs').textContent).toContain('assignee_id=u1');
