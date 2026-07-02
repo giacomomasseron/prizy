@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\Issue;
+use App\Models\Notification;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
@@ -53,6 +54,18 @@ final class SmokeSeeder extends Seeder
                 'title' => 'Starter issue',
                 'status' => 'todo',
                 'priority' => 'no_priority',
+            ]);
+        }
+
+        $issue = Issue::query()->first();
+        if ($issue !== null && Notification::query()->where('user_id', $user->id)->doesntExist()) {
+            Notification::forceCreate([
+                'id' => (string) Str::uuid(),
+                'workspace_id' => $workspace->id,
+                'user_id' => $user->id,
+                'type' => 'issue_assigned',
+                'subject_type' => 'issue',
+                'subject_id' => $issue->id,
             ]);
         }
 

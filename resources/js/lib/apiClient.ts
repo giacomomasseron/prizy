@@ -66,7 +66,8 @@ export const api = {
         return (await request<Envelope<T>>('GET', path)).data;
     },
     async post<T>(path: string, body?: unknown): Promise<T> {
-        return (await request<Envelope<T>>('POST', path, body ?? {})).data;
+        const result = await request<Envelope<T> | undefined>('POST', path, body ?? {});
+        return (result as Envelope<T> | undefined)?.data as T;
     },
     async patch<T>(path: string, body: unknown): Promise<T> {
         return (await request<Envelope<T>>('PATCH', path, body)).data;
