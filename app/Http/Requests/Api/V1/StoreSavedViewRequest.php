@@ -27,7 +27,7 @@ final class StoreSavedViewRequest extends FormRequest
             'definition'           => ['required', 'array'],
             'definition.filter'    => ['sometimes', 'array'],
             'definition.filter.*'  => ['string'],
-            'definition.sort'      => ['sometimes', 'string'],
+            'definition.sort'      => ['sometimes', 'nullable', 'string'],
             'definition.view_type' => ['required', Rule::in(['list', 'board'])],
         ];
     }

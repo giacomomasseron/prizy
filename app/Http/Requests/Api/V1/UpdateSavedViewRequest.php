@@ -27,7 +27,7 @@ final class UpdateSavedViewRequest extends FormRequest
             'definition'           => ['sometimes', 'array'],
             'definition.filter'    => ['sometimes', 'array'],
             'definition.filter.*'  => ['string'],
-            'definition.sort'      => ['sometimes', 'string'],
+            'definition.sort'      => ['sometimes', 'nullable', 'string'],
             'definition.view_type' => ['required_with:definition', Rule::in(['list', 'board'])],
         ];
     }
