@@ -39,7 +39,9 @@ describe('IssueDetailPage labels', () => {
         await userEvent.click(checkbox);
         await vi.waitFor(() => {
             const calls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls;
-            expect(calls.some(([u, i]) => u.includes('/issues/i1/labels') && i?.method === 'PUT')).toBe(true);
+            const putCall = calls.find(([u, i]) => u.includes('/issues/i1/labels') && i?.method === 'PUT');
+            expect(putCall).toBeTruthy();
+            expect(JSON.parse(String(putCall![1]!.body)).label_ids).toContain('l1');
         });
     });
 });
