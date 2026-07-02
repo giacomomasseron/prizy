@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useCreateIssue, useIssues } from './hooks';
+import { useTeams } from '../teams/hooks';
 
 export default function IssueListPage() {
     const { data, isLoading } = useIssues();
     const createIssue = useCreateIssue();
+    const teams = useTeams();
     const [title, setTitle] = useState('');
-
-    // Thin-shell simplification: new issues join the same team as existing ones.
-    const teamId = data?.items[0]?.team_id ?? null;
+    const [teamId, setTeamId] = useState('');
 
     async function submit(e: React.FormEvent) {
         e.preventDefault();
@@ -25,6 +25,10 @@ export default function IssueListPage() {
             </div>
 
             <form onSubmit={submit} className="mb-4 flex gap-2">
+                <select value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-label="Issue team" className="rounded border px-2 py-1">
+                    <option value="">Team…</option>
+                    {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.identifier}</option>)}
+                </select>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New issue title…"
                     aria-label="New issue title" className="flex-1 rounded border px-2 py-1" />
                 <button type="submit" disabled={!teamId || createIssue.isPending}

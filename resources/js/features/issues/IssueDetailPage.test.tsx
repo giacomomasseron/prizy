@@ -8,10 +8,25 @@ afterEach(() => vi.restoreAllMocks());
 
 it('renders the issue title and a comment', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
-        const body =
-            url.includes('/comments') ? { data: [{ id: 'c1', issue_id: 'i1', user_id: 'u', body: 'Nice', is_internal: false, edited_at: null, created_at: '', updated_at: '' }], links: { next: null, prev: null }, meta: { per_page: 25 } }
-            : url.includes('/activities') ? { data: [], links: { next: null, prev: null }, meta: { per_page: 25 } }
-            : { data: { id: 'i1', title: 'Detail me', status: 'todo', priority: 'low', description: null, assignee_id: null, archived_at: null } };
+        const page = (items: unknown[]) => ({ data: items, links: { next: null, prev: null }, meta: { per_page: 25 } });
+        let body: unknown;
+        if (url.includes('/comments')) {
+            body = { data: [{ id: 'c1', issue_id: 'i1', user_id: 'u', body: 'Nice', is_internal: false, edited_at: null, created_at: '', updated_at: '' }], links: { next: null, prev: null }, meta: { per_page: 25 } };
+        } else if (url.includes('/activities')) {
+            body = page([]);
+        } else if (url.includes('/issues/i1/labels')) {
+            body = page([]);
+        } else if (url.includes('/v1/labels') || url.includes('/labels')) {
+            body = page([]);
+        } else if (url.includes('/v1/projects') || url.includes('/projects')) {
+            body = page([]);
+        } else if (url.includes('/cycles')) {
+            body = page([]);
+        } else if (url.includes('/v1/teams') || url.includes('/teams')) {
+            body = page([]);
+        } else {
+            body = { data: { id: 'i1', title: 'Detail me', status: 'todo', priority: 'low', description: null, assignee_id: null, archived_at: null, team_id: 't1', project_id: null, cycle_id: null } };
+        }
         return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => body });
     }));
 

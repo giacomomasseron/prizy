@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { Issue, IssueStatus, IssueComment, IssueActivity } from '../../lib/types';
+import type { Issue, IssueStatus, IssueComment, IssueActivity, Label } from '../../lib/types';
 
 export interface IssueFilters { status?: IssueStatus }
 
@@ -86,8 +86,24 @@ export function useAddComment(id: string) {
 export function useUpdateIssue(id: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: Partial<Pick<Issue, 'title' | 'description' | 'priority'>>) => api.patch<Issue>(`/issues/${id}`, data),
+        mutationFn: (data: Partial<Pick<Issue, 'title' | 'description' | 'priority'>> & { project_id?: string | null; cycle_id?: string | null }) => api.patch<Issue>(`/issues/${id}`, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: ['issue', id] }); qc.invalidateQueries({ queryKey: ['issues'] }); },
+    });
+}
+
+export function useIssueLabels(issueId: string) {
+    return useQuery({
+        queryKey: ['issue', issueId, 'labels'],
+        queryFn: () => api.page<Label>(`/issues/${issueId}/labels`),
+        enabled: !!issueId,
+    });
+}
+
+export function useSetIssueLabels(issueId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (labelIds: string[]) => api.put<Label[]>(`/issues/${issueId}/labels`, { label_ids: labelIds }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['issue', issueId, 'labels'] }),
     });
 }
 

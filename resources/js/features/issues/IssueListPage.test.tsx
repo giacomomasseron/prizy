@@ -7,10 +7,15 @@ import IssueListPage from './IssueListPage';
 afterEach(() => vi.restoreAllMocks());
 
 it('renders issue titles from the API', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true, status: 200,
-        headers: { get: () => 'application/json' },
-        json: async () => ({ data: [{ id: 'i1', title: 'Build login', status: 'todo', priority: 'high', assignee_id: null }], links: { next: null, prev: null }, meta: { per_page: 25 } }),
+    vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+        const page = (items: unknown[]) => ({ data: items, links: { next: null, prev: null }, meta: { per_page: 25 } });
+        let body: unknown;
+        if (url.includes('/v1/teams') || url.includes('/teams')) {
+            body = page([]);
+        } else {
+            body = page([{ id: 'i1', title: 'Build login', status: 'todo', priority: 'high', assignee_id: null }]);
+        }
+        return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => body });
     }));
 
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
