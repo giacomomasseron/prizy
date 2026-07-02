@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Models\Cycle;
 use App\Models\Issue;
+use App\Models\Team;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 
@@ -52,6 +54,30 @@ final class IssueRepository
             $query->whereNotNull('archived_at');
         } elseif ($archived !== 'all') {
             $query->whereNull('archived_at');
+        }
+
+        // label_id: issues having ANY of the given labels (junction subquery).
+        if (isset($filters['label_id'])) {
+            $labelIds = array_filter(array_map('trim', explode(',', $filters['label_id'])));
+            unset($filters['label_id']);
+            if ($labelIds !== []) {
+                $query->whereIn('id', function ($sub) use ($labelIds): void {
+                    $sub->select('issue_id')->from('issue_labels')->whereIn('label_id', $labelIds);
+                });
+            }
+        }
+
+        // cycle_id=active: resolve currently-active cycles for this workspace's teams.
+        if (($filters['cycle_id'] ?? null) === 'active') {
+            unset($filters['cycle_id']);
+            $teamIds = Team::query()->pluck('id'); // WorkspaceScope-bound
+            $activeCycleIds = Cycle::query()
+                ->whereIn('team_id', $teamIds)
+                ->whereDate('starts_at', '<=', now())
+                ->whereDate('ends_at', '>=', now())
+                ->pluck('id')
+                ->all();
+            $query->whereIn('cycle_id', $activeCycleIds); // empty array → no rows (Laravel emits 0=1)
         }
 
         foreach ($filters as $field => $value) {

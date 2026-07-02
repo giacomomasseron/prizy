@@ -10,7 +10,7 @@ use Illuminate\Validation\Validator;
 
 final class ListIssuesRequest extends FormRequest
 {
-    private const FILTERS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived'];
+    private const FILTERS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id'];
 
     private const SORTS = ['created_at', 'updated_at', 'priority', 'due_date', 'sort_order', 'status', 'title'];
 
