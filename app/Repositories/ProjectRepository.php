@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\Project;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 
@@ -46,6 +47,12 @@ final class ProjectRepository
         }
 
         return $query->orderBy('created_at')->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after');
+    }
+
+    /** @return Collection<int, Project> */
+    public function allWithMilestones(): Collection
+    {
+        return Project::query()->with('milestones')->orderBy('start_date')->orderBy('id')->get();
     }
 
     public function delete(Project $project): void
