@@ -51,3 +51,56 @@ export interface Me {
     is_developer: boolean;
     is_agent: boolean;
 }
+
+export type ProjectStatus = 'planning' | 'in_progress' | 'paused' | 'completed' | 'cancelled';
+
+export interface Team {
+    id: string;
+    name: string;
+    identifier: string;
+    color: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Project {
+    id: string;
+    name: string;
+    description: string | null;
+    icon: string | null;
+    color: string;
+    status: ProjectStatus;
+    team_id: string | null;
+    start_date: string | null;
+    target_date: string | null;
+    created_by: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Cycle {
+    id: string;
+    team_id: string;
+    name: string;
+    starts_at: string;
+    ends_at: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Milestone {
+    id: string;
+    project_id: string;
+    name: string;
+    target_date: string;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface Label {
+    id: string;
+    name: string;
+    color: string;
+    created_at: string;
+    updated_at: string;
+}

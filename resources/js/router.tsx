@@ -1,11 +1,17 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { useMe } from './auth/useAuth';
+import AppLayout from './components/AppLayout';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import IssueListPage from './features/issues/IssueListPage';
 import BoardPage from './features/issues/BoardPage';
 import IssueDetailPage from './features/issues/IssueDetailPage';
+import TeamsPage from './features/teams/TeamsPage';
+import TeamDetailPage from './features/teams/TeamDetailPage';
+import ProjectsPage from './features/projects/ProjectsPage';
+import ProjectDetailPage from './features/projects/ProjectDetailPage';
+import LabelsPage from './features/labels/LabelsPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -14,14 +20,29 @@ function RequireAuth({ children }: { children: ReactElement }) {
     return children;
 }
 
+function AuthedLayout() {
+    return (
+        <RequireAuth>
+            <AppLayout />
+        </RequireAuth>
+    );
+}
+
 export default function AppRouter() {
     return (
         <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
-            <Route path="/" element={<RequireAuth><IssueListPage /></RequireAuth>} />
-            <Route path="/board" element={<RequireAuth><BoardPage /></RequireAuth>} />
-            <Route path="/issues/:id" element={<RequireAuth><IssueDetailPage /></RequireAuth>} />
+            <Route element={<AuthedLayout />}>
+                <Route path="/" element={<IssueListPage />} />
+                <Route path="/board" element={<BoardPage />} />
+                <Route path="/issues/:id" element={<IssueDetailPage />} />
+                <Route path="/teams" element={<TeamsPage />} />
+                <Route path="/teams/:id" element={<TeamDetailPage />} />
+                <Route path="/projects" element={<ProjectsPage />} />
+                <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/labels" element={<LabelsPage />} />
+            </Route>
         </Routes>
     );
 }
