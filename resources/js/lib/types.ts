@@ -104,3 +104,16 @@ export interface Label {
     created_at: string;
     updated_at: string;
 }
+
+export interface SavedView {
+    id: string;
+    name: string;
+    created_by: string;
+    definition: {
+        filter: Record<string, string>;
+        sort: string;
+        view_type: 'list' | 'board';
+    };
+    created_at: string;
+    updated_at: string;
+}

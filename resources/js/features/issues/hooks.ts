@@ -2,11 +2,26 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { Issue, IssueStatus, IssueComment, IssueActivity, Label } from '../../lib/types';
 
-export interface IssueFilters { status?: IssueStatus }
+export interface IssueFilters {
+    status?: string;
+    priority?: string;
+    team_id?: string;
+    project_id?: string;
+    cycle_id?: string;
+    assignee_id?: string;
+    label_id?: string;
+    sort?: string;
+}
+
+const FILTER_PARAM_KEYS = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id'] as const;
 
 function issuesPath(filters: IssueFilters): string {
     const params = new URLSearchParams();
-    if (filters.status) params.set('filter[status]', filters.status);
+    for (const key of FILTER_PARAM_KEYS) {
+        const value = filters[key];
+        if (value) params.set(`filter[${key}]`, value);
+    }
+    if (filters.sort) params.set('sort', filters.sort);
     params.set('limit', '100');
     return `/issues?${params.toString()}`;
 }
