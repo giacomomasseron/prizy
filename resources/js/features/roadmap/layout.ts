@@ -10,7 +10,7 @@ interface Dated {
 }
 
 function parseDate(s: string): Date {
-    const [y, m, d] = s.split('-').map(Number);
+    const [y, m, d] = s.slice(0, 10).split('-').map(Number);
     return new Date(y, m - 1, d);
 }
 
@@ -26,7 +26,7 @@ function addMonths(d: Date, n: number): Date {
     return new Date(d.getFullYear(), d.getMonth() + n, 1);
 }
 
-export function isScheduled(p: Dated): boolean {
+export function isScheduled<T extends Dated>(p: T): p is T & { start_date: string; target_date: string } {
     return !!p.start_date && !!p.target_date;
 }
 

@@ -6,7 +6,7 @@ import { barGeometry, computeWindow, isScheduled, markerLeft } from './layout';
 export default function RoadmapPage() {
     const roadmap = useRoadmap();
     const projects = useMemo(() => roadmap.data ?? [], [roadmap.data]);
-    const window = useMemo(() => computeWindow(projects, new Date()), [projects]);
+    const win = useMemo(() => computeWindow(projects, new Date()), [projects]);
 
     if (roadmap.isLoading) return <p className="p-6">Loading…</p>;
 
@@ -23,13 +23,13 @@ export default function RoadmapPage() {
                     <div className="flex border-b pb-1">
                         <div className="w-48 shrink-0" />
                         <div className="flex flex-1">
-                            {window.months.map((m) => (
+                            {win.months.map((m) => (
                                 <div key={m.key} className="flex-1 border-l pl-1 text-xs text-gray-500">{m.label}</div>
                             ))}
                         </div>
                     </div>
                     {scheduled.map((p) => {
-                        const g = barGeometry(window, p.start_date as string, p.target_date as string);
+                        const g = barGeometry(win, p.start_date, p.target_date);
                         return (
                             <div key={p.id} className="flex items-center py-1">
                                 <div className="w-48 shrink-0 truncate pr-2">
@@ -47,7 +47,7 @@ export default function RoadmapPage() {
                                             key={m.id}
                                             data-testid={`ms-${m.id}`}
                                             className="absolute top-0 -translate-x-1/2 text-xs text-indigo-700"
-                                            style={{ left: `${markerLeft(window, m.target_date)}%` }}
+                                            style={{ left: `${markerLeft(win, m.target_date)}%` }}
                                             title={`${m.name} · ${m.target_date}`}
                                         >◆</span>
                                     ))}

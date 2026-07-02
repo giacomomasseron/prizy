@@ -13,7 +13,7 @@ function wrapper() {
 describe('useRoadmap', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', vi.fn(async () =>
-            new Response(JSON.stringify({ data: [{ id: 'p1', name: 'Web', color: '#111', status: 'in_progress', team_id: null, start_date: '2026-07-01', target_date: '2026-09-30', created_at: '', updated_at: '', milestones: [{ id: 'm1', name: 'Beta', target_date: '2026-08-01' }] }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+            new Response(JSON.stringify({ data: [{ id: 'p1', name: 'Web', color: '#111', status: 'in_progress', team_id: null, start_date: '2026-07-01T00:00:00.000000Z', target_date: '2026-09-30T00:00:00.000000Z', created_at: '', updated_at: '', milestones: [{ id: 'm1', name: 'Beta', target_date: '2026-08-01T00:00:00.000000Z' }] }] }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
         ));
     });
     afterEach(() => vi.unstubAllGlobals());

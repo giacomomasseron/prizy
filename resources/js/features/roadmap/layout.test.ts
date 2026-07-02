@@ -41,4 +41,13 @@ describe('roadmap layout', () => {
         expect(markerLeft(w, '2020-01-01')).toBe(0);
         expect(markerLeft(w, '2030-01-01')).toBe(100);
     });
+
+    it('parses full ISO datetime strings from the API (not just YYYY-MM-DD)', () => {
+        const w = computeWindow([{ start_date: '2026-07-01T00:00:00.000000Z', target_date: '2026-09-30T00:00:00.000000Z' }], new Date(2026, 0, 1));
+        const g = barGeometry(w, '2026-07-01T00:00:00.000000Z', '2026-09-30T00:00:00.000000Z');
+        expect(Number.isNaN(g.leftPct)).toBe(false);
+        expect(g.leftPct).toBeCloseTo(0, 0);
+        expect(g.leftPct + g.widthPct).toBeCloseTo(100, 0);
+        expect(w.months.length).toBeGreaterThan(0);
+    });
 });
