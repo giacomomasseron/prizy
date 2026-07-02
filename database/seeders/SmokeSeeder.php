@@ -41,6 +41,9 @@ final class SmokeSeeder extends Seeder
                 'email_verified_at' => now(),
             ]);
 
+        // Ensure owner + developer regardless of how the user was previously seeded.
+        $user->forceFill(['admin_level' => 'owner', 'is_developer' => true])->save();
+
         if (Issue::doesntExist()) {
             Issue::forceCreate([
                 'id' => (string) Str::uuid(),
