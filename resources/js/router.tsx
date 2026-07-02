@@ -1,4 +1,4 @@
-import { Navigate, Outlet, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { useMe } from './auth/useAuth';
 import AppLayout from './components/AppLayout';
