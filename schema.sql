@@ -926,6 +926,21 @@ CREATE UNIQUE INDEX idx_invitations_pending ON invitations (workspace_id, email)
 CREATE INDEX idx_invitations_workspace ON invitations (workspace_id);
 
 -- =============================================================================
+-- Saved views (shareable named filter/sort/view_type configs, workspace-scoped)
+-- =============================================================================
+
+CREATE TABLE saved_views (
+    id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id        UUID            NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    name                VARCHAR(255)    NOT NULL,
+    created_by          UUID            NOT NULL REFERENCES users(id),
+    definition          JSONB           NOT NULL,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+CREATE INDEX saved_views_workspace_id_idx ON saved_views (workspace_id);
+
+-- =============================================================================
 -- INDEXES
 -- =============================================================================
 
@@ -991,7 +1006,7 @@ BEGIN
         'users', 'teams', 'webhooks', 'labels', 'projects', 'issues',
         'contacts', 'agent_groups', 'business_hour_schedules', 'sla_policies',
         'tags', 'tickets', 'macros', 'automations', 'kb_categories', 'notifications',
-        'invitations'
+        'invitations', 'saved_views'
     ]
     LOOP
         EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY;', tenant_table);
