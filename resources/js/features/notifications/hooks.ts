@@ -7,11 +7,12 @@ function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: ['notifications', 'unread-count'] });
 }
 
-export function useNotifications(unreadOnly = false) {
+export function useNotifications(unreadOnly = false, enabled = true) {
     return useQuery({
         queryKey: ['notifications', 'list', unreadOnly],
         queryFn: () => api.page<AppNotification>(`/notifications${unreadOnly ? '?filter[unread]=true' : ''}`),
         refetchOnWindowFocus: true,
+        enabled,
     });
 }
 

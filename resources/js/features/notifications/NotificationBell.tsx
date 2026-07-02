@@ -8,7 +8,7 @@ export function NotificationBell() {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
     const unread = useUnreadCount();
-    const list = useNotifications();
+    const list = useNotifications(false, open);
     const markRead = useMarkRead();
     const markAllRead = useMarkAllRead();
     const count = unread.data?.count ?? 0;
@@ -43,7 +43,8 @@ export function NotificationBell() {
                                 </button>
                             </li>
                         ))}
-                        {(list.data?.items.length ?? 0) === 0 && <li className="px-3 py-2 text-sm text-gray-400">No notifications</li>}
+                        {list.isLoading && <li className="px-3 py-2 text-sm text-gray-400">Loading…</li>}
+                        {!list.isLoading && (list.data?.items.length ?? 0) === 0 && <li className="px-3 py-2 text-sm text-gray-400">No notifications</li>}
                     </ul>
                     <Link to="/notifications" onClick={() => setOpen(false)} className="block border-t px-3 py-2 text-center text-sm text-indigo-600 hover:underline">See all →</Link>
                 </div>
