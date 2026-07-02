@@ -36,4 +36,19 @@ describe('TeamsPage', () => {
             expect(calls.some(([u, i]) => u.includes('/v1/teams') && i?.method === 'POST')).toBe(true);
         });
     });
+
+    it('hides the Add team button for a non-admin member', async () => {
+        const meMember = { id: 'u1', workspace_id: 'w1', name: 'B', email: 'b@x.co', admin_level: 'member', is_developer: true, is_agent: false };
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meMember }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [], links: { next: null, prev: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }));
+        renderPage();
+        // Wait for /v1/me to have resolved (teams list settles)
+        await vi.waitFor(() => {
+            const calls = (fetch as unknown as { mock: { calls: [string][] } }).mock.calls;
+            expect(calls.some(([u]) => u.includes('/v1/me'))).toBe(true);
+        });
+        expect(screen.queryByRole('button', { name: 'Add team' })).toBeNull();
+    });
 });

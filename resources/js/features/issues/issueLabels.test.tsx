@@ -5,6 +5,16 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import IssueDetailPage from './IssueDetailPage';
 
+function renderDetail() {
+    return render(
+        <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter initialEntries={['/issues/i1']}>
+                <Routes><Route path="/issues/:id" element={<IssueDetailPage />} /></Routes>
+            </MemoryRouter>
+        </QueryClientProvider>,
+    );
+}
+
 const issue = { id: 'i1', title: 'Fix', description: null, status: 'todo', priority: 'medium', team_id: 't1', project_id: null, cycle_id: null, assignee_id: null, created_by: 'u1', estimate: null, due_date: null, sort_order: 1, parent_issue_id: null, archived_at: null, created_at: '', updated_at: '' };
 
 describe('IssueDetailPage labels', () => {
@@ -28,13 +38,7 @@ describe('IssueDetailPage labels', () => {
     afterEach(() => vi.unstubAllGlobals());
 
     it('sets a label via the multi-select', async () => {
-        render(
-            <QueryClientProvider client={new QueryClient()}>
-                <MemoryRouter initialEntries={['/issues/i1']}>
-                    <Routes><Route path="/issues/:id" element={<IssueDetailPage />} /></Routes>
-                </MemoryRouter>
-            </QueryClientProvider>,
-        );
+        renderDetail();
         const checkbox = await screen.findByLabelText('Bug');
         await userEvent.click(checkbox);
         await vi.waitFor(() => {
@@ -43,5 +47,30 @@ describe('IssueDetailPage labels', () => {
             expect(putCall).toBeTruthy();
             expect(JSON.parse(String(putCall![1]!.body)).label_ids).toContain('l1');
         });
+    });
+
+    it('shows labels as read-only chips (no checkbox) for a viewer', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/issues/i1/labels')) {
+                if ((init?.method ?? 'GET') === 'PUT') return j({ data: [] });
+                return j({ data: [{ id: 'l1', name: 'Bug', color: '#f00', created_at: '', updated_at: '' }], links: { next: null } });
+            }
+            if (url.includes('/v1/labels')) return j({ data: [{ id: 'l1', name: 'Bug', color: '#f00', created_at: '', updated_at: '' }], links: { next: null } });
+            if (url.includes('/issues/i1/comments')) return j({ data: [], links: { next: null } });
+            if (url.includes('/issues/i1/activities')) return j({ data: [], links: { next: null } });
+            if (url.match(/\/issues\/i1$/)) return j({ data: issue });
+            if (url.includes('/v1/projects')) return j({ data: [], links: { next: null } });
+            if (url.includes('/cycles')) return j({ data: [], links: { next: null } });
+            if (url.includes('/v1/me')) return j({ data: { id: 'u1', admin_level: 'viewer', is_developer: false, is_agent: false, workspace_id: 'w', name: 'A', email: 'a@x.co' } });
+            return j({ data: [], links: { next: null } });
+        }));
+        renderDetail();
+        // Issue title loads
+        await screen.findByText('Fix');
+        // The assigned label appears as a chip
+        await screen.findByText('Bug');
+        // No editable checkbox should exist
+        expect(screen.queryByRole('checkbox')).toBeNull();
     });
 });

@@ -24,6 +24,8 @@ it('renders the issue title and a comment', async () => {
             body = page([]);
         } else if (url.includes('/v1/teams') || url.includes('/teams')) {
             body = page([]);
+        } else if (url.includes('/v1/me')) {
+            body = { data: { id: 'u1', admin_level: 'owner', is_developer: true, is_agent: false, workspace_id: 'w', name: 'A', email: 'a@x.co' } };
         } else {
             body = { data: { id: 'i1', title: 'Detail me', status: 'todo', priority: 'low', description: null, assignee_id: null, archived_at: null, team_id: 't1', project_id: null, cycle_id: null } };
         }
