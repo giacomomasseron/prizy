@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useLogout } from '../auth/useAuth';
+import { NotificationBell } from '../features/notifications/NotificationBell';
 
 const links: Array<{ to: string; label: string }> = [
     { to: '/', label: 'Issues' },
@@ -30,13 +31,10 @@ export default function AppLayout() {
                             {l.label}
                         </NavLink>
                     ))}
-                    <button
-                        type="button"
-                        onClick={() => logout.mutate()}
-                        className="ml-auto text-gray-500 hover:text-gray-900"
-                    >
-                        Logout
-                    </button>
+                    <div className="ml-auto flex items-center gap-3">
+                        <NotificationBell />
+                        <button type="button" onClick={() => logout.mutate()} className="text-gray-500 hover:text-gray-900">Logout</button>
+                    </div>
                 </nav>
             </header>
             <main>
