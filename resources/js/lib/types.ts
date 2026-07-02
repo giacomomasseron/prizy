@@ -117,3 +117,16 @@ export interface SavedView {
     created_at: string;
     updated_at: string;
 }
+
+export interface RoadmapProject {
+    id: string;
+    name: string;
+    color: string;
+    status: ProjectStatus;
+    team_id: string | null;
+    start_date: string | null;
+    target_date: string | null;
+    created_at: string;
+    updated_at: string;
+    milestones: Array<{ id: string; name: string; target_date: string }>;
+}
