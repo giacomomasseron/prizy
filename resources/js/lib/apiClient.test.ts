@@ -49,6 +49,16 @@ it('returns items + next cursor from page()', async () => {
     expect(page.next).toBe('/v1/issues?after=xyz');
 });
 
+it('api.post resolves to undefined on 204 (no body) without throwing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204, headers: { get: () => null }, json: async () => { throw new SyntaxError('no body'); } }));
+    await expect(api.post('/notifications/mark-all-read')).resolves.toBeUndefined();
+});
+
+it('api.patch resolves to undefined on 204 (no body) without throwing', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, status: 204, headers: { get: () => null }, json: async () => { throw new SyntaxError('no body'); } }));
+    await expect(api.patch('/notifications/n1', { read: true })).resolves.toBeUndefined();
+});
+
 it('redirects to /login and throws on 401', async () => {
     const assign = vi.fn();
     Object.defineProperty(window, 'location', { value: { assign } as unknown as Location, writable: true });

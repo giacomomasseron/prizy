@@ -70,10 +70,12 @@ export const api = {
         return (result as Envelope<T> | undefined)?.data as T;
     },
     async patch<T>(path: string, body: unknown): Promise<T> {
-        return (await request<Envelope<T>>('PATCH', path, body)).data;
+        const result = await request<Envelope<T> | undefined>('PATCH', path, body);
+        return (result as Envelope<T> | undefined)?.data as T;
     },
     async put<T>(path: string, body: unknown): Promise<T> {
-        return (await request<Envelope<T>>('PUT', path, body)).data;
+        const result = await request<Envelope<T> | undefined>('PUT', path, body);
+        return (result as Envelope<T> | undefined)?.data as T;
     },
     async del(path: string): Promise<void> {
         await request<void>('DELETE', path);
