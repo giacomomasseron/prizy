@@ -118,6 +118,15 @@ export interface SavedView {
     updated_at: string;
 }
 
+export interface AppNotification {
+    id: string;
+    type: string;
+    subject_type: string;
+    subject_id: string;
+    read_at: string | null;
+    created_at: string;
+}
+
 export interface RoadmapProject {
     id: string;
     name: string;
