@@ -14,6 +14,7 @@ use App\Http\Controllers\Api\V1\IssueLabelController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -118,5 +119,11 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Milestone']);
         Route::patch('/milestones/{milestone}', [MilestoneController::class, 'update'])->middleware('verified');
         Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/saved-views', [SavedViewController::class, 'index'])->middleware('can:viewAny,App\\Models\\SavedView');
+        Route::get('/saved-views/{savedView}', [SavedViewController::class, 'show']);
+        Route::post('/saved-views', [SavedViewController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\SavedView']);
+        Route::patch('/saved-views/{savedView}', [SavedViewController::class, 'update'])->middleware('verified');
+        Route::delete('/saved-views/{savedView}', [SavedViewController::class, 'destroy'])->middleware('verified');
     });
 });

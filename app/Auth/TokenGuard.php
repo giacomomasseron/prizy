@@ -31,6 +31,9 @@ final class TokenGuard implements Guard
 {
     private ?Authenticatable $user = null;
 
+    /** Hash of the token that was used to populate $user (for cache invalidation). */
+    private ?string $authenticatedTokenHash = null;
+
     public function __construct(
         private readonly PersonalAccessTokenRepository $repository,
         private readonly Request $request,
@@ -52,11 +55,25 @@ final class TokenGuard implements Guard
 
     public function user(): ?Authenticatable
     {
-        if ($this->user !== null) {
+        // Always read the bearer token from the current request bound in the
+        // IoC container (app('request')). The injected $this->request is the
+        // request at guard-construction time; in long-running processes (and
+        // in the test environment where the same process handles multiple
+        // requests) this can be a stale object. The kernel calls
+        // app()->instance('request', $newRequest) on each dispatch, so
+        // app('request') always reflects the current request.
+        $plain = app('request')->bearerToken();
+
+        // If the token matches what we already authenticated, return cached user.
+        if ($this->user !== null
+            && $plain !== null
+            && $this->authenticatedTokenHash === hash('sha256', $plain)) {
             return $this->user;
         }
 
-        $plain = $this->request->bearerToken();
+        // Token changed or not yet resolved — reset cached state.
+        $this->user = null;
+        $this->authenticatedTokenHash = null;
 
         if ($plain === null) {
             return null;
@@ -88,6 +105,7 @@ final class TokenGuard implements Guard
         $token->update(['last_used_at' => now()]);
 
         $this->user = $user;
+        $this->authenticatedTokenHash = $hash;
 
         return $this->user;
     }

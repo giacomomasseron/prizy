@@ -12,6 +12,7 @@ use App\Models\Issue;
 use App\Models\Label;
 use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\SavedView;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\User;
@@ -22,6 +23,7 @@ use App\Policies\LabelPolicy;
 use App\Policies\MemberPolicy;
 use App\Policies\MilestonePolicy;
 use App\Policies\ProjectPolicy;
+use App\Policies\SavedViewPolicy;
 use App\Policies\TeamPolicy;
 use App\Policies\TicketPolicy;
 use App\Policies\WorkspacePolicy;
@@ -65,15 +67,16 @@ class AppServiceProvider extends ServiceProvider
             return true;
         });
 
-        Gate::policy(Cycle::class,     CyclePolicy::class);
-        Gate::policy(Milestone::class, MilestonePolicy::class);
-        Gate::policy(Issue::class,     IssuePolicy::class);
-        Gate::policy(Label::class,     LabelPolicy::class);
-        Gate::policy(Project::class,   ProjectPolicy::class);
-        Gate::policy(Team::class,      TeamPolicy::class);
-        Gate::policy(Ticket::class,    TicketPolicy::class);
-        Gate::policy(Workspace::class, WorkspacePolicy::class);
-        Gate::policy(User::class,      MemberPolicy::class);
+        Gate::policy(Cycle::class,      CyclePolicy::class);
+        Gate::policy(Milestone::class,  MilestonePolicy::class);
+        Gate::policy(Issue::class,      IssuePolicy::class);
+        Gate::policy(Label::class,      LabelPolicy::class);
+        Gate::policy(Project::class,    ProjectPolicy::class);
+        Gate::policy(SavedView::class,  SavedViewPolicy::class);
+        Gate::policy(Team::class,       TeamPolicy::class);
+        Gate::policy(Ticket::class,     TicketPolicy::class);
+        Gate::policy(Workspace::class,  WorkspacePolicy::class);
+        Gate::policy(User::class,       MemberPolicy::class);
 
         // Allow API docs access in every non-production environment so that the
         // testing environment (and local) can hit /docs/api* without a logged-in
