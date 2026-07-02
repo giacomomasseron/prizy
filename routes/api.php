@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RoadmapController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -122,6 +123,11 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->middleware('verified');
 
         Route::get('/roadmap', [RoadmapController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
 
         Route::get('/saved-views', [SavedViewController::class, 'index'])->middleware('can:viewAny,App\\Models\\SavedView');
         Route::get('/saved-views/{savedView}', [SavedViewController::class, 'show']);
