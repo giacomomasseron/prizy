@@ -18,7 +18,7 @@ function renderLayout() {
 describe('AppLayout', () => {
     it('renders the primary navigation links', () => {
         renderLayout();
-        for (const label of ['Issues', 'Board', 'Teams', 'Projects', 'Labels']) {
+        for (const label of ['Issues', 'Board', 'Teams', 'Projects', 'Roadmap', 'Labels']) {
             expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
         }
     });
