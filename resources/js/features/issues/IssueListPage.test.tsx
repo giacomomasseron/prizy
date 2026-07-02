@@ -9,8 +9,17 @@ afterEach(() => vi.restoreAllMocks());
 it('renders issue titles from the API', async () => {
     vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
         const page = (items: unknown[]) => ({ data: items, links: { next: null, prev: null }, meta: { per_page: 25 } });
+        const envelope = (data: unknown) => ({ data });
         let body: unknown;
-        if (url.includes('/v1/teams') || url.includes('/teams')) {
+        if (url.includes('/v1/me') || url.includes('/me')) {
+            body = envelope({ id: 'u1', is_developer: false, admin_level: 'member' });
+        } else if (url.includes('/v1/saved-views') || url.includes('/saved-views')) {
+            body = page([]);
+        } else if (url.includes('/v1/teams') || url.includes('/teams')) {
+            body = page([]);
+        } else if (url.includes('/v1/projects') || url.includes('/projects')) {
+            body = page([]);
+        } else if (url.includes('/v1/labels') || url.includes('/labels')) {
             body = page([]);
         } else {
             body = page([{ id: 'i1', title: 'Build login', status: 'todo', priority: 'high', assignee_id: null }]);

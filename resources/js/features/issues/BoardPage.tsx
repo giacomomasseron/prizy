@@ -1,7 +1,9 @@
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Issue, IssueStatus } from '../../lib/types';
 import { STATUSES, groupByStatus, useIssues, useTransitionStatus } from './hooks';
+import { FilterBar } from '../views/FilterBar';
+import { paramsToFilters } from '../views/filters';
 
 function Card({ issue }: { issue: Issue }) {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: issue.id });
@@ -27,7 +29,8 @@ function Column({ status, issues }: { status: IssueStatus; issues: Issue[] }) {
 }
 
 export default function BoardPage() {
-    const { data } = useIssues();
+    const [searchParams] = useSearchParams();
+    const { data } = useIssues(paramsToFilters(searchParams));
     const transition = useTransitionStatus();
     const sensors = useSensors(useSensor(PointerSensor));
     const grouped = groupByStatus(data?.items ?? []);
@@ -47,6 +50,7 @@ export default function BoardPage() {
                 <h1 className="text-xl font-semibold">Board</h1>
                 <Link to="/" className="text-sm text-indigo-600">← List</Link>
             </div>
+            <FilterBar viewType="board" />
             <DndContext sensors={sensors} onDragEnd={onDragEnd}>
                 <div className="flex gap-3 overflow-x-auto">
                     {STATUSES.map((status) => <Column key={status} status={status} issues={grouped[status]} />)}

@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useCreateIssue, useIssues } from './hooks';
 import { useTeams } from '../teams/hooks';
+import { FilterBar } from '../views/FilterBar';
+import { paramsToFilters } from '../views/filters';
 
 export default function IssueListPage() {
-    const { data, isLoading } = useIssues();
+    const [searchParams] = useSearchParams();
+    const { data, isLoading } = useIssues(paramsToFilters(searchParams));
     const createIssue = useCreateIssue();
     const teams = useTeams();
     const [title, setTitle] = useState('');
@@ -18,6 +21,8 @@ export default function IssueListPage() {
     }
 
     return (
+        <>
+        <FilterBar viewType="list" />
         <div className="mx-auto max-w-4xl p-6">
             <div className="mb-4 flex items-center justify-between">
                 <h1 className="text-xl font-semibold">Issues</h1>
@@ -45,5 +50,6 @@ export default function IssueListPage() {
                 ))}
             </ul>
         </div>
+        </>
     );
 }
