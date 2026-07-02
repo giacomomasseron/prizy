@@ -10,6 +10,8 @@ test('login, create an issue, and move its card across the board', async ({ page
 
     // 2. Create an issue via the UI (team_id comes from the seeded starter issue).
     const title = `Smoke ${Date.now()}`;
+    // Select the seeded SMK team — required since Task 7 added the team dropdown.
+    await page.getByLabel(/issue team/i).selectOption({ label: 'SMK' });
     await page.getByLabel(/new issue title/i).fill(title);
     await page.getByRole('button', { name: /add issue/i }).click();
     await expect(page.getByText(title)).toBeVisible();
