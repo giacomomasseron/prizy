@@ -87,3 +87,21 @@ it('returns 404 for a saved view in another workspace', function () use ($validD
     $this->withToken($token)->getJson("/v1/saved-views/{$viewB->id}")->assertStatus(404);
     Workspace::forgetCurrent();
 });
+
+it('rejects a definition patch without view_type but allows a name-only patch', function () use ($validDef): void {
+    [$token, , $creator] = savedViewWorld();
+    $view = SavedView::create(['id' => (string) Str::uuid(), 'name' => 'Original', 'created_by' => $creator->id, 'definition' => $validDef]);
+
+    // PATCH with a definition that is missing view_type → 422.
+    $this->withToken($token)
+        ->patchJson("/v1/saved-views/{$view->id}", ['definition' => ['filter' => ['status' => 'todo']]])
+        ->assertStatus(422);
+
+    // PATCH with only a name change (no definition) → 200.
+    $this->withToken($token)
+        ->patchJson("/v1/saved-views/{$view->id}", ['name' => 'Renamed'])
+        ->assertStatus(200)
+        ->assertJson(['data' => ['name' => 'Renamed']]);
+
+    Workspace::forgetCurrent();
+});
