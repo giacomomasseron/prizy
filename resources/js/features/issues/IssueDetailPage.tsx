@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useActivities, useAddComment, useComments, useIssue, useIssueLabels, useSetIssueLabels, useUpdateIssue } from './hooks';
+import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubLinks';
 import { useLabels } from '../labels/hooks';
 import { useProjects } from '../projects/hooks';
 import { useCycles } from '../teams/hooks';
@@ -23,6 +24,22 @@ export default function IssueDetailPage() {
     const projects = useProjects();
     const cycles = useCycles(issue.data?.team_id ?? '');
     const updateIssue = useUpdateIssue(id);
+
+    const githubLinks = useGithubLinks(id);
+    const addGithubLink = useAddGithubLink(id);
+    const removeGithubLink = useRemoveGithubLink(id);
+    const [prUrl, setPrUrl] = useState('');
+    const [prError, setPrError] = useState('');
+
+    async function onAddPr() {
+        setPrError('');
+        try {
+            await addGithubLink.mutateAsync(prUrl);
+            setPrUrl('');
+        } catch (err) {
+            setPrError(err instanceof ApiError ? err.detail : 'Failed to add.');
+        }
+    }
 
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
     const selectedLabelIds = new Set((issueLabels.data?.items ?? []).map((l) => l.id));
@@ -131,6 +148,27 @@ export default function IssueDetailPage() {
                         <span className="text-sm">Project: <span className="font-medium">{currentProject?.name ?? 'None'}</span></span>
                         <span className="text-sm">Cycle: <span className="font-medium">{currentCycle?.name ?? 'None'}</span></span>
                     </>
+                )}
+            </section>
+
+            <section className="mt-8">
+                <h2 className="mb-2 font-semibold">GitHub</h2>
+                <ul className="space-y-1 text-sm">
+                    {githubLinks.data?.map((l) => (
+                        <li key={l.id} className="flex items-center gap-2">
+                            <a href={l.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{l.repo} #{l.number}</a>
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{l.state}</span>
+                            {canDevelop && <button type="button" aria-label={`Remove ${l.repo} #${l.number}`} onClick={() => removeGithubLink.mutate(l.id)} className="text-gray-400 hover:text-red-600">✕</button>}
+                        </li>
+                    ))}
+                    {githubLinks.data?.length === 0 && <li className="text-gray-400">No linked pull requests.</li>}
+                </ul>
+                {canDevelop && (
+                    <div className="mt-2 flex items-center gap-2">
+                        <input aria-label="Add PR URL" value={prUrl} onChange={(e) => setPrUrl(e.target.value)} placeholder="https://github.com/owner/repo/pull/123" className="flex-1 rounded border px-2 py-1 text-sm" />
+                        <button type="button" onClick={onAddPr} className="rounded border px-2 py-1 text-sm">Add PR</button>
+                        {prError && <span className="text-sm text-red-600">{prError}</span>}
+                    </div>
                 )}
             </section>
 

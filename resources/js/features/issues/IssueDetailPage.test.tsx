@@ -24,6 +24,8 @@ it('renders the issue title and a comment', async () => {
             body = page([]);
         } else if (url.includes('/v1/teams') || url.includes('/teams')) {
             body = page([]);
+        } else if (url.includes('/github-links')) {
+            body = { data: [] };
         } else if (url.includes('/v1/me')) {
             body = { data: { id: 'u1', admin_level: 'owner', is_developer: true, is_agent: false, workspace_id: 'w', name: 'A', email: 'a@x.co' } };
         } else {
