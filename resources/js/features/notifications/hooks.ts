@@ -20,7 +20,7 @@ export function useUnreadCount() {
     return useQuery({
         queryKey: ['notifications', 'unread-count'],
         queryFn: () => api.get<{ count: number }>('/notifications/unread-count'),
-        refetchInterval: 60_000,
+        refetchInterval: 300_000,
         refetchOnWindowFocus: true,
     });
 }

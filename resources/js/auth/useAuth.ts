@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ApiError } from '../lib/apiClient';
 import type { Me } from '../lib/types';
 import { api } from '../lib/apiClient';
+import { disconnectEcho } from '../lib/echo';
 
 function xsrf(): string | null {
     const m = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN=([^;]+)/);
@@ -45,6 +46,6 @@ export function useLogout() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: () => sessionPost('/logout', {}),
-        onSuccess: () => qc.clear(),
+        onSuccess: () => { disconnectEcho(); qc.clear(); },
     });
 }

@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useLogout } from '../auth/useAuth';
 import { NotificationBell } from '../features/notifications/NotificationBell';
+import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 
 const links: Array<{ to: string; label: string }> = [
     { to: '/', label: 'Issues' },
@@ -13,6 +14,7 @@ const links: Array<{ to: string; label: string }> = [
 
 export default function AppLayout() {
     const logout = useLogout();
+    useRealtimeNotifications();
 
     return (
         <div className="min-h-screen bg-gray-50">
