@@ -39,7 +39,8 @@ final class SendSlackMessage implements ShouldQueue
 
     public function failed(\Throwable $e): void
     {
-        // Never log the webhook URL (it is a secret).
-        Log::warning('Slack delivery failed after retries', ['error' => $e->getMessage()]);
+        // Never log $e->getMessage() — a connection-level Guzzle exception embeds the full
+        // webhook URL (incl. the secret token) in its message. Log only the exception class.
+        Log::warning('Slack delivery failed after retries', ['exception' => $e::class]);
     }
 }
