@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RoadmapController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SavedViewController;
+use App\Http\Controllers\Api\V1\SlackIntegrationController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -139,5 +140,9 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/search/issues', [SearchController::class, 'issues']);
         Route::get('/search', [SearchController::class, 'index']);
+
+        Route::get('/integrations/slack', [SlackIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\SlackIntegration');
+        Route::put('/integrations/slack', [SlackIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
+        Route::post('/integrations/slack/test', [SlackIntegrationController::class, 'test'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
     });
 });
