@@ -40,6 +40,11 @@ it('returns empty groups for a blank query without touching the engine', functio
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
     $actor = actorIn($ws);
+    // Seed records that a non-blank query ("Payment") WOULD match,
+    // proving the early-return guard fires rather than the engine finding nothing.
+    $team = Team::factory()->for($ws, 'workspace')->create(['name' => 'Payment team']);
+    Project::factory()->for($ws, 'workspace')->for($team)->create(['name' => 'Payment revamp']);
+    Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment webhook', 'created_by' => $actor->id]);
 
     $groups = app(SearchWorkspace::class)->handle($actor, '   ');
     Workspace::forgetCurrent();
@@ -68,6 +73,10 @@ it('returns an empty paginator for a blank query on the page', function (): void
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
     $actor = actorIn($ws);
+    // Seed an issue that a non-blank query ("Payment") WOULD match,
+    // proving the early-return guard fires rather than the engine finding nothing.
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment webhook', 'created_by' => $actor->id]);
 
     $page = app(SearchIssues::class)->handle($actor, '', [], 1);
     Workspace::forgetCurrent();
