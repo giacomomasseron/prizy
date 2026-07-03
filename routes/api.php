@@ -137,6 +137,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/saved-views/{savedView}', [SavedViewController::class, 'update'])->middleware('verified');
         Route::delete('/saved-views/{savedView}', [SavedViewController::class, 'destroy'])->middleware('verified');
 
+        Route::get('/search/issues', [SearchController::class, 'issues']);
         Route::get('/search', [SearchController::class, 'index']);
     });
 });
