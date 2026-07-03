@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Auth\TokenGuard;
+use App\Listeners\PostIssueEventToSlack;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Auth\Authenticatable;
 use App\Models\Cycle;
@@ -32,6 +33,7 @@ use App\Policies\WorkspacePolicy;
 use App\Repositories\PersonalAccessTokenRepository;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -101,6 +103,8 @@ class AppServiceProvider extends ServiceProvider
                 ? Limit::perMinute(300)->by("v1-read:{$key}")
                 : Limit::perMinute(60)->by("v1-write:{$key}");
         });
+
+        Event::subscribe(PostIssueEventToSlack::class);
 
         // Register the custom Bearer-token guard driver.
         // config/auth.php declares 'token' => ['driver' => 'token-bearer'].
