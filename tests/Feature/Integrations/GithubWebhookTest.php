@@ -136,3 +136,18 @@ it('ignores a non-pull_request event with 204', function (): void {
     expect($issue->refresh()->status)->toBe('in_progress');
     Workspace::forgetCurrent();
 });
+
+it('stores a long PR title (300 chars) without 500', function (): void {
+    [$ws, $integration, $issue, $link, $secret] = ghWebhookSetup(moveOnMerge: true);
+    $longTitle = str_repeat('x', 300);
+
+    ghPost($integration->webhook_token, [
+        'action' => 'closed',
+        'pull_request' => ['merged' => true, 'number' => 7, 'title' => $longTitle, 'html_url' => 'https://github.com/acme/app/pull/7'],
+        'repository' => ['full_name' => 'acme/app'],
+    ], $secret)->assertNoContent();
+
+    $ws->makeCurrent();
+    expect(strlen($link->refresh()->title))->toBe(300);
+    Workspace::forgetCurrent();
+});

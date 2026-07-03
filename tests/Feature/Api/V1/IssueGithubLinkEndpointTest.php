@@ -55,3 +55,18 @@ it('forbids a viewer from adding a link (403)', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('accepts a PR url longer than 255 chars and stores it (201)', function (): void {
+    [$ws, $issue, $token] = ghLinkSetup('admin');
+    // Build a URL >255 chars using a query-string suffix so that the extracted owner/repo
+    // stays short (VARCHAR(255) is fine) while the stored url column needs VARCHAR(2048).
+    $longUrl = 'https://github.com/owner/repo/pull/1?' . str_repeat('x', 220);
+
+    $created = $this->withToken($token)->postJson("/v1/issues/{$issue->id}/github-links", ['url' => $longUrl])
+        ->assertCreated()->json('data');
+
+    expect($created['url'])->toBe($longUrl)
+        ->and($created['number'])->toBe(1);
+
+    Workspace::forgetCurrent();
+});

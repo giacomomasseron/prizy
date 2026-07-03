@@ -16,8 +16,8 @@ return new class extends Migration {
             $table->uuid('issue_id');
             $table->string('repo');
             $table->integer('number');
-            $table->string('url');
-            $table->string('title')->nullable();
+            $table->string('url', 2048);
+            $table->text('title')->nullable();
             $table->string('state')->default('open');
             $table->string('source')->default('manual');
             $table->uuid('created_by');
