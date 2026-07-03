@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useIssueSearch } from './hooks';
+import { useTeams } from '../teams/hooks';
 
 const STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
 
@@ -7,9 +9,13 @@ export default function SearchPage() {
     const [params, setParams] = useSearchParams();
     const q = params.get('q') ?? '';
     const status = params.get('status') ?? '';
+    const team = params.get('team') ?? '';
     const page = Number(params.get('page') ?? '1');
 
-    const search = useIssueSearch({ q, status: status || undefined, page });
+    const [text, setText] = useState(q);
+    const teams = useTeams();
+
+    const search = useIssueSearch({ q, status: status || undefined, team_id: team || undefined, page });
 
     function setParam(key: string, value: string) {
         const next = new URLSearchParams(params);
@@ -18,20 +24,37 @@ export default function SearchPage() {
         setParams(next, { replace: true });
     }
 
+    useEffect(() => {
+        if (text === q) return;
+        const id = setTimeout(() => {
+            setParams((prev) => {
+                const next = new URLSearchParams(prev);
+                if (text) next.set('q', text); else next.delete('q');
+                next.delete('page');
+                return next;
+            }, { replace: true });
+        }, 250);
+        return () => clearTimeout(id);
+    }, [text, q, setParams]);
+
     return (
         <div className="mx-auto max-w-3xl p-6">
             <h1 className="mb-4 text-xl font-semibold">Search</h1>
             <div className="mb-4 flex gap-2">
                 <input
                     aria-label="Search query"
-                    value={q}
-                    onChange={(e) => setParam('q', e.target.value)}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
                     placeholder="Search issues…"
                     className="flex-1 rounded border px-3 py-2"
                 />
                 <select aria-label="Status" value={status} onChange={(e) => setParam('status', e.target.value)} className="rounded border px-2">
                     <option value="">Any status</option>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <select aria-label="Team" value={team} onChange={(e) => setParam('team', e.target.value)} className="rounded border px-2">
+                    <option value="">Any team</option>
+                    {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.identifier}</option>)}
                 </select>
             </div>
 
