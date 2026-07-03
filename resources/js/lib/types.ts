@@ -128,6 +128,12 @@ export interface AppNotification {
     created_at: string;
 }
 
+export interface SearchResults {
+    issues: Issue[];
+    projects: { id: string; name: string }[];
+    teams: { id: string; name: string; identifier: string }[];
+}
+
 export interface RoadmapProject {
     id: string;
     name: string;

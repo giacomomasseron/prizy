@@ -77,6 +77,9 @@ export const api = {
         const result = await request<Envelope<T> | undefined>('PUT', path, body);
         return (result as Envelope<T> | undefined)?.data as T;
     },
+    async getEnvelope<T>(path: string): Promise<{ data: T; meta?: { current_page: number; last_page: number }; links?: Record<string, string | null> }> {
+        return await request('GET', path);
+    },
     async del(path: string): Promise<void> {
         await request<void>('DELETE', path);
     },
