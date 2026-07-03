@@ -6,10 +6,12 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\NotificationResource;
+use App\Http\Requests\Api\V1\UpdateNotificationPreferencesRequest;
 use App\UseCases\Notifications\CountUnread;
 use App\UseCases\Notifications\ListNotifications;
 use App\UseCases\Notifications\MarkAllNotificationsRead;
 use App\UseCases\Notifications\MarkNotificationRead;
+use App\UseCases\Notifications\UpdateNotificationPreferences;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -21,6 +23,7 @@ final class NotificationController extends Controller
         private readonly CountUnread $countUnread,
         private readonly MarkNotificationRead $markRead,
         private readonly MarkAllNotificationsRead $markAllRead,
+        private readonly UpdateNotificationPreferences $updatePreferencesUseCase,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -48,6 +51,13 @@ final class NotificationController extends Controller
     public function readAll(Request $request): Response
     {
         $this->markAllRead->handle($request->user());
+
+        return response()->noContent();
+    }
+
+    public function updatePreferences(UpdateNotificationPreferencesRequest $request): Response
+    {
+        $this->updatePreferencesUseCase->handle($request->user(), $request->validated('email_digest_frequency'));
 
         return response()->noContent();
     }

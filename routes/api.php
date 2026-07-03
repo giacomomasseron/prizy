@@ -127,6 +127,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
         Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+        Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
 
         Route::get('/saved-views', [SavedViewController::class, 'index'])->middleware('can:viewAny,App\\Models\\SavedView');

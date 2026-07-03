@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\Notification;
+use App\Models\User;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 
@@ -53,5 +54,11 @@ final class NotificationRepository
     public function markAllReadForUser(string $userId): void
     {
         Notification::query()->where('user_id', $userId)->whereNull('read_at')->update(['read_at' => now()]);
+    }
+
+    public function setDigestFrequency(User $user, string $frequency): void
+    {
+        $user->email_digest_frequency = $frequency;
+        $user->save();
     }
 }
