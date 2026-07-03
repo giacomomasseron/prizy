@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -43,4 +44,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
             return null;
         });
-    })->create();
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+        $schedule->command('notifications:send-digests --frequency=daily')->dailyAt('08:00');
+        $schedule->command('notifications:send-digests --frequency=weekly')->weeklyOn(1, '08:00');
+    })
+    ->create();
