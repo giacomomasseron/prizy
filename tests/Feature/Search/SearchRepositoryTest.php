@@ -13,7 +13,7 @@ use Tests\Concerns\InteractsWithTenant;
 uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
-function seedIssue(Workspace $ws, array $attrs = []): Issue
+function seedSearchIssue(Workspace $ws, array $attrs = []): Issue
 {
     $team = Team::factory()->for($ws, 'workspace')->create();
     $user = User::factory()->for($ws, 'workspace')->create();
@@ -29,11 +29,11 @@ it('returns only the current workspace matches (tenancy)', function (): void {
     $b = Workspace::factory()->create();
 
     $a->makeCurrent();
-    $mine = seedIssue($a, ['title' => 'Payment webhook retries']);
+    $mine = seedSearchIssue($a, ['title' => 'Payment webhook retries']);
     Workspace::forgetCurrent();
 
     $b->makeCurrent();
-    seedIssue($b, ['title' => 'Payment webhook retries']);
+    seedSearchIssue($b, ['title' => 'Payment webhook retries']);
     Workspace::forgetCurrent();
 
     $a->makeCurrent();
@@ -46,8 +46,8 @@ it('returns only the current workspace matches (tenancy)', function (): void {
 it('excludes archived issues by default', function (): void {
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
-    seedIssue($ws, ['title' => 'Archived payment', 'archived_at' => now()]);
-    $active = seedIssue($ws, ['title' => 'Active payment']);
+    seedSearchIssue($ws, ['title' => 'Archived payment', 'archived_at' => now()]);
+    $active = seedSearchIssue($ws, ['title' => 'Active payment']);
 
     $page = app(SearchRepository::class)->searchIssues($ws->id, 'payment', [], 1, 15);
     Workspace::forgetCurrent();
@@ -58,8 +58,8 @@ it('excludes archived issues by default', function (): void {
 it('filters by status and team', function (): void {
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
-    $wanted = seedIssue($ws, ['title' => 'Payment done', 'status' => 'done']);
-    seedIssue($ws, ['title' => 'Payment todo', 'status' => 'todo']);
+    $wanted = seedSearchIssue($ws, ['title' => 'Payment done', 'status' => 'done']);
+    seedSearchIssue($ws, ['title' => 'Payment todo', 'status' => 'todo']);
 
     $page = app(SearchRepository::class)->searchIssues($ws->id, 'Payment', ['status' => 'done'], 1, 15);
     Workspace::forgetCurrent();
@@ -71,7 +71,7 @@ it('caps results for the palette', function (): void {
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
     foreach (range(1, 5) as $i) {
-        seedIssue($ws, ['title' => "Payment item {$i}"]);
+        seedSearchIssue($ws, ['title' => "Payment item {$i}"]);
     }
 
     $capped = app(SearchRepository::class)->searchIssuesCapped($ws->id, 'Payment', 3);
