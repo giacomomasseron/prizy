@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\GithubWebhookController;
+use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 use App\Http\Controllers\Api\V1\CycleController;
 use App\Http\Controllers\Api\V1\MilestoneController;
 use App\Http\Controllers\Api\V1\IssueActivityController;
@@ -43,6 +45,12 @@ use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 |   2. auth:web OR auth:token — authenticates within the resolved workspace.
 |
 */
+
+// GitHub inbound webhook — stateless (base api group has no session/CSRF), tenant-exempt
+// (resolves the workspace from the {token}), HMAC-verified in the handler.
+Route::post('/integrations/github/webhook/{token}', [GithubWebhookController::class, 'handle'])
+    ->withoutMiddleware([NeedsTenant::class])
+    ->middleware('throttle:120,1');
 
 Route::prefix('v1')->group(function (): void {
 
