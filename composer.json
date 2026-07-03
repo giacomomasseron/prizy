@@ -10,7 +10,9 @@
         "dedoc/scramble": "^0.13.30",
         "laravel/framework": "^13.8",
         "laravel/reverb": "^1.10",
+        "laravel/scout": "^11.3",
         "laravel/tinker": "^3.0",
+        "meilisearch/meilisearch-php": "^1.16",
         "spatie/laravel-multitenancy": "^4.1"
     },
     "require-dev": {

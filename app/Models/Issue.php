@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Laravel\Scout\Searchable;
 
 /**
  * Class Issue
@@ -73,7 +74,27 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 #[Fillable(['id', 'team_id', 'project_id', 'cycle_id', 'parent_issue_id', 'assignee_id', 'created_by', 'title', 'description', 'status', 'priority', 'estimate', 'due_date', 'sort_order', 'archived_at'])]
 class Issue extends TenantAwareEntity
 {
+    use Searchable;
     use SoftDeletes;
+
+    /** @return array<string, mixed> */
+    public function toSearchableArray(): array
+    {
+        return [
+            'id'           => $this->id,
+            'workspace_id' => $this->workspace_id,
+            'title'        => $this->title,
+            'description'  => $this->description,
+            'status'       => $this->status,
+            'team_id'      => $this->team_id,
+            'project_id'   => $this->project_id,
+        ];
+    }
+
+    public function shouldBeSearchable(): bool
+    {
+        return $this->archived_at === null;
+    }
 
     /**
      * @return array<string, string>
