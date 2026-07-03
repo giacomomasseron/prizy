@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { useLogout } from '../auth/useAuth';
+import { useLogout, useMe } from '../auth/useAuth';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 import CommandPalette from '../features/search/CommandPalette';
@@ -15,6 +15,8 @@ const links: Array<{ to: string; label: string }> = [
 
 export default function AppLayout() {
     const logout = useLogout();
+    const me = useMe();
+    const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     useRealtimeNotifications();
 
     return (
@@ -36,6 +38,7 @@ export default function AppLayout() {
                     ))}
                     <div className="ml-auto flex items-center gap-3">
                         <button type="button" aria-label="Search" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))} className="text-sm text-gray-500 hover:text-gray-900">Search ⌘K</button>
+                        {canManage && <Link to="/integrations" aria-label="Integrations" className="text-gray-600 hover:text-gray-900">Integrations</Link>}
                         <Link to="/settings" aria-label="Settings" className="text-gray-600 hover:text-gray-900">⚙</Link>
                         <NotificationBell />
                         <button type="button" onClick={() => logout.mutate()} className="text-gray-500 hover:text-gray-900">Logout</button>
