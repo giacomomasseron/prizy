@@ -31,6 +31,7 @@ final class MeController extends Controller
                 'locale',
                 'email_verified_at',
                 'last_seen_at',
+                'email_digest_frequency',
                 'created_at',
             ]),
         ]);

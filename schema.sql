@@ -162,6 +162,8 @@ CREATE TABLE users (
     timezone            VARCHAR(64)     NOT NULL DEFAULT 'UTC',
     locale              VARCHAR(10)     NOT NULL DEFAULT 'en',
     last_seen_at        TIMESTAMPTZ,
+    email_digest_frequency  VARCHAR(16)     NOT NULL DEFAULT 'off',
+    last_digest_sent_at     TIMESTAMPTZ,
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     deleted_at          TIMESTAMPTZ,
