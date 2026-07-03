@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RoadmapController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SavedViewController;
+use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -135,5 +136,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/saved-views', [SavedViewController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\SavedView']);
         Route::patch('/saved-views/{savedView}', [SavedViewController::class, 'update'])->middleware('verified');
         Route::delete('/saved-views/{savedView}', [SavedViewController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/search', [SearchController::class, 'index']);
     });
 });
