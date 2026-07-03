@@ -25,11 +25,15 @@ final class SendNotificationDigests extends Command
         Workspace::all()->each(function (Workspace $workspace) use ($frequency): void {
             $workspace->makeCurrent();
 
-            User::query()->where('email_digest_frequency', $frequency)->get()->each(
-                fn (User $user) => $this->digestFor($workspace, $user),
-            );
-
-            Workspace::forgetCurrent();
+            try {
+                User::query()->where('email_digest_frequency', $frequency)->get()->each(
+                    fn (User $user) => $this->digestFor($workspace, $user),
+                );
+            } catch (\Throwable $e) {
+                $this->warn("Digest run failed for workspace {$workspace->slug}: {$e->getMessage()}");
+            } finally {
+                Workspace::forgetCurrent();
+            }
         });
 
         return self::SUCCESS;
