@@ -16,7 +16,7 @@ test('integrations: configure Slack and persist', async ({ page }) => {
     await page.getByLabel('Assigned').check();
 
     const putResp = page.waitForResponse((r) => r.url().includes('/integrations/slack') && r.request().method() === 'PUT');
-    await page.getByRole('button', { name: 'Save' }).click();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
     await putResp;
     await expect(page.getByText('Saved')).toBeVisible();
 
