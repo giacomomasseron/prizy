@@ -10,6 +10,22 @@ function xsrf(): string | null {
     return m ? decodeURIComponent(m[1]) : null;
 }
 
+export async function requestChannelAuth(socketId: string, channelName: string): Promise<AuthData> {
+    const token = xsrf();
+    const res = await fetch('/broadcasting/auth', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+            'Content-Type': 'application/json',
+            Accept: 'application/json',
+            ...(token ? { 'X-XSRF-TOKEN': token } : {}),
+        },
+        body: JSON.stringify({ socket_id: socketId, channel_name: channelName }),
+    });
+    if (!res.ok) throw new Error(`Channel authorization failed (${res.status})`);
+    return (await res.json()) as AuthData;
+}
+
 let echo: Echo<'reverb'> | null | undefined;
 
 export function getEcho(): Echo<'reverb'> | null {
@@ -32,24 +48,11 @@ export function getEcho(): Echo<'reverb'> | null {
         wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
         forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'http') === 'https',
         enabledTransports: ['ws', 'wss'],
-        authorizer: (channel) => ({
+        authorizer: (channel: { name: string }) => ({
             authorize(socketId: string, callback: (error: Error | null, data: AuthData | null) => void) {
-                const token = xsrf();
-                fetch('/broadcasting/auth', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        Accept: 'application/json',
-                        ...(token ? { 'X-XSRF-TOKEN': token } : {}),
-                    },
-                    body: JSON.stringify({ socket_id: socketId, channel_name: channel.name }),
-                })
-                    .then((res) => res.json())
-                    .then((data: AuthData) => callback(null, data))
-                    .catch((err: unknown) =>
-                        callback(err instanceof Error ? err : new Error(String(err)), null),
-                    );
+                requestChannelAuth(socketId, channel.name)
+                    .then((data) => callback(null, data))
+                    .catch((err) => callback(err instanceof Error ? err : new Error(String(err)), null));
             },
         }),
     });
