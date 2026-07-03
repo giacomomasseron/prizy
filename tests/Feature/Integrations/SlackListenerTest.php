@@ -54,3 +54,19 @@ it('does not dispatch when inactive, unsubscribed, or unconfigured', function ()
     Queue::assertNotPushed(SendSlackMessage::class);
     Workspace::forgetCurrent();
 });
+
+it('does not dispatch (and does not break the transition) when no integration is configured', function (): void {
+    Queue::fake();
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $user = User::factory()->for($ws, 'workspace')->create(['admin_level' => 'admin']);
+    $issue = App\Models\Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'No slack', 'status' => 'todo', 'created_by' => $user->id]);
+
+    $updated = app(TransitionIssueStatus::class)->handle($user, ['issue_id' => $issue->id, 'status' => 'done']);
+
+    expect($updated->status)->toBe('done'); // transition succeeded
+    Queue::assertNotPushed(SendSlackMessage::class);
+
+    Workspace::forgetCurrent();
+});
