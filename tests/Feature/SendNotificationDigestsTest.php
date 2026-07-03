@@ -28,14 +28,23 @@ it('emails a daily user their new unread notifications and advances last_digest_
     $ws->makeCurrent();
     $daily = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now()]);
     $off = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'off', 'email_verified_at' => now()]);
-    seedNotif($ws, $daily);
+    $knownSubjectId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+    seedNotif($ws, $daily, ['subject_id' => $knownSubjectId, 'subject_type' => 'issue']);
     seedNotif($ws, $daily);
     seedNotif($ws, $off);
+    $slug = $ws->slug;
     Workspace::forgetCurrent();
 
     $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
 
-    Notification::assertSentTo($daily, NotificationDigest::class);
+    Notification::assertSentTo($daily, NotificationDigest::class, function (NotificationDigest $n) use ($daily, $slug, $knownSubjectId): bool {
+        $mail = $n->toMail($daily);
+        $body = implode(' ', $mail->introLines);
+
+        return str_contains($body, $slug)
+            && str_contains($body, '/issues/')
+            && str_contains($body, $knownSubjectId);
+    });
     Notification::assertNotSentTo($off, NotificationDigest::class);
 
     $ws->makeCurrent();
