@@ -128,6 +128,13 @@ export interface AppNotification {
     created_at: string;
 }
 
+export interface SlackIntegration {
+    configured: boolean;
+    is_active: boolean;
+    events: string[];
+    url_preview: string | null;
+}
+
 export interface SearchResults {
     issues: Issue[];
     projects: { id: string; name: string }[];
