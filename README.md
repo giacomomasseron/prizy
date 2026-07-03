@@ -7,6 +7,64 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Local development
+
+Prizy runs across a **container/host split**: PHP (`artisan`, `composer`) and the
+backing services run in Docker, while the JS toolchain (`vite`, `npm`) runs on the
+host. The `composer dev` scripts orchestrate both from a single command.
+
+### Prerequisites
+
+- Docker + Docker Compose
+- Node (with `npm`) on the host
+
+### First-time setup
+
+```bash
+docker compose up -d --build          # build the app image + start app, postgres, redis
+docker compose exec app composer install
+docker compose exec app cp -n .env.example .env
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate
+npm install                           # on the host
+```
+
+### Day-to-day
+
+```bash
+composer dev        # everyday loop
+composer dev:full   # + real-time & search stack
+```
+
+`composer dev` brings up the core containers (`app`, `postgres`, `redis`) detached,
+then runs three foreground processes under one terminal — press **Ctrl-C once** to
+stop all three (the containers stay up between sessions):
+
+| Process        | Runs in   | What it does                                  |
+| -------------- | --------- | --------------------------------------------- |
+| `queue:listen` | container | processes queued jobs (`QUEUE_CONNECTION=redis`) |
+| `pail`         | container | live tail of the application log              |
+| `vite`         | host      | asset dev server with HMR                     |
+
+`composer dev:full` instead starts the `full` compose profile — adding **Reverb**
+(websockets), **Horizon**, and **Meilisearch** — and runs only `pail` + `vite` in the
+foreground, since Horizon owns the queue in that profile.
+
+### Service ports
+
+| Service         | URL / port              | Started by            |
+| --------------- | ----------------------- | --------------------- |
+| App (web)       | http://localhost:8001   | `dev`, `dev:full`     |
+| Vite (HMR)      | http://localhost:5173   | `dev`, `dev:full`     |
+| PostgreSQL      | `localhost:5433`        | `dev`, `dev:full`     |
+| Redis           | `localhost:6380`        | `dev`, `dev:full`     |
+| Reverb          | `localhost:8080`        | `dev:full`            |
+| Meilisearch     | http://localhost:7700   | `dev:full`            |
+
+> **Note:** run `artisan`/`composer` through `docker compose exec app …`, not on the
+> host — `DB_HOST=postgres` and `REDIS_HOST=redis` only resolve inside the Docker
+> network.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
