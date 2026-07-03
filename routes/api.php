@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueLabelController;
+use App\Http\Controllers\Api\V1\IssueGithubLinkController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\ProjectController;
@@ -94,6 +95,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/issues/{issue}/blockers', [IssueBlockerController::class, 'store'])->middleware('verified');
         Route::delete('/issues/{issue}/blockers/{blockingIssue}', [IssueBlockerController::class, 'destroy'])->middleware('verified');
         Route::post('/issues/{issue}/ticket-links', [IssueTicketLinkController::class, 'store'])->middleware('verified');
+        Route::get('/issues/{issue}/github-links', [IssueGithubLinkController::class, 'index']);
+        Route::post('/issues/{issue}/github-links', [IssueGithubLinkController::class, 'store'])->middleware('verified');
+        Route::delete('/issues/{issue}/github-links/{link}', [IssueGithubLinkController::class, 'destroy'])->middleware('verified');
         Route::get('/issues/{issue}/labels', [IssueLabelController::class, 'index']);
         Route::put('/issues/{issue}/labels', [IssueLabelController::class, 'update'])->middleware('verified');
 
