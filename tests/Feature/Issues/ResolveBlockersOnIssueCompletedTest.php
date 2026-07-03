@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Events\IssueUnblocked;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
@@ -17,7 +18,7 @@ uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
 it('drops the completed issue as a blocker and notifies a now-fully-unblocked assignee', function (): void {
-    Event::fake([IssueUnblocked::class]);
+    Event::fake([IssueUnblocked::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $actor    = User::factory()->for($ws, 'workspace')->create();
@@ -40,7 +41,7 @@ it('drops the completed issue as a blocker and notifies a now-fully-unblocked as
 });
 
 it('does not notify when the blocked issue still has another blocker', function (): void {
-    Event::fake([IssueUnblocked::class]);
+    Event::fake([IssueUnblocked::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $actor    = User::factory()->for($ws, 'workspace')->create();

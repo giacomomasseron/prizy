@@ -9,6 +9,7 @@ use App\Models\Workspace;
 use App\Events\IssueAssigned;
 use App\Events\IssueCreated;
 use App\Events\IssueUpdated;
+use App\Events\NotificationCreated;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
@@ -18,7 +19,7 @@ uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
 // Fake only broadcast events so Reverb is not contacted, while keeping Eloquent model events intact.
-beforeEach(fn () => Event::fake([IssueCreated::class, IssueUpdated::class, IssueAssigned::class]));
+beforeEach(fn () => Event::fake([IssueCreated::class, IssueUpdated::class, IssueAssigned::class, NotificationCreated::class]));
 
 /** @return array{0:string,1:Team,2:User} */
 function writeWorld(array $userAttrs = []): array

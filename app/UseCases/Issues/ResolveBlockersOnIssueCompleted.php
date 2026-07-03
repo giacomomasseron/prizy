@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UseCases\Issues;
 
 use App\Events\IssueUnblocked;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueBlockerRepository;
@@ -48,7 +49,7 @@ final class ResolveBlockersOnIssueCompleted
      * (e.g. TransitionIssueStatus), so broadcasts fire only after the outer
      * commit.
      *
-     * @return array{unblocked: list<string>, events: list<IssueUnblocked>}
+     * @return array{unblocked: list<string>, events: list<IssueUnblocked|NotificationCreated>}
      */
     public function resolve(Issue $completed): array
     {
@@ -69,6 +70,7 @@ final class ResolveBlockersOnIssueCompleted
                 if ($blocked !== null && $blocked->assignee_id !== null) {
                     $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id);
                     $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
+                    $events[] = new NotificationCreated($blocked->assignee_id, $blocked->id, 'issue_unblocked');
                 }
             }
         }

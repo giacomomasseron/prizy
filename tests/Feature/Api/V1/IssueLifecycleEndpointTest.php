@@ -6,6 +6,7 @@ use App\Events\IssueAssigned;
 use App\Events\IssueStatusChanged;
 use App\Events\IssueUnblocked;
 use App\Events\IssueUpdated;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
@@ -23,6 +24,7 @@ beforeEach(fn () => Event::fake([
     IssueAssigned::class,
     IssueUpdated::class,
     IssueUnblocked::class,
+    NotificationCreated::class,
 ]));
 
 /** @return array{0:string,1:Issue,2:User,3:Workspace} */

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Events\IssueStatusChanged;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
@@ -61,7 +62,7 @@ it('rejects an invalid status value', function (): void {
 });
 
 it('resolves blockers when transitioning to done', function (): void {
-    Event::fake([IssueStatusChanged::class, \App\Events\IssueUnblocked::class]);
+    Event::fake([IssueStatusChanged::class, \App\Events\IssueUnblocked::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $actor    = User::factory()->for($ws, 'workspace')->create();

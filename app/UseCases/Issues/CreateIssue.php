@@ -6,6 +6,7 @@ namespace App\UseCases\Issues;
 
 use App\Events\IssueAssigned;
 use App\Events\IssueCreated;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
@@ -61,6 +62,7 @@ final class CreateIssue
 
         if ($issue->assignee_id !== null) {
             event(new IssueAssigned($issue, $issue->assignee_id));
+            event(new NotificationCreated($issue->assignee_id, $issue->id, 'issue_assigned'));
         }
 
         return $issue;

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Events\IssueAssigned;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
@@ -17,7 +18,7 @@ uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
 it('assigns an issue, logs activity, notifies and broadcasts', function (): void {
-    Event::fake([IssueAssigned::class]);
+    Event::fake([IssueAssigned::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $actor    = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
@@ -36,7 +37,7 @@ it('assigns an issue, logs activity, notifies and broadcasts', function (): void
 });
 
 it('unassigns an issue (null assignee) without a notification', function (): void {
-    Event::fake([IssueAssigned::class]);
+    Event::fake([IssueAssigned::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $actor    = User::factory()->for($ws, 'workspace')->create();

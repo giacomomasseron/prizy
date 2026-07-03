@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Events\IssueAssigned;
 use App\Events\IssueCreated;
+use App\Events\NotificationCreated;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
@@ -28,7 +29,7 @@ function makeWorkspaceWithActor(): array
 }
 
 it('creates an issue, writes a created activity, and broadcasts IssueCreated', function (): void {
-    Event::fake([IssueCreated::class, IssueAssigned::class]);
+    Event::fake([IssueCreated::class, IssueAssigned::class, NotificationCreated::class]);
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
     $issue = app(CreateIssue::class)->handle($actor, ['team_id' => $team->id, 'title' => 'Build login']);
@@ -45,7 +46,7 @@ it('creates an issue, writes a created activity, and broadcasts IssueCreated', f
 });
 
 it('notifies and broadcasts assignment when created with an assignee', function (): void {
-    Event::fake([IssueCreated::class, IssueAssigned::class]);
+    Event::fake([IssueCreated::class, IssueAssigned::class, NotificationCreated::class]);
     [$ws, $actor, $team] = makeWorkspaceWithActor();
     $assignee = User::factory()->for($ws, 'workspace')->create();
 
