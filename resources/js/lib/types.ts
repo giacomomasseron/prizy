@@ -50,6 +50,7 @@ export interface Me {
     admin_level: string;
     is_developer: boolean;
     is_agent: boolean;
+    email_digest_frequency: 'off' | 'daily' | 'weekly';
 }
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'paused' | 'completed' | 'cancelled';

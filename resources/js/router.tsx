@@ -14,6 +14,7 @@ import ProjectDetailPage from './features/projects/ProjectDetailPage';
 import LabelsPage from './features/labels/LabelsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
+import SettingsPage from './features/settings/SettingsPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -46,6 +47,7 @@ export default function AppRouter() {
                 <Route path="/labels" element={<LabelsPage />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
             </Route>
         </Routes>
     );
