@@ -16,6 +16,14 @@ Route::view('/login', 'app');
 Route::view('/signup', 'app')->withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class]);
 Route::view('/board', 'app');
 Route::view('/issues/{issue}', 'app');
+Route::view('/teams', 'app');
+Route::view('/teams/{team}', 'app');
+Route::view('/projects', 'app');
+Route::view('/projects/{project}', 'app');
+Route::view('/labels', 'app');
+Route::view('/roadmap', 'app');
+Route::view('/notifications', 'app');
+Route::view('/settings', 'app');
 
 // Landlord routes — exempt from both tenant middlewares (no workspace is resolved yet).
 Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])->group(function (): void {
