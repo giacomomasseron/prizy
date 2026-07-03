@@ -26,8 +26,25 @@ docker compose exec app composer install
 docker compose exec app cp -n .env.example .env
 docker compose exec app php artisan key:generate
 docker compose exec app php artisan migrate
+docker compose exec app php artisan db:seed --class="Database\Seeders\SmokeSeeder"
 npm install                           # on the host
 ```
+
+### First login
+
+Prizy resolves the current workspace from the request **subdomain**
+(`APP_BASE_DOMAIN=localhost`), so the app is served per workspace at
+`http://<slug>.localhost:8001` — **not** at the bare `http://localhost:8001/`,
+which resolves no tenant and returns `NoCurrentTenant`.
+
+The `SmokeSeeder` above creates a ready-to-use workspace:
+
+- **URL:** http://smoke.localhost:8001/
+- **Login:** `smoke@example.com` / `password123` (owner + developer)
+
+To create your own workspace instead, open http://localhost:8001/signup (the
+signup route is the one host exempt from tenant resolution). Browsers resolve
+`*.localhost` to loopback automatically — no `/etc/hosts` edits needed.
 
 ### Day-to-day
 
