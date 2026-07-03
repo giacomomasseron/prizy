@@ -2,6 +2,7 @@ import { Link, NavLink, Outlet } from 'react-router-dom';
 import { useLogout } from '../auth/useAuth';
 import { NotificationBell } from '../features/notifications/NotificationBell';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
+import CommandPalette from '../features/search/CommandPalette';
 
 const links: Array<{ to: string; label: string }> = [
     { to: '/', label: 'Issues' },
@@ -34,6 +35,7 @@ export default function AppLayout() {
                         </NavLink>
                     ))}
                     <div className="ml-auto flex items-center gap-3">
+                        <button type="button" aria-label="Search" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))} className="text-sm text-gray-500 hover:text-gray-900">Search ⌘K</button>
                         <Link to="/settings" aria-label="Settings" className="text-gray-600 hover:text-gray-900">⚙</Link>
                         <NotificationBell />
                         <button type="button" onClick={() => logout.mutate()} className="text-gray-500 hover:text-gray-900">Logout</button>
@@ -43,6 +45,7 @@ export default function AppLayout() {
             <main>
                 <Outlet />
             </main>
+            <CommandPalette />
         </div>
     );
 }
