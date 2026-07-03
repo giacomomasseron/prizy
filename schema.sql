@@ -278,6 +278,21 @@ CREATE TABLE webhook_deliveries (
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
 );
 
+CREATE TABLE slack_integrations (
+    id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id        UUID            NOT NULL UNIQUE REFERENCES workspaces(id) ON DELETE CASCADE,
+    webhook_url         TEXT,
+    events              JSONB           NOT NULL DEFAULT '["created","status_changed","assigned"]',
+    is_active           BOOLEAN         NOT NULL DEFAULT TRUE,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+ALTER TABLE slack_integrations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE slack_integrations FORCE ROW LEVEL SECURITY;
+CREATE POLICY slack_integrations_workspace_isolation ON slack_integrations USING (
+    NULLIF(current_setting('app.current_workspace_id', true), '') IS NULL
+    OR workspace_id::text = current_setting('app.current_workspace_id', true));
+
 -- =============================================================================
 -- SECTION 2 — ISSUE TRACKER
 -- =============================================================================
