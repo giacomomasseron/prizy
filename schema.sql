@@ -973,6 +973,28 @@ CREATE TABLE saved_views (
 );
 CREATE INDEX saved_views_workspace_id_idx ON saved_views (workspace_id);
 
+CREATE TABLE issue_github_links (
+    id              UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id    UUID            NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    issue_id        UUID            NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    repo            VARCHAR(255)    NOT NULL,
+    number          INTEGER         NOT NULL,
+    url             VARCHAR(255)    NOT NULL,
+    title           VARCHAR(255),
+    state           VARCHAR(255)    NOT NULL DEFAULT 'open',
+    source          VARCHAR(255)    NOT NULL DEFAULT 'manual',
+    created_by      UUID            NOT NULL REFERENCES users(id),
+    created_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    UNIQUE (issue_id, url)
+);
+CREATE INDEX issue_github_links_workspace_repo_number_idx ON issue_github_links (workspace_id, repo, number);
+ALTER TABLE issue_github_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE issue_github_links FORCE ROW LEVEL SECURITY;
+CREATE POLICY issue_github_links_workspace_isolation ON issue_github_links USING (
+    NULLIF(current_setting('app.current_workspace_id', true), '') IS NULL
+    OR workspace_id::text = current_setting('app.current_workspace_id', true));
+
 -- =============================================================================
 -- INDEXES
 -- =============================================================================
