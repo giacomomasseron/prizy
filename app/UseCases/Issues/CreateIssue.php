@@ -34,7 +34,9 @@ final class CreateIssue
         $this->assertProjectInWorkspace($data['project_id'] ?? null);
         $this->assertCycleInWorkspace($data['cycle_id'] ?? null);
 
-        $issue = DB::transaction(function () use ($actor, $data): Issue {
+        $notif = null;
+
+        $issue = DB::transaction(function () use ($actor, $data, &$notif): Issue {
             $issue = $this->issues->create([
                 'team_id'         => $data['team_id'],
                 'title'           => $data['title'],
@@ -52,7 +54,7 @@ final class CreateIssue
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
             if ($issue->assignee_id !== null) {
-                $this->notifications->create($issue->assignee_id, 'issue_assigned', 'issue', $issue->id);
+                $notif = $this->notifications->create($issue->assignee_id, 'issue_assigned', 'issue', $issue->id);
             }
 
             return $issue;
@@ -62,7 +64,9 @@ final class CreateIssue
 
         if ($issue->assignee_id !== null) {
             event(new IssueAssigned($issue, $issue->assignee_id));
-            event(new NotificationCreated($issue->assignee_id, $issue->id, 'issue_assigned'));
+            if ($notif !== null) {
+                event(new NotificationCreated($issue->assignee_id, $notif->id, 'issue_assigned'));
+            }
         }
 
         return $issue;

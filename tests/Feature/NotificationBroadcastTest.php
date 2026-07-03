@@ -38,8 +38,10 @@ it('dispatches NotificationCreated for the assignee when an issue is assigned', 
 
     app(AssignIssue::class)->handle($actor, ['issue_id' => $issue->id, 'assignee_id' => $assignee->id]);
 
+    $notif = App\Models\Notification::query()->where('user_id', $assignee->id)->first();
+
     Event::assertDispatched(NotificationCreated::class, fn (NotificationCreated $e): bool =>
-        $e->userId === $assignee->id && $e->type === 'issue_assigned' && $e->id !== '');
+        $e->userId === $assignee->id && $e->type === 'issue_assigned' && $e->id !== '' && $e->id === $notif->id);
 
     Workspace::forgetCurrent();
 });

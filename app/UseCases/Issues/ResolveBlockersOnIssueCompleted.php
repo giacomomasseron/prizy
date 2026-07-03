@@ -68,9 +68,9 @@ final class ResolveBlockersOnIssueCompleted
 
                 $blocked = $this->issues->findInWorkspace($blockedId);
                 if ($blocked !== null && $blocked->assignee_id !== null) {
-                    $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id);
+                    $notif = $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id);
                     $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
-                    $events[] = new NotificationCreated($blocked->assignee_id, $blocked->id, 'issue_unblocked');
+                    $events[] = new NotificationCreated($blocked->assignee_id, $notif->id, 'issue_unblocked');
                 }
             }
         }

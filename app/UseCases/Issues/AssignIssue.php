@@ -43,19 +43,21 @@ final class AssignIssue
             return $issue;
         }
 
-        DB::transaction(function () use ($issue, $actor, $assigneeId, $previous): void {
+        $notif = null;
+
+        DB::transaction(function () use ($issue, $actor, $assigneeId, $previous, &$notif): void {
             $this->issues->update($issue, ['assignee_id' => $assigneeId]);
             $this->activities->log($issue->id, $actor->id, 'assigned', $previous, $assigneeId);
 
             if ($assigneeId !== null) {
-                $this->notifications->create($assigneeId, 'issue_assigned', 'issue', $issue->id);
+                $notif = $this->notifications->create($assigneeId, 'issue_assigned', 'issue', $issue->id);
             }
         });
 
         event(new IssueAssigned($issue, $assigneeId));
 
-        if ($assigneeId !== null) {
-            event(new NotificationCreated($assigneeId, $issue->id, 'issue_assigned'));
+        if ($assigneeId !== null && $notif !== null) {
+            event(new NotificationCreated($assigneeId, $notif->id, 'issue_assigned'));
         }
 
         return $issue;
