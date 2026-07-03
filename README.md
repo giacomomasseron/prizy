@@ -46,6 +46,11 @@ stop all three (the containers stay up between sessions):
 | `pail`         | container | live tail of the application log              |
 | `vite`         | host      | asset dev server with HMR                     |
 
+Because `composer dev` does not start Reverb, its queue worker runs with
+`BROADCAST_CONNECTION=log` (broadcast payloads go to the log instead of a live
+websocket; the client falls back to polling). Use `composer dev:full` when you
+want real websocket broadcasting.
+
 `composer dev:full` instead starts the `full` compose profile — adding **Reverb**
 (websockets), **Horizon**, and **Meilisearch** — and runs only `pail` + `vite` in the
 foreground, since Horizon owns the queue in that profile.
