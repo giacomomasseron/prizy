@@ -9,7 +9,6 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -113,5 +112,27 @@ it('no-ops (204) for a PR with no matching link and is workspace-scoped', functi
 
     $ws->makeCurrent();
     expect($issue->refresh()->status)->toBe('in_progress'); // untouched — no matching link
+    Workspace::forgetCurrent();
+});
+
+it('rejects a request with no signature header (401)', function (): void {
+    [$ws, $integration, $issue, $link, $secret] = ghWebhookSetup();
+    $body = json_encode(['action' => 'closed', 'pull_request' => ['merged' => true, 'number' => 7], 'repository' => ['full_name' => 'acme/app']]);
+
+    // No X-Hub-Signature-256 header at all.
+    test()->call('POST', "/integrations/github/webhook/{$integration->webhook_token}", [], [], [], [
+        'CONTENT_TYPE' => 'application/json',
+        'HTTP_X_GITHUB_EVENT' => 'pull_request',
+    ], $body)->assertStatus(401);
+});
+
+it('ignores a non-pull_request event with 204', function (): void {
+    [$ws, $integration, $issue, $link, $secret] = ghWebhookSetup();
+
+    // Valid signature, but a 'push' event → ignored (204), and the linked issue is untouched.
+    ghPost($integration->webhook_token, ['action' => 'anything'], $secret, 'push')->assertNoContent();
+
+    $ws->makeCurrent();
+    expect($issue->refresh()->status)->toBe('in_progress');
     Workspace::forgetCurrent();
 });
