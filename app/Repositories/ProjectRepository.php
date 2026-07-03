@@ -55,6 +55,16 @@ final class ProjectRepository
         return Project::query()->with('milestones')->orderBy('start_date')->orderBy('id')->get();
     }
 
+    /** @return Collection<int, Project> */
+    public function searchByName(string $q, int $limit): Collection
+    {
+        return Project::query()
+            ->where('name', 'ilike', '%' . $q . '%')
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
+    }
+
     public function delete(Project $project): void
     {
         $project->delete();

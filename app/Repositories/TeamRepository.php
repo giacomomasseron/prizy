@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Models\Issue;
 use App\Models\Team;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 
@@ -44,6 +45,19 @@ final class TeamRepository
     public function hasIssues(string $teamId): bool
     {
         return Issue::where('team_id', $teamId)->exists();
+    }
+
+    /** @return Collection<int, Team> */
+    public function searchByName(string $q, int $limit): Collection
+    {
+        return Team::query()
+            ->where(function ($query) use ($q): void {
+                $query->where('name', 'ilike', '%' . $q . '%')
+                    ->orWhere('identifier', 'ilike', '%' . $q . '%');
+            })
+            ->orderBy('name')
+            ->limit($limit)
+            ->get();
     }
 
     public function delete(Team $team): void
