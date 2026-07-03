@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { SlackIntegration } from '../../lib/types';
+import type { GithubIntegration, SlackIntegration } from '../../lib/types';
 
 const KEY = ['integrations', 'slack'];
 
@@ -24,4 +24,24 @@ export function useSaveSlackIntegration() {
 
 export function useSendSlackTest() {
     return useMutation({ mutationFn: () => api.post<void>('/integrations/slack/test') });
+}
+
+const GH_KEY = ['integrations', 'github'];
+
+export function useGithubIntegration() {
+    return useQuery({ queryKey: GH_KEY, queryFn: () => api.get<GithubIntegration>('/integrations/github') });
+}
+
+export interface GithubSaveInput {
+    webhook_secret?: string;
+    move_to_done_on_merge: boolean;
+    is_active: boolean;
+}
+
+export function useSaveGithubIntegration() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: GithubSaveInput) => api.put<GithubIntegration>('/integrations/github', input),
+        onSuccess: () => qc.invalidateQueries({ queryKey: GH_KEY }),
+    });
 }

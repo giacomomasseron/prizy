@@ -153,3 +153,20 @@ export interface RoadmapProject {
     updated_at: string;
     milestones: Array<{ id: string; name: string; target_date: string }>;
 }
+
+export interface GithubIntegration {
+    configured: boolean;
+    is_active: boolean;
+    move_to_done_on_merge: boolean;
+    webhook_url: string | null;
+    secret_set: boolean;
+}
+
+export interface GithubLink {
+    id: string;
+    repo: string;
+    number: number;
+    url: string;
+    title: string | null;
+    state: 'open' | 'merged' | 'closed';
+}
