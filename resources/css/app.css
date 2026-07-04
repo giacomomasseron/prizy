@@ -3,7 +3,34 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+:root {
+  --bg:#0b0b0d; --bg2:#111114; --panel:#151519; --border:#232327; --border2:#31313a;
+  --fg:#eeeef1; --fg2:#9a9aa4; --fg3:#61616b; --hover:rgba(255,255,255,.06);
+  --accent:#6d69f2; --accent2:rgba(109,105,242,.16);
+  --red:#eb5757; --amber:#e0a13a; --green:#4bab66; --blue:#5b8def; --teal:#3aa8a0;
 }
+:root[data-theme="light"] {
+  --bg:#fbfbfa; --bg2:#f2f2f0; --panel:#ffffff; --border:#e9e8e5; --border2:#dcdbd7;
+  --fg:#1b1b19; --fg2:#66665f; --fg3:#a2a29a; --hover:rgba(0,0,0,.05);
+  --accent:#5b57e0; --accent2:rgba(91,87,224,.12);
+  --red:#d93a3f; --amber:#c07f27; --green:#3a8f4d; --blue:#3f74d6; --teal:#2f8f88;
+}
+
+@theme inline {
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-bg: var(--bg);           --color-bg2: var(--bg2);
+  --color-panel: var(--panel);     --color-border: var(--border);
+  --color-border2: var(--border2); --color-fg: var(--fg);
+  --color-fg2: var(--fg2);         --color-fg3: var(--fg3);
+  --color-hover: var(--hover);     --color-accent: var(--accent);
+  --color-accent2: var(--accent2); --color-red: var(--red);
+  --color-amber: var(--amber);     --color-green: var(--green);
+  --color-blue: var(--blue);       --color-teal: var(--teal);
+}
+
+@keyframes prizy-fade  { from { opacity: 0 }                              to { opacity: 1 } }
+@keyframes prizy-slide { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes prizy-pop   { from { transform: scale(.97) translateY(6px); opacity: 0 } to { transform: none; opacity: 1 } }

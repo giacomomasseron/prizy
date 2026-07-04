@@ -9,7 +9,10 @@ export default defineConfig({
         laravel({
             input: ['resources/css/app.css', 'resources/js/main.tsx'],
             refresh: true,
-            fonts: [bunny('Instrument Sans', { weights: [400, 500, 600] })],
+            fonts: [
+                bunny('Instrument Sans', { weights: [400, 500, 600] }),
+                bunny('JetBrains Mono', { weights: [400, 500, 600] }),
+            ],
         }),
         tailwindcss(),
         react(),
