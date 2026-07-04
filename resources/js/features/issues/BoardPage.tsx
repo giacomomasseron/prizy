@@ -4,6 +4,7 @@ import type { Issue, IssueStatus } from '../../lib/types';
 import { STATUSES, groupByStatus, useIssues, useTransitionStatus } from './hooks';
 import { FilterBar } from '../views/FilterBar';
 import { paramsToFilters } from '../views/filters';
+import { IssuesHeader } from './IssuesHeader';
 
 function Card({ issue }: { issue: Issue }) {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: issue.id });
@@ -45,11 +46,9 @@ export default function BoardPage() {
     }
 
     return (
+        <>
+        <IssuesHeader view="board" />
         <div className="p-6">
-            <div className="mb-4 flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Board</h1>
-                <Link to="/" className="text-sm text-accent">← List</Link>
-            </div>
             <FilterBar viewType="board" />
             <DndContext sensors={sensors} onDragEnd={onDragEnd}>
                 <div className="flex gap-3 overflow-x-auto">
@@ -57,5 +56,6 @@ export default function BoardPage() {
                 </div>
             </DndContext>
         </div>
+        </>
     );
 }

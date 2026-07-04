@@ -4,6 +4,7 @@ import { useCreateIssue, useIssues } from './hooks';
 import { useTeams } from '../teams/hooks';
 import { FilterBar } from '../views/FilterBar';
 import { paramsToFilters } from '../views/filters';
+import { IssuesHeader } from './IssuesHeader';
 
 export default function IssueListPage() {
     const [searchParams] = useSearchParams();
@@ -22,12 +23,9 @@ export default function IssueListPage() {
 
     return (
         <>
+        <IssuesHeader view="list" />
         <FilterBar viewType="list" />
         <div className="mx-auto max-w-4xl p-6">
-            <div className="mb-4 flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Issues</h1>
-                <Link to="/board" className="text-sm text-accent">Board →</Link>
-            </div>
 
             <form onSubmit={submit} className="mb-4 flex gap-2">
                 <select value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-label="Issue team" className="rounded border border-border px-2 py-1">
