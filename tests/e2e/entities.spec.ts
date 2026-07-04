@@ -44,7 +44,12 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // 5. Issues → open the pre-seeded starter issue
     await page.getByRole('link', { name: 'Issues' }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
-    await page.getByRole('link', { name: 'Starter issue' }).click();
+    // R-B redesign: issue rows are <div data-testid="issue-row">, not <a> links.
+    // Click the row to open the peek drawer, then follow "Open full issue →".
+    await page.locator('[data-testid="issue-row"]').filter({ hasText: 'Starter issue' }).click();
+    await expect(page.getByRole('link', { name: /Open full issue/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('link', { name: /Open full issue/i }).click();
+    await expect(page).toHaveURL(/\/issues\//);
 
     // Attach the new label. The checkbox is a React controlled component — the
     // checked state is only updated after the mutation round-trip, so we use

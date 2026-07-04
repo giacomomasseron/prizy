@@ -27,7 +27,11 @@ test('github: configure integration + link a PR', async ({ page }) => {
 
     // Link a PR on the first issue
     await page.goto('/');
-    await page.locator('a[href^="/issues/"]').first().click();
+    // R-B redesign: issue rows are <div data-testid="issue-row">, not <a> links.
+    // Click the row to open the peek drawer, then follow "Open full issue →".
+    await page.locator('[data-testid="issue-row"]').first().click();
+    await expect(page.getByRole('link', { name: /Open full issue/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('link', { name: /Open full issue/i }).click();
     await expect(page).toHaveURL(/\/issues\//);
     await page.getByLabel('Add PR URL').fill('https://github.com/acme/app/pull/1');
     await page.getByRole('button', { name: 'Add PR' }).click();

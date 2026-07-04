@@ -45,7 +45,19 @@ test('create issue via drawer: appears in the list', async ({ page }) => {
     await page.keyboard.press('c');
     await expect(page.getByLabel(/Issue title/i)).toBeVisible({ timeout: 6_000 });
 
-    // Fill title (team auto-selected for single-team workspace)
+    // Robust team selection: if entities.spec (which runs first alphabetically)
+    // added a 2nd team, the team picker button appears — pick 'Smoke Team' explicitly.
+    // In a single-team workspace the button is absent and auto-select fires instead.
+    try {
+        const teamPicker = page.getByRole('button', { name: /Issue team/i });
+        await teamPicker.waitFor({ state: 'visible', timeout: 3_000 });
+        await teamPicker.click();
+        await page.getByRole('menuitem', { name: 'Smoke Team' }).click();
+    } catch {
+        // Single-team workspace: auto-selection already fired — no action needed.
+    }
+
+    // Fill title and wait for Create button to be enabled (team + title required)
     await page.getByLabel(/Issue title/i).fill(title);
 
     // Wait for team auto-selection (single-team useEffect) so button is enabled

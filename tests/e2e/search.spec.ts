@@ -10,11 +10,13 @@ test('search: ⌘K finds a seeded issue and navigates; /search shows results', a
     await page.getByRole('button', { name: /log in/i }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
-    // Grab the seeded issue's title from the list (SmokeSeeder creates a starter issue).
-    const firstIssue = page.locator('a[href^="/issues/"]').first();
-    await expect(firstIssue).toBeVisible();
-    const title = (await firstIssue.textContent())?.trim() ?? '';
-    const term = title.split(' ')[0];
+    // Grab the seeded issue's title from the list.
+    // R-B redesign: issue rows are <div data-testid="issue-row">, not <a> links.
+    // SmokeSeeder always seeds a "Starter issue"; use the known title rather
+    // than trying to parse it out of the row's concatenated textContent.
+    const title = 'Starter issue';
+    const term = title.split(' ')[0]; // 'Starter'
+    await expect(page.locator('[data-testid="issue-row"]').filter({ hasText: title }).first()).toBeVisible({ timeout: 10_000 });
 
     // Open ⌘K and search.
     await page.keyboard.press('Meta+k');
