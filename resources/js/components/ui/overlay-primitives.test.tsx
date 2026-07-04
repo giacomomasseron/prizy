@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { Drawer } from './Drawer';
@@ -22,6 +22,19 @@ describe('Modal', () => {
     await user.click(screen.getByRole('dialog').parentElement!);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+  it('does not call onClose when clicking inside the panel', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Modal open={true} onClose={onClose}><p>panel content</p></Modal>);
+    await user.click(screen.getByRole('dialog'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(<Modal open={true} onClose={onClose}><p>content</p></Modal>);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('Drawer', () => {
@@ -32,6 +45,22 @@ describe('Drawer', () => {
   it('renders children when open=true', () => {
     render(<Drawer open={true} onClose={() => {}}><p>Drawer content</p></Drawer>);
     expect(screen.getByText('Drawer content')).toBeInTheDocument();
+  });
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(<Drawer open={true} onClose={onClose}><p>content</p></Drawer>);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it('calls onClose when backdrop is clicked', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { container } = render(<Drawer open={true} onClose={onClose}><p>drawer</p></Drawer>);
+    // Backdrop is the flex:1 sibling rendered before the panel inside the outer fixed container
+    const outerDiv = container.firstElementChild as HTMLElement;
+    const backdrop = outerDiv.children[0] as HTMLElement;
+    await user.click(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });
 
