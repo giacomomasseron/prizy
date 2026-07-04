@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('integrations: configure Slack and persist', async ({ page }) => {
+    // precondition: smoke@example.com is seeded as owner (SmokeSeeder) so the Integrations menuitem renders
     test.setTimeout(60_000);
 
     await page.goto('/login');
@@ -9,7 +10,9 @@ test('integrations: configure Slack and persist', async ({ page }) => {
     await page.getByRole('button', { name: /log in/i }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
-    await page.getByRole('link', { name: 'Integrations' }).click();
+    // Navigate via sidebar user menu → Integrations
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByRole('menuitem', { name: 'Integrations' }).click();
     await expect(page).toHaveURL(/\/integrations/);
 
     await page.getByLabel('Slack webhook URL').fill('https://hooks.slack.com/services/T0/B0/exampletoken');

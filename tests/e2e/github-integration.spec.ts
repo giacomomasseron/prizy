@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 
 test('github: configure integration + link a PR', async ({ page }) => {
+    // precondition: smoke@example.com is seeded as owner (SmokeSeeder) so the Integrations menuitem renders
     test.setTimeout(60_000);
 
     await page.goto('/login');
@@ -9,8 +10,11 @@ test('github: configure integration + link a PR', async ({ page }) => {
     await page.getByRole('button', { name: /log in/i }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
-    // Configure GitHub
-    await page.getByRole('link', { name: 'Integrations' }).click();
+    // Navigate via sidebar user menu → Integrations
+    await page.getByTestId('user-menu-trigger').click();
+    await page.getByRole('menuitem', { name: 'Integrations' }).click();
+    await expect(page).toHaveURL(/\/integrations/);
+
     await page.getByLabel('GitHub webhook secret').fill('test-secret');
     await page.getByLabel('Move linked issue to Done on PR merge').click();
     const put = page.waitForResponse((r) => r.url().includes('/integrations/github') && r.request().method() === 'PUT');
