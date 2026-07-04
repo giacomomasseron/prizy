@@ -150,14 +150,14 @@ function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnPr
 }
 
 export default function BoardPage() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const { data } = useIssues(paramsToFilters(searchParams));
     const transition = useTransitionStatus();
     const sensors = useSensors(useSensor(PointerSensor));
     const grouped = groupByStatus(data?.items ?? []);
     const projectsQuery = useProjects();
     const projects = projectsQuery.data?.items ?? [];
-    const { openCreate } = useIssueDrawers();
+    const { openCreate, openPeek } = useIssueDrawers();
     const justDragged = useRef(false);
 
     function onDragEnd(e: DragEndEvent) {
@@ -172,7 +172,7 @@ export default function BoardPage() {
 
     const guardedCardClick = (id: string) => {
         if (justDragged.current) { justDragged.current = false; return; }
-        setSearchParams((prev) => { prev.set('peek', id); return prev; });
+        openPeek(id);
     };
 
     function onColumnAdd(status: IssueStatus) {

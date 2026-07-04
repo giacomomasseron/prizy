@@ -34,11 +34,12 @@ vi.mock('../views/filters', async (orig) => {
     const real = await orig<typeof import('../views/filters')>();
     return { ...real, paramsToFilters: () => ({}) };
 });
-// Stub useIssueDrawers until Task 5 implements it
+// Stub useIssueDrawers — openPeek captured so tests can assert it was called
+const mockOpenPeek = vi.fn();
 vi.mock('./useIssueDrawers', () => ({
     useIssueDrawers: () => ({
         peekId: null, createOpen: false, createStatus: null,
-        openPeek: vi.fn(), openCreate: vi.fn(), close: vi.fn(),
+        openPeek: mockOpenPeek, openCreate: vi.fn(), close: vi.fn(),
     }),
 }));
 
@@ -103,10 +104,11 @@ describe('BoardPage', () => {
         expect(screen.getByText('Card one')).toBeInTheDocument();
     });
 
-    it('plain click on a card sets ?peek=<id> in the URL', () => {
-        mountBoardWithSpy();
+    it('plain click on a card calls openPeek with the issue id', () => {
+        mockOpenPeek.mockClear();
+        mountBoard();
         fireEvent.click(screen.getByTestId('card-c1'));
-        expect(screen.getByTestId('qs').textContent).toContain('peek=c1');
+        expect(mockOpenPeek).toHaveBeenCalledWith('c1');
     });
 
     // drag→no-peek is covered by the Playwright board spec in Task 8.

@@ -19,21 +19,17 @@ const STATUS_LABELS: Record<IssueStatus, string> = {
 };
 
 export default function IssueListPage() {
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [searchParams] = useSearchParams();
     const { data, isLoading } = useIssues(paramsToFilters(searchParams));
     const projects = useProjects();
-    const { openCreate } = useIssueDrawers();
+    const { openCreate, openPeek } = useIssueDrawers();
 
     const issues = data?.items ?? [];
     const grouped = groupByStatus(issues);
     const projectList = projects.data?.items ?? [];
 
     function onPeek(id: string) {
-        setSearchParams((prev) => {
-            const next = new URLSearchParams(prev);
-            next.set('peek', id);
-            return next;
-        });
+        openPeek(id);
     }
 
     return (

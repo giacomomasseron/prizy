@@ -3,6 +3,8 @@ import { useLogout, useMe } from '../auth/useAuth';
 import { useUnreadCount } from '../features/notifications/hooks';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 import CommandPalette from '../features/search/CommandPalette';
+import { useIssueDrawers } from '../features/issues/useIssueDrawers';
+import { PeekDrawer } from '../features/issues/PeekDrawer';
 import { Avatar } from './ui/Avatar';
 import { Kbd } from './ui/Kbd';
 import { Menu } from './ui/Menu';
@@ -127,6 +129,7 @@ export default function AppLayout() {
     const unread = useUnreadCount();
     const unreadCount = unread.data?.count ?? 0;
     useRealtimeNotifications();
+    const { peekId, createOpen, createStatus, openCreate, close } = useIssueDrawers();
 
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
 
@@ -211,7 +214,7 @@ export default function AppLayout() {
                 <div style={{ padding: '0 10px 10px' }}>
                     <button
                         type="button"
-                        onClick={() => navigate('/')}
+                        onClick={() => openCreate()}
                         style={{
                             width: '100%',
                             display: 'flex',
@@ -365,6 +368,8 @@ export default function AppLayout() {
 
             {/* Globally mounted — preserved from original AppLayout */}
             <CommandPalette />
+            <PeekDrawer issueId={peekId} onClose={close} />
+            {/* CreateIssueDrawer — Task 6 */}
         </div>
     );
 }
