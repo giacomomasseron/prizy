@@ -75,6 +75,20 @@ describe('IssueRow', () => {
         expect(screen.getByText('frontend')).toBeInTheDocument();
     });
 
+    it('renders Avatar with assignee initials when an assignee is present', () => {
+        // avatarFor({ id: 'user-1', name: 'Jane Doe' }) → initials 'JD'
+        // Avatar renders <span aria-label="JD">JD</span>
+        renderRow({ assignee: { id: 'user-1', name: 'Jane Doe' } });
+        expect(screen.getByLabelText('JD')).toBeInTheDocument();
+        expect(screen.getByText('JD')).toBeInTheDocument();
+    });
+
+    it('renders dashed unassigned Avatar when there is no assignee', () => {
+        // Avatar without initials renders <span aria-label="Unassigned" …/>
+        renderRow({ assignee: null });
+        expect(screen.getByLabelText('Unassigned')).toBeInTheDocument();
+    });
+
     it('renders ProjectPill when project_id matches passed projects', () => {
         const proj = { id: 'p1', name: 'Alpha', color: '#6d69f2',
             description: null, icon: null, status: 'in_progress' as const,
