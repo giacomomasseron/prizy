@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+// This spec explicitly tests the login flow — clear the pre-authenticated
+// storageState so the page starts unauthenticated.
+test.use({ storageState: { cookies: [], origins: [] } });
+
 test('login, create an issue, and move its card across the board', async ({ page }) => {
     // 1. Log in (session + CSRF, end-to-end).
     await page.goto('/login');

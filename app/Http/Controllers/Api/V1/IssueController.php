@@ -45,6 +45,7 @@ final class IssueController extends Controller
     {
         $model = $this->findIssue->handle($issue);
         Gate::authorize('view', $model);
+        $model->load('assignee');
 
         return IssueResource::make($model)->response();
     }

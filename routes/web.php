@@ -60,10 +60,7 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
 // "Forgot password" reuses this same endpoint (no separate flow needed).
 Route::post('/magic-link', [MagicLinkController::class, 'request'])->middleware(['throttle:6,1']);
 
-// Throttle raised to 60/min (from 10/min) — the entire e2e suite runs 14 serial
-// logins within 1 minute and the original cap triggered 429 for the final 4 specs.
-// 60/min still protects against automated brute-force while keeping the suite green.
-Route::post('/login', [LoginController::class, 'store'])->middleware(['throttle:60,1']);
+Route::post('/login', [LoginController::class, 'store'])->middleware(['throttle:10,1']);
 Route::post('/logout', [LoginController::class, 'destroy']);
 
 // Resend verification email (tenant, authenticated, throttled).

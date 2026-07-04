@@ -4,11 +4,8 @@ test('integrations: configure Slack and persist', async ({ page }) => {
     // precondition: smoke@example.com is seeded as owner (SmokeSeeder) so the Integrations menuitem renders
     test.setTimeout(60_000);
 
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // Navigate via sidebar user menu → Integrations
     await page.getByTestId('user-menu-trigger').click();

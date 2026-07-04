@@ -1,16 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-async function login(page: import('@playwright/test').Page) {
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
-}
-
 test('peek drawer: open from list → follow "Open full issue →" to /issues/:id', async ({ page }) => {
     test.setTimeout(60_000);
-    await login(page);
+    // Pre-authenticated via storageState
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     // Wait for at least one issue row to be visible
@@ -36,7 +29,8 @@ test('peek drawer: open from list → follow "Open full issue →" to /issues/:i
 
 test('create issue via drawer: appears in the list', async ({ page }) => {
     test.setTimeout(60_000);
-    await login(page);
+    // Pre-authenticated via storageState
+    await page.goto('/');
     await page.waitForLoadState('networkidle');
 
     const title = `E2E Drawer ${Date.now()}`;
@@ -78,7 +72,8 @@ test('create issue via drawer: appears in the list', async ({ page }) => {
 
 test('list ↔ board toggle via SegmentedControl', async ({ page }) => {
     test.setTimeout(60_000);
-    await login(page);
+    // Pre-authenticated via storageState
+    await page.goto('/');
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
     // Switch to Board
@@ -96,7 +91,7 @@ test('list ↔ board toggle via SegmentedControl', async ({ page }) => {
 
 test('board drag: moves the card and does NOT open peek drawer', async ({ page }) => {
     test.setTimeout(60_000);
-    await login(page);
+    // Pre-authenticated via storageState
     await page.goto('/board');
     await page.waitForLoadState('networkidle');
 

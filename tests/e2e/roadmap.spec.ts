@@ -3,12 +3,8 @@ import { expect, test } from '@playwright/test';
 test('roadmap: navigate via nav link and assert heading visible', async ({ page }) => {
     test.setTimeout(60_000);
 
-    // 1. Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // 2. Click the Roadmap nav link
     await page.getByRole('link', { name: 'Roadmap' }).click();

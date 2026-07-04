@@ -130,6 +130,7 @@ function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnPr
                         lineHeight: 1,
                     }}
                     className="hover:bg-hover"
+                    aria-label={`Create ${STATUS_LABELS[status]} issue`}
                     onClick={() => onColumnAdd(status)}
                 >
                     +

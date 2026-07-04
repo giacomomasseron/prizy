@@ -11,6 +11,7 @@ export default defineConfig({
     workers: 1,
     use: {
         baseURL: 'http://smoke.localhost:8001',
+        storageState: 'tests/e2e/.auth/smoke.json',
         trace: 'on-first-retry',
     },
     projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

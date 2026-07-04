@@ -3,12 +3,8 @@ import { expect, test } from '@playwright/test';
 test('search: ⌘K finds a seeded issue and navigates; /search shows results', async ({ page }) => {
     test.setTimeout(60_000);
 
-    // Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // Grab the seeded issue's title from the list.
     // R-B redesign: issue rows are <div data-testid="issue-row">, not <a> links.

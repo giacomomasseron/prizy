@@ -102,15 +102,35 @@ describe('useIssueDrawers – filter preservation', () => {
         act(() => getState().openCreate({ status: 'todo' }));
         expect(getSP().get('team')).toBe('abc');
         expect(getSP().get('create')).toBe('1');
-        expect(getSP().get('status')).toBe('todo');
+        expect(getSP().get('cstatus')).toBe('todo');
+        expect(getSP().get('status')).toBeNull();
         expect(getSP().get('peek')).toBeNull();
     });
 
-    it('openCreate without status removes status param but keeps unrelated params', () => {
+    it('openCreate without status preserves status filter param', () => {
         const { getState, getSP } = mountFull('/?team=abc&status=done');
         act(() => getState().openCreate());
         expect(getSP().get('team')).toBe('abc');
         expect(getSP().get('create')).toBe('1');
-        expect(getSP().get('status')).toBeNull();
+        expect(getSP().get('status')).toBe('done');
+        expect(getSP().get('cstatus')).toBeNull();
+    });
+
+    it('openPeek preserves status filter param', () => {
+        const { getState, getSP } = mountFull('/?status=backlog');
+        act(() => getState().openPeek('i1'));
+        expect(getSP().get('peek')).toBe('i1');
+        expect(getSP().get('status')).toBe('backlog');
+        expect(getSP().get('create')).toBeNull();
+        expect(getSP().get('cstatus')).toBeNull();
+    });
+
+    it('openCreate preserves status filter param while setting cstatus', () => {
+        const { getState, getSP } = mountFull('/?status=backlog');
+        act(() => getState().openCreate({ status: 'todo' }));
+        expect(getSP().get('status')).toBe('backlog');
+        expect(getSP().get('cstatus')).toBe('todo');
+        expect(getSP().get('create')).toBe('1');
+        expect(getSP().get('peek')).toBeNull();
     });
 });

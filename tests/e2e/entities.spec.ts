@@ -9,12 +9,8 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     const PROJECT_NAME = `E2E Project ${ts}`;
     const LABEL_NAME = `E2E Label ${ts}`;
 
-    // 1. Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // 2. Teams — create a new team
     await page.getByRole('link', { name: 'Teams' }).click();

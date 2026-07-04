@@ -42,3 +42,24 @@ it('returns 404 problem+json for a missing/cross-workspace issue', function (): 
 
     Workspace::forgetCurrent();
 });
+
+it('GET /v1/issues/{id} embeds assignee {id,name} for an assigned issue', function (): void {
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $assignee = User::factory()->for($ws, 'workspace')->create(['name' => 'Jane Doe']);
+    $issue = Issue::factory()->for($ws, 'workspace')->create([
+        'team_id'     => $team->id,
+        'created_by'  => $user->id,
+        'assignee_id' => $assignee->id,
+    ]);
+    $token = app(CreatePersonalAccessToken::class)->handle($user, 't', null)['token'];
+
+    $res = $this->withToken($token)->getJson("/v1/issues/{$issue->id}");
+
+    $res->assertStatus(200);
+    expect($res->json('data.assignee'))->toMatchArray(['id' => $assignee->id, 'name' => 'Jane Doe']);
+
+    Workspace::forgetCurrent();
+});

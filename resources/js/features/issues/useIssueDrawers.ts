@@ -18,12 +18,12 @@ export function useIssueDrawers(): IssueDrawerState {
 
     const peekId = searchParams.get('peek');
     const createOpen = searchParams.has('create');
-    const createStatus = searchParams.get('status') as IssueStatus | null;
+    const createStatus = searchParams.get('cstatus') as IssueStatus | null;
 
     function openPeek(id: string) {
         setSearchParams((prev) => {
             prev.delete('create');
-            prev.delete('status');
+            prev.delete('cstatus');
             prev.set('peek', id);
             return prev;
         }, { replace: true });
@@ -33,7 +33,7 @@ export function useIssueDrawers(): IssueDrawerState {
         setSearchParams((prev) => {
             prev.delete('peek');
             prev.set('create', '1');
-            if (opts?.status) prev.set('status', opts.status); else prev.delete('status');
+            if (opts?.status) prev.set('cstatus', opts.status); else prev.delete('cstatus');
             return prev;
         }, { replace: true });
     }
@@ -43,7 +43,7 @@ export function useIssueDrawers(): IssueDrawerState {
             const next = new URLSearchParams(prev);
             next.delete('peek');
             next.delete('create');
-            next.delete('status');
+            next.delete('cstatus');
             return next;
         }, { replace: true });
     }

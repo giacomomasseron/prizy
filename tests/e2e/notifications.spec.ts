@@ -3,12 +3,8 @@ import { expect, test } from '@playwright/test';
 test('notifications: inbox badge, /notifications page, mark all read', async ({ page }) => {
     test.setTimeout(60_000);
 
-    // 1. Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // 2. The Inbox nav link is always present in the sidebar regardless of unread count
     await expect(page.getByRole('link', { name: 'Inbox' })).toBeVisible();

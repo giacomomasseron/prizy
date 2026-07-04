@@ -3,12 +3,8 @@ import { expect, test } from '@playwright/test';
 test('theme toggle persists across reload and changes computed background', async ({ page }) => {
     test.setTimeout(60_000);
 
-    // 1. Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // 2. Assert initial theme is dark (data-theme attribute on <html>)
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');

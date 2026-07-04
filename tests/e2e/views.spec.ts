@@ -5,11 +5,8 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
 
     const VIEW_NAME = `E2E view ${Date.now()}`;
 
-    // 1. Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
     // 2. Open Views → My Issues; assert assignee_id appears in URL

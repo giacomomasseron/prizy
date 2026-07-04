@@ -3,12 +3,8 @@ import { expect, test } from '@playwright/test';
 test('settings: email digest frequency persists after reload', async ({ page }) => {
     test.setTimeout(60_000);
 
-    // 1. Login
-    await page.goto('/login');
-    await page.getByLabel(/email/i).fill('smoke@example.com');
-    await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // Start on issues list (pre-authenticated via storageState)
+    await page.goto('/');
 
     // 2. Navigate to /settings via the sidebar user-menu → Settings
     await page.getByTestId('user-menu-trigger').click();
