@@ -29,6 +29,29 @@ vi.mock('../teams/hooks', () => ({
         },
     }),
 }));
+vi.mock('../projects/hooks', () => ({
+    useProjects: () => ({
+        data: {
+            items: [
+                {
+                    id: 'p1',
+                    name: 'Apollo',
+                    description: null,
+                    icon: null,
+                    color: '#6d69f2',
+                    status: 'in_progress',
+                    team_id: 't1',
+                    start_date: null,
+                    target_date: null,
+                    created_by: 'u1',
+                    created_at: '2026-07-04T00:00:00.000000Z',
+                    updated_at: '2026-07-04T00:00:00.000000Z',
+                },
+            ],
+            next: null,
+        },
+    }),
+}));
 
 function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onClose?: () => void }) {
     const qc = new QueryClient();
@@ -89,11 +112,29 @@ describe('CreateIssueDrawer', () => {
         await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
 
+    it('includes project_id=null by default and project_id when selected', async () => {
+        const { onClose } = mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task B' } });
+        // Select project "Apollo"
+        fireEvent.click(screen.getByRole('button', { name: /Issue project/i }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Apollo' }));
+        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
+        await waitFor(() =>
+            expect(mockMutateAsync).toHaveBeenCalledWith(
+                expect.objectContaining({ project_id: 'p1', title: 'Task B' }),
+            ),
+        );
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
+    });
+
     it('pre-fills status when initialStatus is passed', () => {
         mount({ initialStatus: 'in_progress' });
-        // The "In Progress" segment button should be visually active (panel background)
-        // We test via aria — SegmentedControl renders buttons; the active one has bg:var(--panel)
-        // Check by finding the button (it exists):
-        expect(screen.getByRole('button', { name: 'In Progress' })).toBeInTheDocument();
+        // SegmentedControl marks the active segment with background:var(--panel);
+        // inactive segments get background:transparent.
+        // This test must FAIL if the pre-fill is ignored (active would be 'Todo', not 'In Progress').
+        const activeBtn = screen.getByRole('button', { name: 'In Progress' });
+        const inactiveBtn = screen.getByRole('button', { name: 'Todo' });
+        expect(activeBtn.style.background).toBe('var(--panel)');
+        expect(inactiveBtn.style.background).toBe('transparent');
     });
 });

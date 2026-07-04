@@ -6,7 +6,9 @@ import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
 import { Menu } from '../../components/ui/Menu';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { ProjectPill } from '../../components/ui/ProjectPill';
 import { useTeams } from '../teams/hooks';
+import { useProjects } from '../projects/hooks';
 import { useCreateIssue } from './hooks';
 import type { IssueStatus, IssuePriority } from '../../lib/types';
 
@@ -34,13 +36,16 @@ const PRIORITY_OPTIONS: Array<{ label: string; value: IssuePriority }> = [
 
 export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
     const teams = useTeams();
+    const projects = useProjects();
     const createIssue = useCreateIssue();
 
     const [teamId, setTeamId] = useState<string | null>(null);
+    const [projectId, setProjectId] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<IssueStatus>(initialStatus ?? 'todo');
     const [priority, setPriority] = useState<IssuePriority>('no_priority');
     const [description, setDescription] = useState('');
+    // assignee deferred to R-C
 
     // Auto-select when there is exactly one team
     useEffect(() => {
@@ -56,11 +61,13 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
             setStatus(initialStatus ?? 'todo');
             setPriority('no_priority');
             setDescription('');
+            setProjectId(null);
         }
     }, [open, initialStatus]);
 
     const selectedTeam = teams.data?.items?.find((t) => t.id === teamId);
     const singleTeam = (teams.data?.items?.length ?? 0) === 1;
+    const selectedProject = projects.data?.items?.find((p) => p.id === projectId);
 
     async function handleSubmit() {
         if (!teamId || !title.trim()) return;
@@ -71,6 +78,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                 status,
                 priority,
                 description: description.trim() || null,
+                project_id: projectId,
             });
             onClose();
         } catch {
@@ -133,6 +141,43 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                     />
                 )}
 
+                {/* Project (optional) */}
+                <Menu
+                    placement="bottom-start"
+                    trigger={
+                        <button
+                            type="button"
+                            aria-label="Issue project"
+                            style={{
+                                background: 'var(--panel)',
+                                border: '1px solid var(--border)',
+                                borderRadius: 9,
+                                color: projectId ? 'var(--fg)' : 'var(--fg3)',
+                                fontSize: 13,
+                                padding: '6px 10px',
+                                fontFamily: 'inherit',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                width: '100%',
+                            }}
+                        >
+                            {selectedProject ? (
+                                <ProjectPill name={selectedProject.name} color={selectedProject.color} />
+                            ) : (
+                                'No project'
+                            )}
+                        </button>
+                    }
+                    items={[
+                        { key: '__none__', label: 'No project', onActivate: () => setProjectId(null) },
+                        ...(projects.data?.items?.map((p) => ({
+                            key: p.id,
+                            label: p.name,
+                            onActivate: () => setProjectId(p.id),
+                        })) ?? []),
+                    ]}
+                />
+
                 {/* Title */}
                 <Input
                     autoFocus
@@ -180,7 +225,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                     <Button
                         variant="primary"
                         disabled={!teamId || !title.trim() || createIssue.isPending}
-                        onClick={handleSubmit}
+                        onClick={() => void handleSubmit()}
                         aria-label="Create issue"
                     >
                         Create issue
