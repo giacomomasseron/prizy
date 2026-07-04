@@ -8,20 +8,25 @@ test('login, create an issue, and move its card across the board', async ({ page
     await page.getByRole('button', { name: /log in/i }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
-    // 2. Create an issue via the UI (team_id comes from the seeded starter issue).
+    // 2. Create an issue via the drawer (C hotkey opens it).
     const title = `Smoke ${Date.now()}`;
-    // Select the seeded SMK team — required since Task 7 added the team dropdown.
-    await page.getByLabel(/issue team/i).selectOption({ label: 'SMK' });
-    await page.getByLabel(/new issue title/i).fill(title);
-    await page.getByRole('button', { name: /add issue/i }).click();
-    await expect(page.getByText(title)).toBeVisible();
+    await page.keyboard.press('c');
+    // Drawer should open — Issue title input (autoFocus) appears
+    await expect(page.getByLabel(/Issue title/i)).toBeVisible({ timeout: 6_000 });
+    // Team is auto-selected (single SMK team) — fill the title and wait for button to enable
+    await page.getByLabel(/Issue title/i).fill(title);
+    // Wait for team auto-selection to fire (single-team workspace useEffect)
+    await expect(page.getByRole('button', { name: /Create issue/i })).not.toBeDisabled({ timeout: 5_000 });
+    await page.getByRole('button', { name: /Create issue/i }).click();
+    // Drawer closes and the issue appears in the list
+    await expect(page.getByText(title)).toBeVisible({ timeout: 8_000 });
 
-    // 3. On the board, drag the new card (created in 'backlog') into 'in_progress'.
+    // 3. On the board, drag the new card (created in 'todo') into 'in_progress'.
     //    @dnd-kit's PointerSensor needs a real mouse-move drag, not HTML5 dragTo.
     await page.goto('/board');
 
     // Get the card DIV (not the inner Link) to avoid click-through navigation.
-    const card = page.getByTestId('col-backlog').locator('[data-testid^="card-"]').filter({ hasText: title });
+    const card = page.getByTestId('col-todo').locator('[data-testid^="card-"]').filter({ hasText: title });
     const target = page.getByTestId('col-in_progress');
     const from = await card.boundingBox();
     const to = await target.boundingBox();
