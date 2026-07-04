@@ -36,8 +36,8 @@ export default function LabelsPage() {
             {canDevelop && (
                 <form onSubmit={submit} className="mb-4 flex flex-wrap items-center gap-2">
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Label name…"
-                        aria-label="Label name" maxLength={64} className="flex-1 rounded border px-2 py-1" />
-                    <input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label="Label color" className="h-8 w-10 rounded border" />
+                        aria-label="Label name" maxLength={64} className="flex-1 rounded border border-border px-2 py-1" />
+                    <input type="color" value={color} onChange={(e) => setColor(e.target.value)} aria-label="Label color" className="h-8 w-10 rounded border border-border" />
                     <button type="submit" disabled={create.isPending} className="rounded bg-accent px-3 text-white disabled:opacity-50">Add label</button>
                 </form>
             )}

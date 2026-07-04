@@ -46,11 +46,11 @@ export default function ProjectsPage() {
             {canDevelop && (
                 <form onSubmit={submit} className="mb-4 flex flex-wrap gap-2">
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Project name…"
-                        aria-label="Project name" className="flex-1 rounded border px-2 py-1" />
-                    <select value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)} aria-label="Project status" className="rounded border px-2 py-1">
+                        aria-label="Project name" className="flex-1 rounded border border-border px-2 py-1" />
+                    <select value={status} onChange={(e) => setStatus(e.target.value as ProjectStatus)} aria-label="Project status" className="rounded border border-border px-2 py-1">
                         {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                     </select>
-                    <select value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-label="Project team" className="rounded border px-2 py-1">
+                    <select value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-label="Project team" className="rounded border border-border px-2 py-1">
                         <option value="">No team</option>
                         {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>

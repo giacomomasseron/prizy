@@ -20,11 +20,11 @@ export default function RoadmapPage() {
 
             {scheduled.length > 0 && (
                 <div className="min-w-[720px]">
-                    <div className="flex border-b pb-1">
+                    <div className="flex border-b border-border pb-1">
                         <div className="w-48 shrink-0" />
                         <div className="flex flex-1">
                             {win.months.map((m) => (
-                                <div key={m.key} className="flex-1 border-l pl-1 text-xs text-fg2">{m.label}</div>
+                                <div key={m.key} className="flex-1 border-l border-border pl-1 text-xs text-fg2">{m.label}</div>
                             ))}
                         </div>
                     </div>

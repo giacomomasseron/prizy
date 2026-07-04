@@ -118,7 +118,7 @@ export default function IssueDetailPage() {
                                         setError(err instanceof ApiError ? err.detail : 'Update failed.');
                                     }
                                 }}
-                                className="rounded border px-2 py-1"
+                                className="rounded border border-border px-2 py-1"
                             >
                                 <option value="">None</option>
                                 {projects.data?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -136,7 +136,7 @@ export default function IssueDetailPage() {
                                         setError(err instanceof ApiError ? err.detail : 'Update failed.');
                                     }
                                 }}
-                                className="rounded border px-2 py-1"
+                                className="rounded border border-border px-2 py-1"
                             >
                                 <option value="">None</option>
                                 {cycles.data?.items.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -165,8 +165,8 @@ export default function IssueDetailPage() {
                 </ul>
                 {canDevelop && (
                     <div className="mt-2 flex items-center gap-2">
-                        <input aria-label="Add PR URL" value={prUrl} onChange={(e) => setPrUrl(e.target.value)} placeholder="https://github.com/owner/repo/pull/123" className="flex-1 rounded border px-2 py-1 text-sm" />
-                        <button type="button" onClick={onAddPr} className="rounded border px-2 py-1 text-sm">Add PR</button>
+                        <input aria-label="Add PR URL" value={prUrl} onChange={(e) => setPrUrl(e.target.value)} placeholder="https://github.com/owner/repo/pull/123" className="flex-1 rounded border border-border px-2 py-1 text-sm" />
+                        <button type="button" onClick={onAddPr} className="rounded border border-border px-2 py-1 text-sm">Add PR</button>
                         {prError && <span className="text-sm text-red">{prError}</span>}
                     </div>
                 )}
@@ -181,7 +181,7 @@ export default function IssueDetailPage() {
                 </ul>
                 <form onSubmit={submitComment} className="mt-3 flex gap-2">
                     <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add a comment…"
-                        aria-label="Add a comment" className="flex-1 rounded border px-2 py-1" />
+                        aria-label="Add a comment" className="flex-1 rounded border border-border px-2 py-1" />
                     <button type="submit" className="rounded bg-accent px-3 text-white">Send</button>
                 </form>
             </section>

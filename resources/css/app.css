@@ -31,6 +31,8 @@
   --color-blue: var(--blue);       --color-teal: var(--teal);
 }
 
+html, body { background: var(--bg); color: var(--fg); }
+
 @keyframes prizy-fade  { from { opacity: 0 }                              to { opacity: 1 } }
 @keyframes prizy-slide { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes prizy-pop   { from { transform: scale(.97) translateY(6px); opacity: 0 } to { transform: none; opacity: 1 } }

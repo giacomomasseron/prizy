@@ -34,7 +34,7 @@ export default function SettingsPage() {
                         aria-label="Email digest frequency"
                         value={me.data?.email_digest_frequency ?? 'off'}
                         onChange={(e) => change(e.target.value as DigestFrequency)}
-                        className="rounded border px-2 py-1"
+                        className="rounded border border-border px-2 py-1"
                     >
                         <option value="off">Off</option>
                         <option value="daily">Daily</option>

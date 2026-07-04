@@ -33,13 +33,13 @@ export default function LoginPage() {
                 <div>
                     <label htmlFor="email" className="block text-sm">Email</label>
                     <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                        className="w-full rounded border px-2 py-1" />
+                        className="w-full rounded border border-border px-2 py-1" />
                     {errors.email?.map((m) => <p key={m} className="text-sm text-red">{m}</p>)}
                 </div>
                 <div>
                     <label htmlFor="password" className="block text-sm">Password</label>
                     <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                        className="w-full rounded border px-2 py-1" />
+                        className="w-full rounded border border-border px-2 py-1" />
                     {errors.password?.map((m) => <p key={m} className="text-sm text-red">{m}</p>)}
                 </div>
                 {message && <p className="text-sm text-red">{message}</p>}

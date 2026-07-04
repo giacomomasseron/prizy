@@ -168,7 +168,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
 
             <label className="ml-auto flex items-center gap-1 text-fg2">
                 Sort
-                <select aria-label="Sort issues" value={filters.sort ?? ''} onChange={(e) => setFilter('sort', e.target.value || null)} className="rounded border px-1 py-0.5">
+                <select aria-label="Sort issues" value={filters.sort ?? ''} onChange={(e) => setFilter('sort', e.target.value || null)} className="rounded border border-border px-1 py-0.5">
                     <option value="">Default</option>
                     {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>

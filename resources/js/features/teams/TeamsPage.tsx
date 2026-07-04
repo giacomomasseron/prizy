@@ -45,9 +45,9 @@ export default function TeamsPage() {
             {canManage && (
                 <form onSubmit={submit} className="mb-4 flex flex-wrap gap-2">
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Team name…"
-                        aria-label="Team name" className="flex-1 rounded border px-2 py-1" />
+                        aria-label="Team name" className="flex-1 rounded border border-border px-2 py-1" />
                     <input value={identifier} onChange={(e) => setIdentifier(e.target.value.toUpperCase())} placeholder="ID (e.g. ENG)"
-                        aria-label="Team identifier" maxLength={8} className="w-32 rounded border px-2 py-1" />
+                        aria-label="Team identifier" maxLength={8} className="w-32 rounded border border-border px-2 py-1" />
                     <button type="submit" disabled={create.isPending}
                         className="rounded bg-accent px-3 text-white disabled:opacity-50">Add team</button>
                 </form>

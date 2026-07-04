@@ -30,12 +30,12 @@ export default function IssueListPage() {
             </div>
 
             <form onSubmit={submit} className="mb-4 flex gap-2">
-                <select value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-label="Issue team" className="rounded border px-2 py-1">
+                <select value={teamId} onChange={(e) => setTeamId(e.target.value)} aria-label="Issue team" className="rounded border border-border px-2 py-1">
                     <option value="">Team…</option>
                     {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.identifier}</option>)}
                 </select>
                 <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New issue title…"
-                    aria-label="New issue title" className="flex-1 rounded border px-2 py-1" />
+                    aria-label="New issue title" className="flex-1 rounded border border-border px-2 py-1" />
                 <button type="submit" disabled={!teamId || createIssue.isPending}
                     className="rounded bg-accent px-3 text-white disabled:opacity-50">Add issue</button>
             </form>

@@ -34,7 +34,7 @@ export default function SignupPage() {
                     <div key={field}>
                         <label htmlFor={field} className="block text-sm capitalize">{field.replace('_', ' ')}</label>
                         <input id={field} type={field === 'password' ? 'password' : 'text'} value={form[field]}
-                            onChange={set(field)} className="w-full rounded border px-2 py-1" />
+                            onChange={set(field)} className="w-full rounded border border-border px-2 py-1" />
                         {errors[field]?.map((m) => <p key={m} className="text-sm text-red">{m}</p>)}
                     </div>
                 ))}

@@ -84,6 +84,7 @@ describe('AppLayout sidebar', () => {
         const user = userEvent.setup();
         renderLayout('member');
         await user.click(screen.getByTestId('user-menu-trigger'));
+        expect(await screen.findByRole('menuitem', { name: 'Settings' })).toBeInTheDocument();
         expect(screen.queryByRole('menuitem', { name: 'Integrations' })).toBeNull();
     });
 

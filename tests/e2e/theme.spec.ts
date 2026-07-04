@@ -19,6 +19,14 @@ test('theme toggle persists across reload and changes computed background', asyn
     );
     expect(mainDark).toBe('#0b0b0d');
 
+    // 3b. Assert the body is ACTUALLY PAINTED with the dark background color
+    // This will fail if Fix 1 (html,body{background:var(--bg)}) regresses.
+    const bodyBgDark = await page.evaluate(() =>
+        getComputedStyle(document.body).backgroundColor,
+    );
+    // #0b0b0d = rgb(11, 11, 13)
+    expect(bodyBgDark).toBe('rgb(11, 11, 13)');
+
     // 4. Click the theme toggle in the sidebar
     await page.getByRole('button', { name: /switch to light theme/i }).click();
 
@@ -30,6 +38,14 @@ test('theme toggle persists across reload and changes computed background', asyn
         getComputedStyle(el).getPropertyValue('--bg').trim(),
     );
     expect(mainLight).toBe('#fbfbfa');
+
+    // 6b. Assert the body is ACTUALLY PAINTED with the light background color
+    // This will fail if Fix 1 (html,body{background:var(--bg)}) regresses.
+    const bodyBgLight = await page.evaluate(() =>
+        getComputedStyle(document.body).backgroundColor,
+    );
+    // #fbfbfa = rgb(251, 251, 250)
+    expect(bodyBgLight).toBe('rgb(251, 251, 250)');
 
     // 7. Reload — theme must persist (no-flash script reads localStorage)
     await page.reload();

@@ -91,7 +91,7 @@ export default function IntegrationsPage() {
                         value={url}
                         onChange={(e) => setUrl(e.target.value)}
                         placeholder={slack.data?.configured ? `Configured (${slack.data.url_preview})` : 'https://hooks.slack.com/services/…'}
-                        className="mt-1 w-full rounded border px-2 py-1"
+                        className="mt-1 w-full rounded border border-border px-2 py-1"
                     />
                 </label>
 
@@ -112,7 +112,7 @@ export default function IntegrationsPage() {
 
                 <div className="mt-4 flex items-center gap-2">
                     <button type="button" onClick={onSave} className="rounded bg-accent px-3 py-1 text-sm text-white">Save</button>
-                    <button type="button" onClick={onTest} className="rounded border px-3 py-1 text-sm">Send test</button>
+                    <button type="button" onClick={onTest} className="rounded border border-border px-3 py-1 text-sm">Send test</button>
                     {msg && <span className="text-sm text-green">{msg}</span>}
                     {error && <span className="text-sm text-red">{error}</span>}
                 </div>
@@ -122,7 +122,7 @@ export default function IntegrationsPage() {
                 {github.data?.configured && github.data.webhook_url && (
                     <label className="block text-sm">
                         Webhook URL (add this to your repo's webhook settings)
-                        <input readOnly aria-label="GitHub webhook URL" value={github.data.webhook_url} className="mt-1 w-full rounded border bg-bg px-2 py-1 text-fg2" />
+                        <input readOnly aria-label="GitHub webhook URL" value={github.data.webhook_url} className="mt-1 w-full rounded border border-border bg-bg px-2 py-1 text-fg2" />
                     </label>
                 )}
                 <label className="mt-3 block text-sm">
@@ -133,7 +133,7 @@ export default function IntegrationsPage() {
                         value={ghSecret}
                         onChange={(e) => setGhSecret(e.target.value)}
                         placeholder={github.data?.secret_set ? 'Secret set — leave blank to keep' : 'Set the same secret as in GitHub'}
-                        className="mt-1 w-full rounded border px-2 py-1"
+                        className="mt-1 w-full rounded border border-border px-2 py-1"
                     />
                 </label>
                 <label className="mt-3 flex items-center gap-2 text-sm">

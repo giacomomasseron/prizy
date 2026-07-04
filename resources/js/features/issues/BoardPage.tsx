@@ -21,7 +21,7 @@ function Column({ status, issues }: { status: IssueStatus; issues: Issue[] }) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     return (
         <div ref={setNodeRef} data-testid={`col-${status}`}
-            className={`flex w-56 shrink-0 flex-col gap-2 rounded bg-hover p-2 ${isOver ? 'ring-2 ring-indigo-400' : ''}`}>
+            className={`flex w-56 shrink-0 flex-col gap-2 rounded bg-hover p-2 ${isOver ? 'ring-2 ring-accent' : ''}`}>
             <h2 className="text-xs font-semibold uppercase text-fg2">{status.replace('_', ' ')}</h2>
             {issues.map((issue) => <Card key={issue.id} issue={issue} />)}
         </div>

@@ -39,8 +39,8 @@ export default function ProjectDetailPage() {
             {canDevelop && (
                 <form onSubmit={submit} className="mb-3 flex flex-wrap gap-2">
                     <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Milestone name…"
-                        aria-label="Milestone name" className="flex-1 rounded border px-2 py-1" />
-                    <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} aria-label="Milestone target date" className="rounded border px-2 py-1" />
+                        aria-label="Milestone name" className="flex-1 rounded border border-border px-2 py-1" />
+                    <input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} aria-label="Milestone target date" className="rounded border border-border px-2 py-1" />
                     <button type="submit" disabled={create.isPending} className="rounded bg-accent px-3 text-white disabled:opacity-50">Add milestone</button>
                 </form>
             )}

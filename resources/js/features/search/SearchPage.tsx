@@ -46,13 +46,13 @@ export default function SearchPage() {
                     value={text}
                     onChange={(e) => setText(e.target.value)}
                     placeholder="Search issues…"
-                    className="flex-1 rounded border px-3 py-2"
+                    className="flex-1 rounded border border-border px-3 py-2"
                 />
-                <select aria-label="Status" value={status} onChange={(e) => setParam('status', e.target.value)} className="rounded border px-2">
+                <select aria-label="Status" value={status} onChange={(e) => setParam('status', e.target.value)} className="rounded border border-border px-2">
                     <option value="">Any status</option>
                     {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
-                <select aria-label="Team" value={team} onChange={(e) => setParam('team', e.target.value)} className="rounded border px-2">
+                <select aria-label="Team" value={team} onChange={(e) => setParam('team', e.target.value)} className="rounded border border-border px-2">
                     <option value="">Any team</option>
                     {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.identifier}</option>)}
                 </select>
@@ -74,9 +74,9 @@ export default function SearchPage() {
 
             {search.data && search.data.lastPage > 1 && (
                 <div className="mt-4 flex items-center gap-3 text-sm">
-                    <button type="button" disabled={page <= 1} onClick={() => setParam('page', String(page - 1))} className="rounded border px-2 py-1 disabled:opacity-40">Prev</button>
+                    <button type="button" disabled={page <= 1} onClick={() => setParam('page', String(page - 1))} className="rounded border border-border px-2 py-1 disabled:opacity-40">Prev</button>
                     <span>Page {search.data.currentPage} of {search.data.lastPage}</span>
-                    <button type="button" disabled={page >= search.data.lastPage} onClick={() => setParam('page', String(page + 1))} className="rounded border px-2 py-1 disabled:opacity-40">Next</button>
+                    <button type="button" disabled={page >= search.data.lastPage} onClick={() => setParam('page', String(page + 1))} className="rounded border border-border px-2 py-1 disabled:opacity-40">Next</button>
                 </div>
             )}
         </div>
