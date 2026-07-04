@@ -5,6 +5,7 @@ import { useUnreadCount } from '../features/notifications/hooks';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 import CommandPalette from '../features/search/CommandPalette';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
+import { useIssues } from '../features/issues/hooks';
 import { PeekDrawer } from '../features/issues/PeekDrawer';
 import { CreateIssueDrawer } from '../features/issues/CreateIssueDrawer';
 import { Avatar } from './ui/Avatar';
@@ -132,6 +133,10 @@ export default function AppLayout() {
     const unreadCount = unread.data?.count ?? 0;
     useRealtimeNotifications();
     const { peekId, createOpen, createStatus, openCreate, close } = useIssueDrawers();
+    const { data: issuesData } = useIssues();
+    const activeIssueCount = (issuesData?.items ?? []).filter(
+        (i) => i.status !== 'done' && i.status !== 'cancelled',
+    ).length;
 
     // C hotkey: open the create-issue drawer when not typing and no overlay is open
     useEffect(() => {
@@ -289,6 +294,11 @@ export default function AppLayout() {
                                 {link.icon}
                             </span>
                             <span style={{ flex: 1 }}>{link.label}</span>
+                            {link.to === '/' && activeIssueCount > 0 && (
+                                <span style={{ fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
+                                    {activeIssueCount}
+                                </span>
+                            )}
                         </NavLink>
                     ))}
                 </nav>

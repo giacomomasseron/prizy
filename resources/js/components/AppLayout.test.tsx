@@ -29,6 +29,7 @@ function renderLayout(adminLevel = 'member') {
         if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });
         if ((url as string).includes('/teams')) return j({ items: [], next: null });
         if ((url as string).includes('/projects')) return j({ items: [], next: null });
+        if ((url as string).includes('/issues')) return j({ data: [], links: { next: null } });
         return j({ data: {} });
     }));
     return render(

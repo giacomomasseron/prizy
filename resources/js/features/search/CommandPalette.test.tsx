@@ -66,3 +66,51 @@ it('filters actions by query and runs one', async () => {
     await action.click();
     expect(navigate).toHaveBeenCalledWith('/board');
 });
+
+it('issue rows render StatusIcon + identifier + title', async () => {
+    // Override fetch to return a complete issue with status and identifier
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        const j = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        if (url.includes('/v1/search')) {
+            return j({
+                data: {
+                    issues: [{
+                        id: 'i99',
+                        title: 'Fix the bug',
+                        status: 'in_progress',
+                        identifier: 'PRZ-42',
+                        priority: 'high',
+                        description: null,
+                        estimate: null,
+                        due_date: null,
+                        sort_order: 0,
+                        team_id: 't1',
+                        project_id: null,
+                        cycle_id: null,
+                        parent_issue_id: null,
+                        assignee_id: null,
+                        created_by: 'u1',
+                        archived_at: null,
+                        labels: [],
+                        created_at: '2026-07-04T00:00:00.000000Z',
+                        updated_at: '2026-07-04T00:00:00.000000Z',
+                    }],
+                    projects: [],
+                    teams: [],
+                },
+            });
+        }
+        return j({ data: {} });
+    }));
+
+    renderPalette();
+    await openPalette();
+    await userEvent.type(screen.getByRole('textbox'), 'bug');
+
+    // Title renders
+    expect(await screen.findByText('Fix the bug')).toBeInTheDocument();
+    // Identifier renders
+    expect(screen.getByText('PRZ-42')).toBeInTheDocument();
+    // StatusIcon renders with aria-label matching the status
+    expect(screen.getByRole('generic', { name: 'in_progress' })).toBeInTheDocument();
+});

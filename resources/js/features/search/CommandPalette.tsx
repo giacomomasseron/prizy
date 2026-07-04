@@ -2,10 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from './hooks';
 import { filterCommands } from './commands';
+import { StatusIcon } from '../../components/ui/StatusIcon';
 
 interface Row {
     key: string;
     label: string;
+    leading?: React.ReactNode;
     onActivate: () => void;
     hint?: string;
 }
@@ -61,7 +63,20 @@ export default function CommandPalette() {
         }
         const data = search.data;
         for (const i of data?.issues ?? []) {
-            out.push({ key: `issue:${i.id}`, label: i.title, hint: 'Issue', onActivate: () => go(`/issues/${i.id}`) });
+            out.push({
+                key: `issue:${i.id}`,
+                label: i.title,
+                leading: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                        <StatusIcon status={i.status} size={12} />
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', width: 48 }}>
+                            {i.identifier ?? i.id.slice(0, 6).toUpperCase()}
+                        </span>
+                    </span>
+                ),
+                hint: 'Issue',
+                onActivate: () => go(`/issues/${i.id}`),
+            });
         }
         for (const p of data?.projects ?? []) {
             out.push({ key: `project:${p.id}`, label: p.name, hint: 'Project', onActivate: () => go(`/projects/${p.id}`) });
@@ -105,8 +120,10 @@ export default function CommandPalette() {
                                 type="button"
                                 onMouseEnter={() => setActive(idx)}
                                 onClick={r.onActivate}
+                                style={{ gap: 8 }}
                                 className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm ${idx === active ? 'bg-hover' : ''}`}
                             >
+                                {r.leading && r.leading}
                                 <span>{r.label}</span>
                                 {r.hint && <span className="text-xs text-fg3">{r.hint}</span>}
                             </button>
