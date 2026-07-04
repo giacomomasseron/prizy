@@ -80,6 +80,21 @@ it('assigns and unassigns an issue', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('rejects a foreign-workspace assignee_id via PUT assignee endpoint', function (): void {
+    [$token, $issue] = lifecycleWorld();
+    $wsB      = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $outsider = User::factory()->for($wsB, 'workspace')->create();
+    Workspace::forgetCurrent();
+    test()->actingInWorkspace($issue->workspace);
+
+    $this->withToken($token)
+        ->putJson("/v1/issues/{$issue->id}/assignee", ['assignee_id' => $outsider->id])
+        ->assertStatus(422);
+
+    Workspace::forgetCurrent();
+});
+
 it('archives an issue', function (): void {
     [$token, $issue] = lifecycleWorld();
 

@@ -136,6 +136,18 @@ export function useSetIssueLabels(issueId: string) {
     });
 }
 
+export function useAssignIssue(id: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (assigneeId: string | null) =>
+            api.put<Issue>(`/issues/${id}/assignee`, { assignee_id: assigneeId }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['issue', id] });
+            qc.invalidateQueries({ queryKey: ['issues'] });
+        },
+    });
+}
+
 export function useArchiveIssue(id: string) {
     const qc = useQueryClient();
     return useMutation({
