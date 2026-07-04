@@ -37,7 +37,7 @@ vi.mock('./githubLinks', () => ({
     useRemoveGithubLink: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('../../features/members/hooks', () => ({
-    useMembers: () => ({ data: { data: [{ id: 'm1', name: 'Alice' }] } }),
+    useMembers: () => ({ data: [{ id: 'm1', name: 'Alice' }] }),
 }));
 vi.mock('../../auth/useAuth', () => ({
     // vi.fn() so per-test viewer override works via vi.mocked(authModule.useMe).mockReturnValue(...)

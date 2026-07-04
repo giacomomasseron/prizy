@@ -6,6 +6,6 @@ export interface Member { id: string; name: string; }
 export function useMembers() {
     return useQuery({
         queryKey: ['members'],
-        queryFn: () => api.get<{ data: Member[] }>('/members'),
+        queryFn: () => api.get<Member[]>('/members'),
     });
 }
