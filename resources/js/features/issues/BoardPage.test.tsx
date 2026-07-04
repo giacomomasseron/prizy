@@ -1,5 +1,5 @@
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter, useSearchParams } from 'react-router-dom';
 import { vi, describe, it, expect } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { IssueStatus } from '../../lib/types';
@@ -44,12 +44,35 @@ vi.mock('./useIssueDrawers', () => ({
 
 import BoardPage from './BoardPage';
 
+// Spy component: renders alongside BoardPage and mirrors the current search params
+// so tests can assert URL state after interactions (same pattern as FilterBar.test.tsx).
+function BoardHarness() {
+    const [sp] = useSearchParams();
+    return (
+        <>
+            <BoardPage />
+            <output data-testid="qs">{sp.toString()}</output>
+        </>
+    );
+}
+
 function mountBoard() {
     const qc = new QueryClient();
     return render(
         <QueryClientProvider client={qc}>
             <MemoryRouter initialEntries={['/board']}>
                 <BoardPage />
+            </MemoryRouter>
+        </QueryClientProvider>
+    );
+}
+
+function mountBoardWithSpy(initial = '/board') {
+    const qc = new QueryClient();
+    return render(
+        <QueryClientProvider client={qc}>
+            <MemoryRouter initialEntries={[initial]}>
+                <BoardHarness />
             </MemoryRouter>
         </QueryClientProvider>
     );
@@ -80,14 +103,15 @@ describe('BoardPage', () => {
         expect(screen.getByText('Card one')).toBeInTheDocument();
     });
 
-    it('justDragged guard: drag then click does not set peek param', () => {
-        // We test the guard by simulating: after a drag (justDragged.current = true),
-        // clicking the card should NOT call onCardClick (setSearchParams with ?peek).
-        // Since we can't directly access internal refs, we verify the card renders
-        // and the onClick handler is present (the guard logic is in BoardPage internals).
-        mountBoard();
-        // Card must exist and be clickable — guard correctness verified structurally
-        const card = screen.getByTestId('card-c1');
-        expect(card).toBeInTheDocument();
+    it('plain click on a card sets ?peek=<id> in the URL', () => {
+        mountBoardWithSpy();
+        fireEvent.click(screen.getByTestId('card-c1'));
+        expect(screen.getByTestId('qs').textContent).toContain('peek=c1');
     });
+
+    // drag→no-peek is covered by the Playwright board spec in Task 8.
+    // The guard lives in guardedCardClick() in BoardPage: onDragEnd sets
+    // justDragged.current = true; the next call to guardedCardClick() returns
+    // early and resets the flag. Full @dnd-kit pointer-drag simulation in jsdom
+    // is unreliable, so the drag branch is not exercised here.
 });

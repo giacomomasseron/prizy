@@ -15,23 +15,21 @@ import { LabelChip } from '../../components/ui/LabelChip';
 import { ProjectPill } from '../../components/ui/ProjectPill';
 import { avatarFor } from '../../lib/avatarFor';
 
-const STATUS_LABELS: Record<IssueStatus, string> = {
+const STATUS_LABELS: Partial<Record<IssueStatus, string>> = {
     backlog:     'Backlog',
     todo:        'Todo',
     in_progress: 'In Progress',
     in_review:   'In Review',
     done:        'Done',
-    cancelled:   'Cancelled',
 };
 
 interface CardProps {
     issue: Issue;
     onCardClick(id: string): void;
     projects: Project[];
-    justDragged: React.MutableRefObject<boolean>;
 }
 
-function Card({ issue, onCardClick, projects, justDragged }: CardProps) {
+function Card({ issue, onCardClick, projects }: CardProps) {
     const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: issue.id });
     const style: React.CSSProperties = {
         background: 'var(--panel)',
@@ -56,13 +54,7 @@ function Card({ issue, onCardClick, projects, justDragged }: CardProps) {
             data-testid={`card-${issue.id}`}
             onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border2)'; }}
             onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--border)'; }}
-            onClick={() => {
-                if (justDragged.current) {
-                    justDragged.current = false;
-                    return;
-                }
-                onCardClick(issue.id);
-            }}
+            onClick={() => onCardClick(issue.id)}
         >
             {/* Top row: identifier + priority */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -102,10 +94,9 @@ interface ColumnProps {
     onCardClick(id: string): void;
     onColumnAdd(status: IssueStatus): void;
     projects: Project[];
-    justDragged: React.MutableRefObject<boolean>;
 }
 
-function Column({ status, issues, onCardClick, onColumnAdd, projects, justDragged }: ColumnProps) {
+function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnProps) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     return (
         <div
@@ -152,7 +143,6 @@ function Column({ status, issues, onCardClick, onColumnAdd, projects, justDragge
                     issue={i}
                     onCardClick={onCardClick}
                     projects={projects}
-                    justDragged={justDragged}
                 />
             ))}
         </div>
@@ -180,9 +170,10 @@ export default function BoardPage() {
         }
     }
 
-    function onCardClick(id: string) {
+    const guardedCardClick = (id: string) => {
+        if (justDragged.current) { justDragged.current = false; return; }
         setSearchParams((prev) => { prev.set('peek', id); return prev; });
-    }
+    };
 
     function onColumnAdd(status: IssueStatus) {
         openCreate({ status });
@@ -200,10 +191,9 @@ export default function BoardPage() {
                                 key={status}
                                 status={status}
                                 issues={grouped[status]}
-                                onCardClick={onCardClick}
+                                onCardClick={guardedCardClick}
                                 onColumnAdd={onColumnAdd}
                                 projects={projects}
-                                justDragged={justDragged}
                             />
                         ))}
                     </div>
