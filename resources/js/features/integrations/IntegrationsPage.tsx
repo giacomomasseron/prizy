@@ -81,7 +81,7 @@ export default function IntegrationsPage() {
     return (
         <div className="mx-auto max-w-2xl p-6">
             <h1 className="mb-4 text-xl font-semibold">Integrations</h1>
-            <section className="rounded border bg-white p-4">
+            <section className="rounded border border-border bg-panel p-4">
                 <h2 className="mb-2 font-semibold">Slack</h2>
                 <label className="block text-sm">
                     Webhook URL
@@ -96,7 +96,7 @@ export default function IntegrationsPage() {
                 </label>
 
                 <fieldset className="mt-3">
-                    <legend className="text-sm text-gray-600">Post on</legend>
+                    <legend className="text-sm text-fg2">Post on</legend>
                     {EVENT_OPTIONS.map((o) => (
                         <label key={o.key} className="mr-4 inline-flex items-center gap-1 text-sm">
                             <input type="checkbox" aria-label={o.label} checked={events.includes(o.key)} onChange={() => toggle(o.key)} />
@@ -111,18 +111,18 @@ export default function IntegrationsPage() {
                 </label>
 
                 <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={onSave} className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Save</button>
+                    <button type="button" onClick={onSave} className="rounded bg-accent px-3 py-1 text-sm text-white">Save</button>
                     <button type="button" onClick={onTest} className="rounded border px-3 py-1 text-sm">Send test</button>
-                    {msg && <span className="text-sm text-green-600">{msg}</span>}
-                    {error && <span className="text-sm text-red-600">{error}</span>}
+                    {msg && <span className="text-sm text-green">{msg}</span>}
+                    {error && <span className="text-sm text-red">{error}</span>}
                 </div>
             </section>
-            {typeof github.data?.configured === 'boolean' && <section className="mt-4 rounded border bg-white p-4">
+            {typeof github.data?.configured === 'boolean' && <section className="mt-4 rounded border border-border bg-panel p-4">
                 <h2 className="mb-2 font-semibold">GitHub</h2>
                 {github.data?.configured && github.data.webhook_url && (
                     <label className="block text-sm">
                         Webhook URL (add this to your repo's webhook settings)
-                        <input readOnly aria-label="GitHub webhook URL" value={github.data.webhook_url} className="mt-1 w-full rounded border bg-gray-50 px-2 py-1 text-gray-600" />
+                        <input readOnly aria-label="GitHub webhook URL" value={github.data.webhook_url} className="mt-1 w-full rounded border bg-bg px-2 py-1 text-fg2" />
                     </label>
                 )}
                 <label className="mt-3 block text-sm">
@@ -145,9 +145,9 @@ export default function IntegrationsPage() {
                     Active
                 </label>
                 <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={onSaveGithub} className="rounded bg-indigo-600 px-3 py-1 text-sm text-white">Save GitHub</button>
-                    {ghMsg && <span className="text-sm text-green-600">{ghMsg}</span>}
-                    {ghError && <span className="text-sm text-red-600">{ghError}</span>}
+                    <button type="button" onClick={onSaveGithub} className="rounded bg-accent px-3 py-1 text-sm text-white">Save GitHub</button>
+                    {ghMsg && <span className="text-sm text-green">{ghMsg}</span>}
+                    {ghError && <span className="text-sm text-red">{ghError}</span>}
                 </div>
             </section>}
         </div>

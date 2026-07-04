@@ -27,7 +27,7 @@ export default function SignupPage() {
     }
 
     return (
-        <div className="mx-auto mt-16 max-w-sm rounded-lg border bg-white p-6 shadow-sm">
+        <div className="mx-auto mt-16 max-w-sm rounded-lg border border-border bg-panel p-6 shadow-sm">
             <h1 className="mb-4 text-xl font-semibold">Create a workspace</h1>
             <form onSubmit={submit} className="space-y-3">
                 {(['workspace_name', 'slug', 'name', 'email', 'password'] as const).map((field) => (
@@ -35,10 +35,10 @@ export default function SignupPage() {
                         <label htmlFor={field} className="block text-sm capitalize">{field.replace('_', ' ')}</label>
                         <input id={field} type={field === 'password' ? 'password' : 'text'} value={form[field]}
                             onChange={set(field)} className="w-full rounded border px-2 py-1" />
-                        {errors[field]?.map((m) => <p key={m} className="text-sm text-red-600">{m}</p>)}
+                        {errors[field]?.map((m) => <p key={m} className="text-sm text-red">{m}</p>)}
                     </div>
                 ))}
-                <button type="submit" className="w-full rounded bg-indigo-600 py-1.5 text-white">Create</button>
+                <button type="submit" className="w-full rounded bg-accent py-1.5 text-white">Create</button>
             </form>
         </div>
     );

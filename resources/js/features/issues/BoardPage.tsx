@@ -11,7 +11,7 @@ function Card({ issue }: { issue: Issue }) {
     return (
         <div ref={setNodeRef} style={style} {...listeners} {...attributes}
             data-testid={`card-${issue.id}`}
-            className="cursor-grab rounded border bg-white p-2 text-sm shadow-sm">
+            className="cursor-grab rounded border border-border bg-panel p-2 text-sm shadow-sm">
             <Link to={`/issues/${issue.id}`} className="font-medium">{issue.title}</Link>
         </div>
     );
@@ -21,8 +21,8 @@ function Column({ status, issues }: { status: IssueStatus; issues: Issue[] }) {
     const { setNodeRef, isOver } = useDroppable({ id: status });
     return (
         <div ref={setNodeRef} data-testid={`col-${status}`}
-            className={`flex w-56 shrink-0 flex-col gap-2 rounded bg-gray-100 p-2 ${isOver ? 'ring-2 ring-indigo-400' : ''}`}>
-            <h2 className="text-xs font-semibold uppercase text-gray-500">{status.replace('_', ' ')}</h2>
+            className={`flex w-56 shrink-0 flex-col gap-2 rounded bg-hover p-2 ${isOver ? 'ring-2 ring-indigo-400' : ''}`}>
+            <h2 className="text-xs font-semibold uppercase text-fg2">{status.replace('_', ' ')}</h2>
             {issues.map((issue) => <Card key={issue.id} issue={issue} />)}
         </div>
     );
@@ -48,7 +48,7 @@ export default function BoardPage() {
         <div className="p-6">
             <div className="mb-4 flex items-center justify-between">
                 <h1 className="text-xl font-semibold">Board</h1>
-                <Link to="/" className="text-sm text-indigo-600">← List</Link>
+                <Link to="/" className="text-sm text-accent">← List</Link>
             </div>
             <FilterBar viewType="board" />
             <DndContext sensors={sensors} onDragEnd={onDragEnd}>

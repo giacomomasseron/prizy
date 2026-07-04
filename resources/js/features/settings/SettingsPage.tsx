@@ -26,7 +26,7 @@ export default function SettingsPage() {
     return (
         <div className="mx-auto max-w-2xl p-6">
             <h1 className="mb-4 text-xl font-semibold">Settings</h1>
-            <section className="rounded border bg-white p-4">
+            <section className="rounded border border-border bg-panel p-4">
                 <h2 className="mb-2 font-semibold">Notifications</h2>
                 <label className="flex items-center gap-2 text-sm">
                     Email digest
@@ -41,8 +41,8 @@ export default function SettingsPage() {
                         <option value="weekly">Weekly</option>
                     </select>
                 </label>
-                {saved && <span className="ml-2 text-sm text-green-600">Saved</span>}
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                {saved && <span className="ml-2 text-sm text-green">Saved</span>}
+                {error && <p className="mt-2 text-sm text-red">{error}</p>}
             </section>
         </div>
     );

@@ -16,7 +16,7 @@ export default function RoadmapPage() {
     return (
         <div className="overflow-x-auto p-6">
             <h1 className="mb-4 text-xl font-semibold">Roadmap</h1>
-            {projects.length === 0 && <p className="text-gray-500">No projects yet.</p>}
+            {projects.length === 0 && <p className="text-fg2">No projects yet.</p>}
 
             {scheduled.length > 0 && (
                 <div className="min-w-[720px]">
@@ -24,7 +24,7 @@ export default function RoadmapPage() {
                         <div className="w-48 shrink-0" />
                         <div className="flex flex-1">
                             {win.months.map((m) => (
-                                <div key={m.key} className="flex-1 border-l pl-1 text-xs text-gray-500">{m.label}</div>
+                                <div key={m.key} className="flex-1 border-l pl-1 text-xs text-fg2">{m.label}</div>
                             ))}
                         </div>
                     </div>
@@ -46,7 +46,7 @@ export default function RoadmapPage() {
                                         <span
                                             key={m.id}
                                             data-testid={`ms-${m.id}`}
-                                            className="absolute top-0 -translate-x-1/2 text-xs text-indigo-700"
+                                            className="absolute top-0 -translate-x-1/2 text-xs text-accent"
                                             style={{ left: `${markerLeft(win, m.target_date)}%` }}
                                             title={`${m.name} · ${m.target_date}`}
                                         >◆</span>
@@ -60,10 +60,10 @@ export default function RoadmapPage() {
 
             {unscheduled.length > 0 && (
                 <div className="mt-6">
-                    <h2 className="mb-1 text-sm font-semibold text-gray-500">Unscheduled</h2>
+                    <h2 className="mb-1 text-sm font-semibold text-fg2">Unscheduled</h2>
                     <ul className="flex flex-wrap gap-3 text-sm">
                         {unscheduled.map((p) => (
-                            <li key={p.id}><Link to={`/projects/${p.id}`} className="text-indigo-600 hover:underline">{p.name}</Link></li>
+                            <li key={p.id}><Link to={`/projects/${p.id}`} className="text-accent hover:underline">{p.name}</Link></li>
                         ))}
                     </ul>
                 </div>

@@ -58,15 +58,15 @@ export default function SearchPage() {
                 </select>
             </div>
 
-            {search.isLoading && <p className="text-sm text-gray-500">Searching…</p>}
-            {search.data && search.data.items.length === 0 && <p className="text-sm text-gray-500">No matching issues.</p>}
+            {search.isLoading && <p className="text-sm text-fg2">Searching…</p>}
+            {search.data && search.data.items.length === 0 && <p className="text-sm text-fg2">No matching issues.</p>}
 
-            <ul className="divide-y rounded border bg-white">
+            <ul className="divide-y rounded border border-border bg-panel">
                 {search.data?.items.map((i) => (
                     <li key={i.id}>
-                        <Link to={`/issues/${i.id}`} className="block px-4 py-2 text-sm hover:bg-gray-50">
+                        <Link to={`/issues/${i.id}`} className="block px-4 py-2 text-sm hover:bg-hover">
                             <span className="font-medium">{i.title}</span>
-                            <span className="ml-2 text-xs text-gray-400">{i.status}</span>
+                            <span className="ml-2 text-xs text-fg3">{i.status}</span>
                         </Link>
                     </li>
                 ))}

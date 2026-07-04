@@ -49,21 +49,21 @@ export default function TeamsPage() {
                     <input value={identifier} onChange={(e) => setIdentifier(e.target.value.toUpperCase())} placeholder="ID (e.g. ENG)"
                         aria-label="Team identifier" maxLength={8} className="w-32 rounded border px-2 py-1" />
                     <button type="submit" disabled={create.isPending}
-                        className="rounded bg-indigo-600 px-3 text-white disabled:opacity-50">Add team</button>
+                        className="rounded bg-accent px-3 text-white disabled:opacity-50">Add team</button>
                 </form>
             )}
-            {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+            {error && <p className="mb-3 text-sm text-red">{error}</p>}
 
             {teams.isLoading && <p>Loading…</p>}
-            <ul className="divide-y rounded border bg-white">
+            <ul className="divide-y rounded border border-border bg-panel">
                 {teams.data?.items.map((team) => (
                     <li key={team.id} className="flex items-center justify-between px-4 py-2">
                         <Link to={`/teams/${team.id}`} className="font-medium hover:underline">
-                            <span className="mr-2 rounded bg-gray-100 px-1.5 py-0.5 text-xs">{team.identifier}</span>
+                            <span className="mr-2 rounded bg-hover px-1.5 py-0.5 text-xs">{team.identifier}</span>
                             {team.name}
                         </Link>
                         {canManage && (
-                            <button type="button" onClick={() => remove(team)} className="text-sm text-red-600 hover:underline">Delete</button>
+                            <button type="button" onClick={() => remove(team)} className="text-sm text-red hover:underline">Delete</button>
                         )}
                     </li>
                 ))}

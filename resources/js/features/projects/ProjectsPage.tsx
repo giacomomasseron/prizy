@@ -54,19 +54,19 @@ export default function ProjectsPage() {
                         <option value="">No team</option>
                         {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
-                    <button type="submit" disabled={create.isPending} className="rounded bg-indigo-600 px-3 text-white disabled:opacity-50">Add project</button>
+                    <button type="submit" disabled={create.isPending} className="rounded bg-accent px-3 text-white disabled:opacity-50">Add project</button>
                 </form>
             )}
-            {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+            {error && <p className="mb-3 text-sm text-red">{error}</p>}
 
             {projects.isLoading && <p>Loading…</p>}
-            <ul className="divide-y rounded border bg-white">
+            <ul className="divide-y rounded border border-border bg-panel">
                 {projects.data?.items.map((p) => (
                     <li key={p.id} className="flex items-center justify-between px-4 py-2">
                         <Link to={`/projects/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
                         <span className="flex items-center gap-3">
-                            <span className="text-xs text-gray-500">{p.status}</span>
-                            {canDevelop && <button type="button" onClick={() => remove(p)} className="text-sm text-red-600 hover:underline">Delete</button>}
+                            <span className="text-xs text-fg2">{p.status}</span>
+                            {canDevelop && <button type="button" onClick={() => remove(p)} className="text-sm text-red hover:underline">Delete</button>}
                         </span>
                     </li>
                 ))}

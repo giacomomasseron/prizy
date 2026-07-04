@@ -82,7 +82,7 @@ export default function CommandPalette() {
 
     return (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/30 pt-24" onClick={() => setOpen(false)}>
-            <div role="dialog" aria-modal="true" aria-label="Command palette" className="w-full max-w-xl rounded-lg bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div role="dialog" aria-modal="true" aria-label="Command palette" className="w-full max-w-xl rounded-lg bg-panel shadow-xl" onClick={(e) => e.stopPropagation()}>
                 <input
                     ref={inputRef}
                     type="text"
@@ -96,7 +96,7 @@ export default function CommandPalette() {
                         else if (e.key === 'Enter') { e.preventDefault(); rows[active]?.onActivate(); }
                         else if (e.key === 'Escape') { setOpen(false); }
                     }}
-                    className="w-full rounded-t-lg border-b px-4 py-3 outline-none"
+                    className="w-full rounded-t-lg border-b border-border bg-panel px-4 py-3 text-fg outline-none"
                 />
                 <ul className="max-h-80 overflow-auto py-1">
                     {rows.map((r, idx) => (
@@ -105,14 +105,14 @@ export default function CommandPalette() {
                                 type="button"
                                 onMouseEnter={() => setActive(idx)}
                                 onClick={r.onActivate}
-                                className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm ${idx === active ? 'bg-gray-100' : ''}`}
+                                className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm ${idx === active ? 'bg-hover' : ''}`}
                             >
                                 <span>{r.label}</span>
-                                {r.hint && <span className="text-xs text-gray-400">{r.hint}</span>}
+                                {r.hint && <span className="text-xs text-fg3">{r.hint}</span>}
                             </button>
                         </li>
                     ))}
-                    {rows.length === 0 && <li className="px-4 py-3 text-sm text-gray-400">No results.</li>}
+                    {rows.length === 0 && <li className="px-4 py-3 text-sm text-fg3">No results.</li>}
                 </ul>
             </div>
         </div>

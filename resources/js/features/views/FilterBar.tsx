@@ -96,37 +96,37 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const available = FILTER_FIELDS.filter((f) => !editableShown.includes(f.key));
 
     return (
-        <div className="flex flex-wrap items-center gap-2 border-b bg-white px-6 py-2 text-sm">
+        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-panel px-6 py-2 text-sm">
             <div className="relative">
-                <button type="button" aria-label="Views" onClick={() => setViewsOpen((o) => !o)} className="rounded border px-2 py-1 text-gray-600 hover:bg-gray-50">Views ▾</button>
+                <button type="button" aria-label="Views" onClick={() => setViewsOpen((o) => !o)} className="rounded border border-border px-2 py-1 text-fg2 hover:bg-hover">Views ▾</button>
                 {viewsOpen && (
-                    <div role="menu" className="absolute z-10 mt-1 w-56 rounded border bg-white shadow">
+                    <div role="menu" className="absolute z-10 mt-1 w-56 rounded border border-border bg-panel shadow">
                         {BUILTIN_VIEWS.map((v) => (
                             <button key={v.key} type="button" role="menuitem" onClick={() => { applyFilters(v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {})); setViewsOpen(false); }}
-                                className="block w-full px-3 py-1 text-left hover:bg-gray-50">{v.label}</button>
+                                className="block w-full px-3 py-1 text-left hover:bg-hover">{v.label}</button>
                         ))}
-                        <div className="my-1 border-t" />
+                        <div className="my-1 border-t border-border" />
                         {savedViews.data?.items.map((view) => (
-                            <div key={view.id} className="flex items-center justify-between px-3 py-1 hover:bg-gray-50">
+                            <div key={view.id} className="flex items-center justify-between px-3 py-1 hover:bg-hover">
                                 <button type="button" role="menuitem" onClick={() => applySavedView(view)} className="text-left">{view.name}</button>
                                 {canManage(view.created_by) && (
-                                    <button type="button" aria-label={`Delete view ${view.name}`} onClick={() => { if (window.confirm(`Delete view ${view.name}?`)) deleteView.mutate(view.id); }} className="text-red-600">×</button>
+                                    <button type="button" aria-label={`Delete view ${view.name}`} onClick={() => { if (window.confirm(`Delete view ${view.name}?`)) deleteView.mutate(view.id); }} className="text-red">×</button>
                                 )}
                             </div>
                         ))}
-                        {(savedViews.data?.items.length ?? 0) === 0 && <p className="px-3 py-1 text-gray-400">No saved views</p>}
+                        {(savedViews.data?.items.length ?? 0) === 0 && <p className="px-3 py-1 text-fg3">No saved views</p>}
                     </div>
                 )}
             </div>
             <div className="relative">
-                <button type="button" onClick={() => setAddOpen((o) => !o)} className="rounded border px-2 py-1 text-gray-600 hover:bg-gray-50">+ Filter</button>
+                <button type="button" onClick={() => setAddOpen((o) => !o)} className="rounded border border-border px-2 py-1 text-fg2 hover:bg-hover">+ Filter</button>
                 {addOpen && (
-                    <div role="menu" className="absolute z-10 mt-1 w-40 rounded border bg-white shadow">
+                    <div role="menu" className="absolute z-10 mt-1 w-40 rounded border border-border bg-panel shadow">
                         {available.map((f) => (
                             <button key={f.key} type="button" role="menuitem" onClick={() => { setOpenPill(f.key); setAddOpen(false); }}
-                                className="block w-full px-3 py-1 text-left hover:bg-gray-50">{f.label}</button>
+                                className="block w-full px-3 py-1 text-left hover:bg-hover">{f.label}</button>
                         ))}
-                        {available.length === 0 && <p className="px-3 py-1 text-gray-400">All added</p>}
+                        {available.length === 0 && <p className="px-3 py-1 text-fg3">All added</p>}
                     </div>
                 )}
             </div>
@@ -138,21 +138,21 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                 const opts = optionsFor(key);
                 return (
                     <div key={key} className="relative">
-                        <span className="inline-flex items-center gap-1 rounded bg-indigo-50 px-2 py-1 text-indigo-700">
+                        <span className="inline-flex items-center gap-1 rounded bg-accent2 px-2 py-1 text-accent">
                             <button type="button" onClick={() => setOpenPill((p) => (p === key ? null : key))}>
                                 {field.label}{selected.length ? `: ${selected.map((v) => opts.find((o) => o.value === v)?.label ?? v).join(', ')}` : ''}
                             </button>
                             <button type="button" aria-label={`Remove ${field.label} filter`} onClick={() => { setFilter(key, null); setOpenPill(null); }}>×</button>
                         </span>
                         {openPill === key && (
-                            <div className="absolute z-10 mt-1 max-h-56 w-48 overflow-auto rounded border bg-white p-2 shadow">
+                            <div className="absolute z-10 mt-1 max-h-56 w-48 overflow-auto rounded border border-border bg-panel p-2 shadow">
                                 {opts.map((o) => (
                                     <label key={o.value} className="flex items-center gap-2 py-0.5">
                                         <input type="checkbox" aria-label={o.label} checked={selected.includes(o.value)} onChange={() => toggleValue(key, o.value)} />
                                         {o.label}
                                     </label>
                                 ))}
-                                {opts.length === 0 && <p className="text-gray-400">No options</p>}
+                                {opts.length === 0 && <p className="text-fg3">No options</p>}
                             </div>
                         )}
                     </div>
@@ -160,13 +160,13 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
             })}
 
             {presetActive.map((key) => (
-                <span key={key} className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-1 text-gray-700">
+                <span key={key} className="inline-flex items-center gap-1 rounded bg-hover px-2 py-1 text-fg">
                     {PRESET_PILLS[key]((filters as Record<string, string>)[key])}
                     <button type="button" aria-label={`Remove ${key === 'assignee_id' ? 'Assigned to me' : key === 'cycle_id' ? 'Active cycle' : key} filter`} onClick={() => setFilter(key, null)}>×</button>
                 </span>
             ))}
 
-            <label className="ml-auto flex items-center gap-1 text-gray-500">
+            <label className="ml-auto flex items-center gap-1 text-fg2">
                 Sort
                 <select aria-label="Sort issues" value={filters.sort ?? ''} onChange={(e) => setFilter('sort', e.target.value || null)} className="rounded border px-1 py-0.5">
                     <option value="">Default</option>
@@ -174,9 +174,9 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                 </select>
             </label>
             {canDevelop && (
-                <button type="button" onClick={saveView} disabled={createView.isPending} className="rounded bg-indigo-600 px-2 py-1 text-white disabled:opacity-50">Save view</button>
+                <button type="button" onClick={saveView} disabled={createView.isPending} className="rounded bg-accent px-2 py-1 text-white disabled:opacity-50">Save view</button>
             )}
-            {error && <span className="text-red-600">{error}</span>}
+            {error && <span className="text-red">{error}</span>}
         </div>
     );
 }

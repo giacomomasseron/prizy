@@ -70,9 +70,9 @@ export default function IssueDetailPage() {
 
     return (
         <div className="mx-auto max-w-3xl p-6">
-            <Link to="/" className="text-sm text-indigo-600">← List</Link>
+            <Link to="/" className="text-sm text-accent">← List</Link>
             <h1 className="mt-2 text-2xl font-semibold">{issue.data.title}</h1>
-            <p className="mt-1 text-sm text-gray-500">{issue.data.status} · {issue.data.priority}</p>
+            <p className="mt-1 text-sm text-fg2">{issue.data.status} · {issue.data.priority}</p>
             {issue.data.description && <p className="mt-4 whitespace-pre-wrap">{issue.data.description}</p>}
 
             <section className="mt-8">
@@ -92,15 +92,15 @@ export default function IssueDetailPage() {
                 ) : (
                     <ul className="flex flex-wrap gap-2">
                         {(issueLabels.data?.items ?? []).map((l) => (
-                            <li key={l.id} className="flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-sm">
+                            <li key={l.id} className="flex items-center gap-1 rounded bg-hover px-2 py-0.5 text-sm">
                                 <span className="inline-block h-3 w-3 rounded-full" style={{ backgroundColor: l.color }} />
                                 {l.name}
                             </li>
                         ))}
-                        {(issueLabels.data?.items ?? []).length === 0 && <li className="text-sm text-gray-400">None</li>}
+                        {(issueLabels.data?.items ?? []).length === 0 && <li className="text-sm text-fg3">None</li>}
                     </ul>
                 )}
-                {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+                {error && <p className="mt-2 text-sm text-red">{error}</p>}
             </section>
 
             <section className="mt-6 flex flex-wrap gap-4">
@@ -156,18 +156,18 @@ export default function IssueDetailPage() {
                 <ul className="space-y-1 text-sm">
                     {githubLinks.data?.map((l) => (
                         <li key={l.id} className="flex items-center gap-2">
-                            <a href={l.url} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{l.repo} #{l.number}</a>
-                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-600">{l.state}</span>
-                            {canDevelop && <button type="button" aria-label={`Remove ${l.repo} #${l.number}`} onClick={() => removeGithubLink.mutate(l.id)} className="text-gray-400 hover:text-red-600">✕</button>}
+                            <a href={l.url} target="_blank" rel="noreferrer" className="text-accent hover:underline">{l.repo} #{l.number}</a>
+                            <span className="rounded bg-hover px-1.5 py-0.5 text-xs text-fg2">{l.state}</span>
+                            {canDevelop && <button type="button" aria-label={`Remove ${l.repo} #${l.number}`} onClick={() => removeGithubLink.mutate(l.id)} className="text-fg3 hover:text-red">✕</button>}
                         </li>
                     ))}
-                    {githubLinks.data?.length === 0 && <li className="text-gray-400">No linked pull requests.</li>}
+                    {githubLinks.data?.length === 0 && <li className="text-fg3">No linked pull requests.</li>}
                 </ul>
                 {canDevelop && (
                     <div className="mt-2 flex items-center gap-2">
                         <input aria-label="Add PR URL" value={prUrl} onChange={(e) => setPrUrl(e.target.value)} placeholder="https://github.com/owner/repo/pull/123" className="flex-1 rounded border px-2 py-1 text-sm" />
                         <button type="button" onClick={onAddPr} className="rounded border px-2 py-1 text-sm">Add PR</button>
-                        {prError && <span className="text-sm text-red-600">{prError}</span>}
+                        {prError && <span className="text-sm text-red">{prError}</span>}
                     </div>
                 )}
             </section>
@@ -176,19 +176,19 @@ export default function IssueDetailPage() {
                 <h2 className="mb-2 font-semibold">Comments</h2>
                 <ul className="space-y-2">
                     {comments.data?.items.map((c) => (
-                        <li key={c.id} className="rounded border bg-white p-2 text-sm">{c.body}</li>
+                        <li key={c.id} className="rounded border border-border bg-panel p-2 text-sm">{c.body}</li>
                     ))}
                 </ul>
                 <form onSubmit={submitComment} className="mt-3 flex gap-2">
                     <input value={body} onChange={(e) => setBody(e.target.value)} placeholder="Add a comment…"
                         aria-label="Add a comment" className="flex-1 rounded border px-2 py-1" />
-                    <button type="submit" className="rounded bg-indigo-600 px-3 text-white">Send</button>
+                    <button type="submit" className="rounded bg-accent px-3 text-white">Send</button>
                 </form>
             </section>
 
             <section className="mt-8">
                 <h2 className="mb-2 font-semibold">Activity</h2>
-                <ul className="space-y-1 text-sm text-gray-600">
+                <ul className="space-y-1 text-sm text-fg2">
                     {activities.data?.items.map((a) => (
                         <li key={a.id}>{a.type}{a.to_value ? `: ${a.to_value}` : ''}</li>
                     ))}
