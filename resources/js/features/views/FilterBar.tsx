@@ -9,6 +9,7 @@ import { useTeams } from '../teams/hooks';
 import type { IssueFilters } from '../issues/hooks';
 import { BUILTIN_VIEWS, FILTER_FIELDS, type FilterKey, PRESET_PILLS, SORT_OPTIONS, filtersToParams, paramsToFilters } from './filters';
 import { useCreateSavedView, useDeleteSavedView, useSavedViews } from './hooks';
+import { Button } from '../../components/ui/Button';
 
 function useFieldOptions() {
     const teams = useTeams();
@@ -22,6 +23,46 @@ function useFieldOptions() {
         return (labels.data?.items ?? []).map((l) => ({ value: l.id, label: l.name }));
     };
 }
+
+// Shared style for toolbar action buttons (Views, + Filter)
+const toolBtnStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    padding: '4px 10px',
+    borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'transparent',
+    color: 'var(--fg3)',
+    fontSize: 12,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+};
+
+// Shared popover / dropdown panel style
+const popoverStyle: React.CSSProperties = {
+    position: 'absolute',
+    zIndex: 10,
+    marginTop: 4,
+    borderRadius: 8,
+    border: '1px solid var(--border)',
+    background: 'var(--panel)',
+    boxShadow: '0 4px 16px rgba(0,0,0,.22)',
+};
+
+// Shared style for items inside a popover
+const menuItemStyle: React.CSSProperties = {
+    display: 'block',
+    width: '100%',
+    padding: '6px 12px',
+    textAlign: 'left',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    fontSize: 13,
+    fontFamily: 'inherit',
+    color: 'var(--fg)',
+};
 
 export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -96,87 +137,208 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const available = FILTER_FIELDS.filter((f) => !editableShown.includes(f.key));
 
     return (
-        <div className="flex flex-wrap items-center gap-2 border-b border-border bg-panel px-6 py-2 text-sm">
-            <div className="relative">
-                <button type="button" aria-label="Views" onClick={() => setViewsOpen((o) => !o)} className="rounded border border-border px-2 py-1 text-fg2 hover:bg-hover">Views ▾</button>
+        <div style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            gap: 8,
+            padding: '6px 22px',
+            borderBottom: '1px solid var(--border)',
+            background: 'var(--bg)',
+        }}>
+            {/* Views dropdown */}
+            <div style={{ position: 'relative' }}>
+                <button
+                    type="button"
+                    aria-label="Views"
+                    onClick={() => setViewsOpen((o) => !o)}
+                    style={toolBtnStyle}
+                >
+                    Views ▾
+                </button>
                 {viewsOpen && (
-                    <div role="menu" className="absolute z-10 mt-1 w-56 rounded border border-border bg-panel shadow">
+                    <div role="menu" style={{ ...popoverStyle, width: 224 }}>
                         {BUILTIN_VIEWS.map((v) => (
-                            <button key={v.key} type="button" role="menuitem" onClick={() => { applyFilters(v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {})); setViewsOpen(false); }}
-                                className="block w-full px-3 py-1 text-left hover:bg-hover">{v.label}</button>
+                            <button
+                                key={v.key}
+                                type="button"
+                                role="menuitem"
+                                onClick={() => { applyFilters(v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {})); setViewsOpen(false); }}
+                                style={menuItemStyle}
+                                className="hover:bg-hover"
+                            >
+                                {v.label}
+                            </button>
                         ))}
-                        <div className="my-1 border-t border-border" />
+                        <div style={{ margin: '4px 0', borderTop: '1px solid var(--border)' }} />
                         {savedViews.data?.items.map((view) => (
-                            <div key={view.id} className="flex items-center justify-between px-3 py-1 hover:bg-hover">
-                                <button type="button" role="menuitem" onClick={() => applySavedView(view)} className="text-left">{view.name}</button>
+                            <div
+                                key={view.id}
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 6px 2px 12px' }}
+                                className="hover:bg-hover"
+                            >
+                                <button
+                                    type="button"
+                                    role="menuitem"
+                                    onClick={() => applySavedView(view)}
+                                    style={{ ...menuItemStyle, padding: '4px 0', flex: 1 }}
+                                >
+                                    {view.name}
+                                </button>
                                 {canManage(view.created_by) && (
-                                    <button type="button" aria-label={`Delete view ${view.name}`} onClick={() => { if (window.confirm(`Delete view ${view.name}?`)) deleteView.mutate(view.id); }} className="text-red">×</button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        aria-label={`Delete view ${view.name}`}
+                                        onClick={() => { if (window.confirm(`Delete view ${view.name}?`)) deleteView.mutate(view.id); }}
+                                        style={{ color: 'var(--red)', padding: '2px 6px', minWidth: 0 }}
+                                    >
+                                        ×
+                                    </Button>
                                 )}
                             </div>
                         ))}
-                        {(savedViews.data?.items.length ?? 0) === 0 && <p className="px-3 py-1 text-fg3">No saved views</p>}
-                    </div>
-                )}
-            </div>
-            <div className="relative">
-                <button type="button" onClick={() => setAddOpen((o) => !o)} className="rounded border border-border px-2 py-1 text-fg2 hover:bg-hover">+ Filter</button>
-                {addOpen && (
-                    <div role="menu" className="absolute z-10 mt-1 w-40 rounded border border-border bg-panel shadow">
-                        {available.map((f) => (
-                            <button key={f.key} type="button" role="menuitem" onClick={() => { setOpenPill(f.key); setAddOpen(false); }}
-                                className="block w-full px-3 py-1 text-left hover:bg-hover">{f.label}</button>
-                        ))}
-                        {available.length === 0 && <p className="px-3 py-1 text-fg3">All added</p>}
+                        {(savedViews.data?.items.length ?? 0) === 0 && (
+                            <p style={{ padding: '6px 12px', color: 'var(--fg3)', fontSize: 13, margin: 0 }}>No saved views</p>
+                        )}
                     </div>
                 )}
             </div>
 
+            {/* + Filter dropdown */}
+            <div style={{ position: 'relative' }}>
+                <button type="button" onClick={() => setAddOpen((o) => !o)} style={toolBtnStyle}>+ Filter</button>
+                {addOpen && (
+                    <div role="menu" style={{ ...popoverStyle, width: 160 }}>
+                        {available.map((f) => (
+                            <button
+                                key={f.key}
+                                type="button"
+                                role="menuitem"
+                                onClick={() => { setOpenPill(f.key); setAddOpen(false); }}
+                                style={menuItemStyle}
+                                className="hover:bg-hover"
+                            >
+                                {f.label}
+                            </button>
+                        ))}
+                        {available.length === 0 && (
+                            <p style={{ padding: '6px 12px', color: 'var(--fg3)', fontSize: 13, margin: 0 }}>All added</p>
+                        )}
+                    </div>
+                )}
+            </div>
+
+            {/* Active (editable) filter pills */}
             {editableShown.map((key) => {
                 const field = FILTER_FIELDS.find((f) => f.key === key)!;
                 const csv = (filters as Record<string, string>)[key] ?? '';
                 const selected = csv ? csv.split(',') : [];
                 const opts = optionsFor(key);
                 return (
-                    <div key={key} className="relative">
-                        <span className="inline-flex items-center gap-1 rounded bg-accent2 px-2 py-1 text-accent">
-                            <button type="button" onClick={() => setOpenPill((p) => (p === key ? null : key))}>
+                    <div key={key} style={{ position: 'relative' }}>
+                        <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '3px 6px 3px 9px',
+                            borderRadius: 7,
+                            background: 'var(--accent2)',
+                            color: 'var(--accent)',
+                            fontSize: 11.5,
+                            fontWeight: 600,
+                            border: 'none',
+                        }}>
+                            <button
+                                type="button"
+                                onClick={() => setOpenPill((p) => (p === key ? null : key))}
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontWeight: 'inherit', fontSize: 'inherit', fontFamily: 'inherit', padding: 0 }}
+                            >
                                 {field.label}{selected.length ? `: ${selected.map((v) => opts.find((o) => o.value === v)?.label ?? v).join(', ')}` : ''}
                             </button>
-                            <button type="button" aria-label={`Remove ${field.label} filter`} onClick={() => { setFilter(key, null); setOpenPill(null); }}>×</button>
+                            <button
+                                type="button"
+                                aria-label={`Remove ${field.label} filter`}
+                                onClick={() => { setFilter(key, null); setOpenPill(null); }}
+                                style={{ color: 'var(--accent)', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                            >
+                                ×
+                            </button>
                         </span>
                         {openPill === key && (
-                            <div className="absolute z-10 mt-1 max-h-56 w-48 overflow-auto rounded border border-border bg-panel p-2 shadow">
+                            <div style={{
+                                position: 'absolute',
+                                zIndex: 10,
+                                marginTop: 4,
+                                maxHeight: 224,
+                                width: 192,
+                                overflow: 'auto',
+                                borderRadius: 8,
+                                border: '1px solid var(--border)',
+                                background: 'var(--panel)',
+                                padding: 8,
+                                boxShadow: '0 4px 16px rgba(0,0,0,.22)',
+                            }}>
                                 {opts.map((o) => (
-                                    <label key={o.value} className="flex items-center gap-2 py-0.5">
+                                    <label key={o.value} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0', fontSize: 13, color: 'var(--fg)', cursor: 'pointer' }}>
                                         <input type="checkbox" aria-label={o.label} checked={selected.includes(o.value)} onChange={() => toggleValue(key, o.value)} />
                                         {o.label}
                                     </label>
                                 ))}
-                                {opts.length === 0 && <p className="text-fg3">No options</p>}
+                                {opts.length === 0 && <p style={{ color: 'var(--fg3)', fontSize: 13, margin: 0 }}>No options</p>}
                             </div>
                         )}
                     </div>
                 );
             })}
 
+            {/* Preset (built-in) active pills — e.g. My Issues, Active Cycle */}
             {presetActive.map((key) => (
-                <span key={key} className="inline-flex items-center gap-1 rounded bg-hover px-2 py-1 text-fg">
+                <span key={key} style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '3px 6px 3px 9px',
+                    borderRadius: 7,
+                    background: 'var(--hover)',
+                    color: 'var(--fg2)',
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                }}>
                     {PRESET_PILLS[key]((filters as Record<string, string>)[key])}
-                    <button type="button" aria-label={`Remove ${key === 'assignee_id' ? 'Assigned to me' : key === 'cycle_id' ? 'Active cycle' : key} filter`} onClick={() => setFilter(key, null)}>×</button>
+                    <button
+                        type="button"
+                        aria-label={`Remove ${key === 'assignee_id' ? 'Assigned to me' : key === 'cycle_id' ? 'Active cycle' : key} filter`}
+                        onClick={() => setFilter(key, null)}
+                        style={{ color: 'var(--fg2)', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                    >
+                        ×
+                    </button>
                 </span>
             ))}
 
-            <label className="ml-auto flex items-center gap-1 text-fg2">
+            {/* Sort — keeps native select for behavior preservation */}
+            <label style={{ marginLeft: 'auto', ...toolBtnStyle }}>
                 Sort
-                <select aria-label="Sort issues" value={filters.sort ?? ''} onChange={(e) => setFilter('sort', e.target.value || null)} className="rounded border border-border px-1 py-0.5">
+                <select
+                    aria-label="Sort issues"
+                    value={filters.sort ?? ''}
+                    onChange={(e) => setFilter('sort', e.target.value || null)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--fg3)', fontSize: 12, cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
+                >
                     <option value="">Default</option>
                     {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
             </label>
+
+            {/* Save view */}
             {canDevelop && (
-                <button type="button" onClick={saveView} disabled={createView.isPending} className="rounded bg-accent px-2 py-1 text-white disabled:opacity-50">Save view</button>
+                <Button variant="ghost" size="sm" onClick={saveView} disabled={createView.isPending}>
+                    Save view
+                </Button>
             )}
-            {error && <span className="text-red">{error}</span>}
+
+            {error && <span style={{ color: 'var(--red)', fontSize: 12 }}>{error}</span>}
         </div>
     );
 }
