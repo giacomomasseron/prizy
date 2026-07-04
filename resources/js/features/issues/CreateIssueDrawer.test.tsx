@@ -52,6 +52,9 @@ vi.mock('../projects/hooks', () => ({
         },
     }),
 }));
+vi.mock('../members/hooks', () => ({
+    useMembers: () => ({ data: [{ id: 'u1', name: 'Bob Smith' }] }),
+}));
 
 function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onClose?: () => void }) {
     const qc = new QueryClient();
@@ -136,5 +139,32 @@ describe('CreateIssueDrawer', () => {
         const inactiveBtn = screen.getByRole('button', { name: 'Todo' });
         expect(activeBtn.style.background).toBe('var(--panel)');
         expect(inactiveBtn.style.background).toBe('transparent');
+    });
+
+    it('Assignee field appears and passes assignee_id on create', async () => {
+        mount({});
+        // Open the assignee menu and pick Bob Smith
+        fireEvent.click(screen.getByRole('button', { name: /Issue assignee/i }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Bob Smith' }));
+        // Fill the required title
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task with assignee' } });
+        // Submit
+        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
+        await waitFor(() =>
+            expect(mockMutateAsync).toHaveBeenCalledWith(
+                expect.objectContaining({ assignee_id: 'u1' }),
+            ),
+        );
+    });
+
+    it('creates with assignee_id null when no assignee selected (default)', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task no assignee' } });
+        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
+        await waitFor(() =>
+            expect(mockMutateAsync).toHaveBeenCalledWith(
+                expect.objectContaining({ assignee_id: null }),
+            ),
+        );
     });
 });

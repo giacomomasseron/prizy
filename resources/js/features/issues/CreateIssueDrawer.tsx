@@ -9,7 +9,10 @@ import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { ProjectPill } from '../../components/ui/ProjectPill';
 import { useTeams } from '../teams/hooks';
 import { useProjects } from '../projects/hooks';
+import { useMembers } from '../members/hooks';
 import { useCreateIssue } from './hooks';
+import { Avatar } from '../../components/ui/Avatar';
+import { avatarFor } from '../../lib/avatarFor';
 import type { IssueStatus, IssuePriority } from '../../lib/types';
 
 export interface CreateIssueDrawerProps {
@@ -37,15 +40,16 @@ const PRIORITY_OPTIONS: Array<{ label: string; value: IssuePriority }> = [
 export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
     const teams = useTeams();
     const projects = useProjects();
+    const members = useMembers();
     const createIssue = useCreateIssue();
 
     const [teamId, setTeamId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState<string | null>(null);
+    const [assigneeId, setAssigneeId] = useState<string | null>(null);
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<IssueStatus>(initialStatus ?? 'todo');
     const [priority, setPriority] = useState<IssuePriority>('no_priority');
     const [description, setDescription] = useState('');
-    // assignee deferred to R-C
 
     // Auto-select when there is exactly one team
     useEffect(() => {
@@ -62,6 +66,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
             setPriority('no_priority');
             setDescription('');
             setProjectId(null);
+            setAssigneeId(null);
         }
     }, [open, initialStatus]);
 
@@ -77,6 +82,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                 title: title.trim(),
                 status,
                 priority,
+                assignee_id: assigneeId,
                 description: description.trim() || null,
                 project_id: projectId,
             });
@@ -200,6 +206,60 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                     value={priority}
                     onChange={setPriority}
                 />
+
+                {/* Assignee (optional) */}
+                {(() => {
+                    const selectedMember = members.data?.find((m) => m.id === assigneeId);
+                    return (
+                        <Menu
+                            placement="bottom-start"
+                            trigger={
+                                <button
+                                    type="button"
+                                    aria-label="Issue assignee"
+                                    style={{
+                                        background: 'var(--panel)',
+                                        border: '1px solid var(--border)',
+                                        borderRadius: 9,
+                                        color: assigneeId ? 'var(--fg)' : 'var(--fg3)',
+                                        fontSize: 13,
+                                        padding: '6px 10px',
+                                        fontFamily: 'inherit',
+                                        cursor: 'pointer',
+                                        textAlign: 'left',
+                                        width: '100%',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                    }}
+                                >
+                                    {selectedMember ? (
+                                        <>
+                                            <Avatar {...avatarFor(selectedMember)} size={16} />
+                                            {selectedMember.name}
+                                        </>
+                                    ) : (
+                                        'Unassigned'
+                                    )}
+                                </button>
+                            }
+                            items={[
+                                {
+                                    key: '__none__',
+                                    label: 'Unassigned',
+                                    icon: <Avatar size={14} />,
+                                    onActivate: () => setAssigneeId(null),
+                                },
+                                ...(members.data ?? []).map((m) => ({
+                                    key: m.id,
+                                    label: m.name,
+                                    icon: <Avatar {...avatarFor(m)} size={14} />,
+                                    onActivate: () => setAssigneeId(m.id),
+                                })),
+                            ]}
+                        />
+                    );
+                })()}
 
                 {/* Description */}
                 <Textarea
