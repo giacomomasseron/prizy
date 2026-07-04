@@ -43,6 +43,42 @@ describe('StatusIcon', () => {
     render(<StatusIcon status={status} />);
     expect(screen.getByLabelText(status)).toBeInTheDocument();
   });
+
+  it('backlog has dashed border', () => {
+    render(<StatusIcon status="backlog" />);
+    const el = screen.getByLabelText('backlog') as HTMLElement;
+    expect(el.style.border).toBe('1.6px dashed var(--fg3)');
+  });
+
+  it('todo has solid border', () => {
+    render(<StatusIcon status="todo" />);
+    const el = screen.getByLabelText('todo') as HTMLElement;
+    expect(el.style.border).toBe('1.6px solid var(--fg3)');
+  });
+
+  it('done textContent is checkmark', () => {
+    render(<StatusIcon status="done" />);
+    expect(screen.getByLabelText('done').textContent).toBe('✓');
+  });
+
+  it('cancelled textContent is cross', () => {
+    render(<StatusIcon status="cancelled" />);
+    expect(screen.getByLabelText('cancelled').textContent).toBe('✕');
+  });
+
+  it('in_progress background contains conic-gradient with amber', () => {
+    render(<StatusIcon status="in_progress" />);
+    const el = screen.getByLabelText('in_progress') as HTMLElement;
+    expect(el.style.background).toContain('conic-gradient');
+    expect(el.style.background).toContain('var(--amber)');
+  });
+
+  it('in_review background contains conic-gradient with blue', () => {
+    render(<StatusIcon status="in_review" />);
+    const el = screen.getByLabelText('in_review') as HTMLElement;
+    expect(el.style.background).toContain('conic-gradient');
+    expect(el.style.background).toContain('var(--blue)');
+  });
 });
 
 describe('PriorityIcon', () => {
@@ -51,6 +87,27 @@ describe('PriorityIcon', () => {
   ] as const)('renders priority=%s with aria-label', (priority) => {
     render(<PriorityIcon priority={priority} />);
     expect(screen.getByLabelText(priority)).toBeInTheDocument();
+  });
+
+  it('urgent shows ! with amber background', () => {
+    render(<PriorityIcon priority="urgent" />);
+    const el = screen.getByLabelText('urgent');
+    expect(el.textContent).toBe('!');
+    expect(el).toHaveStyle({ background: 'var(--amber)' });
+  });
+
+  it('high priority has more filled bars than low priority', () => {
+    const { container: highContainer } = render(<PriorityIcon priority="high" />);
+    const highBars = Array.from(highContainer.querySelectorAll('[aria-label="high"] > span')) as HTMLElement[];
+    const highFilled = highBars.filter(b => b.style.background === 'var(--fg2)');
+
+    const { container: lowContainer } = render(<PriorityIcon priority="low" />);
+    const lowBars = Array.from(lowContainer.querySelectorAll('[aria-label="low"] > span')) as HTMLElement[];
+    const lowFilled = lowBars.filter(b => b.style.background === 'var(--fg2)');
+
+    expect(highFilled).toHaveLength(3);
+    expect(lowFilled).toHaveLength(1);
+    expect(highFilled.length).toBeGreaterThan(lowFilled.length);
   });
 });
 
