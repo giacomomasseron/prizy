@@ -21,7 +21,7 @@ vi.mock('./hooks', () => ({
         },
     }),
     useComments: () => ({ data: { items: [] } }),
-    useActivities: () => ({ data: { items: [] } }),
+    useActivities: vi.fn().mockReturnValue({ data: { items: [] } }),
     useAddComment: () => ({ mutateAsync: vi.fn() }),
     useIssueLabels: () => ({ data: { items: [] } }),
     useSetIssueLabels: () => ({ mutateAsync: vi.fn() }),
@@ -84,6 +84,29 @@ describe('IssueDetailPage', () => {
     it('shows comment input', () => {
         render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
         expect(screen.getByLabelText(/Leave a comment/i)).toBeInTheDocument();
+    });
+
+    it('activity feed: shows member name (not raw type) when user_id matches a member', () => {
+        vi.mocked(hooks.useActivities).mockReturnValue({
+            data: {
+                items: [{
+                    id: 'act1',
+                    issue_id: 'abc123',
+                    user_id: 'm1',
+                    type: 'status_changed',
+                    from_value: 'todo',
+                    to_value: 'in_progress',
+                    created_at: '2026-07-04T00:00:00Z',
+                }],
+            },
+        } as any);
+
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+
+        // Member name should be visible
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+        // Raw type string must NOT appear as the actor label
+        expect(screen.queryByText('status_changed')).not.toBeInTheDocument();
     });
 });
 

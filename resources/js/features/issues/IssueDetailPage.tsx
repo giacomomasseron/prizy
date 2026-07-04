@@ -12,12 +12,28 @@ import { CycleEditor } from './CycleEditor';
 import { LabelsEditor } from './LabelsEditor';
 import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubLinks';
 import { useMe } from '../../auth/useAuth';
+import { useMembers } from '../members/hooks';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 import { ApiError } from '../../lib/apiClient';
+
+function humanizeActivityType(type: string): string {
+    switch (type) {
+        case 'status_changed':      return 'changed status';
+        case 'priority_changed':    return 'changed priority';
+        case 'assigned':            return 'assigned';
+        case 'title_changed':       return 'changed title';
+        case 'description_changed': return 'changed description';
+        case 'label_added':         return 'added a label';
+        case 'label_removed':       return 'removed a label';
+        case 'project_changed':     return 'changed project';
+        case 'cycle_changed':       return 'changed cycle';
+        default:                    return type;
+    }
+}
 
 const sectionHeader: React.CSSProperties = {
     fontSize: 11,
@@ -39,6 +55,8 @@ export default function IssueDetailPage() {
     const addGithubLink    = useAddGithubLink(id);
     const removeGithubLink = useRemoveGithubLink(id);
     const me            = useMe();
+    const members       = useMembers();
+    const memberById    = new Map((members.data ?? []).map(m => [m.id, m]));
 
     const [comment, setComment] = useState('');
     const [prUrl, setPrUrl]     = useState('');
@@ -137,7 +155,7 @@ export default function IssueDetailPage() {
                 </h1>
             )}
 
-            {/* Support escalation block — renders ONLY when support_ticket_id exists (always null today) */}
+            {/* support_ticket_id is an untyped Phase-3 field (always null today); block renders only when set */}
             {(data as any).support_ticket_id && (
                 <div style={{
                     border: '1px solid var(--accent)', background: 'var(--accent2)',
@@ -272,22 +290,31 @@ export default function IssueDetailPage() {
             {/* Activity */}
             <div style={sectionHeader}>Activity</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
-                {(activities.data?.items ?? []).map((a) => (
-                    <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        <div style={{
-                            width: 20, height: 20, borderRadius: '50%', background: 'var(--hover)',
-                            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 10, color: 'var(--fg3)',
-                        }}>·</div>
-                        <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
-                            <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{a.type}</span>
-                            {a.to_value ? ` → ${a.to_value}` : ''}
-                            <span style={{ marginLeft: 6, color: 'var(--fg3)', fontSize: 11 }}>
-                                {new Date(a.created_at).toLocaleDateString()}
-                            </span>
+                {(activities.data?.items ?? []).map((a) => {
+                    const actor = a.user_id ? memberById.get(a.user_id) : undefined;
+                    return (
+                        <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                            {actor
+                                ? <Avatar {...avatarFor(actor)} size={20} />
+                                : <div style={{
+                                    width: 20, height: 20, borderRadius: '50%', background: 'var(--hover)',
+                                    flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    fontSize: 10, color: 'var(--fg3)',
+                                }}>·</div>
+                            }
+                            <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
+                                <span style={{ color: 'var(--fg)', fontWeight: 500 }}>
+                                    {actor ? actor.name : 'Someone'}
+                                </span>
+                                {' '}{humanizeActivityType(a.type)}
+                                {a.to_value ? ` → ${a.to_value}` : ''}
+                                <span style={{ marginLeft: 6, color: 'var(--fg3)', fontSize: 11 }}>
+                                    {new Date(a.created_at).toLocaleDateString()}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
                 {(comments.data?.items ?? []).map((c) => (
                     <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                         <Avatar size={20} />
