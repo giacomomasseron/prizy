@@ -1,53 +1,369 @@
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useLogout, useMe } from '../auth/useAuth';
-import { NotificationBell } from '../features/notifications/NotificationBell';
+import { useUnreadCount } from '../features/notifications/hooks';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 import CommandPalette from '../features/search/CommandPalette';
+import { Avatar } from './ui/Avatar';
+import { Kbd } from './ui/Kbd';
+import { Menu } from './ui/Menu';
+import type { MenuItem } from './ui/Menu';
+import { ThemeToggle } from './ui/ThemeToggle';
 
-const links: Array<{ to: string; label: string }> = [
-    { to: '/', label: 'Issues' },
-    { to: '/board', label: 'Board' },
-    { to: '/teams', label: 'Teams' },
-    { to: '/projects', label: 'Projects' },
-    { to: '/roadmap', label: 'Roadmap' },
-    { to: '/labels', label: 'Labels' },
-];
+// Deterministic color from string (user id) — avoids needing a DB color field on Me
+const USER_COLORS = ['#e0724a', '#4a7fe0', '#3a9a68', '#b06ae0', '#d0a23a', '#c96b8f', '#3aa8a0', '#6d69f2'];
+function colorFromString(s: string): string {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) & 0x7fffffff;
+    return USER_COLORS[h % USER_COLORS.length];
+}
+
+function getInitials(name: string): string {
+    return name
+        .split(' ')
+        .map((p) => p[0] ?? '')
+        .join('')
+        .slice(0, 2)
+        .toUpperCase();
+}
+
+// Nav item row style — mirroring the mockup navCss helper
+function navItemStyle(active: boolean): React.CSSProperties {
+    return {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '6px 9px',
+        borderRadius: 7,
+        fontSize: 12.8,
+        fontWeight: 500,
+        textDecoration: 'none',
+        color: active ? 'var(--fg)' : 'var(--fg2)',
+        background: active ? 'var(--hover)' : 'transparent',
+    };
+}
+
+// Icons — CSS-drawn inline, no extra dep
+function IssuesIcon() {
+    return (
+        <span
+            style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor', display: 'inline-block', flexShrink: 0 }}
+        />
+    );
+}
+function ProjectsIcon() {
+    return (
+        <span
+            style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85, display: 'inline-block', flexShrink: 0 }}
+        />
+    );
+}
+function RoadmapIcon() {
+    return (
+        <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2.5, width: 13, flexShrink: 0 }}>
+            <span style={{ width: 8, height: 2.5, borderRadius: 1, background: 'currentColor' }} />
+            <span style={{ width: 13, height: 2.5, borderRadius: 1, background: 'currentColor' }} />
+            <span style={{ width: 5, height: 2.5, borderRadius: 1, background: 'currentColor' }} />
+        </span>
+    );
+}
+function TeamsIcon() {
+    return (
+        <span style={{ display: 'inline-flex', gap: 2, alignItems: 'flex-end', width: 13, flexShrink: 0 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', border: '1.4px solid currentColor', display: 'inline-block' }} />
+            <span style={{ width: 5, height: 5, borderRadius: '50%', border: '1.4px solid currentColor', display: 'inline-block', opacity: 0.7 }} />
+        </span>
+    );
+}
+function LabelsIcon() {
+    return (
+        <span style={{ width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span
+                style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50% 50% 50% 0',
+                    border: '1.5px solid currentColor',
+                    transform: 'rotate(-45deg)',
+                    display: 'inline-block',
+                }}
+            />
+        </span>
+    );
+}
+function InboxIcon() {
+    return (
+        <span style={{ width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <span
+                style={{
+                    width: 12,
+                    height: 10,
+                    borderRadius: 2,
+                    border: '1.5px solid currentColor',
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'center',
+                    paddingBottom: 1,
+                }}
+            >
+                <span style={{ width: 6, height: 3, borderRadius: '0 0 2px 2px', background: 'currentColor' }} />
+            </span>
+        </span>
+    );
+}
+
+const NAV_LINKS = [
+    { to: '/', label: 'Issues', icon: <IssuesIcon />, end: true },
+    { to: '/projects', label: 'Projects', icon: <ProjectsIcon />, end: false },
+    { to: '/roadmap', label: 'Roadmap', icon: <RoadmapIcon />, end: false },
+    { to: '/teams', label: 'Teams', icon: <TeamsIcon />, end: false },
+    { to: '/labels', label: 'Labels', icon: <LabelsIcon />, end: false },
+] as const;
 
 export default function AppLayout() {
-    const logout = useLogout();
     const me = useMe();
-    const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
+    const logout = useLogout();
+    const navigate = useNavigate();
+    const unread = useUnreadCount();
+    const unreadCount = unread.data?.count ?? 0;
     useRealtimeNotifications();
 
+    const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
+
+    const userName = me.data?.name ?? '';
+    const initials = userName ? getInitials(userName) : '';
+    const avatarColor = me.data?.id ? colorFromString(me.data.id) : 'var(--accent)';
+
+    const userMenuItems: MenuItem[] = [
+        { key: 'settings', label: 'Settings', onActivate: () => navigate('/settings') },
+        ...(canManage
+            ? [{ key: 'integrations', label: 'Integrations', onActivate: () => navigate('/integrations') }]
+            : []),
+        { key: 'logout', label: 'Logout', onActivate: () => logout.mutate(), danger: true },
+    ];
+
+    function openSearch() {
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
+    }
+
     return (
-        <div className="min-h-screen bg-gray-50">
-            <header className="border-b bg-white">
-                <nav className="mx-auto flex max-w-5xl items-center gap-4 px-6 py-3 text-sm">
-                    <span className="font-semibold">Prizy</span>
-                    {links.map((l) => (
-                        <NavLink
-                            key={l.to}
-                            to={l.to}
-                            end={l.to === '/'}
-                            className={({ isActive }) =>
-                                isActive ? 'text-indigo-600 font-medium' : 'text-gray-600 hover:text-gray-900'
-                            }
+        <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }} className="bg-bg text-fg">
+            {/* ── Sidebar ── */}
+            <aside
+                style={{
+                    width: 238,
+                    flexShrink: 0,
+                    background: 'var(--bg2)',
+                    borderRight: '1px solid var(--border)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    overflow: 'hidden',
+                }}
+            >
+                {/* 1. Workspace header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 12px 11px' }}>
+                    <div
+                        style={{
+                            width: 23,
+                            height: 23,
+                            borderRadius: 6,
+                            background: 'var(--accent)',
+                            color: '#fff',
+                            fontWeight: 700,
+                            fontSize: 13,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                        }}
+                    >
+                        P
+                    </div>
+                    <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-.01em' }}>Prizy</span>
+                    <span style={{ color: 'var(--fg3)', fontSize: 10, marginTop: 2 }}>▾</span>
+                    <button
+                        type="button"
+                        title="Search (⌘K)"
+                        aria-label="Search"
+                        onClick={openSearch}
+                        style={{
+                            marginLeft: 'auto',
+                            border: 'none',
+                            background: 'none',
+                            color: 'var(--fg2)',
+                            width: 28,
+                            height: 28,
+                            borderRadius: 7,
+                            cursor: 'pointer',
+                            fontSize: 15,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                        }}
+                        className="hover:bg-hover"
+                    >
+                        ⌕
+                    </button>
+                </div>
+
+                {/* 2. New issue button */}
+                <div style={{ padding: '0 10px 10px' }}>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/')}
+                        style={{
+                            width: '100%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 9,
+                            padding: '7px 10px',
+                            borderRadius: 8,
+                            border: '1px solid var(--border)',
+                            background: 'var(--panel)',
+                            color: 'var(--fg)',
+                            fontSize: 12.5,
+                            fontWeight: 500,
+                            cursor: 'pointer',
+                            fontFamily: 'inherit',
+                        }}
+                        className="hover:border-border2"
+                    >
+                        <span
+                            style={{
+                                width: 16,
+                                height: 16,
+                                borderRadius: 5,
+                                background: 'var(--accent)',
+                                color: '#fff',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: 13,
+                                flexShrink: 0,
+                            }}
                         >
-                            {l.label}
+                            +
+                        </span>
+                        New issue
+                        <span style={{ marginLeft: 'auto' }}>
+                            <Kbd>C</Kbd>
+                        </span>
+                    </button>
+                </div>
+
+                {/* 3. Primary nav */}
+                <nav style={{ padding: '2px 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {NAV_LINKS.map((link) => (
+                        <NavLink
+                            key={link.to}
+                            to={link.to}
+                            end={link.end}
+                            style={({ isActive }) => navItemStyle(isActive)}
+                            className={({ isActive }) => isActive ? '' : 'hover:bg-hover'}
+                        >
+                            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>
+                                {link.icon}
+                            </span>
+                            <span style={{ flex: 1 }}>{link.label}</span>
                         </NavLink>
                     ))}
-                    <div className="ml-auto flex items-center gap-3">
-                        <button type="button" aria-label="Search" onClick={() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))} className="text-sm text-gray-500 hover:text-gray-900">Search ⌘K</button>
-                        {canManage && <Link to="/integrations" aria-label="Integrations" className="text-gray-600 hover:text-gray-900">Integrations</Link>}
-                        <Link to="/settings" aria-label="Settings" className="text-gray-600 hover:text-gray-900">⚙</Link>
-                        <NotificationBell />
-                        <button type="button" onClick={() => logout.mutate()} className="text-gray-500 hover:text-gray-900">Logout</button>
-                    </div>
                 </nav>
-            </header>
-            <main>
+
+                {/* 4. Divider */}
+                <div style={{ margin: '8px 0', borderTop: '1px solid var(--border)' }} />
+
+                {/* 5. Inbox */}
+                <div style={{ padding: '0 8px' }}>
+                    <NavLink
+                        to="/notifications"
+                        style={({ isActive }) => navItemStyle(isActive)}
+                        className={({ isActive }) => isActive ? '' : 'hover:bg-hover'}
+                        aria-label="Inbox"
+                    >
+                        <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>
+                            <InboxIcon />
+                        </span>
+                        <span style={{ flex: 1 }}>Inbox</span>
+                        {unreadCount > 0 && (
+                            <span
+                                data-testid="inbox-badge"
+                                style={{
+                                    fontSize: 10,
+                                    fontWeight: 600,
+                                    fontFamily: 'var(--font-mono)',
+                                    color: 'var(--accent)',
+                                    background: 'var(--accent2)',
+                                    borderRadius: 20,
+                                    padding: '1px 7px',
+                                    flexShrink: 0,
+                                }}
+                            >
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
+                    </NavLink>
+                </div>
+
+                {/* 6. User footer */}
+                <div
+                    style={{
+                        marginTop: 'auto',
+                        padding: 10,
+                        borderTop: '1px solid var(--border)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 9,
+                    }}
+                >
+                    <Menu
+                        placement="top-start"
+                        trigger={
+                            <button
+                                type="button"
+                                data-testid="user-menu-trigger"
+                                style={{
+                                    flex: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 9,
+                                    minWidth: 0,
+                                    background: 'none',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    borderRadius: 7,
+                                    padding: '3px 4px',
+                                    fontFamily: 'inherit',
+                                    textAlign: 'left',
+                                }}
+                                className="hover:bg-hover"
+                            >
+                                <Avatar
+                                    initials={initials || undefined}
+                                    color={initials ? avatarColor : undefined}
+                                    size={26}
+                                    title={userName || 'Me'}
+                                />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                        {userName || 'Loading…'}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: 'var(--fg3)' }}>Prizy workspace</div>
+                                </div>
+                            </button>
+                        }
+                        items={userMenuItems}
+                    />
+                    <ThemeToggle />
+                </div>
+            </aside>
+
+            {/* ── Main content ── */}
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg)', overflow: 'auto' }}>
                 <Outlet />
             </main>
+
+            {/* Globally mounted — preserved from original AppLayout */}
             <CommandPalette />
         </div>
     );
