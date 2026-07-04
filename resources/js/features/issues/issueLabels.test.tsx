@@ -21,6 +21,8 @@ describe('IssueDetailPage labels', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
             const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            // /members must precede /me: '/v1/members' contains the substring '/v1/me'
+            if (url.includes('/members')) return j({ data: [] });
             if (url.includes(`/issues/i1/labels`)) {
                 if ((init?.method ?? 'GET') === 'PUT') return j({ data: [{ id: 'l1', name: 'Bug', color: '#f00', created_at: '', updated_at: '' }] });
                 return j({ data: [], links: { next: null } });
@@ -39,8 +41,10 @@ describe('IssueDetailPage labels', () => {
 
     it('sets a label via the multi-select', async () => {
         renderDetail();
-        const checkbox = await screen.findByLabelText('Bug');
-        await userEvent.click(checkbox);
+        // Wait for page to load then open the Labels menu (LabelsEditor uses a Menu in developer mode)
+        await userEvent.click(await screen.findByRole('button', { name: /edit labels/i }));
+        // Click the Bug menu item to toggle the label on
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Bug' }));
         await vi.waitFor(() => {
             const calls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls;
             const putCall = calls.find(([u, i]) => u.includes('/issues/i1/labels') && i?.method === 'PUT');
@@ -52,6 +56,8 @@ describe('IssueDetailPage labels', () => {
     it('shows labels as read-only chips (no checkbox) for a viewer', async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
             const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            // /members must precede /me: '/v1/members' contains the substring '/v1/me'
+            if (url.includes('/members')) return j({ data: [] });
             if (url.includes('/issues/i1/labels')) {
                 if ((init?.method ?? 'GET') === 'PUT') return j({ data: [] });
                 return j({ data: [{ id: 'l1', name: 'Bug', color: '#f00', created_at: '', updated_at: '' }], links: { next: null } });
@@ -68,9 +74,9 @@ describe('IssueDetailPage labels', () => {
         renderDetail();
         // Issue title loads
         await screen.findByText('Fix');
-        // The assigned label appears as a chip
+        // The assigned label appears as a chip (LabelChip renders the name)
         await screen.findByText('Bug');
-        // No editable checkbox should exist
+        // No editable checkbox should exist (LabelsEditor read-only has no checkbox)
         expect(screen.queryByRole('checkbox')).toBeNull();
     });
 });

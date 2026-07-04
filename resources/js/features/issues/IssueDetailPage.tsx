@@ -1,331 +1,325 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
-    useActivities, useAddComment, useComments, useIssue,
-    useIssueLabels, useSetIssueLabels, useUpdateIssue,
+    useIssue, useUpdateIssue,
+    useComments, useAddComment, useActivities,
 } from './hooks';
 import { StatusEditor } from './StatusEditor';
 import { PriorityEditor } from './PriorityEditor';
+import { AssigneeEditor } from './AssigneeEditor';
+import { ProjectEditor } from './ProjectEditor';
+import { CycleEditor } from './CycleEditor';
+import { LabelsEditor } from './LabelsEditor';
 import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubLinks';
-import { useLabels } from '../labels/hooks';
-import { useProjects } from '../projects/hooks';
-import { useCycles } from '../teams/hooks';
 import { useMe } from '../../auth/useAuth';
+import { avatarFor } from '../../lib/avatarFor';
+import { Avatar } from '../../components/ui/Avatar';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 import { ApiError } from '../../lib/apiClient';
 
+const sectionHeader: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    letterSpacing: '.05em',
+    textTransform: 'uppercase',
+    color: 'var(--fg3)',
+    marginBottom: 8,
+};
+
 export default function IssueDetailPage() {
     const { id = '' } = useParams();
-    const issue = useIssue(id);
-    const comments = useComments(id);
-    const activities = useActivities(id);
-    const addComment = useAddComment(id);
-    const [body, setBody] = useState('');
-    const [error, setError] = useState('');
-
-    const me = useMe();
-    const issueLabels = useIssueLabels(id);
-    const allLabels = useLabels();
-    const setLabels = useSetIssueLabels(id);
-    const projects = useProjects();
-    const cycles = useCycles(issue.data?.team_id ?? '');
-    const updateIssue = useUpdateIssue(id);
-
-    const githubLinks = useGithubLinks(id);
-    const addGithubLink = useAddGithubLink(id);
+    const issue         = useIssue(id);
+    const comments      = useComments(id);
+    const activities    = useActivities(id);
+    const addComment    = useAddComment(id);
+    const updateIssue   = useUpdateIssue(id);
+    const githubLinks   = useGithubLinks(id);
+    const addGithubLink    = useAddGithubLink(id);
     const removeGithubLink = useRemoveGithubLink(id);
-    const [prUrl, setPrUrl] = useState('');
-    const [prError, setPrError] = useState('');
+    const me            = useMe();
 
-    async function onAddPr() {
-        setPrError('');
-        try {
-            await addGithubLink.mutateAsync(prUrl);
-            setPrUrl('');
-        } catch (err) {
-            setPrError(err instanceof ApiError ? err.detail : 'Failed to add.');
-        }
-    }
+    const [comment, setComment] = useState('');
+    const [prUrl, setPrUrl]     = useState('');
+    const [error, setError]     = useState('');
+    const titleRef = useRef<HTMLSpanElement>(null);
 
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
-    const selectedLabelIds = new Set((issueLabels.data?.items ?? []).map((l) => l.id));
 
-    async function toggleLabel(labelId: string) {
-        setError('');
-        const next = new Set(selectedLabelIds);
-        if (next.has(labelId)) next.delete(labelId); else next.add(labelId);
-        try {
-            await setLabels.mutateAsync([...next]);
-        } catch (err) {
-            setError(err instanceof ApiError ? err.detail : 'Update failed.');
+    if (issue.isLoading) {
+        return <p style={{ padding: 24, color: 'var(--fg3)' }}>Loading…</p>;
+    }
+    if (issue.isError || !issue.data) {
+        return <p style={{ padding: 24, color: 'var(--fg3)' }}>Issue not found.</p>;
+    }
+
+    const data       = issue.data;
+    const identifier = data.identifier ?? data.id.slice(0, 6).toUpperCase();
+
+    async function handleTitleBlur() {
+        const next = titleRef.current?.textContent?.trim();
+        if (next && next !== data.title) {
+            setError('');
+            try { await updateIssue.mutateAsync({ title: next }); }
+            catch (e) { setError(e instanceof ApiError ? e.detail : 'Update failed.'); }
         }
     }
 
-    if (issue.isLoading) return <p className="p-6">Loading…</p>;
-    if (issue.isError || !issue.data) return <p className="p-6">Not found.</p>;
+    async function handleDescBlur(e: React.FocusEvent<HTMLTextAreaElement>) {
+        const next = e.target.value;
+        if (next !== (data.description ?? '')) {
+            setError('');
+            try { await updateIssue.mutateAsync({ description: next || null }); }
+            catch (e2) { setError(e2 instanceof ApiError ? e2.detail : 'Update failed.'); }
+        }
+    }
 
     async function submitComment(e: React.FormEvent) {
         e.preventDefault();
-        if (!body.trim()) return;
-        await addComment.mutateAsync(body);
-        setBody('');
+        if (!comment.trim()) return;
+        await addComment.mutateAsync(comment);
+        setComment('');
     }
 
-    const currentProject = projects.data?.items.find((p) => p.id === issue.data!.project_id);
-    const currentCycle = cycles.data?.items.find((c) => c.id === issue.data!.cycle_id);
+    async function onAddPr() {
+        setError('');
+        try {
+            await addGithubLink.mutateAsync(prUrl);
+            setPrUrl('');
+        } catch (e) {
+            setError(e instanceof ApiError ? e.detail : 'Failed to add.');
+        }
+    }
 
     return (
-        <div className="mx-auto max-w-5xl p-6">
-            <Link to="/" className="text-sm text-accent">← List</Link>
+        <div style={{ maxWidth: 780, margin: '0 auto', padding: '0 24px 48px' }}>
 
-            {/* Header */}
-            <div className="mt-4">
-                {issue.data.identifier && (
-                    <span className="text-sm text-fg3">{issue.data.identifier}</span>
-                )}
-                <h1 className="mt-1 text-xl font-semibold">{issue.data.title}</h1>
+            {/* Back link + breadcrumb */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, paddingTop: 20, paddingBottom: 14 }}>
+                <Link to="/" style={{ fontSize: 13, color: 'var(--accent)', textDecoration: 'none' }}>
+                    ← Issues
+                </Link>
+                <span style={{ color: 'var(--fg3)', fontSize: 12 }}>·</span>
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>
+                    {data.team_id} ▸ <span>{identifier}</span>
+                </span>
             </div>
 
-            {/* Main layout: content + properties sidebar */}
-            <div className="mt-6 flex gap-8">
-                {/* Left: main content */}
-                <div className="min-w-0 flex-1">
-                    {issue.data.description && (
-                        <p className="whitespace-pre-wrap text-sm">{issue.data.description}</p>
-                    )}
+            {/* Editable title */}
+            {canDevelop ? (
+                <span
+                    ref={titleRef}
+                    role="heading"
+                    aria-level={1}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onBlur={handleTitleBlur}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter') { e.preventDefault(); titleRef.current?.blur(); }
+                    }}
+                    style={{
+                        display: 'block', margin: '0 0 18px',
+                        fontSize: 19, fontWeight: 600,
+                        lineHeight: 1.35, letterSpacing: '-.01em',
+                        outline: 'none', borderRadius: 6, minHeight: 28,
+                    }}
+                >
+                    {data.title}
+                </span>
+            ) : (
+                <h1 style={{
+                    margin: '0 0 18px',
+                    fontSize: 19, fontWeight: 600,
+                    lineHeight: 1.35, letterSpacing: '-.01em',
+                }}>
+                    {data.title}
+                </h1>
+            )}
 
-                    {/* Labels */}
-                    <section className="mt-6">
-                        <h2 className="mb-2 font-semibold">Labels</h2>
-                        {canDevelop ? (
-                            <ul className="space-y-1">
-                                {allLabels.data?.items.map((l) => (
-                                    <li key={l.id}>
-                                        <label className="flex items-center gap-2 text-sm">
-                                            <input
-                                                type="checkbox"
-                                                aria-label={l.name}
-                                                checked={selectedLabelIds.has(l.id)}
-                                                onChange={() => toggleLabel(l.id)}
-                                            />
-                                            <span
-                                                className="inline-block h-3 w-3 rounded-full"
-                                                style={{ backgroundColor: l.color }}
-                                            />
-                                            {l.name}
-                                        </label>
-                                    </li>
-                                ))}
-                            </ul>
-                        ) : (
-                            <ul className="flex flex-wrap gap-2">
-                                {(issueLabels.data?.items ?? []).map((l) => (
-                                    <li
-                                        key={l.id}
-                                        className="flex items-center gap-1 rounded bg-hover px-2 py-0.5 text-sm"
-                                    >
-                                        <span
-                                            className="inline-block h-3 w-3 rounded-full"
-                                            style={{ backgroundColor: l.color }}
-                                        />
-                                        {l.name}
-                                    </li>
-                                ))}
-                                {(issueLabels.data?.items ?? []).length === 0 && (
-                                    <li className="text-sm text-fg3">None</li>
-                                )}
-                            </ul>
-                        )}
-                        {error && <p className="mt-2 text-sm text-red">{error}</p>}
-                    </section>
-
-                    {/* Project / Cycle */}
-                    <section className="mt-6 flex flex-wrap gap-4">
-                        {canDevelop ? (
-                            <>
-                                <label className="text-sm">
-                                    Project{' '}
-                                    <select
-                                        aria-label="Issue project"
-                                        value={issue.data.project_id ?? ''}
-                                        onChange={async (e) => {
-                                            setError('');
-                                            try {
-                                                await updateIssue.mutateAsync({
-                                                    project_id: e.target.value || null,
-                                                });
-                                            } catch (err) {
-                                                setError(
-                                                    err instanceof ApiError
-                                                        ? err.detail
-                                                        : 'Update failed.',
-                                                );
-                                            }
-                                        }}
-                                        className="rounded border border-border px-2 py-1"
-                                    >
-                                        <option value="">None</option>
-                                        {projects.data?.items.map((p) => (
-                                            <option key={p.id} value={p.id}>
-                                                {p.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <label className="text-sm">
-                                    Cycle{' '}
-                                    <select
-                                        aria-label="Issue cycle"
-                                        value={issue.data.cycle_id ?? ''}
-                                        onChange={async (e) => {
-                                            setError('');
-                                            try {
-                                                await updateIssue.mutateAsync({
-                                                    cycle_id: e.target.value || null,
-                                                });
-                                            } catch (err) {
-                                                setError(
-                                                    err instanceof ApiError
-                                                        ? err.detail
-                                                        : 'Update failed.',
-                                                );
-                                            }
-                                        }}
-                                        className="rounded border border-border px-2 py-1"
-                                    >
-                                        <option value="">None</option>
-                                        {cycles.data?.items.map((c) => (
-                                            <option key={c.id} value={c.id}>
-                                                {c.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                            </>
-                        ) : (
-                            <>
-                                <span className="text-sm">
-                                    Project:{' '}
-                                    <span className="font-medium">{currentProject?.name ?? 'None'}</span>
-                                </span>
-                                <span className="text-sm">
-                                    Cycle:{' '}
-                                    <span className="font-medium">{currentCycle?.name ?? 'None'}</span>
-                                </span>
-                            </>
-                        )}
-                    </section>
-
-                    {/* GitHub PR links */}
-                    <section className="mt-8">
-                        <h2 className="mb-2 font-semibold">GitHub</h2>
-                        <ul className="space-y-1 text-sm">
-                            {githubLinks.data?.map((l) => (
-                                <li key={l.id} className="flex items-center gap-2">
-                                    <a
-                                        href={l.url}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="text-accent hover:underline"
-                                    >
-                                        {l.repo} #{l.number}
-                                    </a>
-                                    <span className="rounded bg-hover px-1.5 py-0.5 text-xs text-fg2">
-                                        {l.state}
-                                    </span>
-                                    {canDevelop && (
-                                        <button
-                                            type="button"
-                                            aria-label={`Remove ${l.repo} #${l.number}`}
-                                            onClick={() => removeGithubLink.mutate(l.id)}
-                                            className="text-fg3 hover:text-red"
-                                        >
-                                            ✕
-                                        </button>
-                                    )}
-                                </li>
-                            ))}
-                            {githubLinks.data?.length === 0 && (
-                                <li className="text-fg3">No linked pull requests.</li>
-                            )}
-                        </ul>
-                        {canDevelop && (
-                            <div className="mt-2 flex items-center gap-2">
-                                <input
-                                    aria-label="Add PR URL"
-                                    value={prUrl}
-                                    onChange={(e) => setPrUrl(e.target.value)}
-                                    placeholder="https://github.com/owner/repo/pull/123"
-                                    className="flex-1 rounded border border-border px-2 py-1 text-sm"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={onAddPr}
-                                    className="rounded border border-border px-2 py-1 text-sm"
-                                >
-                                    Add PR
-                                </button>
-                                {prError && <span className="text-sm text-red">{prError}</span>}
-                            </div>
-                        )}
-                    </section>
-
-                    {/* Comments */}
-                    <section className="mt-8">
-                        <h2 className="mb-2 font-semibold">Comments</h2>
-                        <ul className="space-y-2">
-                            {comments.data?.items.map((c) => (
-                                <li
-                                    key={c.id}
-                                    className="rounded border border-border bg-panel p-2 text-sm"
-                                >
-                                    {c.body}
-                                </li>
-                            ))}
-                        </ul>
-                        <form onSubmit={submitComment} className="mt-3 flex gap-2">
-                            <input
-                                value={body}
-                                onChange={(e) => setBody(e.target.value)}
-                                placeholder="Leave a comment…"
-                                aria-label="Leave a comment"
-                                className="flex-1 rounded border border-border px-2 py-1"
-                            />
-                            <button type="submit" className="rounded bg-accent px-3 text-white">
-                                Send
-                            </button>
-                        </form>
-                    </section>
-
-                    {/* Activity */}
-                    <section className="mt-8">
-                        <h2 className="mb-2 font-semibold">Activity</h2>
-                        <ul className="space-y-1 text-sm text-fg2">
-                            {activities.data?.items.map((a) => (
-                                <li key={a.id}>
-                                    {a.type}
-                                    {a.to_value ? `: ${a.to_value}` : ''}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                </div>
-
-                {/* Right: properties panel */}
-                <div style={{ width: 240, flexShrink: 0 }}>
-                    <PropertyRow label="Status">
-                        <StatusEditor issue={issue.data} canDevelop={canDevelop} />
-                    </PropertyRow>
-                    <PropertyRow label="Priority">
-                        <PriorityEditor issue={issue.data} canDevelop={canDevelop} />
-                    </PropertyRow>
-                    <PropertyRow label="Assignee">
-                        <span style={{ fontSize: 13, color: 'var(--fg)' }}>
-                            {issue.data.assignee?.name ?? 'Unassigned'}
+            {/* Support escalation block — renders ONLY when support_ticket_id exists (always null today) */}
+            {(data as any).support_ticket_id && (
+                <div style={{
+                    border: '1px solid var(--accent)', background: 'var(--accent2)',
+                    borderRadius: 12, padding: '14px 16px', marginBottom: 22,
+                }}>
+                    <div style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        fontSize: 12, fontWeight: 600, color: 'var(--accent)',
+                    }}>
+                        ↩ Escalated from Support
+                        <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
+                            {(data as any).support_ticket_id}
                         </span>
-                    </PropertyRow>
+                    </div>
+                    <button
+                        type="button"
+                        style={{
+                            marginTop: 12, display: 'inline-flex', alignItems: 'center',
+                            gap: 6, padding: '6px 11px', borderRadius: 8,
+                            border: '1px solid var(--accent)', background: 'transparent',
+                            color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}
+                    >
+                        Open original ticket ↗
+                    </button>
                 </div>
+            )}
+
+            {/* Properties panel */}
+            <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 6, marginBottom: 24 }}>
+                <PropertyRow label="Status">
+                    <StatusEditor issue={data} canDevelop={canDevelop} />
+                </PropertyRow>
+                <PropertyRow label="Priority">
+                    <PriorityEditor issue={data} canDevelop={canDevelop} />
+                </PropertyRow>
+                <PropertyRow label="Assignee">
+                    <AssigneeEditor issue={data} canDevelop={canDevelop} />
+                </PropertyRow>
+                <PropertyRow label="Project">
+                    <ProjectEditor issue={data} canDevelop={canDevelop} />
+                </PropertyRow>
+                <PropertyRow label="Labels">
+                    <LabelsEditor issue={data} canDevelop={canDevelop} />
+                </PropertyRow>
+                <PropertyRow label="Cycle">
+                    <CycleEditor issue={data} canDevelop={canDevelop} />
+                </PropertyRow>
             </div>
+
+            {error && <p style={{ color: 'var(--red)', fontSize: 13, marginBottom: 12 }}>{error}</p>}
+
+            {/* Description */}
+            <div style={sectionHeader}>Description</div>
+            {canDevelop ? (
+                <textarea
+                    defaultValue={data.description ?? ''}
+                    onBlur={handleDescBlur}
+                    placeholder="Add a description…"
+                    aria-label="Issue description"
+                    style={{
+                        width: '100%', minHeight: 80, background: 'none',
+                        border: '1px solid transparent', borderRadius: 8,
+                        padding: '8px 10px', fontSize: 13.5, lineHeight: 1.6,
+                        color: 'var(--fg2)', fontFamily: 'inherit', resize: 'vertical',
+                        boxSizing: 'border-box', marginBottom: 24, outline: 'none',
+                    }}
+                />
+            ) : (
+                <p style={{ margin: '0 0 24px', fontSize: 13.5, lineHeight: 1.6, color: 'var(--fg2)' }}>
+                    {data.description
+                        ? data.description
+                        : <span style={{ color: 'var(--fg3)', fontStyle: 'italic' }}>No description.</span>}
+                </p>
+            )}
+
+            {/* GitHub PR links */}
+            <div style={sectionHeader}>GitHub</div>
+            <ul style={{ margin: '0 0 8px', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {githubLinks.data?.map((l) => (
+                    <li key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+                        <a
+                            href={l.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            style={{ color: 'var(--accent)', textDecoration: 'none' }}
+                        >
+                            {l.repo} #{l.number}
+                        </a>
+                        <span style={{
+                            borderRadius: 6, background: 'var(--hover)',
+                            padding: '1px 6px', fontSize: 11, color: 'var(--fg2)',
+                        }}>
+                            {l.state}
+                        </span>
+                        {canDevelop && (
+                            <button
+                                type="button"
+                                aria-label={`Remove ${l.repo} #${l.number}`}
+                                onClick={() => removeGithubLink.mutate(l.id)}
+                                style={{
+                                    border: 'none', background: 'none', color: 'var(--fg3)',
+                                    cursor: 'pointer', fontSize: 12, padding: 2,
+                                }}
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </li>
+                ))}
+                {githubLinks.data?.length === 0 && (
+                    <li style={{ fontSize: 13, color: 'var(--fg3)' }}>No linked pull requests.</li>
+                )}
+            </ul>
+            {canDevelop && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+                    <input
+                        aria-label="Add PR URL"
+                        value={prUrl}
+                        onChange={(e) => setPrUrl(e.target.value)}
+                        placeholder="https://github.com/…/pull/123"
+                        style={{
+                            flex: 1, border: '1px solid var(--border)', borderRadius: 8,
+                            background: 'none', padding: '6px 10px', fontSize: 13,
+                            color: 'var(--fg)', fontFamily: 'inherit', outline: 'none',
+                        }}
+                    />
+                    <Button variant="secondary" onClick={() => void onAddPr()}>Add PR</Button>
+                </div>
+            )}
+
+            {/* Activity */}
+            <div style={sectionHeader}>Activity</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+                {(activities.data?.items ?? []).map((a) => (
+                    <div key={a.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <div style={{
+                            width: 20, height: 20, borderRadius: '50%', background: 'var(--hover)',
+                            flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10, color: 'var(--fg3)',
+                        }}>·</div>
+                        <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
+                            <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{a.type}</span>
+                            {a.to_value ? ` → ${a.to_value}` : ''}
+                            <span style={{ marginLeft: 6, color: 'var(--fg3)', fontSize: 11 }}>
+                                {new Date(a.created_at).toLocaleDateString()}
+                            </span>
+                        </div>
+                    </div>
+                ))}
+                {(comments.data?.items ?? []).map((c) => (
+                    <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <Avatar size={20} />
+                        <div style={{
+                            fontSize: 12.5, color: 'var(--fg2)', background: 'var(--panel)',
+                            border: '1px solid var(--border)', borderRadius: 8,
+                            padding: '6px 10px', flex: 1,
+                        }}>
+                            {c.body}
+                        </div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Comment box */}
+            <form onSubmit={submitComment} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <Avatar {...(me.data?.name ? avatarFor(me.data) : {})} size={24} />
+                <Input
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Leave a comment…"
+                    aria-label="Leave a comment"
+                    style={{ flex: 1 }}
+                />
+                <Button
+                    variant="primary"
+                    type="submit"
+                    disabled={!comment.trim() || addComment.isPending}
+                >
+                    Comment
+                </Button>
+            </form>
         </div>
     );
 }
