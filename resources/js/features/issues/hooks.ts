@@ -1,6 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { Issue, IssueStatus, IssueComment, IssueActivity, Label } from '../../lib/types';
+import type { Issue, IssueStatus, IssuePriority, IssueComment, IssueActivity, Label } from '../../lib/types';
+
+export interface CreateIssueInput {
+    team_id: string;
+    title: string;
+    status?: IssueStatus;
+    priority?: IssuePriority;
+    assignee_id?: string | null;
+    project_id?: string | null;
+    description?: string | null;
+}
 
 export interface IssueFilters {
     status?: string;
@@ -36,7 +46,7 @@ export function useIssues(filters: IssueFilters = {}) {
 export function useCreateIssue() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: { team_id: string; title: string }) => api.post<Issue>('/issues', data),
+        mutationFn: (data: CreateIssueInput) => api.post<Issue>('/issues', data),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['issues'] }),
     });
 }

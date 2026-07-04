@@ -27,6 +27,7 @@ function renderLayout(adminLevel = 'member') {
         if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel) });
         if ((url as string).includes('/unread-count')) return j({ data: { count: 0 } });
         if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });
+        if ((url as string).includes('/teams')) return j({ data: [], links: { next: null } });
         return j({ data: {} });
     }));
     return render(

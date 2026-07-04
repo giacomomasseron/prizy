@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useLogout, useMe } from '../auth/useAuth';
 import { useUnreadCount } from '../features/notifications/hooks';
@@ -5,6 +6,7 @@ import { useRealtimeNotifications } from '../features/notifications/useRealtime'
 import CommandPalette from '../features/search/CommandPalette';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { PeekDrawer } from '../features/issues/PeekDrawer';
+import { CreateIssueDrawer } from '../features/issues/CreateIssueDrawer';
 import { Avatar } from './ui/Avatar';
 import { Kbd } from './ui/Kbd';
 import { Menu } from './ui/Menu';
@@ -130,6 +132,24 @@ export default function AppLayout() {
     const unreadCount = unread.data?.count ?? 0;
     useRealtimeNotifications();
     const { peekId, createOpen, createStatus, openCreate, close } = useIssueDrawers();
+
+    // C hotkey: open the create-issue drawer when not typing and no overlay is open
+    useEffect(() => {
+        function onKey(e: KeyboardEvent) {
+            if (e.key !== 'c' || e.metaKey || e.ctrlKey || e.altKey) return;
+            const el = document.activeElement;
+            const inInput =
+                el instanceof HTMLInputElement ||
+                el instanceof HTMLTextAreaElement ||
+                el?.getAttribute('contenteditable') === 'true';
+            const paletteOpen = !!document.querySelector('[role="dialog"][aria-label="Command palette"]');
+            if (!inInput && !paletteOpen && !peekId && !createOpen) {
+                openCreate();
+            }
+        }
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [peekId, createOpen, openCreate]);
 
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
 
@@ -369,7 +389,7 @@ export default function AppLayout() {
             {/* Globally mounted — preserved from original AppLayout */}
             <CommandPalette />
             <PeekDrawer issueId={peekId} onClose={close} />
-            {/* CreateIssueDrawer — Task 6 */}
+            <CreateIssueDrawer open={createOpen} initialStatus={createStatus} onClose={close} />
         </div>
     );
 }
