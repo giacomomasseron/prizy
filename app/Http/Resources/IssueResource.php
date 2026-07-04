@@ -33,6 +33,13 @@ final class IssueResource extends JsonResource
             'archived_at'     => $this->archived_at,
             'created_at'      => $this->created_at,
             'updated_at'      => $this->updated_at,
+            'identifier'      => $this->identifier ?? null,
+            'labels'          => $this->whenLoaded('labels', fn () =>
+                $this->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])
+            ),
+            'assignee'        => $this->whenLoaded('assignee', fn () =>
+                $this->assignee ? ['id' => $this->assignee->id, 'name' => $this->assignee->name] : null
+            ),
         ]);
     }
 }

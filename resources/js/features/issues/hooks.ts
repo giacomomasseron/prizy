@@ -43,6 +43,10 @@ export function useCreateIssue() {
 
 export const STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
 
+export const LIST_GROUP_ORDER: IssueStatus[] = ['in_progress', 'in_review', 'todo', 'backlog', 'done', 'cancelled'];
+
+export const BOARD_STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done'];
+
 export function groupByStatus(issues: Issue[]): Record<IssueStatus, Issue[]> {
     const buckets = Object.fromEntries(STATUSES.map((s) => [s, [] as Issue[]])) as Record<IssueStatus, Issue[]>;
     for (const issue of issues) {

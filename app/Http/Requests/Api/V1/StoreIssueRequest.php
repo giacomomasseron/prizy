@@ -28,6 +28,7 @@ final class StoreIssueRequest extends FormRequest
             'cycle_id'        => ['nullable', 'string'],
             'parent_issue_id' => ['nullable', 'string'],
             'assignee_id'     => ['nullable', 'string'],
+            'status'          => ['sometimes', Rule::in(['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'])],
         ];
     }
 }

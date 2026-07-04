@@ -91,6 +91,8 @@ final class IssueRepository
         // Stable cursor tiebreaker.
         $query->orderBy('id');
 
+        $query->with('labels', 'assignee');
+
         return $query->cursorPaginate(perPage: $limit, cursorName: 'after');
     }
 }

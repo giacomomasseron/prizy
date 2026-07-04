@@ -274,6 +274,14 @@ class Issue extends TenantAwareEntity
     }
 
     /**
+     * @return BelongsToMany<Label, $this>
+     */
+    public function labels(): BelongsToMany
+    {
+        return $this->belongsToMany(Label::class, 'issue_labels', 'issue_id', 'label_id');
+    }
+
+    /**
      * @return BelongsToMany<User, $this>
      */
     public function issueTicketLinksUsers(): BelongsToMany

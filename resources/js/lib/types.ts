@@ -19,6 +19,9 @@ export interface Issue {
     archived_at: string | null;
     created_at: string;
     updated_at: string;
+    identifier?: string;
+    labels?: { id: string; name: string; color: string }[];
+    assignee?: { id: string; name: string } | null;
 }
 
 export interface IssueComment {
