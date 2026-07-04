@@ -83,15 +83,15 @@ export function useTransitionStatus() {
 }
 
 export function useIssue(id: string) {
-    return useQuery({ queryKey: ['issue', id], queryFn: () => api.get<Issue>(`/issues/${id}`) });
+    return useQuery({ queryKey: ['issue', id], queryFn: () => api.get<Issue>(`/issues/${id}`), enabled: !!id });
 }
 
 export function useComments(id: string) {
-    return useQuery({ queryKey: ['issue', id, 'comments'], queryFn: () => api.page<IssueComment>(`/issues/${id}/comments`) });
+    return useQuery({ queryKey: ['issue', id, 'comments'], queryFn: () => api.page<IssueComment>(`/issues/${id}/comments`), enabled: !!id });
 }
 
 export function useActivities(id: string) {
-    return useQuery({ queryKey: ['issue', id, 'activities'], queryFn: () => api.page<IssueActivity>(`/issues/${id}/activities`) });
+    return useQuery({ queryKey: ['issue', id, 'activities'], queryFn: () => api.page<IssueActivity>(`/issues/${id}/activities`), enabled: !!id });
 }
 
 export function useAddComment(id: string) {

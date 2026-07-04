@@ -43,8 +43,6 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
 
     if (!issueId) return null;
 
-    const open = !!issueId;
-
     const labelStyle: React.CSSProperties = {
         width: 96,
         flexShrink: 0,
@@ -192,7 +190,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
     }
 
     return (
-        <Drawer open={open} onClose={onClose} side="right" width={520}>
+        <Drawer open onClose={onClose} side="right" width={520}>
             <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {renderContent()}
             </div>

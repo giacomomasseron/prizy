@@ -21,13 +21,21 @@ export function useIssueDrawers(): IssueDrawerState {
     const createStatus = searchParams.get('status') as IssueStatus | null;
 
     function openPeek(id: string) {
-        setSearchParams({ peek: id }, { replace: true });
+        setSearchParams((prev) => {
+            prev.delete('create');
+            prev.delete('status');
+            prev.set('peek', id);
+            return prev;
+        }, { replace: true });
     }
 
     function openCreate(opts?: { status?: IssueStatus }) {
-        const params: Record<string, string> = { create: '1' };
-        if (opts?.status) params.status = opts.status;
-        setSearchParams(params, { replace: true });
+        setSearchParams((prev) => {
+            prev.delete('peek');
+            prev.set('create', '1');
+            if (opts?.status) prev.set('status', opts.status); else prev.delete('status');
+            return prev;
+        }, { replace: true });
     }
 
     function close() {

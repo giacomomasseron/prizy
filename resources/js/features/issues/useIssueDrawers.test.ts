@@ -57,3 +57,60 @@ describe('useIssueDrawers', () => {
         expect(get().peekId).toBe('y');
     });
 });
+
+// Filter-preservation tests — use an augmented harness that also captures raw searchParams
+import { useSearchParams } from 'react-router-dom';
+
+function FullHarness({ onCapture }: {
+    onCapture: (state: ReturnType<typeof useIssueDrawers>, sp: URLSearchParams) => void;
+}) {
+    const state = useIssueDrawers();
+    const [sp] = useSearchParams();
+    onCapture(state, sp);
+    return null;
+}
+
+function mountFull(initialPath: string) {
+    let drawerState: ReturnType<typeof useIssueDrawers>;
+    let searchParams: URLSearchParams;
+
+    render(
+        React.createElement(MemoryRouter, { initialEntries: [initialPath] },
+            React.createElement(FullHarness, {
+                onCapture: (s, sp) => { drawerState = s; searchParams = sp; },
+            })
+        )
+    );
+
+    return {
+        getState: () => drawerState!,
+        getSP: () => searchParams!,
+    };
+}
+
+describe('useIssueDrawers – filter preservation', () => {
+    it('openPeek keeps unrelated params and sets peek', () => {
+        const { getState, getSP } = mountFull('/?team=abc');
+        act(() => getState().openPeek('i1'));
+        expect(getSP().get('peek')).toBe('i1');
+        expect(getSP().get('team')).toBe('abc');
+        expect(getSP().get('create')).toBeNull();
+    });
+
+    it('openCreate keeps unrelated params, sets create+status, clears peek', () => {
+        const { getState, getSP } = mountFull('/?team=abc&peek=old');
+        act(() => getState().openCreate({ status: 'todo' }));
+        expect(getSP().get('team')).toBe('abc');
+        expect(getSP().get('create')).toBe('1');
+        expect(getSP().get('status')).toBe('todo');
+        expect(getSP().get('peek')).toBeNull();
+    });
+
+    it('openCreate without status removes status param but keeps unrelated params', () => {
+        const { getState, getSP } = mountFull('/?team=abc&status=done');
+        act(() => getState().openCreate());
+        expect(getSP().get('team')).toBe('abc');
+        expect(getSP().get('create')).toBe('1');
+        expect(getSP().get('status')).toBeNull();
+    });
+});
