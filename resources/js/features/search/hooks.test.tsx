@@ -32,7 +32,7 @@ it('useSearch is disabled for a blank query', async () => {
 });
 
 it('useIssueSearch returns items + paging meta', async () => {
-    const { result } = renderHook(() => useIssueSearch({ q: 'pay', page: 1 }), { wrapper: wrapper() });
+    const { result } = renderHook(() => useIssueSearch({ q: 'pay', sort: 'updated', page: 1 }), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.data?.items).toHaveLength(1));
     expect(result.current.data?.lastPage).toBe(2);
 });

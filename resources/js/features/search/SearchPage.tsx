@@ -1,84 +1,217 @@
-import { useState, useEffect } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { useIssueSearch } from './hooks';
-import { useTeams } from '../teams/hooks';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useIssueSearch, type AdvancedSearchFilters } from './hooks';
+import { StatusIcon } from '../../components/ui/StatusIcon';
+import { PriorityIcon } from '../../components/ui/PriorityIcon';
+import { Avatar } from '../../components/ui/Avatar';
+import { avatarFor } from '../../lib/avatarFor';
+import { LabelChip } from '../../components/ui/LabelChip';
+import { Menu } from '../../components/ui/Menu';
+import type { MenuItem } from '../../components/ui/Menu';
+import type { Issue } from '../../lib/types';
 
-const STATUSES = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
+const SORTS: { value: string; label: string }[] = [
+    { value: 'updated', label: 'Last updated' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'status', label: 'Status' },
+];
+
+// XSS-safe highlight: split on the query, render text spans (never dangerouslySetInnerHTML).
+function highlight(title: string, q: string): React.ReactNode {
+    const query = q.trim();
+    if (!query) return title;
+    const i = title.toLowerCase().indexOf(query.toLowerCase());
+    if (i < 0) return title;
+    return (
+        <>
+            {title.slice(0, i)}
+            <span
+                data-testid="hl"
+                style={{
+                    background: 'var(--accent2)',
+                    color: 'var(--accent)',
+                    borderRadius: 3,
+                    padding: '0 2px',
+                }}
+            >
+                {title.slice(i, i + query.length)}
+            </span>
+            {title.slice(i + query.length)}
+        </>
+    );
+}
 
 export default function SearchPage() {
-    const [params, setParams] = useSearchParams();
-    const q = params.get('q') ?? '';
-    const status = params.get('status') ?? '';
-    const team = params.get('team') ?? '';
-    const page = Number(params.get('page') ?? '1');
+    const navigate = useNavigate();
+    const [text, setText] = useState('');
+    const [debounced, setDebounced] = useState('');
+    const [filters] = useState<AdvancedSearchFilters>({});
+    const [sort, setSort] = useState('updated');
 
-    const [text, setText] = useState(q);
-    const teams = useTeams();
-
-    const search = useIssueSearch({ q, status: status || undefined, team_id: team || undefined, page });
-
-    function setParam(key: string, value: string) {
-        const next = new URLSearchParams(params);
-        if (value) next.set(key, value); else next.delete(key);
-        if (key !== 'page') next.delete('page');
-        setParams(next, { replace: true });
-    }
-
+    // Debounce text → debounced (250ms), mirroring CommandPalette.tsx
     useEffect(() => {
-        if (text === q) return;
-        const id = setTimeout(() => {
-            setParams((prev) => {
-                const next = new URLSearchParams(prev);
-                if (text) next.set('q', text); else next.delete('q');
-                next.delete('page');
-                return next;
-            }, { replace: true });
-        }, 250);
-        return () => clearTimeout(id);
-    }, [text, q, setParams]);
+        const t = setTimeout(() => setDebounced(text), 250);
+        return () => clearTimeout(t);
+    }, [text]);
+
+    const search = useIssueSearch({ q: debounced, sort, page: 1, ...filters });
+    const rows = search.data?.items ?? [];
+
+    const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? 'Last updated';
+
+    const sortMenuItems: MenuItem[] = SORTS.map((s) => ({
+        key: s.value,
+        label: s.label,
+        onActivate: () => setSort(s.value),
+    }));
 
     return (
-        <div className="mx-auto max-w-3xl p-6">
-            <h1 className="mb-4 text-xl font-semibold">Search</h1>
-            <div className="mb-4 flex gap-2">
+        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '26px 30px 80px' }}>
+            {/* Query input */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    background: 'var(--panel)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 10,
+                    padding: '8px 14px',
+                }}
+            >
+                <span style={{ fontSize: 17, color: 'var(--fg3)', flexShrink: 0 }}>⌕</span>
                 <input
-                    aria-label="Search query"
+                    aria-label="Search issues"
+                    autoFocus
+                    placeholder="Search issues…"
                     value={text}
                     onChange={(e) => setText(e.target.value)}
-                    placeholder="Search issues…"
-                    className="flex-1 rounded border border-border px-3 py-2"
+                    style={{
+                        flex: 1,
+                        border: 'none',
+                        background: 'transparent',
+                        outline: 'none',
+                        fontSize: 14,
+                        color: 'var(--fg)',
+                        fontFamily: 'inherit',
+                    }}
                 />
-                <select aria-label="Status" value={status} onChange={(e) => setParam('status', e.target.value)} className="rounded border border-border px-2">
-                    <option value="">Any status</option>
-                    {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-                <select aria-label="Team" value={team} onChange={(e) => setParam('team', e.target.value)} className="rounded border border-border px-2">
-                    <option value="">Any team</option>
-                    {teams.data?.items.map((t) => <option key={t.id} value={t.id}>{t.identifier}</option>)}
-                </select>
             </div>
 
-            {search.isLoading && <p className="text-sm text-fg2">Searching…</p>}
-            {search.data && search.data.items.length === 0 && <p className="text-sm text-fg2">No matching issues.</p>}
+            {/* Task 5: <SearchFilterBuilder> */}
 
-            <ul className="divide-y rounded border border-border bg-panel">
-                {search.data?.items.map((i) => (
-                    <li key={i.id}>
-                        <Link to={`/issues/${i.id}`} className="block px-4 py-2 text-sm hover:bg-hover">
-                            <span className="font-medium">{i.title}</span>
-                            <span className="ml-2 text-xs text-fg3">{i.status}</span>
-                        </Link>
-                    </li>
+            {/* Results header: count + sort */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10,
+                    margin: '20px 0 10px',
+                }}
+            >
+                <span style={{ fontSize: 12.5, fontWeight: 600 }}>{rows.length} results</span>
+                <span style={{ fontSize: 12, color: 'var(--fg3)' }}>· sorted by</span>
+                <Menu
+                    trigger={
+                        <button
+                            type="button"
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                                border: '1px solid var(--border)',
+                                borderRadius: 7,
+                                padding: '3px 9px',
+                                fontSize: 12,
+                                background: 'none',
+                                cursor: 'pointer',
+                                fontFamily: 'inherit',
+                                color: 'var(--fg)',
+                            }}
+                        >
+                            {sortLabel}
+                            <span style={{ fontSize: 9 }}>▾</span>
+                        </button>
+                    }
+                    items={sortMenuItems}
+                />
+                {/* Task 6: Save this view */}
+            </div>
+
+            {/* Results list */}
+            <div
+                style={{
+                    border: '1px solid var(--border)',
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                }}
+            >
+                {rows.map((it: Issue) => (
+                    <div
+                        key={it.id}
+                        data-testid="search-row"
+                        onClick={() => navigate(`/issues/${it.id}`)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 11,
+                            padding: '10px 16px',
+                            borderBottom: '1px solid var(--border)',
+                            cursor: 'pointer',
+                            background: 'var(--panel)',
+                        }}
+                    >
+                        <PriorityIcon priority={it.priority} />
+                        <StatusIcon status={it.status} size={14} />
+                        <span
+                            style={{
+                                fontFamily: 'var(--font-mono)',
+                                fontSize: 11.5,
+                                color: 'var(--fg3)',
+                                width: 56,
+                                flexShrink: 0,
+                            }}
+                        >
+                            {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
+                        </span>
+                        <span
+                            style={{
+                                flex: 1,
+                                minWidth: 0,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                fontSize: 13,
+                            }}
+                        >
+                            {highlight(it.title, debounced)}
+                        </span>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flexShrink: 0,
+                            }}
+                        >
+                            {(it.labels ?? []).map((l) => (
+                                <LabelChip key={l.id} name={l.name} color={l.color} />
+                            ))}
+                            <Avatar {...avatarFor(it.assignee ?? null)} size={20} />
+                        </div>
+                    </div>
                 ))}
-            </ul>
 
-            {search.data && search.data.lastPage > 1 && (
-                <div className="mt-4 flex items-center gap-3 text-sm">
-                    <button type="button" disabled={page <= 1} onClick={() => setParam('page', String(page - 1))} className="rounded border border-border px-2 py-1 disabled:opacity-40">Prev</button>
-                    <span>Page {search.data.currentPage} of {search.data.lastPage}</span>
-                    <button type="button" disabled={page >= search.data.lastPage} onClick={() => setParam('page', String(page + 1))} className="rounded border border-border px-2 py-1 disabled:opacity-40">Next</button>
-                </div>
-            )}
+                {rows.length === 0 && !search.isLoading && (
+                    <div style={{ padding: '56px 20px', textAlign: 'center' }}>
+                        <div style={{ fontSize: 26, color: 'var(--fg3)', marginBottom: 10 }}>⌕</div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>No issues match your search</div>
+                        <div style={{ fontSize: 12.5, color: 'var(--fg3)', marginTop: 5 }}>
+                            Try removing a filter or broadening your query.
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
