@@ -5,6 +5,7 @@ import { useCreateProject } from '../projects/hooks';
 import { useMembers } from '../members/hooks';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
+import { Button } from '../../components/ui/Button';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 
@@ -308,40 +309,8 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     marginTop: 22,
                 }}
             >
-                <button
-                    type="button"
-                    style={{
-                        background: 'transparent',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: 'var(--fg2)',
-                        padding: '8px 14px',
-                        fontFamily: 'inherit',
-                        fontSize: 12.5,
-                    }}
-                    onClick={onCancel}
-                >
-                    Cancel
-                </button>
-                <button
-                    type="button"
-                    disabled={!name.trim()}
-                    style={{
-                        background: 'var(--accent)',
-                        color: '#fff',
-                        border: 'none',
-                        cursor: name.trim() ? 'pointer' : 'not-allowed',
-                        padding: '9px 18px',
-                        borderRadius: 9,
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        fontFamily: 'inherit',
-                        opacity: name.trim() ? 1 : 0.5,
-                    }}
-                    onClick={handleSubmit}
-                >
-                    Create project
-                </button>
+                <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!name.trim() || create.isPending}>Create project</Button>
             </div>
         </div>
     );
