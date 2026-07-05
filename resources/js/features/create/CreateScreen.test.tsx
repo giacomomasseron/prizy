@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi } from 'vitest';
 import CreateScreen from './CreateScreen';
@@ -70,6 +70,26 @@ function wrap(url = '/create') {
     );
 }
 
+/** Renders with a LocationSpy so tests can assert on the current search string. */
+function LocationSpy() {
+    const { search } = useLocation();
+    return <span data-testid="loc-search">{search}</span>;
+}
+
+function wrapWithSpy(url = '/create') {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+        <QueryClientProvider client={qc}>
+            <MemoryRouter initialEntries={[url]}>
+                <Routes>
+                    <Route path="/create" element={<CreateScreen />} />
+                </Routes>
+                <LocationSpy />
+            </MemoryRouter>
+        </QueryClientProvider>,
+    );
+}
+
 describe('CreateScreen shell', () => {
     it('renders the tab switcher with New project + New cycle', () => {
         wrap();
@@ -99,5 +119,33 @@ describe('CreateScreen shell', () => {
         await userEvent.click(screen.getByText('submit-project'));
         await userEvent.click(screen.getByRole('button', { name: /Create another/i }));
         expect(screen.getByText('submit-project')).toBeInTheDocument();
+    });
+
+    it('clicking "New cycle" updates URL to ?tab=cycle and renders CycleForm', async () => {
+        wrapWithSpy('/create');
+        // starts on project tab
+        expect(screen.getByText('submit-project')).toBeInTheDocument();
+
+        await userEvent.click(screen.getByText('New cycle'));
+
+        // CycleForm stub is now rendered
+        expect(screen.getByText('submit-cycle')).toBeInTheDocument();
+        expect(screen.queryByText('submit-project')).not.toBeInTheDocument();
+        // URL must reflect the tab switch
+        expect(screen.getByTestId('loc-search').textContent).toBe('?tab=cycle');
+    });
+
+    it('clicking "New project" after cycle updates URL to ?tab=project and renders ProjectForm', async () => {
+        wrapWithSpy('/create?tab=cycle');
+        // starts on cycle tab
+        expect(screen.getByText('submit-cycle')).toBeInTheDocument();
+
+        await userEvent.click(screen.getByText('New project'));
+
+        // ProjectForm stub is now rendered
+        expect(screen.getByText('submit-project')).toBeInTheDocument();
+        expect(screen.queryByText('submit-cycle')).not.toBeInTheDocument();
+        // URL must reflect the tab switch
+        expect(screen.getByTestId('loc-search').textContent).toBe('?tab=project');
     });
 });

@@ -19,7 +19,7 @@ export default function CreateScreen() {
     const navigate = useNavigate();
 
     const tab: Tab = params.get('tab') === 'cycle' ? 'cycle' : 'project';
-    const initTeam = params.get('team') ?? '';
+    const defaultTeamId = params.get('team') ?? '';
 
     const [success, setSuccess] = useState<SuccessInfo>(null);
 
@@ -76,7 +76,7 @@ export default function CreateScreen() {
                 />
             ) : (
                 <CycleForm
-                    defaultTeamId={initTeam}
+                    defaultTeamId={defaultTeamId}
                     onSuccess={handleCycleSuccess}
                     onCancel={() => navigate(-1)}
                 />
