@@ -34,4 +34,15 @@ final class MemberPolicy
     {
         return in_array($user->admin_level, ['owner', 'admin'], true);
     }
+
+    /**
+     * Updating a member's admin_level or capability flags requires owner or admin level,
+     * and both the actor and target must be in the same workspace.
+     * Business-logic guards (e.g. admin cannot touch an owner) are enforced in UpdateMember.
+     */
+    public function update(User $actor, User $target): bool
+    {
+        return $actor->workspace_id === $target->workspace_id
+            && in_array($actor->admin_level, ['owner', 'admin'], true);
+    }
 }

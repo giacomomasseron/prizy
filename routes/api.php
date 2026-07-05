@@ -93,6 +93,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/members', [MemberController::class, 'index']);
         Route::get('/workspace/members', [WorkspaceMemberController::class, 'index'])
             ->middleware('can:viewWorkspaceMembers,App\\Models\\User');
+        Route::patch('/members/{user}', [WorkspaceMemberController::class, 'update']);
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
