@@ -45,6 +45,7 @@ interface CycleInput {
     starts_at: string;
     ends_at: string;
     cooldown_days?: number;
+    description?: string;
 }
 
 export function useCreateCycle(teamId: string) {

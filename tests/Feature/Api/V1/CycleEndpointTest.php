@@ -73,6 +73,16 @@ it('returns 422 (not 500) when PATCH sends only ends_at before existing starts_a
     Workspace::forgetCurrent();
 });
 
+it('persists and exposes description when provided on cycle creation', function (): void {
+    [$token, $ws, $team] = cycleWorld();
+    $resp = $this->withToken($token)->postJson("/v1/teams/{$team->id}/cycles", [
+        'name' => 'Described Sprint', 'starts_at' => '2026-09-01', 'ends_at' => '2026-09-14',
+        'description' => 'Focus on auth refactor.',
+    ]);
+    $resp->assertStatus(201)->assertJsonPath('data.description', 'Focus on auth refactor.');
+    Workspace::forgetCurrent();
+});
+
 it('returns 404 for a cycle whose team is in another workspace (transitive isolation)', function (): void {
     $wsB = Workspace::factory()->create();
     $wsB->makeCurrent();

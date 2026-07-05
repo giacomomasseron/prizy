@@ -27,6 +27,7 @@ final class CreateCycle
             'starts_at'     => $data['starts_at'],
             'ends_at'       => $data['ends_at'],
             'cooldown_days' => $data['cooldown_days'] ?? 0,
+            'description'   => $data['description'] ?? null,
         ]);
     }
 }

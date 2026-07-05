@@ -392,6 +392,7 @@ CREATE TABLE cycles (
     starts_at           DATE            NOT NULL,
     ends_at             DATE            NOT NULL,
     cooldown_days       INTEGER         NOT NULL DEFAULT 0,
+    description         TEXT,
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     CONSTRAINT cycles_dates_check CHECK (ends_at > starts_at)

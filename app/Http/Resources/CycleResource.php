@@ -22,6 +22,7 @@ final class CycleResource extends JsonResource
             'starts_at'  => $this->starts_at,
             'ends_at'        => $this->ends_at,
             'cooldown_days'  => $this->cooldown_days,
+            'description'    => $this->description,
             'created_at'     => $this->created_at,
             'updated_at' => $this->updated_at,
         ]);

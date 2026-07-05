@@ -21,6 +21,7 @@ final class StoreCycleRequest extends FormRequest
             'starts_at' => ['required', 'date'],
             'ends_at'       => ['required', 'date', 'after:starts_at'],
             'cooldown_days' => ['sometimes', 'integer', 'min:0'],
+            'description'   => ['nullable', 'string'],
         ];
     }
 }
