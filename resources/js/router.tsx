@@ -14,10 +14,12 @@ import ProjectDetailPage from './features/projects/ProjectDetailPage';
 import LabelsPage from './features/labels/LabelsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
-import SettingsPage from './features/settings/SettingsPage';
 import SearchPage from './features/search/SearchPage';
 import IntegrationsPage from './features/integrations/IntegrationsPage';
 import CreateScreen from './features/create/CreateScreen';
+import SettingsLayout, { RequireManage, StubPage } from './features/settings/SettingsLayout';
+import MembersPage from './features/members/MembersPage';
+import GeneralPage from './features/settings/GeneralPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -50,7 +52,13 @@ export default function AppRouter() {
                 <Route path="/labels" element={<LabelsPage />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
-                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/settings" element={<SettingsLayout />}>
+                    <Route index element={<Navigate to="members" replace />} />
+                    <Route path="members" element={<RequireManage><MembersPage /></RequireManage>} />
+                    <Route path="general" element={<GeneralPage />} />
+                    <Route path="billing" element={<StubPage title="Billing" />} />
+                    <Route path="audit" element={<StubPage title="Audit log" />} />
+                </Route>
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/integrations" element={<IntegrationsPage />} />
                 <Route path="/create" element={<CreateScreen />} />

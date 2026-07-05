@@ -19,9 +19,10 @@ export interface WorkspaceMember {
     teams: WorkspaceMemberTeam[];
 }
 
-export function useWorkspaceMembers() {
+export function useWorkspaceMembers(options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ['workspace-members'],
         queryFn: () => api.get<WorkspaceMember[]>('/workspace/members'),
+        enabled: options?.enabled ?? true,
     });
 }
