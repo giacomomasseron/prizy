@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { sessionPost } from '../../auth/useAuth';
 import { api } from '../../lib/apiClient';
 
 export interface WorkspaceMemberTeam {
@@ -48,6 +49,19 @@ export function useCancelInvitation() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (invId: string) => api.del(`/invitations/${invId}`),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace-members'] }),
+    });
+}
+
+export function useInviteMember() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (body: {
+            email: string;
+            admin_level: 'admin' | 'member' | 'viewer';
+            is_developer: boolean;
+            is_agent: boolean;
+        }) => sessionPost<{ invitation: object }>('/invitations', body),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['workspace-members'] }),
     });
 }

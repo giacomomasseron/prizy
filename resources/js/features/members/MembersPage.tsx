@@ -4,6 +4,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Menu } from '../../components/ui/Menu';
 import { TeamTile } from '../../components/ui/TeamTile';
 import { avatarFor } from '../../lib/avatarFor';
+import { InviteModal } from './InviteModal';
 import { LEVELS } from './levels';
 import {
     useWorkspaceMembers,
@@ -58,7 +59,7 @@ const agentOffStyle: React.CSSProperties = {
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
-    const [_inviteOpen, setInviteOpen] = useState(false);
+    const [inviteOpen, setInviteOpen] = useState(false);
 
     const me = useMe();
     const members = useWorkspaceMembers();
@@ -495,7 +496,7 @@ export default function MembersPage() {
                 })}
             </div>
 
-            {/* TODO(Task 6): <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} /> */}
+            <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />
         </div>
     );
 }
