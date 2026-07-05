@@ -141,6 +141,7 @@ export default function SettingsLayout() {
                     >
                         P
                     </div>
+                    {/* TODO: pull real workspace name once exposed here — Me type has no workspace_name field and AppLayout also hardcodes this literal */}
                     <span style={{ fontSize: 13, flex: 1 }}>Prizy</span>
                     <ThemeToggle />
                 </div>

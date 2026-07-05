@@ -63,6 +63,10 @@ describe('SettingsLayout', () => {
         renderLayout('member');
         await screen.findByRole('link', { name: /general/i }); // wait for data to load
         expect(screen.queryByRole('link', { name: /members/i })).toBeNull();
+        // Network-level guard: if `enabled: canManage` is ever removed from
+        // useWorkspaceMembers, this assertion will catch the regression.
+        const urls = vi.mocked(fetch).mock.calls.map(c => String(c[0]));
+        expect(urls.some(u => u.includes('/workspace/members'))).toBe(false);
     });
 
     it('redirects non-admin away from /settings/members to /settings/general', async () => {
