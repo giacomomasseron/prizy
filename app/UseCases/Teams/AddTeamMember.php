@@ -4,7 +4,6 @@ declare(strict_types=1);
 namespace App\UseCases\Teams;
 
 use App\Models\Team;
-use App\Models\TeamMember;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;

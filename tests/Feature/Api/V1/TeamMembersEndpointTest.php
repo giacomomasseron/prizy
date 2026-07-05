@@ -128,6 +128,7 @@ it('POST rejects a duplicate member with 422', function (): void {
     addMemberRow($team->id, $u->id, 'member');
     $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $u->id])
         ->assertStatus(422);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(1);
     Workspace::forgetCurrent();
 });
 
@@ -136,5 +137,6 @@ it('POST forbids a non-admin caller', function (): void {
     $u = User::factory()->for($ws, 'workspace')->create();
     $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $u->id])
         ->assertStatus(403);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(0);
     Workspace::forgetCurrent();
 });
