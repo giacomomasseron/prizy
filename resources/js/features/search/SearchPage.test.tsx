@@ -78,6 +78,7 @@ describe('Save this view', () => {
             expect(body.name).toBe('My Search View');
             expect(body.definition.view_type).toBe('list');
             expect(body.definition.sort).toBe('updated');
+            expect(body.definition.filter).toEqual({});
         });
 
         expect(await screen.findByText(/view saved/i)).toBeInTheDocument();

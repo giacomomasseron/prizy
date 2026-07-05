@@ -107,7 +107,7 @@ export default function SearchPage() {
 
     function loadSavedView(view: SavedView) {
         setFilters(view.definition.filter as AdvancedSearchFilters);
-        setSort(view.definition.sort);
+        setSort(view.definition.sort ?? 'updated');
     }
 
     const savedViewItems = savedViews.data?.items ?? [];
