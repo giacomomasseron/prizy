@@ -28,4 +28,10 @@ final class MemberPolicy
         return $user->workspace_id === $member->workspace_id
             && in_array($user->admin_level, ['admin', 'owner'], true);
     }
+
+    /** Viewing the rich workspace member list (with invitations) is owner/admin only. */
+    public function viewWorkspaceMembers(User $user): bool
+    {
+        return in_array($user->admin_level, ['owner', 'admin'], true);
+    }
 }

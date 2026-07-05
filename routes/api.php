@@ -24,6 +24,7 @@ use App\Http\Controllers\Api\V1\GithubIntegrationController;
 use App\Http\Controllers\Api\V1\SlackIntegrationController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\MemberController;
+use App\Http\Controllers\Api\V1\WorkspaceMemberController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
@@ -90,6 +91,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/me', MeController::class);
 
         Route::get('/members', [MemberController::class, 'index']);
+        Route::get('/workspace/members', [WorkspaceMemberController::class, 'index'])
+            ->middleware('can:viewWorkspaceMembers,App\\Models\\User');
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
