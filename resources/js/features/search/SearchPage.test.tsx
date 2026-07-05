@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,6 +8,8 @@ function wrap(ui: React.ReactElement) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(<QueryClientProvider client={qc}><MemoryRouter>{ui}</MemoryRouter></QueryClientProvider>);
 }
+
+afterEach(() => vi.unstubAllGlobals());
 
 beforeEach(() => {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {

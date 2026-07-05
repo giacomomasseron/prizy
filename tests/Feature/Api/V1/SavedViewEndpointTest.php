@@ -106,6 +106,28 @@ it('rejects a definition patch without view_type but allows a name-only patch', 
     Workspace::forgetCurrent();
 });
 
+it('accepts source as a valid filter key on create and update', function (): void {
+    [$token, , $creator] = savedViewWorld();
+
+    // POST with source filter → 201
+    $response = $this->withToken($token)
+        ->postJson('/v1/saved-views', [
+            'name'       => 'Source view',
+            'definition' => ['filter' => ['source' => 'native'], 'sort' => '-created_at', 'view_type' => 'list'],
+        ]);
+    $response->assertStatus(201);
+    $id = $response->json('data.id');
+
+    // PATCH with source filter → 200
+    $this->withToken($token)
+        ->patchJson("/v1/saved-views/{$id}", [
+            'definition' => ['filter' => ['source' => 'support'], 'sort' => '-created_at', 'view_type' => 'list'],
+        ])
+        ->assertStatus(200);
+
+    Workspace::forgetCurrent();
+});
+
 it('accepts advanced-search sort values on create and update', function (): void {
     [$token] = savedViewWorld();
 

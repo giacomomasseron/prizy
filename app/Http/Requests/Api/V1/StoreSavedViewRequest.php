@@ -10,7 +10,7 @@ use Illuminate\Validation\Validator;
 
 final class StoreSavedViewRequest extends FormRequest
 {
-    private const FILTER_KEYS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id'];
+    private const FILTER_KEYS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id', 'source'];
 
     private const SORT_COLUMNS = ['created_at', 'updated_at', 'updated', 'priority', 'due_date', 'sort_order', 'status', 'title'];
 
