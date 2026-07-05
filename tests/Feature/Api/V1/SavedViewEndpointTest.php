@@ -105,3 +105,28 @@ it('rejects a definition patch without view_type but allows a name-only patch', 
 
     Workspace::forgetCurrent();
 });
+
+it('accepts advanced-search sort values on create and update', function (): void {
+    [$token] = savedViewWorld();
+
+    $firstId = null;
+    foreach (['updated', 'priority', 'status'] as $sort) {
+        $response = $this->withToken($token)
+            ->postJson('/v1/saved-views', [
+                'name'       => "V {$sort}",
+                'definition' => ['filter' => [], 'sort' => $sort, 'view_type' => 'list'],
+            ]);
+        $response->assertStatus(201);
+        if ($firstId === null) {
+            $firstId = $response->json('data.id');
+        }
+    }
+
+    $this->withToken($token)
+        ->patchJson("/v1/saved-views/{$firstId}", [
+            'definition' => ['filter' => [], 'sort' => 'status', 'view_type' => 'list'],
+        ])
+        ->assertStatus(200);
+
+    Workspace::forgetCurrent();
+});
