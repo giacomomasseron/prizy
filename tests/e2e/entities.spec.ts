@@ -12,13 +12,20 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // Start on issues list (pre-authenticated via storageState)
     await page.goto('/');
 
-    // 2. Teams — create a new team
+    // 2. Teams — create a new team via the repointed Settings › Teams flow
+    // (R-E-2 removed the old inline /teams create form; "New team" now routes to Settings).
     await page.getByRole('link', { name: 'Teams' }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/teams');
+    await page.getByRole('button', { name: 'New team' }).click();
+    await expect(page).toHaveURL(/\/settings\/teams/);
+    await page.getByRole('button', { name: 'Create team' }).click(); // header button opens the modal
     await page.getByLabel('Team name').fill(TEAM_NAME);
-    await page.getByLabel('Team identifier').fill(TEAM_IDENT);
-    await page.getByRole('button', { name: 'Add team' }).click();
-    await expect(page.getByText(TEAM_NAME)).toBeVisible();
+    await page.getByLabel('Identifier').fill(TEAM_IDENT);
+    await page.getByRole('dialog').getByRole('button', { name: 'Create team' }).click();
+    await expect(page.getByTestId(`team-row-${TEAM_IDENT}`)).toBeVisible();
+    // Return to the main app (Settings has its own sub-nav without Projects/Labels links).
+    await page.getByRole('button', { name: /Back to app/i }).click();
+    await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
     // 3. Projects — create a project via the /create screen (inline form was removed)
     await page.getByRole('link', { name: 'Projects' }).click();
