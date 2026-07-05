@@ -133,6 +133,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
         Route::get('/teams/{team}/members', [TeamMemberController::class, 'index']);
         Route::post('/teams/{team}/members', [TeamMemberController::class, 'store'])->middleware('verified');
+        Route::patch('/teams/{team}/members/{user}', [TeamMemberController::class, 'updateRole'])->middleware('verified');
+        Route::delete('/teams/{team}/members/{user}', [TeamMemberController::class, 'destroy'])->middleware('verified');
 
         Route::get('/projects', [ProjectController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
         Route::get('/projects/{project}', [ProjectController::class, 'show']);

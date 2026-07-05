@@ -140,3 +140,53 @@ it('POST forbids a non-admin caller', function (): void {
     expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(0);
     Workspace::forgetCurrent();
 });
+
+it('PATCH promotes a member to lead and demotes the prior lead', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $oldLead = User::factory()->for($ws, 'workspace')->create();
+    $member = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $oldLead->id, 'lead');
+    addMemberRow($team->id, $member->id, 'member');
+
+    $this->withToken($token)->patchJson("/v1/teams/{$team->id}/members/{$member->id}", ['role' => 'lead'])
+        ->assertStatus(200)->assertJson(['data' => ['id' => $member->id, 'role' => 'lead']]);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('role', 'lead')->count())->toBe(1);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $oldLead->id)->value('role'))->toBe('member');
+    Workspace::forgetCurrent();
+});
+
+it('PATCH demotes a lead to member', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $lead = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $lead->id, 'lead');
+    $this->withToken($token)->patchJson("/v1/teams/{$team->id}/members/{$lead->id}", ['role' => 'member'])
+        ->assertStatus(200);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('role', 'lead')->count())->toBe(0);
+    Workspace::forgetCurrent();
+});
+
+it('PATCH 404s for a non-member target', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $stranger = User::factory()->for($ws, 'workspace')->create();
+    $this->withToken($token)->patchJson("/v1/teams/{$team->id}/members/{$stranger->id}", ['role' => 'lead'])
+        ->assertStatus(404);
+    Workspace::forgetCurrent();
+});
+
+it('DELETE removes a member (row gone, 204)', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $u = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $u->id, 'member');
+    $this->withToken($token)->deleteJson("/v1/teams/{$team->id}/members/{$u->id}")->assertStatus(204);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(0);
+    Workspace::forgetCurrent();
+});
+
+it('PATCH and DELETE forbid a non-admin', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld('member');
+    $u = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $u->id, 'member');
+    $this->withToken($token)->patchJson("/v1/teams/{$team->id}/members/{$u->id}", ['role' => 'lead'])->assertStatus(403);
+    $this->withToken($token)->deleteJson("/v1/teams/{$team->id}/members/{$u->id}")->assertStatus(403);
+    Workspace::forgetCurrent();
+});
