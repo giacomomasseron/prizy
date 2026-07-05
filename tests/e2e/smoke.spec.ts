@@ -14,6 +14,10 @@ test('login, create an issue, and move its card across the board', async ({ page
 
     // 2. Create an issue via the drawer (C hotkey opens it).
     const title = `Smoke ${Date.now()}`;
+    // Wait for the app shell to mount before the C hotkey: the keydown listener
+    // is attached in an AppLayout useEffect that only runs after useMe resolves
+    // post-login. Pressing 'c' before then races the listener and is lost.
+    await expect(page.getByRole('button', { name: /New issue/i })).toBeVisible();
     await page.keyboard.press('c');
     // Drawer should open — Issue title input (autoFocus) appears
     await expect(page.getByLabel(/Issue title/i)).toBeVisible({ timeout: 6_000 });
