@@ -24,6 +24,8 @@ function renderLayout(adminLevel = 'member') {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         const j = (b: unknown, s = 200) =>
             new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+        // /members must precede /me: '/v1/members' contains the substring '/me'
+        if ((url as string).includes('/members')) return j({ data: [] });
         if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel) });
         if ((url as string).includes('/unread-count')) return j({ data: { count: 0 } });
         if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });

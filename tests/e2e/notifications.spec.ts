@@ -21,7 +21,9 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     // 3. Click Inbox nav link → navigate to /notifications
     await page.getByRole('link', { name: 'Inbox' }).click();
     await expect(page).toHaveURL(/\/notifications/);
-    await expect(page.getByText('You were assigned an issue')).toBeVisible();
+    // Use .first() to handle the case where prior tests create additional
+    // "You were assigned an issue" notifications (e.g. the detail test).
+    await expect(page.getByText('You were assigned an issue').first()).toBeVisible();
 
     // 4. Click "Mark all read" on the /notifications page
     const markAllReadResponse = page.waitForResponse(

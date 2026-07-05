@@ -79,16 +79,37 @@ export function useTransitionStatus() {
             api.put<Issue>(`/issues/${vars.id}/status`, { status: vars.status }),
         onMutate: async (vars) => {
             await qc.cancelQueries({ queryKey: ['issues'] });
+            // Optimistic update for the list/board
             const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
             for (const [key, page] of snapshots) {
                 qc.setQueryData(key, applyStatusOptimistic(page, vars.id, vars.status));
             }
-            return { snapshots };
+            // Optimistic update for the detail page (IssueDetailPage uses ['issue', id])
+            const prevDetail = qc.getQueryData<Issue>(['issue', vars.id]);
+            if (prevDetail) {
+                qc.setQueryData<Issue>(['issue', vars.id], { ...prevDetail, status: vars.status });
+            }
+            return { snapshots, prevDetail };
         },
-        onError: (_err, _vars, ctx) => {
+        onError: (_err, vars, ctx) => {
             ctx?.snapshots.forEach(([key, page]) => qc.setQueryData(key, page));
+            if (ctx?.prevDetail) {
+                qc.setQueryData<Issue>(['issue', vars.id], ctx.prevDetail);
+            }
         },
-        onSettled: () => qc.invalidateQueries({ queryKey: ['issues'] }),
+        onSuccess: (data, vars) => {
+            // Update the detail cache with the authoritative server response so the
+            // detail page never has to re-fetch (avoids a transient isLoading flash).
+            if (data) qc.setQueryData<Issue>(['issue', vars.id], data);
+        },
+        onSettled: (_data, _err, vars) => {
+            // Invalidate list/board queries so they stay in sync.
+            // The detail cache is handled by onMutate (optimistic) + onSuccess (server data),
+            // so we do NOT invalidate ['issue', id] here — that would cause a re-fetch
+            // which makes isLoading transiently true if there is no pre-existing cache entry,
+            // hiding the properties panel and its interactive editors.
+            qc.invalidateQueries({ queryKey: ['issues'] });
+        },
     });
 }
 

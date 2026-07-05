@@ -3,7 +3,11 @@ import { api } from '../../lib/apiClient';
 import type { GithubLink } from '../../lib/types';
 
 function key(issueId: string) {
-    return ['issues', issueId, 'github-links'];
+    // Use ['issue', …] (singular) so this key is NOT matched by the broad
+    // ['issues'] prefix used in useTransitionStatus's getQueriesData / cancelQueries /
+    // invalidateQueries calls. Those helpers target issue-list queries and must not
+    // touch per-issue sub-queries whose shape differs from IssuePage.
+    return ['issue', issueId, 'github-links'];
 }
 
 export function useGithubLinks(issueId: string) {

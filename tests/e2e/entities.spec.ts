@@ -40,24 +40,33 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // 5. Issues → open the pre-seeded starter issue
     await page.getByRole('link', { name: 'Issues' }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
-    // R-B redesign: issue rows are <div data-testid="issue-row">, not <a> links.
-    // Click the row to open the peek drawer, then follow "Open full issue →".
+    // R-C redesign: issue rows are <div data-testid="issue-row">. Click to open peek, then follow "Open full issue →".
     await page.locator('[data-testid="issue-row"]').filter({ hasText: 'Starter issue' }).click();
     await expect(page.getByRole('link', { name: /Open full issue/i })).toBeVisible({ timeout: 8_000 });
     await page.getByRole('link', { name: /Open full issue/i }).click();
     await expect(page).toHaveURL(/\/issues\//);
 
-    // Attach the new label. The checkbox is a React controlled component — the
-    // checked state is only updated after the mutation round-trip, so we use
-    // click() (which does not assert post-click state) and then separately
-    // assert toBeChecked() which retries until the query refetch lands.
-    await expect(page.getByLabel(LABEL_NAME)).toBeVisible();
-    await page.getByLabel(LABEL_NAME).click();
-    await expect(page.getByLabel(LABEL_NAME)).toBeChecked();
+    // R-C redesign: Labels and Project are now Menu-based editors (no checkboxes/selects).
 
-    // Set the project
-    await expect(page.getByLabel('Issue project')).toContainText(PROJECT_NAME);
-    await page.getByLabel('Issue project').selectOption({ label: PROJECT_NAME });
+    // Attach the new label via LabelsEditor Menu (trigger aria-label="Edit labels").
+    const labelsBtn = page.getByRole('button', { name: 'Edit labels' });
+    await expect(labelsBtn).toBeVisible({ timeout: 8_000 });
+    const labelsPut = page.waitForResponse(
+        (r) => r.url().includes('/labels') && r.request().method() === 'PUT',
+    );
+    await labelsBtn.click();
+    await page.getByRole('menuitem', { name: LABEL_NAME }).click();
+    await labelsPut;
+
+    // Set the project via ProjectEditor Menu (trigger aria-label="Edit project").
+    const projectBtn = page.getByRole('button', { name: 'Edit project' });
+    await expect(projectBtn).toBeVisible({ timeout: 6_000 });
+    const patchReq = page.waitForResponse(
+        (r) => r.url().includes('/issues/') && r.request().method() === 'PATCH',
+    );
+    await projectBtn.click();
+    await page.getByRole('menuitem', { name: PROJECT_NAME }).click();
+    await patchReq;
 
     // Wait for both mutations to settle before reloading
     await page.waitForLoadState('networkidle');
@@ -65,6 +74,8 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // 6. Reload and verify persistence
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await expect(page.getByLabel(LABEL_NAME)).toBeChecked();
-    await expect(page.getByLabel('Issue project')).not.toHaveValue('');
+    // Label chip is rendered inside the "Edit labels" trigger button
+    await expect(page.getByRole('button', { name: 'Edit labels' })).toContainText(LABEL_NAME, { timeout: 8_000 });
+    // Project pill is rendered inside the "Edit project" trigger button
+    await expect(page.getByRole('button', { name: 'Edit project' })).toContainText(PROJECT_NAME, { timeout: 8_000 });
 });

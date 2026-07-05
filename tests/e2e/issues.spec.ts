@@ -135,3 +135,81 @@ test('board drag: moves the card and does NOT open peek drawer', async ({ page }
         page.getByTestId('col-in_progress').locator('[data-testid^="card-"]').filter({ hasText: 'Starter issue' }),
     ).toBeVisible();
 });
+
+// ── New: Issue detail page interactions ──
+// Runs last (after board drag) so that changing an issue's status to "Done"
+// does not interfere with the board-drag test that expects "Starter issue" in col-todo.
+test('issue detail: change status via dropdown, set assignee, add comment', async ({ page }) => {
+    test.setTimeout(90_000);
+
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+
+    // Navigate to detail via peek → "Open full issue →"
+    const firstRow = page.locator('[data-testid="issue-row"]').first();
+    await expect(firstRow).toBeVisible({ timeout: 10_000 });
+    await firstRow.click();
+
+    const openLink = page.getByRole('link', { name: /Open full issue/i });
+    await expect(openLink).toBeVisible({ timeout: 8_000 });
+    await openLink.click();
+    await expect(page).toHaveURL(/\/issues\/[^?]+$/);
+
+    // ── Change Status via Menu ──
+    const changeStatusBtn = page.getByRole('button', { name: 'Change status' });
+    await expect(changeStatusBtn).toBeVisible({ timeout: 8_000 });
+
+    // Set up response waiter BEFORE the click to avoid race condition.
+    const statusPut = page.waitForResponse(
+        (r) => r.url().includes('/status') && r.request().method() === 'PUT',
+        { timeout: 15_000 },
+    );
+
+    await changeStatusBtn.click();
+    await page.waitForSelector('[role="menu"]', { timeout: 5_000 });
+
+    // Use dispatchEvent('click') rather than .click() to bypass Playwright's full
+    // pointer-event dispatch sequence (pointerdown → pointerup → click).  The Menu
+    // component's document-level pointerdown listener treats certain synthetic pointer
+    // events as "outside clicks" and closes the menu before the click fires, swallowing
+    // the handler.  dispatchEvent fires only the click event, which bubbles through the
+    // React root as expected.
+    await page.getByRole('menuitem', { name: 'Done' }).dispatchEvent('click');
+
+    const statusRes = await statusPut;
+    expect(statusRes.status()).toBe(200);
+
+    // Optimistic update fires immediately; server response confirms it.
+    await expect(changeStatusBtn).toContainText('Done', { timeout: 6_000 });
+
+    // ── Set Assignee via Menu ──
+    const assigneeBtn = page.getByRole('button', { name: 'Edit assignee' });
+    await expect(assigneeBtn).toBeVisible({ timeout: 6_000 });
+
+    const assigneePut = page.waitForResponse(
+        (r) => r.url().includes('/assignee') && r.request().method() === 'PUT',
+        { timeout: 15_000 },
+    );
+
+    await assigneeBtn.click();
+    await page.waitForSelector('[role="menu"]', { timeout: 5_000 });
+    // "Smoke Dev" is the sole workspace member in the smoke seed
+    await page.getByRole('menuitem', { name: 'Smoke Dev' }).dispatchEvent('click');
+
+    await assigneePut;
+    await expect(assigneeBtn).toContainText('Smoke Dev', { timeout: 8_000 });
+
+    // ── Add a comment ──
+    const commentBox = page.getByLabel(/Leave a comment/i);
+    await expect(commentBox).toBeVisible({ timeout: 6_000 });
+    const commentText = `E2E comment ${Date.now()}`;
+    await commentBox.fill(commentText);
+    const commentPost = page.waitForResponse(
+        (r) => r.url().includes('/comments') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+    );
+    await page.getByRole('button', { name: /^Comment$/i }).click();
+    const commentRes = await commentPost;
+    expect(commentRes.status()).toBe(201);
+    await expect(page.getByText(commentText)).toBeVisible({ timeout: 8_000 });
+});
