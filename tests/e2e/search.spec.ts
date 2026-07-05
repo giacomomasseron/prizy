@@ -1,30 +1,48 @@
 import { expect, test } from '@playwright/test';
 
-test('search: ⌘K finds a seeded issue and navigates; /search shows results', async ({ page }) => {
-    test.setTimeout(60_000);
+test('advanced search: palette footer → filter → save view', async ({ page }) => {
+    test.setTimeout(90_000);
+    const viewName = `E2E view ${Date.now()}`;
 
-    // Start on issues list (pre-authenticated via storageState)
+    // Navigate to home and wait for the app shell to mount (so the Ctrl+K listener is registered).
     await page.goto('/');
+    await expect(page.getByRole('link', { name: 'Search' })).toBeVisible({ timeout: 15_000 });
 
-    // Grab the seeded issue's title from the list.
-    // R-B redesign: issue rows are <div data-testid="issue-row">, not <a> links.
-    // SmokeSeeder always seeds a "Starter issue"; use the known title rather
-    // than trying to parse it out of the row's concatenated textContent.
-    const title = 'Starter issue';
-    const term = title.split(' ')[0]; // 'Starter'
-    await expect(page.locator('[data-testid="issue-row"]').filter({ hasText: title }).first()).toBeVisible({ timeout: 10_000 });
+    // Open the command palette and navigate to Advanced search.
+    await page.keyboard.press('Control+k');
+    await expect(page.getByRole('dialog', { name: /command palette/i })).toBeVisible();
+    await page.getByRole('button', { name: /advanced search/i }).click();
+    await expect(page).toHaveURL(/\/search/);
 
-    // Open ⌘K and search.
-    await page.keyboard.press('Meta+k');
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole('textbox').fill(term);
-    const hit = dialog.getByText(title, { exact: false }).first();
-    await expect(hit).toBeVisible();
-    await hit.click();
-    await expect(page).toHaveURL(/\/issues\//);
+    // Browse shows seeded issues without any query.
+    await expect(page.getByTestId('search-row').first()).toBeVisible({ timeout: 10_000 });
 
-    // Full page.
-    await page.goto(`/search?q=${encodeURIComponent(term)}`);
-    await expect(page.getByText(title, { exact: false }).first()).toBeVisible();
+    // Add a Priority filter.
+    await page.getByRole('button', { name: /add filter/i }).click();
+    await page.getByRole('menuitem', { name: 'Priority' }).click();
+
+    // Select "Urgent" from the value picker and wait for the filtered API response.
+    const filteredResponse = page.waitForResponse(
+        (r) =>
+            r.url().includes('/v1/search/issues') &&
+            (r.url().includes('filter%5Bpriority%5D') || r.url().includes('filter[priority]')),
+        { timeout: 15_000 },
+    );
+    await page.getByRole('button', { name: 'Urgent' }).click();
+    await filteredResponse;
+
+    // Save this view with a unique name.
+    await page.getByRole('button', { name: /save this view/i }).click();
+    await page.getByPlaceholder(/view name/i).fill(viewName);
+
+    const savedResponse = page.waitForResponse(
+        (r) => r.url().includes('/saved-views') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+    );
+    await page.getByRole('button', { name: /^save$/i }).click();
+    const resp = await savedResponse;
+    expect(resp.status()).toBe(201);
+
+    // The saved view name should appear in the sidebar view list after the mutation invalidates the query.
+    await expect(page.getByText(viewName)).toBeVisible({ timeout: 15_000 });
 });

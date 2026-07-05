@@ -12,7 +12,7 @@ final class UpdateSavedViewRequest extends FormRequest
 {
     private const FILTER_KEYS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id'];
 
-    private const SORT_COLUMNS = ['created_at', 'updated_at', 'priority', 'due_date', 'sort_order', 'status', 'title'];
+    private const SORT_COLUMNS = ['created_at', 'updated_at', 'updated', 'priority', 'due_date', 'sort_order', 'status', 'title'];
 
     public function authorize(): bool
     {
