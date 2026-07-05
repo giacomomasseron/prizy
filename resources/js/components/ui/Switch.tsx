@@ -4,9 +4,10 @@ export interface SwitchProps {
     checked: boolean;
     onChange(checked: boolean): void;
     label?: string;
+    ariaLabel?: string;
 }
 
-export function Switch({ checked, onChange, label }: SwitchProps) {
+export function Switch({ checked, onChange, label, ariaLabel }: SwitchProps) {
     const trackStyle: CSSProperties = {
         display: 'inline-flex',
         alignItems: 'center',
@@ -39,7 +40,7 @@ export function Switch({ checked, onChange, label }: SwitchProps) {
                 type="checkbox"
                 checked={checked}
                 onChange={(e) => onChange(e.target.checked)}
-                aria-label={label}
+                aria-label={ariaLabel ?? label}
                 style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
             />
             <span style={trackStyle} aria-hidden="true">

@@ -5,6 +5,7 @@ import { useTeams, useCreateCycle } from '../teams/hooks';
 import { Button } from '../../components/ui/Button';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 import { Switch } from '../../components/ui/Switch';
+import { Textarea } from '../../components/ui/Textarea';
 import { Menu } from '../../components/ui/Menu';
 
 interface CycleFormProps {
@@ -224,8 +225,9 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                     <Switch
                         checked={cooldown}
                         onChange={setCooldown}
-                        label="2-day cooldown"
+                        ariaLabel="Cooldown"
                     />
+                    <span style={{ fontSize: 13, color: 'var(--fg)' }}>2-day cooldown after cycle ends</span>
                 </PropertyRow>
             </div>
 
@@ -243,24 +245,11 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                 >
                     Description
                 </div>
-                <textarea
+                <Textarea
                     placeholder="What is the focus of this cycle?"
                     value={description}
                     onChange={e => setDescription(e.target.value)}
-                    style={{
-                        border: '1px solid var(--border)',
-                        background: 'var(--panel)',
-                        borderRadius: 10,
-                        padding: '12px 13px',
-                        fontSize: 13.5,
-                        height: 88,
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        resize: 'none',
-                        fontFamily: 'inherit',
-                        color: 'var(--fg)',
-                        outline: 'none',
-                    }}
+                    style={{ height: 88, resize: 'none' }}
                 />
             </div>
 

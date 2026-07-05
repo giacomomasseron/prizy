@@ -86,6 +86,13 @@ describe('Switch', () => {
     const track = container.querySelector('[aria-hidden="true"]') as HTMLElement;
     expect(track).toHaveStyle({ background: 'var(--border2)' });
   });
+  it('ariaLabel overrides the accessible name of the checkbox', () => {
+    render(<Switch checked={false} onChange={() => {}} label="2-day cooldown after cycle ends" ariaLabel="Cooldown" />);
+    // The hidden checkbox should use the short ariaLabel, not the visible label text
+    expect(screen.getByRole('checkbox', { name: 'Cooldown' })).toBeInTheDocument();
+    // The visible label text should still be rendered in the DOM
+    expect(screen.getByText('2-day cooldown after cycle ends')).toBeInTheDocument();
+  });
 });
 
 describe('SegmentedControl', () => {

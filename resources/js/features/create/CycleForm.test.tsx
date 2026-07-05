@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -52,8 +52,8 @@ describe('CycleForm', () => {
         await userEvent.type(screen.getByPlaceholderText(/cycle name/i), 'Sprint');
         await userEvent.type(screen.getByLabelText(/starts/i), '2026-08-01');
         await userEvent.type(screen.getByLabelText(/ends/i), '2026-08-15');
-        // Toggle cooldown on
-        await userEvent.click(screen.getByRole('checkbox', { name: /2-day cooldown/i }));
+        // Toggle cooldown on (Switch ariaLabel is "Cooldown")
+        await userEvent.click(screen.getByRole('checkbox', { name: 'Cooldown' }));
         await userEvent.click(screen.getByRole('button', { name: /Create cycle/i }));
         await waitFor(() => {
             expect(mockMutate).toHaveBeenCalledWith(expect.objectContaining({ cooldown_days: 2 }));
@@ -64,5 +64,16 @@ describe('CycleForm', () => {
         [1,2,3,4].forEach(n => {
             expect(screen.getByRole('button', { name: new RegExp(`${n} week`) })).toBeInTheDocument();
         });
+    });
+    it('editing Ends date clears the active duration chip', async () => {
+        wrap('t1');
+        // Click "2 weeks" to activate that chip
+        await userEvent.click(screen.getByRole('button', { name: /2 weeks/i }));
+        // Chip should be active (accent2 background)
+        expect(screen.getByRole('button', { name: /2 weeks/i })).toHaveStyle({ background: 'var(--accent2)' });
+        // Manually change the Ends date via fireEvent (simulates user editing the date field)
+        fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2026-09-01' } });
+        // Active duration cleared → chip reverts to inactive styling
+        expect(screen.getByRole('button', { name: /2 weeks/i })).toHaveStyle({ background: 'transparent' });
     });
 });
