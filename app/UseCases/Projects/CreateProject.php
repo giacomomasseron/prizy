@@ -22,6 +22,11 @@ final class CreateProject
             throw ValidationException::withMessages(['team_id' => ['The selected team is invalid.']]);
         }
 
+        $leadId = $data['lead_id'] ?? null;
+        if ($leadId !== null && User::find($leadId) === null) {
+            throw ValidationException::withMessages(['lead_id' => ['The selected lead is invalid.']]);
+        }
+
         return $this->projects->create([
             'name'        => $data['name'],
             'description' => $data['description'] ?? null,

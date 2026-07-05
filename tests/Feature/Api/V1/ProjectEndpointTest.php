@@ -80,6 +80,63 @@ it('returns 422 (not 500) when PATCH sends target_date before existing start_dat
     Workspace::forgetCurrent();
 });
 
+it('rejects a foreign-workspace lead_id on POST with 422', function (): void {
+    [$token, $ws] = projectWorld();
+
+    // Create a user in a different workspace (RLS-context sandwich).
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $foreignUser = User::factory()->for($wsB, 'workspace')->create(['email_verified_at' => now()]);
+    Workspace::forgetCurrent();
+
+    // Restore workspace A for the acting token.
+    test()->actingInWorkspace($ws);
+
+    $this->withToken($token)
+         ->postJson('/v1/projects', ['name' => 'X', 'lead_id' => $foreignUser->id])
+         ->assertStatus(422)
+         ->assertJsonValidationErrors('lead_id');
+
+    Workspace::forgetCurrent();
+});
+
+it('rejects a foreign-workspace lead_id on PATCH with 422', function (): void {
+    [$token, $ws] = projectWorld();
+
+    $id = $this->withToken($token)
+               ->postJson('/v1/projects', ['name' => 'Base'])
+               ->json('data.id');
+
+    // Create a user in a different workspace (RLS-context sandwich).
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $foreignUser = User::factory()->for($wsB, 'workspace')->create(['email_verified_at' => now()]);
+    Workspace::forgetCurrent();
+
+    // Restore workspace A for the acting token.
+    test()->actingInWorkspace($ws);
+
+    $this->withToken($token)
+         ->patchJson("/v1/projects/{$id}", ['lead_id' => $foreignUser->id])
+         ->assertStatus(422)
+         ->assertJsonValidationErrors('lead_id');
+
+    Workspace::forgetCurrent();
+});
+
+it('accepts a same-workspace member as lead_id and persists it', function (): void {
+    [$token, $ws] = projectWorld();
+
+    $lead = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
+
+    $resp = $this->withToken($token)
+                 ->postJson('/v1/projects', ['name' => 'Led Project', 'lead_id' => $lead->id]);
+
+    $resp->assertStatus(201)->assertJsonPath('data.lead_id', $lead->id);
+
+    Workspace::forgetCurrent();
+});
+
 it('records created_by as the acting user', function (): void {
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);

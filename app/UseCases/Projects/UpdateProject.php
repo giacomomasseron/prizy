@@ -26,6 +26,10 @@ final class UpdateProject
             throw ValidationException::withMessages(['team_id' => ['The selected team is invalid.']]);
         }
 
+        if (array_key_exists('lead_id', $data) && $data['lead_id'] !== null && User::find($data['lead_id']) === null) {
+            throw ValidationException::withMessages(['lead_id' => ['The selected lead is invalid.']]);
+        }
+
         $startDate  = $data['start_date']  ?? $project->start_date;
         $targetDate = $data['target_date'] ?? $project->target_date;
         if ($startDate !== null && $targetDate !== null) {

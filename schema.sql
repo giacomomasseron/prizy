@@ -1008,6 +1008,9 @@ CREATE INDEX idx_users_email               ON users(email);
 CREATE INDEX idx_teams_workspace           ON teams(workspace_id);
 CREATE UNIQUE INDEX teams_workspace_id_identifier_active_uidx ON teams (workspace_id, identifier) WHERE deleted_at IS NULL;
 
+-- Projects
+CREATE INDEX idx_projects_lead             ON projects(lead_id);
+
 -- Issue tracker
 CREATE INDEX idx_issues_workspace          ON issues(workspace_id);
 CREATE INDEX idx_issues_team               ON issues(team_id);
