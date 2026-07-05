@@ -57,6 +57,7 @@ it('non-admin gets 403', function (): void {
     [$token, , $target] = patchWorld('member', 'member');
     $this->withToken($token)->patchJson("/v1/members/{$target->id}", ['admin_level' => 'admin'])
         ->assertStatus(403);
+    expect($target->fresh()->admin_level)->toBe('member'); // DB unchanged
     Workspace::forgetCurrent();
 });
 
@@ -91,6 +92,7 @@ it('cannot change own admin level', function (): void {
     User::factory()->for($actor->workspace, 'workspace')->create(['admin_level' => 'owner', 'email_verified_at' => now()]);
     $this->withToken($token)->patchJson("/v1/members/{$actor->id}", ['admin_level' => 'admin'])
         ->assertStatus(403);
+    expect($actor->fresh()->admin_level)->toBe('owner'); // DB unchanged
     Workspace::forgetCurrent();
 });
 
