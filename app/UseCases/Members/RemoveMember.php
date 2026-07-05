@@ -7,6 +7,7 @@ namespace App\UseCases\Members;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 final class RemoveMember
 {
@@ -42,19 +43,23 @@ final class RemoveMember
             }
         }
 
-        // Null references (soft-delete won't cascade)
-        Issue::where('workspace_id', $actor->workspace_id)
-            ->where('assignee_id', $target->id)
-            ->update(['assignee_id' => null]);
+        // Null references (soft-delete won't cascade) — wrapped in a transaction so a
+        // mid-sequence failure cannot leave partial state (e.g. assignee nulled but user
+        // not yet deleted).
+        DB::transaction(function () use ($actor, $target): void {
+            Issue::where('workspace_id', $actor->workspace_id)
+                ->where('assignee_id', $target->id)
+                ->update(['assignee_id' => null]);
 
-        Project::where('workspace_id', $actor->workspace_id)
-            ->where('lead_id', $target->id)
-            ->update(['lead_id' => null]);
+            Project::where('workspace_id', $actor->workspace_id)
+                ->where('lead_id', $target->id)
+                ->update(['lead_id' => null]);
 
-        \DB::table('team_members')->where('user_id', $target->id)->delete();
-        \DB::table('project_members')->where('user_id', $target->id)->delete();
+            DB::table('team_members')->where('user_id', $target->id)->delete();
+            DB::table('project_members')->where('user_id', $target->id)->delete();
 
-        // Note: agent_group_members follows the same pattern; deferred to Phase 3.
-        $target->delete(); // soft-delete
+            // Note: agent_group_members follows the same pattern; deferred to Phase 3.
+            $target->delete(); // soft-delete
+        });
     }
 }

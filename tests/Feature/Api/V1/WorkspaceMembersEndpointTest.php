@@ -88,3 +88,32 @@ it('does not expose another workspace members', function (): void {
     }
     Workspace::forgetCurrent();
 });
+
+it('does not expose pending invitations from another workspace', function (): void {
+    [$token, $wsA, $actor] = wsMembersWorld('owner');
+
+    // Create a foreign invitation under WS-B (RLS-context sandwich)
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $wsBOwner = User::factory()->for($wsB, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner']);
+    $foreignInv = Invitation::forceCreate([
+        'id'           => (string) Str::uuid(),
+        'workspace_id' => $wsB->id,
+        'email'        => 'foreign-pending@example.com',
+        'admin_level'  => 'member',
+        'is_developer' => true,
+        'is_agent'     => false,
+        'token_hash'   => hash('sha256', Str::random(40)),
+        'invited_by'   => $wsBOwner->id,
+        'expires_at'   => now()->addHours(72),
+    ]);
+    test()->actingInWorkspace($wsA);
+
+    $res = $this->withToken($token)->getJson('/v1/workspace/members')->assertStatus(200);
+    $data = collect($res->json('data'));
+
+    // The foreign invitation must not appear in WS-A's list
+    expect($data->pluck('email')->contains('foreign-pending@example.com'))->toBeFalse();
+    expect($data->pluck('id')->contains('inv:' . $foreignInv->id))->toBeFalse();
+    Workspace::forgetCurrent();
+});

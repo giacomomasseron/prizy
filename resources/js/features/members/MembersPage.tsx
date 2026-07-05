@@ -4,6 +4,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Menu } from '../../components/ui/Menu';
 import { TeamTile } from '../../components/ui/TeamTile';
 import { avatarFor } from '../../lib/avatarFor';
+import { ApiError } from '../../lib/apiClient';
 import { InviteModal } from './InviteModal';
 import { LEVELS } from './levels';
 import {
@@ -60,6 +61,7 @@ const agentOffStyle: React.CSSProperties = {
 
 export default function MembersPage() {
     const [inviteOpen, setInviteOpen] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
 
     const me = useMe();
     const members = useWorkspaceMembers();
@@ -100,7 +102,16 @@ export default function MembersPage() {
                         }}
                     />
                 ),
-                onActivate: () => updateMember.mutate({ userId, data: { admin_level: key } }),
+                onActivate: () => {
+                    setActionError(null);
+                    updateMember.mutate(
+                        { userId, data: { admin_level: key } },
+                        {
+                            onSuccess: () => setActionError(null),
+                            onError: (e) => setActionError((e as ApiError).message),
+                        },
+                    );
+                },
                 disabled: updateMember.isPending,
             }));
     }
@@ -203,6 +214,47 @@ export default function MembersPage() {
                     }}
                 >
                     ⚠ Members with no capability enabled have no access to any module.
+                </div>
+            )}
+
+            {/* ── Action error banner ────────────────────────────────────── */}
+            {actionError && (
+                <div
+                    role="alert"
+                    data-testid="action-error"
+                    style={{
+                        background: 'rgba(239,68,68,.08)',
+                        border: '1px solid rgba(239,68,68,.3)',
+                        borderRadius: 9,
+                        padding: '10px 14px',
+                        marginBottom: 16,
+                        color: 'var(--red)',
+                        fontSize: 13,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 8,
+                    }}
+                >
+                    <span>{actionError}</span>
+                    <button
+                        type="button"
+                        onClick={() => setActionError(null)}
+                        aria-label="Dismiss error"
+                        style={{
+                            background: 'none',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: 'var(--red)',
+                            fontSize: 16,
+                            lineHeight: 1,
+                            padding: 0,
+                            fontFamily: 'inherit',
+                            flexShrink: 0,
+                        }}
+                    >
+                        ×
+                    </button>
                 </div>
             )}
 
@@ -357,12 +409,17 @@ export default function MembersPage() {
                                             type="button"
                                             data-testid={`cap-developer-${row.email}`}
                                             aria-label="Developer"
-                                            onClick={() =>
-                                                updateMember.mutate({
-                                                    userId: row.id,
-                                                    data: { is_developer: !row.is_developer },
-                                                })
-                                            }
+                                            disabled={updateMember.isPending}
+                                            onClick={() => {
+                                                setActionError(null);
+                                                updateMember.mutate(
+                                                    { userId: row.id, data: { is_developer: !row.is_developer } },
+                                                    {
+                                                        onSuccess: () => setActionError(null),
+                                                        onError: (e) => setActionError((e as ApiError).message),
+                                                    },
+                                                );
+                                            }}
                                             style={row.is_developer ? devOnStyle : devOffStyle}
                                         >
                                             {row.is_developer && (
@@ -381,12 +438,17 @@ export default function MembersPage() {
                                         <button
                                             type="button"
                                             aria-label="Agent"
-                                            onClick={() =>
-                                                updateMember.mutate({
-                                                    userId: row.id,
-                                                    data: { is_agent: !row.is_agent },
-                                                })
-                                            }
+                                            disabled={updateMember.isPending}
+                                            onClick={() => {
+                                                setActionError(null);
+                                                updateMember.mutate(
+                                                    { userId: row.id, data: { is_agent: !row.is_agent } },
+                                                    {
+                                                        onSuccess: () => setActionError(null),
+                                                        onError: (e) => setActionError((e as ApiError).message),
+                                                    },
+                                                );
+                                            }}
                                             style={row.is_agent ? agentOnStyle : agentOffStyle}
                                         >
                                             {row.is_agent && (
@@ -471,11 +533,18 @@ export default function MembersPage() {
                                     type="button"
                                     data-testid={`remove-${row.email}`}
                                     onClick={() => {
+                                        setActionError(null);
                                         if (isInvited) {
-                                            cancelInvitation.mutate(row.id.replace('inv:', ''));
+                                            cancelInvitation.mutate(row.id.replace('inv:', ''), {
+                                                onSuccess: () => setActionError(null),
+                                                onError: (e) => setActionError((e as ApiError).message),
+                                            });
                                         } else {
                                             if (window.confirm(`Remove ${row.name}?`)) {
-                                                removeMember.mutate(row.id);
+                                                removeMember.mutate(row.id, {
+                                                    onSuccess: () => setActionError(null),
+                                                    onError: (e) => setActionError((e as ApiError).message),
+                                                });
                                             }
                                         }
                                     }}

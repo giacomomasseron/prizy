@@ -76,12 +76,14 @@ it('the sole owner cannot remove themselves (self-remove guard ensures workspace
 it('admin cannot remove an owner', function (): void {
     [$token, , $target] = removeWorld('admin', 'owner');
     $this->withToken($token)->deleteJson("/v1/members/{$target->id}")->assertStatus(403);
+    expect(User::find($target->id)->deleted_at)->toBeNull(); // target unchanged in DB
     Workspace::forgetCurrent();
 });
 
 it('non-admin gets 403', function (): void {
     [$token, , $target] = removeWorld('member', 'member');
     $this->withToken($token)->deleteJson("/v1/members/{$target->id}")->assertStatus(403);
+    expect(User::find($target->id)->deleted_at)->toBeNull(); // target unchanged in DB
     Workspace::forgetCurrent();
 });
 
@@ -112,5 +114,37 @@ it('owner can cancel a pending invitation', function (): void {
     ]);
     $this->withToken($token)->deleteJson("/v1/invitations/{$inv->id}")->assertStatus(204);
     $this->assertDatabaseMissing('invitations', ['id' => $inv->id]);
+    Workspace::forgetCurrent();
+});
+
+it('returns 404 for invitation belonging to another workspace and row survives', function (): void {
+    // Actor workspace
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner', 'is_developer' => true]);
+    $token = app(CreatePersonalAccessToken::class)->handle($actor, 't', null)['token'];
+
+    // Foreign workspace invitation (RLS-context sandwich)
+    $ws2 = Workspace::factory()->create();
+    $ws2->makeCurrent();
+    $foreignInviter = User::factory()->for($ws2, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner']);
+    $foreignInv = Invitation::forceCreate([
+        'id'           => (string) Str::uuid(),
+        'workspace_id' => $ws2->id,
+        'email'        => 'foreign@example.com',
+        'admin_level'  => 'member',
+        'is_developer' => true,
+        'is_agent'     => false,
+        'token_hash'   => hash('sha256', Str::random(40)),
+        'invited_by'   => $foreignInviter->id,
+        'expires_at'   => now()->addHours(72),
+    ]);
+    test()->actingInWorkspace($ws);
+
+    $this->withToken($token)->deleteJson("/v1/invitations/{$foreignInv->id}")->assertStatus(404);
+
+    // Assert the row survives — switch to ws2 context so RLS exposes it
+    $ws2->makeCurrent();
+    $this->assertDatabaseHas('invitations', ['id' => $foreignInv->id]); // row must survive
     Workspace::forgetCurrent();
 });

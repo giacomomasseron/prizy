@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
@@ -213,6 +213,47 @@ describe('MembersPage', () => {
         expect(screen.getByTestId('stat-admins').textContent).toBe('2');
         expect(screen.getByTestId('stat-devs').textContent).toBe('3');
         expect(screen.getByTestId('stat-agents').textContent).toBe('1');
+    });
+
+    // 9. remove 403 error is surfaced as inline banner
+    it('shows inline error banner when DELETE /members/{id} returns 403', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const members = [makeMember({ id: 'u9', name: 'Zara', email: 'z@x.co', status: 'active', admin_level: 'owner' })];
+
+        // URL routing note: '/v1/members/u9' contains the substring '/me', so the /me
+        // check MUST use an exact match to avoid incorrectly matching DELETE calls.
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                if (url.includes('/workspace/members'))
+                    return { ok: true, status: 200, json: async () => ({ data: members }) };
+                if (url === '/v1/me') // exact — '/v1/members/…' also contains '/me'
+                    return { ok: true, status: 200, json: async () => ({ data: makeMe('admin') }) };
+                if (url.includes('/members/') && init?.method === 'DELETE')
+                    return { ok: false, status: 403, json: async () => ({ title: 'Forbidden', detail: 'Admins cannot remove owners.' }) };
+                return { ok: true, status: 200, json: async () => ({ data: {} }) };
+            }),
+        );
+
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter>
+                    <MembersPage />
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        await screen.findByText('Zara');
+
+        // Use fireEvent (synchronous) so userEvent's async timer machinery
+        // doesn't race with TanStack Query's onError callback.
+        fireEvent.click(screen.getByTestId('remove-z@x.co'));
+
+        await waitFor(() => expect(screen.getByTestId('action-error')).toBeInTheDocument());
+        expect(screen.getByTestId('action-error')).toHaveTextContent('Admins cannot remove owners.');
+
+        confirmSpy.mockRestore();
     });
 
     // 8. owner-only 'owner' level option hidden for admin actor
