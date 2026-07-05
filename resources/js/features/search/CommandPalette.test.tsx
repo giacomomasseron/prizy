@@ -114,3 +114,11 @@ it('issue rows render StatusIcon + identifier + title', async () => {
     // StatusIcon renders with aria-label matching the status
     expect(screen.getByRole('generic', { name: 'in_progress' })).toBeInTheDocument();
 });
+
+it('shows an Advanced search footer that navigates to /search', async () => {
+    renderPalette();
+    await openPalette();
+    const footer = await screen.findByRole('button', { name: /advanced search/i });
+    await userEvent.click(footer);
+    expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/search'));
+});

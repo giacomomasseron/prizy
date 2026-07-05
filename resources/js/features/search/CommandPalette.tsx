@@ -131,6 +131,16 @@ export default function CommandPalette() {
                     ))}
                     {rows.length === 0 && <li className="px-4 py-3 text-sm text-fg3">No results.</li>}
                 </ul>
+                <div className="border-t border-border">
+                    <button
+                        type="button"
+                        onClick={() => go(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : '/search')}
+                        className="flex w-full items-center justify-between px-4 py-2.5 text-left text-sm text-fg2 hover:bg-hover"
+                    >
+                        <span className="flex items-center gap-2">⌕ Advanced search</span>
+                        <span className="text-xs text-fg3">filters, sort &amp; save</span>
+                    </button>
+                </div>
             </div>
         </div>
     );
