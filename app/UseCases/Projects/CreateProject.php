@@ -28,6 +28,8 @@ final class CreateProject
             'icon'        => $data['icon'] ?? null,
             'color'       => $data['color'] ?? '#6366f1',
             'status'      => $data['status'] ?? 'planning',
+            'lead_id'     => $data['lead_id'] ?? null,
+            'priority'    => $data['priority'] ?? 'no_priority',
             'team_id'     => $teamId,
             'start_date'  => $data['start_date'] ?? null,
             'target_date' => $data['target_date'] ?? null,

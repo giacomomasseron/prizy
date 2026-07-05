@@ -19,7 +19,8 @@ final class StoreCycleRequest extends FormRequest
         return [
             'name'      => ['required', 'string', 'max:255'],
             'starts_at' => ['required', 'date'],
-            'ends_at'   => ['required', 'date', 'after:starts_at'],
+            'ends_at'       => ['required', 'date', 'after:starts_at'],
+            'cooldown_days' => ['sometimes', 'integer', 'min:0'],
         ];
     }
 }

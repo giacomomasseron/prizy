@@ -20,8 +20,9 @@ final class CycleResource extends JsonResource
             'team_id'    => $this->team_id,
             'name'       => $this->name,
             'starts_at'  => $this->starts_at,
-            'ends_at'    => $this->ends_at,
-            'created_at' => $this->created_at,
+            'ends_at'        => $this->ends_at,
+            'cooldown_days'  => $this->cooldown_days,
+            'created_at'     => $this->created_at,
             'updated_at' => $this->updated_at,
         ]);
     }

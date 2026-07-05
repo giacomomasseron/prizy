@@ -44,6 +44,16 @@ it('creates, lists (per team), updates and hard-deletes a cycle', function (): v
     Workspace::forgetCurrent();
 });
 
+it('exposes cooldown_days in cycle resource', function (): void {
+    [$token, $ws, $team] = cycleWorld();
+    $resp = $this->withToken($token)->postJson("/v1/teams/{$team->id}/cycles", [
+        'name' => 'Cool', 'starts_at' => '2026-08-01', 'ends_at' => '2026-08-14',
+        'cooldown_days' => 3,
+    ]);
+    $resp->assertStatus(201)->assertJsonPath('data.cooldown_days', 3);
+    Workspace::forgetCurrent();
+});
+
 it('rejects ends_at not after starts_at (422)', function (): void {
     [$token, $ws, $team] = cycleWorld();
     $this->withToken($token)->postJson("/v1/teams/{$team->id}/cycles", ['name' => 'S', 'starts_at' => '2026-01-10', 'ends_at' => '2026-01-10'])->assertStatus(422);

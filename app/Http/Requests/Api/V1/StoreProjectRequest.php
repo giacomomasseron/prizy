@@ -23,6 +23,8 @@ final class StoreProjectRequest extends FormRequest
             'icon'        => ['nullable', 'string', 'max:64'],
             'color'       => ['sometimes', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'status'      => ['sometimes', Rule::in(['planning', 'in_progress', 'paused', 'completed', 'cancelled'])],
+            'lead_id'     => ['nullable', 'string'],
+            'priority'    => ['sometimes', Rule::in(['no_priority', 'urgent', 'high', 'medium', 'low'])],
             'team_id'     => ['nullable', 'string'],
             'start_date'  => ['nullable', 'date'],
             'target_date' => ['nullable', 'date', 'after_or_equal:start_date'],

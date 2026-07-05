@@ -36,7 +36,7 @@ final class UpdateProject
 
         return $this->projects->update($project, array_intersect_key(
             $data,
-            array_flip(['name', 'description', 'icon', 'color', 'status', 'team_id', 'start_date', 'target_date']),
+            array_flip(['name', 'description', 'icon', 'color', 'status', 'lead_id', 'priority', 'team_id', 'start_date', 'target_date']),
         ));
     }
 }

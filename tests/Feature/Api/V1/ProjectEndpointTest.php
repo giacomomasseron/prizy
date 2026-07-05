@@ -46,6 +46,17 @@ it('creates, filters, updates and soft-deletes a project', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('exposes lead_id, priority, and cooldown_days in resources after migration', function (): void {
+    [$token, $ws, $team] = projectWorld();
+    $resp = $this->withToken($token)->postJson('/v1/projects', [
+        'name' => 'Lead test', 'priority' => 'high',
+    ]);
+    $resp->assertStatus(201)
+         ->assertJsonPath('data.priority', 'high')
+         ->assertJsonPath('data.lead_id', null);
+    Workspace::forgetCurrent();
+});
+
 it('rejects a bad status, target_date before start_date, and a foreign team_id', function (): void {
     [$token] = projectWorld();
 

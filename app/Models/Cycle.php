@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $name
  * @property Carbon $starts_at
  * @property Carbon $ends_at
+ * @property int $cooldown_days
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Team $team
@@ -40,7 +41,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'team_id', 'name', 'starts_at', 'ends_at'])]
+#[Fillable(['id', 'team_id', 'name', 'starts_at', 'ends_at', 'cooldown_days'])]
 class Cycle extends Model
 {
     /**
@@ -54,6 +55,7 @@ class Cycle extends Model
             'name' => 'string',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'cooldown_days' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];

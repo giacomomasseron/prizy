@@ -23,6 +23,8 @@ final class ProjectResource extends JsonResource
             'color'       => $this->color,
             'status'      => $this->status,
             'team_id'     => $this->team_id,
+            'lead_id'     => $this->lead_id,
+            'priority'    => $this->priority,
             'start_date'  => $this->start_date,
             'target_date' => $this->target_date,
             'created_by'  => $this->created_by,

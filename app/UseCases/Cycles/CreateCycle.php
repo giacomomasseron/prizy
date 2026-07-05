@@ -22,10 +22,11 @@ final class CreateCycle
         }
 
         return $this->cycles->create([
-            'team_id'   => $data['team_id'],
-            'name'      => $data['name'],
-            'starts_at' => $data['starts_at'],
-            'ends_at'   => $data['ends_at'],
+            'team_id'       => $data['team_id'],
+            'name'          => $data['name'],
+            'starts_at'     => $data['starts_at'],
+            'ends_at'       => $data['ends_at'],
+            'cooldown_days' => $data['cooldown_days'] ?? 0,
         ]);
     }
 }

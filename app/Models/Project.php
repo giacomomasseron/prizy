@@ -20,11 +20,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $id
  * @property string $workspace_id
  * @property string|null $team_id
+ * @property string|null $lead_id
  * @property string $name
  * @property string|null $description
  * @property string|null $icon
  * @property string $color
  * @property string $status
+ * @property string $priority
  * @property Carbon|null $start_date
  * @property Carbon|null $target_date
  * @property string $created_by
@@ -52,7 +54,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'team_id', 'name', 'description', 'icon', 'color', 'status', 'start_date', 'target_date', 'created_by'])]
+#[Fillable(['id', 'team_id', 'lead_id', 'name', 'description', 'icon', 'color', 'status', 'priority', 'start_date', 'target_date', 'created_by'])]
 class Project extends TenantAwareEntity
 {
     use SoftDeletes;
@@ -66,11 +68,13 @@ class Project extends TenantAwareEntity
             'id' => 'string',
             'workspace_id' => 'string',
             'team_id' => 'string',
+            'lead_id' => 'string',
             'name' => 'string',
             'description' => 'string',
             'icon' => 'string',
             'color' => 'string',
             'status' => 'string',
+            'priority' => 'string',
             'start_date' => 'datetime',
             'target_date' => 'datetime',
             'created_by' => 'string',
@@ -110,6 +114,14 @@ class Project extends TenantAwareEntity
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function lead(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'lead_id');
     }
 
     /**
