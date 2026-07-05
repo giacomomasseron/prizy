@@ -187,6 +187,8 @@ it('PATCH and DELETE forbid a non-admin', function (): void {
     $u = User::factory()->for($ws, 'workspace')->create();
     addMemberRow($team->id, $u->id, 'member');
     $this->withToken($token)->patchJson("/v1/teams/{$team->id}/members/{$u->id}", ['role' => 'lead'])->assertStatus(403);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->value('role'))->toBe('member');
     $this->withToken($token)->deleteJson("/v1/teams/{$team->id}/members/{$u->id}")->assertStatus(403);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(1);
     Workspace::forgetCurrent();
 });
