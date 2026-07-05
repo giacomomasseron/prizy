@@ -90,4 +90,17 @@ describe('Menu', () => {
     expect(onActivate).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole('menuitem')).toBeNull();
   });
+
+  it('renders subtitle below label when subtitle is provided', async () => {
+    const user = userEvent.setup();
+    render(
+      <Menu
+        trigger={<button>Open</button>}
+        items={[{ key: 'sub', label: 'Settings', subtitle: 'Configure things', onActivate: vi.fn() }]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Configure things')).toBeInTheDocument();
+  });
 });

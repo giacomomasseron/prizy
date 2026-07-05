@@ -3,6 +3,7 @@ import { cloneElement, useEffect, useRef, useState, type ReactElement } from 're
 export interface MenuItem {
     key: string;
     label: string;
+    subtitle?: string;
     icon?: React.ReactNode;
     onActivate(): void;
     danger?: boolean;
@@ -105,7 +106,14 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
                                     {item.icon}
                                 </span>
                             )}
-                            {item.label}
+                            {item.subtitle ? (
+                                <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                    <span>{item.label}</span>
+                                    <span style={{ fontSize: 11, color: 'var(--fg3)' }}>{item.subtitle}</span>
+                                </span>
+                            ) : (
+                                item.label
+                            )}
                         </button>
                     ))}
                 </div>

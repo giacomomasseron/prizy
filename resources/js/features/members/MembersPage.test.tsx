@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import MembersPage from './MembersPage';
 import type { WorkspaceMember } from './workspaceHooks';
 
@@ -122,6 +122,26 @@ describe('MembersPage', () => {
                         u.includes('/members/u3') &&
                         i?.method === 'PATCH' &&
                         JSON.parse(i.body as string)?.is_developer === true,
+                ),
+            ).toBe(true);
+        });
+    });
+
+    // 3b. agent chip toggle calls PATCH with correct boolean
+    it('Agent chip calls PATCH /members/{id} with is_agent flipped', async () => {
+        const user = userEvent.setup();
+        const members = [makeMember({ id: 'u3b', name: 'Carol', email: 'c@x.co', is_agent: false, status: 'active' })];
+        renderPage(members);
+        await screen.findByText('Carol');
+        await user.click(screen.getByRole('button', { name: /Agent/i }));
+        await vi.waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            expect(
+                calls.some(
+                    ([u, i]) =>
+                        u.includes('/members/u3b') &&
+                        i?.method === 'PATCH' &&
+                        JSON.parse(i.body as string)?.is_agent === true,
                 ),
             ).toBe(true);
         });

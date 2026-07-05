@@ -87,6 +87,7 @@ export default function MembersPage() {
             .map(([key, meta]) => ({
                 key,
                 label: meta.label,
+                subtitle: meta.desc,
                 icon: (
                     <span
                         style={{
@@ -243,7 +244,6 @@ export default function MembersPage() {
                                 padding: '10px 18px',
                                 alignItems: 'center',
                                 borderTop: '1px solid var(--border)',
-                                borderBottom: i < rows.length - 1 ? undefined : undefined,
                             }}
                         >
                             {/* Member cell */}
@@ -392,7 +392,7 @@ export default function MembersPage() {
                                                         width: 6,
                                                         height: 6,
                                                         borderRadius: '50%',
-                                                        background: '#4bab66',
+                                                        background: 'var(--green)',
                                                         display: 'inline-block',
                                                     }}
                                                 />
@@ -438,7 +438,7 @@ export default function MembersPage() {
                                                 width: 7,
                                                 height: 7,
                                                 borderRadius: '50%',
-                                                background: '#4bab66',
+                                                background: 'var(--green)',
                                                 display: 'inline-block',
                                                 flexShrink: 0,
                                             }}
