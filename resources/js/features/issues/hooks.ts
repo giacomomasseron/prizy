@@ -109,6 +109,9 @@ export function useTransitionStatus() {
             // which makes isLoading transiently true if there is no pre-existing cache entry,
             // hiding the properties panel and its interactive editors.
             qc.invalidateQueries({ queryKey: ['issues'] });
+            // Invalidate only the activities sub-query so the feed refreshes after a
+            // status change without triggering a full detail re-fetch / loading flash.
+            qc.invalidateQueries({ queryKey: ['issue', vars.id, 'activities'] });
         },
     });
 }

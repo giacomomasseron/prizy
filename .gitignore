@@ -30,4 +30,5 @@ Thumbs.db
 /.deptrac.cache
 
 /tests/e2e/.auth/
+/test-results/
 
