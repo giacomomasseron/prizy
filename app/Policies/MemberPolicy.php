@@ -45,4 +45,15 @@ final class MemberPolicy
         return $actor->workspace_id === $target->workspace_id
             && in_array($actor->admin_level, ['owner', 'admin'], true);
     }
+
+    /**
+     * Removing a member requires owner or admin level, and both must be in the same workspace.
+     * Business-logic guards (cannot remove self, admin cannot remove owner, last-owner) are
+     * enforced in RemoveMember after Gate::authorize runs.
+     */
+    public function delete(User $actor, User $target): bool
+    {
+        return $actor->workspace_id === $target->workspace_id
+            && in_array($actor->admin_level, ['owner', 'admin'], true);
+    }
 }

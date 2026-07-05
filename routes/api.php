@@ -94,6 +94,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/workspace/members', [WorkspaceMemberController::class, 'index'])
             ->middleware('can:viewWorkspaceMembers,App\\Models\\User');
         Route::patch('/members/{user}', [WorkspaceMemberController::class, 'update']);
+        Route::delete('/members/{user}', [WorkspaceMemberController::class, 'destroy']);
+        Route::delete('/invitations/{invitation}', [WorkspaceMemberController::class, 'destroyInvitation'])
+            ->middleware('can:viewWorkspaceMembers,App\\Models\\User');
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
