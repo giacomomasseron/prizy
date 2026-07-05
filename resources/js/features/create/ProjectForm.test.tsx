@@ -125,4 +125,16 @@ describe('ProjectForm', () => {
         await userEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
         expect(onCancel).toHaveBeenCalled();
     });
+
+    it('shows inline error and does not call onSuccess when mutate rejects', async () => {
+        const onSuccess = vi.fn();
+        mockMutate.mockRejectedValueOnce(new Error('boom'));
+        wrap(onSuccess);
+        await userEvent.type(screen.getByPlaceholderText(/project name/i), 'My Project');
+        await userEvent.click(screen.getByRole('button', { name: /Create project/i }));
+        await waitFor(() => {
+            expect(screen.getByText('boom')).toBeInTheDocument();
+        });
+        expect(onSuccess).not.toHaveBeenCalled();
+    });
 });

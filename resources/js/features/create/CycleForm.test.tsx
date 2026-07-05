@@ -2,7 +2,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 import CycleForm from './CycleForm';
 
 vi.mock('../../features/teams/hooks', () => ({
@@ -11,15 +11,23 @@ vi.mock('../../features/teams/hooks', () => ({
 }));
 const mockMutate = vi.fn().mockResolvedValue({ id: 'c1', name: 'Sprint', team_id: 't1', starts_at: '2026-08-01', ends_at: '2026-08-15', cooldown_days: 2, created_at: '', updated_at: '' });
 
-function wrap(defaultTeamId?: string) {
+beforeEach(() => {
+    mockMutate.mockClear();
+});
+
+function wrap(defaultTeamId?: string, onSuccess = vi.fn(), onCancel = vi.fn()) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(
-        <QueryClientProvider client={qc}>
-            <MemoryRouter>
-                <CycleForm defaultTeamId={defaultTeamId} onSuccess={vi.fn()} onCancel={vi.fn()} />
-            </MemoryRouter>
-        </QueryClientProvider>
-    );
+    return {
+        onSuccess,
+        onCancel,
+        ...render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter>
+                    <CycleForm defaultTeamId={defaultTeamId} onSuccess={onSuccess} onCancel={onCancel} />
+                </MemoryRouter>
+            </QueryClientProvider>
+        ),
+    };
 }
 
 describe('CycleForm', () => {
@@ -75,5 +83,19 @@ describe('CycleForm', () => {
         fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2026-09-01' } });
         // Active duration cleared → chip reverts to inactive styling
         expect(screen.getByRole('button', { name: /2 weeks/i })).toHaveStyle({ background: 'transparent' });
+    });
+
+    it('shows inline error and does not call onSuccess when mutate rejects', async () => {
+        const onSuccess = vi.fn();
+        mockMutate.mockRejectedValueOnce(new Error('Server error'));
+        wrap('t1', onSuccess);
+        await userEvent.type(screen.getByPlaceholderText(/cycle name/i), 'Sprint');
+        fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2026-08-01' } });
+        fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2026-08-15' } });
+        await userEvent.click(screen.getByRole('button', { name: /Create cycle/i }));
+        await waitFor(() => {
+            expect(screen.getByText('Server error')).toBeInTheDocument();
+        });
+        expect(onSuccess).not.toHaveBeenCalled();
     });
 });

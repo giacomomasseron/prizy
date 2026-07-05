@@ -65,6 +65,8 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
     const [description, setDescription] = useState('');
     const [activeDuration, setActiveDuration] = useState<number | null>(null);
 
+    const [error, setError] = useState<string | null>(null);
+
     const teams = useTeams();
     const create = useCreateCycle(teamId);
 
@@ -94,14 +96,23 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
     const canCreate = Boolean(name.trim() && teamId && validDates);
 
     async function handleSubmit() {
-        const cycle = await create.mutateAsync({
-            name,
-            starts_at: startsAt,
-            ends_at: endsAt,
-            cooldown_days: cooldown ? 2 : 0,
-            description,
-        });
-        onSuccess(cycle, teamId);
+        setError(null);
+        try {
+            const cycle = await create.mutateAsync({
+                name,
+                starts_at: startsAt,
+                ends_at: endsAt,
+                cooldown_days: cooldown ? 2 : 0,
+                description,
+            });
+            onSuccess(cycle, teamId);
+        } catch (e) {
+            setError(
+                (e instanceof Error && e.message)
+                    ? e.message
+                    : 'Could not create cycle.'
+            );
+        }
     }
 
     const teamItems = (teams.data?.items ?? []).map(t => ({
@@ -253,8 +264,15 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                 />
             </div>
 
+            {/* Inline error */}
+            {error && (
+                <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 14 }}>
+                    {error}
+                </div>
+            )}
+
             {/* Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
                 <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
                 <Button
                     variant="primary"

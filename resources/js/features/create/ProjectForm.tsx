@@ -77,22 +77,33 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
     const [startDate, setStartDate] = useState('');
     const [targetDate, setTargetDate] = useState('');
 
+    const [error, setError] = useState<string | null>(null);
+
     const create = useCreateProject();
     const members = useMembers();
     const memberList = members.data ?? [];
 
     async function handleSubmit() {
-        const project = await create.mutateAsync({
-            name,
-            description: description || null,
-            status,
-            lead_id: leadId,
-            priority,
-            color,
-            start_date: startDate || null,
-            target_date: targetDate || null,
-        });
-        onSuccess(project);
+        setError(null);
+        try {
+            const project = await create.mutateAsync({
+                name,
+                description: description || null,
+                status,
+                lead_id: leadId,
+                priority,
+                color,
+                start_date: startDate || null,
+                target_date: targetDate || null,
+            });
+            onSuccess(project);
+        } catch (e) {
+            setError(
+                (e instanceof Error && e.message)
+                    ? e.message
+                    : 'Could not create project.'
+            );
+        }
     }
 
     return (
@@ -300,13 +311,20 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                 </PropertyRow>
             </div>
 
+            {/* Inline error */}
+            {error && (
+                <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 14 }}>
+                    {error}
+                </div>
+            )}
+
             {/* Footer */}
             <div
                 style={{
                     display: 'flex',
                     justifyContent: 'flex-end',
                     gap: 10,
-                    marginTop: 22,
+                    marginTop: 14,
                 }}
             >
                 <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
