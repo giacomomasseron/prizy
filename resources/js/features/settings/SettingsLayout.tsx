@@ -2,6 +2,7 @@ import type { CSSProperties, ReactElement } from 'react';
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { useWorkspaceMembers } from '../members/workspaceHooks';
+import { useTeams } from '../teams/hooks';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
 
 const navBtn = (active: boolean): CSSProperties => ({
@@ -34,6 +35,8 @@ export default function SettingsLayout() {
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const members = useWorkspaceMembers({ enabled: canManage });
     const memberCount = members.data?.length;
+    const teams = useTeams({ enabled: canManage });
+    const teamCount = teams.data?.items.length;
 
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--fg)' }}>
@@ -87,6 +90,16 @@ export default function SettingsLayout() {
                                     }}
                                 >
                                     {memberCount}
+                                </span>
+                            )}
+                        </NavLink>
+                    )}
+                    {canManage && (
+                        <NavLink to="/settings/teams" style={({ isActive }) => navBtn(isActive)}>
+                            Teams
+                            {teamCount !== undefined && (
+                                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
+                                    {teamCount}
                                 </span>
                             )}
                         </NavLink>

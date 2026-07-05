@@ -19,6 +19,7 @@ import IntegrationsPage from './features/integrations/IntegrationsPage';
 import CreateScreen from './features/create/CreateScreen';
 import SettingsLayout, { RequireManage, StubPage } from './features/settings/SettingsLayout';
 import MembersPage from './features/members/MembersPage';
+import TeamsSettingsPage from './features/teams/TeamsSettingsPage';
 import GeneralPage from './features/settings/GeneralPage';
 
 function RequireAuth({ children }: { children: ReactElement }) {
@@ -55,6 +56,7 @@ export default function AppRouter() {
                 <Route path="/settings" element={<SettingsLayout />}>
                     <Route index element={<Navigate to="members" replace />} />
                     <Route path="members" element={<RequireManage><MembersPage /></RequireManage>} />
+                    <Route path="teams" element={<RequireManage><TeamsSettingsPage /></RequireManage>} />
                     <Route path="general" element={<GeneralPage />} />
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />

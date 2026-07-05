@@ -2,8 +2,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { Cycle, Team } from '../../lib/types';
 
-export function useTeams() {
-    return useQuery({ queryKey: ['teams'], queryFn: () => api.page<Team>('/teams') });
+export function useTeams(options?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: ['teams'],
+        queryFn: () => api.page<Team>('/teams'),
+        enabled: options?.enabled ?? true,
+    });
 }
 
 export function useCreateTeam() {
@@ -70,5 +74,53 @@ export function useDeleteCycle(teamId: string) {
     return useMutation({
         mutationFn: (id: string) => api.del(`/cycles/${id}`),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['teams', teamId, 'cycles'] }),
+    });
+}
+
+// --- team members ---
+
+export interface TeamMemberRow {
+    id: string;
+    name: string;
+    email: string;
+    role: 'lead' | 'member';
+}
+
+export function useTeamMembers(teamId: string, options?: { enabled?: boolean }) {
+    return useQuery({
+        queryKey: ['team', teamId, 'members'],
+        queryFn: () => api.get<TeamMemberRow[]>(`/teams/${teamId}/members`),
+        enabled: (options?.enabled ?? true) && !!teamId,
+    });
+}
+
+function invalidateTeam(qc: ReturnType<typeof useQueryClient>, teamId: string) {
+    qc.invalidateQueries({ queryKey: ['team', teamId, 'members'] });
+    qc.invalidateQueries({ queryKey: ['teams'] });
+}
+
+export function useAddTeamMember(teamId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { user_id: string; role?: 'lead' | 'member' }) =>
+            api.post<TeamMemberRow>(`/teams/${teamId}/members`, input),
+        onSuccess: () => invalidateTeam(qc, teamId),
+    });
+}
+
+export function useSetTeamMemberRole(teamId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({ userId, role }: { userId: string; role: 'lead' | 'member' }) =>
+            api.patch<TeamMemberRow>(`/teams/${teamId}/members/${userId}`, { role }),
+        onSuccess: () => invalidateTeam(qc, teamId),
+    });
+}
+
+export function useRemoveTeamMember(teamId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (userId: string) => api.del(`/teams/${teamId}/members/${userId}`),
+        onSuccess: () => invalidateTeam(qc, teamId),
     });
 }

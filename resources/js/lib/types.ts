@@ -63,6 +63,8 @@ export interface Team {
     name: string;
     identifier: string;
     color: string;
+    member_count?: number;
+    lead?: { id: string; name: string } | null;
     created_at: string;
     updated_at: string;
 }
