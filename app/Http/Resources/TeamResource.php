@@ -16,12 +16,16 @@ final class TeamResource extends JsonResource
     public function toArray(Request $request): array
     {
         return $this->sparse($request, 'teams', [
-            'id'         => $this->id,
-            'name'       => $this->name,
-            'identifier' => $this->identifier,
-            'color'      => $this->color,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'id'           => $this->id,
+            'name'         => $this->name,
+            'identifier'   => $this->identifier,
+            'color'        => $this->color,
+            'member_count' => (int) ($this->member_count ?? $this->teamMembers()->count()),
+            'lead'         => ($lead = $this->leadMembership?->user)
+                ? ['id' => $lead->id, 'name' => $lead->name]
+                : null,
+            'created_at'   => $this->created_at,
+            'updated_at'   => $this->updated_at,
         ]);
     }
 }

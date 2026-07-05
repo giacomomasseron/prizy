@@ -26,6 +26,7 @@ use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\WorkspaceMemberController;
 use App\Http\Controllers\Api\V1\TeamController;
+use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -130,6 +131,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/teams', [TeamController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Team']);
         Route::patch('/teams/{team}', [TeamController::class, 'update'])->middleware('verified');
         Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
+        Route::get('/teams/{team}/members', [TeamMemberController::class, 'index']);
 
         Route::get('/projects', [ProjectController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
         Route::get('/projects/{project}', [ProjectController::class, 'show']);

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -99,6 +100,14 @@ class Team extends TenantAwareEntity
     public function teamMembers(): HasMany
     {
         return $this->hasMany(TeamMember::class, 'team_id', 'id');
+    }
+
+    /**
+     * @return HasOne<TeamMember, $this>
+     */
+    public function leadMembership(): HasOne
+    {
+        return $this->hasOne(TeamMember::class, 'team_id')->where('role', 'lead');
     }
 
     /**

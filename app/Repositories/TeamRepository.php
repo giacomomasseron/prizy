@@ -39,7 +39,12 @@ final class TeamRepository
 
     public function paginate(int $limit): CursorPaginator
     {
-        return Team::query()->orderBy('name')->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after');
+        return Team::query()
+            ->withCount('teamMembers as member_count')
+            ->with('leadMembership.user')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->cursorPaginate(perPage: $limit, cursorName: 'after');
     }
 
     public function hasIssues(string $teamId): bool
