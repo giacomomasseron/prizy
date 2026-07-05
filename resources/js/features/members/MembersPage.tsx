@@ -282,6 +282,7 @@ export default function MembersPage() {
                                         trigger={
                                             <button
                                                 type="button"
+                                                data-testid={`level-btn-${row.email}`}
                                                 aria-label={`Level: ${levelMeta.label}`}
                                                 disabled={updateMember.isPending}
                                                 style={{
@@ -354,6 +355,7 @@ export default function MembersPage() {
                                     <>
                                         <button
                                             type="button"
+                                            data-testid={`cap-developer-${row.email}`}
                                             aria-label="Developer"
                                             onClick={() =>
                                                 updateMember.mutate({
@@ -467,6 +469,7 @@ export default function MembersPage() {
                             <div>
                                 <button
                                     type="button"
+                                    data-testid={`remove-${row.email}`}
                                     onClick={() => {
                                         if (isInvited) {
                                             cancelInvitation.mutate(row.id.replace('inv:', ''));

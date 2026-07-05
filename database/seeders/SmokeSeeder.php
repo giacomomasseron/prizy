@@ -45,6 +45,20 @@ final class SmokeSeeder extends Seeder
         // Ensure owner + developer regardless of how the user was previously seeded.
         $user->forceFill(['admin_level' => 'owner', 'is_developer' => true])->save();
 
+        $member = User::firstWhere('email', 'member@example.com')
+            ?? User::forceCreate([
+                'id' => (string) Str::uuid(),
+                'workspace_id' => $workspace->id,
+                'name' => 'Smoke Member',
+                'email' => 'member@example.com',
+                'password_hash' => Hash::make('password123'),
+                'admin_level' => 'member',
+                'is_developer' => true,
+                'is_agent' => false,
+                'email_verified_at' => now(),
+            ]);
+        $member->forceFill(['admin_level' => 'member', 'is_developer' => true, 'is_agent' => false])->save();
+
         if (Issue::doesntExist()) {
             Issue::forceCreate([
                 'id' => (string) Str::uuid(),
