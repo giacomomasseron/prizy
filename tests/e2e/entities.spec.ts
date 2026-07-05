@@ -20,15 +20,17 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     await page.getByRole('button', { name: 'Add team' }).click();
     await expect(page.getByText(TEAM_NAME)).toBeVisible();
 
-    // 3. Projects — create a project linked to the new team
+    // 3. Projects — create a project via the /create screen (inline form was removed)
     await page.getByRole('link', { name: 'Projects' }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/projects');
-    await page.getByLabel('Project name').fill(PROJECT_NAME);
-    // Wait for the new team to appear in the team select before picking it
-    await expect(page.getByLabel('Project team')).toContainText(TEAM_NAME);
-    await page.getByLabel('Project team').selectOption({ label: TEAM_NAME });
-    await page.getByRole('button', { name: 'Add project' }).click();
-    await expect(page.getByText(PROJECT_NAME)).toBeVisible();
+    await page.getByRole('button', { name: 'New project' }).click();
+    await expect(page).toHaveURL(/\/create/);
+    await page.getByPlaceholder('Project name').fill(PROJECT_NAME);
+    await page.getByRole('button', { name: /Create project/i }).click();
+    await expect(page.getByText(PROJECT_NAME)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole('button', { name: 'Go to workspace' }).click();
+    await expect(page).toHaveURL(/\/projects/);
+    await expect(page.getByText(PROJECT_NAME)).toBeVisible({ timeout: 8_000 });
 
     // 4. Labels — create a label
     await page.getByRole('link', { name: 'Labels' }).click();
