@@ -86,3 +86,55 @@ it('GET /teams/{team}/members 404s for a cross-workspace team', function (): voi
     $this->withToken($token)->getJson("/v1/teams/{$foreign->id}/members")->assertStatus(404);
     Workspace::forgetCurrent();
 });
+
+it('POST adds a workspace member (default role member)', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $u = User::factory()->for($ws, 'workspace')->create(['name' => 'New Guy', 'email' => 'ng@x.test']);
+    $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $u->id])
+        ->assertStatus(201)->assertJson(['data' => ['id' => $u->id, 'role' => 'member']]);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(1);
+    Workspace::forgetCurrent();
+});
+
+it('POST with role=lead demotes the existing lead (single-lead invariant)', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $oldLead = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $oldLead->id, 'lead');
+    $newLead = User::factory()->for($ws, 'workspace')->create();
+
+    $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $newLead->id, 'role' => 'lead'])
+        ->assertStatus(201);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('role', 'lead')->count())->toBe(1);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $newLead->id)->value('role'))->toBe('lead');
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $oldLead->id)->value('role'))->toBe('member');
+    Workspace::forgetCurrent();
+});
+
+it('POST rejects a foreign-workspace user with 422', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $ws2 = Workspace::factory()->create();
+    $ws2->makeCurrent();
+    $foreign = User::factory()->for($ws2, 'workspace')->create();
+    test()->actingInWorkspace($ws);
+    $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $foreign->id])
+        ->assertStatus(422);
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $foreign->id)->count())->toBe(0);
+    Workspace::forgetCurrent();
+});
+
+it('POST rejects a duplicate member with 422', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $u = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $u->id, 'member');
+    $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $u->id])
+        ->assertStatus(422);
+    Workspace::forgetCurrent();
+});
+
+it('POST forbids a non-admin caller', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld('member');
+    $u = User::factory()->for($ws, 'workspace')->create();
+    $this->withToken($token)->postJson("/v1/teams/{$team->id}/members", ['user_id' => $u->id])
+        ->assertStatus(403);
+    Workspace::forgetCurrent();
+});

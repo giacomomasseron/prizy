@@ -132,6 +132,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/teams/{team}', [TeamController::class, 'update'])->middleware('verified');
         Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
         Route::get('/teams/{team}/members', [TeamMemberController::class, 'index']);
+        Route::post('/teams/{team}/members', [TeamMemberController::class, 'store'])->middleware('verified');
 
         Route::get('/projects', [ProjectController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
         Route::get('/projects/{project}', [ProjectController::class, 'show']);
