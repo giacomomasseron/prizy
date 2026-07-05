@@ -24,9 +24,10 @@ final class SearchController extends Controller
         /** @var array<string, string> $filter */
         $filter = (array) $request->validated('filter', []);
         $q      = (string) $request->validated('q', '');
+        $sort   = (string) $request->validated('sort', 'updated');
         $page   = (int) $request->validated('page', 1);
 
-        $paginator = $this->searchIssues->handle($request->user(), $q, $filter, $page);
+        $paginator = $this->searchIssues->handle($request->user(), $q, $filter, $sort, $page);
 
         return IssueResource::collection($paginator)->response();
     }

@@ -18,11 +18,17 @@ final class SearchIssuesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'q'             => ['sometimes', 'string'],
-            'page'          => ['sometimes', 'integer', 'min:1'],
-            'filter'        => ['sometimes', 'array'],
-            'filter.status' => ['sometimes', Rule::in(['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'])],
-            'filter.team_id' => ['sometimes', 'uuid'],
+            'q'                  => ['sometimes', 'string'],
+            'page'               => ['sometimes', 'integer', 'min:1'],
+            'filter'             => ['sometimes', 'array'],
+            'filter.status'      => ['sometimes', Rule::in(['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'])],
+            'filter.team_id'     => ['sometimes', 'uuid'],
+            'filter.priority'    => ['sometimes', Rule::in(['no_priority', 'low', 'medium', 'high', 'urgent'])],
+            'filter.assignee_id' => ['sometimes', 'uuid'],
+            'filter.project_id'  => ['sometimes', 'uuid'],
+            'filter.label_id'    => ['sometimes', 'uuid'],
+            'filter.source'      => ['sometimes', Rule::in(['native', 'support'])],
+            'sort'               => ['sometimes', Rule::in(['updated', 'priority', 'status'])],
         ];
     }
 }

@@ -7,7 +7,6 @@ namespace App\UseCases\Search;
 use App\Models\User;
 use App\Repositories\SearchRepository;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Pagination\LengthAwarePaginator as ConcretePaginator;
 
 final class SearchIssues
 {
@@ -15,14 +14,14 @@ final class SearchIssues
 
     public function __construct(private readonly SearchRepository $search) {}
 
-    /** @param array{status?: string, team_id?: string} $filters */
-    public function handle(User $actor, string $q, array $filters, int $page): LengthAwarePaginator
+    /** @param array<string,string> $filters */
+    public function handle(User $actor, string $q, array $filters, string $sort, int $page): LengthAwarePaginator
     {
         $q = trim($q);
         if ($q === '') {
-            return new ConcretePaginator([], 0, self::PER_PAGE, $page);
+            return $this->search->browseIssues($actor->workspace_id, $filters, $sort, $page, self::PER_PAGE);
         }
 
-        return $this->search->searchIssues($actor->workspace_id, $q, $filters, $page, self::PER_PAGE);
+        return $this->search->searchIssues($actor->workspace_id, $q, $filters, $sort, $page, self::PER_PAGE);
     }
 }
