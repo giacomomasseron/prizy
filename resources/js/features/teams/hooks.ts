@@ -40,11 +40,17 @@ export function useCycles(teamId: string) {
     });
 }
 
+interface CycleInput {
+    name: string;
+    starts_at: string;
+    ends_at: string;
+    cooldown_days?: number;
+}
+
 export function useCreateCycle(teamId: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (input: { name: string; starts_at: string; ends_at: string }) =>
-            api.post<Cycle>(`/teams/${teamId}/cycles`, input),
+        mutationFn: (input: CycleInput) => api.post<Cycle>(`/teams/${teamId}/cycles`, input),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['teams', teamId, 'cycles'] }),
     });
 }

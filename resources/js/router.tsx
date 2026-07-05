@@ -17,6 +17,7 @@ import NotificationsPage from './features/notifications/NotificationsPage';
 import SettingsPage from './features/settings/SettingsPage';
 import SearchPage from './features/search/SearchPage';
 import IntegrationsPage from './features/integrations/IntegrationsPage';
+import CreateScreen from './features/create/CreateScreen';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -52,6 +53,7 @@ export default function AppRouter() {
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/create" element={<CreateScreen />} />
             </Route>
         </Routes>
     );

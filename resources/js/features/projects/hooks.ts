@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { Milestone, Project, ProjectStatus } from '../../lib/types';
+import type { IssuePriority, Milestone, Project, ProjectStatus } from '../../lib/types';
 
 interface ProjectInput {
     name?: string;
@@ -11,6 +11,8 @@ interface ProjectInput {
     description?: string | null;
     icon?: string | null;
     color?: string;
+    lead_id?: string | null;
+    priority?: IssuePriority;
 }
 
 export function useProjects() {

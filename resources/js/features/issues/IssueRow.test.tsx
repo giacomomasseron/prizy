@@ -93,6 +93,7 @@ describe('IssueRow', () => {
         const proj = { id: 'p1', name: 'Alpha', color: '#6d69f2',
             description: null, icon: null, status: 'in_progress' as const,
             team_id: null, start_date: null, target_date: null,
+            lead_id: null, priority: 'no_priority' as const,
             created_by: 'u1', created_at: '2026-07-04T00:00:00.000000Z',
             updated_at: '2026-07-04T00:00:00.000000Z' };
         render(

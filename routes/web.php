@@ -26,6 +26,7 @@ Route::view('/notifications', 'app');
 Route::view('/settings', 'app');
 Route::view('/search', 'app');
 Route::view('/integrations', 'app');
+Route::view('/create', 'app');
 
 // Landlord routes — exempt from both tenant middlewares (no workspace is resolved yet).
 Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])->group(function (): void {

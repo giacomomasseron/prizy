@@ -77,6 +77,8 @@ export interface Project {
     team_id: string | null;
     start_date: string | null;
     target_date: string | null;
+    lead_id: string | null;
+    priority: IssuePriority;
     created_by: string;
     created_at: string;
     updated_at: string;
@@ -88,6 +90,7 @@ export interface Cycle {
     name: string;
     starts_at: string;
     ends_at: string;
+    cooldown_days: number;
     created_at: string;
     updated_at: string;
 }
