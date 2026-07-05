@@ -1,12 +1,12 @@
 import type { IssueFilters } from '../issues/hooks';
 import type { IssuePriority, IssueStatus } from '../../lib/types';
 
-export type FilterKey = 'status' | 'priority' | 'team_id' | 'project_id' | 'label_id';
+export type FilterKey = 'status' | 'priority' | 'team_id' | 'project_id' | 'label_id' | 'assignee_id' | 'source';
 
 const PARAM_KEYS: Array<keyof IssueFilters> = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id', 'sort'];
 
-const STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
-const PRIORITIES: IssuePriority[] = ['no_priority', 'urgent', 'high', 'medium', 'low'];
+export const STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
+export const PRIORITIES: IssuePriority[] = ['no_priority', 'urgent', 'high', 'medium', 'low'];
 
 /** Menu-selectable filter fields. Entity fields (team/project/label) get their options at render time from hooks. */
 export const FILTER_FIELDS: Array<{ key: FilterKey; label: string; kind: 'enum' | 'team' | 'project' | 'label'; options?: string[] }> = [
@@ -15,6 +15,16 @@ export const FILTER_FIELDS: Array<{ key: FilterKey; label: string; kind: 'enum' 
     { key: 'team_id', label: 'Team', kind: 'team' },
     { key: 'project_id', label: 'Project', kind: 'project' },
     { key: 'label_id', label: 'Label', kind: 'label' },
+];
+
+/** Filter fields for the Advanced Search page (superset of FILTER_FIELDS; no Team field). */
+export const SEARCH_FILTER_FIELDS: Array<{ key: FilterKey; label: string; kind: 'enum' | 'team' | 'project' | 'label' | 'assignee' | 'source'; options?: string[] }> = [
+    { key: 'status', label: 'Status', kind: 'enum', options: STATUSES },
+    { key: 'priority', label: 'Priority', kind: 'enum', options: PRIORITIES },
+    { key: 'assignee_id', label: 'Assignee', kind: 'assignee' },
+    { key: 'project_id', label: 'Project', kind: 'project' },
+    { key: 'label_id', label: 'Label', kind: 'label' },
+    { key: 'source', label: 'Source', kind: 'source', options: ['support', 'native'] },
 ];
 
 export const SORT_OPTIONS: Array<{ value: string; label: string }> = [

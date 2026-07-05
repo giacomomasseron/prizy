@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIssueSearch, type AdvancedSearchFilters } from './hooks';
+import { SearchFilterBuilder } from './SearchFilterBuilder';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
@@ -45,7 +46,7 @@ export default function SearchPage() {
     const navigate = useNavigate();
     const [text, setText] = useState('');
     const [debounced, setDebounced] = useState('');
-    const [filters] = useState<AdvancedSearchFilters>({});
+    const [filters, setFilters] = useState<AdvancedSearchFilters>({});
     const [sort, setSort] = useState('updated');
 
     // Debounce text → debounced (250ms), mirroring CommandPalette.tsx
@@ -98,7 +99,7 @@ export default function SearchPage() {
                 />
             </div>
 
-            {/* Task 5: <SearchFilterBuilder> */}
+            <SearchFilterBuilder filters={filters} onChange={setFilters} />
 
             {/* Results header: count + sort */}
             <div
