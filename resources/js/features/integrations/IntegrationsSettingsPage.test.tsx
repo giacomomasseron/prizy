@@ -4,10 +4,11 @@ import IntegrationsSettingsPage from './IntegrationsSettingsPage';
 
 const disconnectSlack = vi.fn();
 let slackData: unknown = { configured: true, is_active: true, events: ['created', 'assigned'], url_preview: '…tok' };
+let slackIsError = false;
 const githubData = { configured: false, is_active: false, move_to_done_on_merge: true, webhook_url: null, secret_set: false };
 
 vi.mock('./hooks', () => ({
-    useSlackIntegration: () => ({ isLoading: false, data: slackData }),
+    useSlackIntegration: () => ({ isLoading: false, isError: slackIsError, data: slackData }),
     useGithubIntegration: () => ({ isLoading: false, data: githubData }),
     useDisconnectSlack: () => ({ mutate: disconnectSlack }),
     useDisconnectGithub: () => ({ mutate: vi.fn() }),
@@ -36,4 +37,11 @@ describe('IntegrationsSettingsPage', () => {
         fireEvent.click(screen.getByTestId('disconnect-slack'));
         await waitFor(() => expect(disconnectSlack).toHaveBeenCalled());
     });
+});
+
+it('shows an error banner when a show query fails', () => {
+    slackIsError = true;
+    render(<IntegrationsSettingsPage />);
+    expect(screen.getByRole('alert')).toHaveTextContent(/couldn.t load/i);
+    slackIsError = false;
 });

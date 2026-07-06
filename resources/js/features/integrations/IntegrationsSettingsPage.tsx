@@ -29,6 +29,14 @@ export default function IntegrationsSettingsPage() {
         );
     }
 
+    if (slack.isError || github.isError) {
+        return (
+            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 30px 80px', width: '100%' }}>
+                <p role="alert" style={{ color: 'var(--red)', fontSize: 13 }}>Couldn't load integration status. Please retry.</p>
+            </div>
+        );
+    }
+
     const connectedIds = new Set<string>();
     if (slack.data?.configured && slack.data?.is_active) connectedIds.add('slack');
     if (github.data?.configured && github.data?.is_active) connectedIds.add('github');
