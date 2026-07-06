@@ -45,3 +45,19 @@ export function useSaveGithubIntegration() {
         onSuccess: () => qc.invalidateQueries({ queryKey: GH_KEY }),
     });
 }
+
+export function useDisconnectSlack() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: () => api.del('/integrations/slack'),
+        onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+    });
+}
+
+export function useDisconnectGithub() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: () => api.del('/integrations/github'),
+        onSuccess: () => qc.invalidateQueries({ queryKey: GH_KEY }),
+    });
+}
