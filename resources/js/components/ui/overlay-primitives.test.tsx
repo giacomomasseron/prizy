@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest';
 import { Drawer } from './Drawer';
 import { Menu } from './Menu';
 import { Modal } from './Modal';
-import { useRef } from 'react';
 
 describe('Modal', () => {
   it('renders nothing when open=false', () => {
@@ -184,5 +183,36 @@ describe('Menu keyboard + aria', () => {
         fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
         expect(screen.queryByRole('menu')).toBeNull();
         expect(document.activeElement).toBe(trigger);
+    });
+});
+
+describe('Drawer / Modal autoFocus respect', () => {
+    it('keeps focus on the autoFocus element even when it is not the first focusable', () => {
+        // Render a Drawer where the second element has autoFocus.
+        // The focus-trap must NOT steal focus back to the first button.
+        render(
+            <Drawer open onClose={() => {}} label="AutoFocus drawer">
+                <button>First</button>
+                <input autoFocus aria-label="Focus me" />
+            </Drawer>,
+        );
+        // The autoFocus input must be the active element, not the first button.
+        expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Focus me' }));
+        expect(document.activeElement).not.toBe(screen.getByRole('button', { name: 'First' }));
+    });
+
+    it('still moves focus to the first focusable when no autoFocus is present', () => {
+        const trigger = document.createElement('button');
+        document.body.appendChild(trigger);
+        trigger.focus();
+        render(
+            <Drawer open onClose={() => {}} label="No autoFocus drawer">
+                <button>Alpha</button>
+                <button>Beta</button>
+            </Drawer>,
+        );
+        // Without autoFocus, the trap must move focus to the first focusable.
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Alpha' }));
+        trigger.remove();
     });
 });
