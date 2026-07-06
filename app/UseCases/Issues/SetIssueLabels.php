@@ -17,13 +17,20 @@ final class SetIssueLabels
     /** @param array<string, mixed> $data */
     public function handle(User $actor, array $data): void
     {
-        /** @var list<string> $labelIds */
         $labelIds = array_values(array_unique(array_map('strval', (array) ($data['label_ids'] ?? []))));
 
-        // Every id must be a label in the current workspace (Label is TenantAware).
-        $found = Label::whereIn('id', $labelIds)->pluck('id')->all();
-        if (count($found) !== count($labelIds)) {
+        // workspace-scoping: Label is TenantAware so this query is automatically scoped
+        $labels = Label::whereIn('id', $labelIds)->get(['id', 'group']);
+        if ($labels->count() !== count($labelIds)) {
             throw ValidationException::withMessages(['label_ids' => ['One or more labels are invalid.']]);
+        }
+
+        foreach ($labels->whereNotNull('group')->groupBy('group') as $group => $groupLabels) {
+            if ($groupLabels->count() > 1) {
+                throw ValidationException::withMessages([
+                    'label_ids' => ["Only one label from the '{$group}' group can be applied to an issue."],
+                ]);
+            }
         }
 
         DB::transaction(fn () => $this->issueLabels->syncForIssue((string) $data['issue_id'], $labelIds));
