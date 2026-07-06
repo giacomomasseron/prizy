@@ -81,6 +81,7 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
     );
     await page.getByRole('button', { name: 'Views' }).click();
     await page.getByRole('button', { name: `Delete view ${VIEW_NAME}` }).click();
+    await page.getByTestId('confirm-dialog-confirm').click();
     await deleteResponsePromise;
 
     // After deletion + refetch, the menu should no longer show the view name
