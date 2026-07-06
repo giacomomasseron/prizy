@@ -84,6 +84,9 @@ export interface Project {
     created_by: string;
     created_at: string;
     updated_at: string;
+    lead?: { id: string; name: string } | null;
+    issue_count?: number;
+    progress?: number;
 }
 
 export interface Cycle {
@@ -161,6 +164,9 @@ export interface RoadmapProject {
     created_at: string;
     updated_at: string;
     milestones: Array<{ id: string; name: string; target_date: string }>;
+    lead?: { id: string; name: string } | null;
+    issue_count?: number;
+    progress?: number;
 }
 
 export interface GithubIntegration {

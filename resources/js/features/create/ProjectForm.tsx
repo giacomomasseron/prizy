@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { IssuePriority, Project, ProjectStatus } from '../../lib/types';
+import { PROJECT_STATUS } from '../projects/projectStatus';
 import { useCreateProject } from '../projects/hooks';
 import { useMembers } from '../members/hooks';
 import { avatarFor } from '../../lib/avatarFor';
@@ -22,13 +23,9 @@ interface StatusOption {
     dotColor: string;
 }
 
-const STATUSES: StatusOption[] = [
-    { value: 'planning',   label: 'Planning',   dotColor: 'var(--fg3)' },
-    { value: 'in_progress', label: 'In Progress', dotColor: 'var(--blue)' },
-    { value: 'paused',     label: 'Paused',     dotColor: 'var(--amber)' },
-    { value: 'completed',  label: 'Completed',  dotColor: 'var(--green)' },
-    { value: 'cancelled',  label: 'Cancelled',  dotColor: 'var(--red)' },
-];
+const STATUSES: StatusOption[] = (Object.keys(PROJECT_STATUS) as ProjectStatus[]).map((value) => ({
+    value, label: PROJECT_STATUS[value].label, dotColor: PROJECT_STATUS[value].color,
+}));
 
 interface PriorityOption {
     value: IssuePriority;
