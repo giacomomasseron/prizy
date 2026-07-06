@@ -42,6 +42,7 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // 4. Labels — create a label
     await page.goto('http://smoke.localhost:8001/settings/labels');
     await expect(page).toHaveURL(/\/settings\/labels$/);
+    await page.getByRole('button', { name: 'New label' }).click();
     await page.getByLabel('Label name').fill(LABEL_NAME);
     await page.getByRole('button', { name: 'Add label' }).click();
     await expect(page.getByText(LABEL_NAME)).toBeVisible();

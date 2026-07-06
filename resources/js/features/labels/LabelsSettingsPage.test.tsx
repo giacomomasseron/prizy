@@ -9,7 +9,9 @@ const deleteMutate = vi.fn().mockResolvedValue(undefined);
 const L = (id: string, name: string, group: string | null, issue_count = 0): Label =>
     ({ id, name, color: '#5b8def', group, issue_count, created_at: '', updated_at: '' });
 
-vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { is_developer: true, admin_level: 'member' } }) }));
+let meData: Record<string, unknown> = { is_developer: true, admin_level: 'member' };
+
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: meData }) }));
 vi.mock('./hooks', () => ({
     useLabels: () => ({ isLoading: false, data: { items: [L('1', 'Bug', 'Type', 4), L('2', 'chore', null, 1)], next: null } }),
     useCreateLabel: () => ({ mutateAsync: createMutate, isPending: false }),
@@ -43,5 +45,14 @@ describe('LabelsSettingsPage', () => {
         expect(updateMutate).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }));
         fireEvent.click(screen.getByTestId('delete-2'));
         expect(deleteMutate).toHaveBeenCalledWith('2');
+    });
+
+    it('hides the "New label" button for a non-developer (viewer gate)', () => {
+        meData = { is_developer: false, admin_level: 'member' };
+        render(<LabelsSettingsPage />);
+        expect(screen.queryByRole('button', { name: 'New label' })).toBeNull();
+        // Read access is open to all — stats grid and label list still render
+        expect(screen.getByText('Total labels')).toBeInTheDocument();
+        meData = { is_developer: true, admin_level: 'member' }; // restore for subsequent tests
     });
 });
