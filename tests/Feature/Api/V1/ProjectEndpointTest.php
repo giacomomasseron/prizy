@@ -217,3 +217,33 @@ it('records created_by as the acting user', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('project show returns lead, issue_count, and progress', function (): void {
+    [$token, $ws, $team] = projectWorld();
+    $lead = User::factory()->for($ws, 'workspace')->create(['name' => 'Dana Lead']);
+    $project = Project::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+        'name' => 'Detail', 'status' => 'in_progress', 'priority' => 'no_priority',
+        'color' => '#6d69f2', 'lead_id' => $lead->id, 'created_by' => $lead->id,
+    ]);
+    foreach (['done', 'todo'] as $st) {
+        Issue::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id, 'project_id' => $project->id, 'created_by' => $lead->id, 'title' => 'I', 'status' => $st, 'priority' => 'no_priority']);
+    }
+    $data = $this->withToken($token)->getJson("/v1/projects/{$project->id}")->assertStatus(200)->json('data');
+    expect($data['lead'])->toMatchArray(['id' => $lead->id, 'name' => 'Dana Lead']);
+    expect($data['issue_count'])->toBe(2);
+    expect($data['progress'])->toBe(50);
+    Workspace::forgetCurrent();
+});
+
+it('project show 404s across workspaces', function (): void {
+    [$token, $ws] = projectWorld();
+    $ws2 = Workspace::factory()->create();
+    $ws2->makeCurrent();
+    $team2 = Team::factory()->for($ws2, 'workspace')->create();
+    $ws2User = User::factory()->for($ws2, 'workspace')->create();
+    $foreign = Project::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws2->id, 'team_id' => $team2->id, 'name' => 'F', 'status' => 'planning', 'priority' => 'no_priority', 'color' => '#fff', 'created_by' => $ws2User->id]);
+    test()->actingInWorkspace($ws);
+    $this->withToken($token)->getJson("/v1/projects/{$foreign->id}")->assertStatus(404);
+    Workspace::forgetCurrent();
+});

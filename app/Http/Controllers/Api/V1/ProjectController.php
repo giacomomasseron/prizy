@@ -42,6 +42,9 @@ final class ProjectController extends Controller
         $model = $this->findProject->handle($project);
         Gate::authorize('view', $model);
 
+        $model->loadMissing('lead')
+            ->loadCount(['issues', 'issues as done_count' => fn ($q) => $q->where('status', 'done')]);
+
         return ProjectResource::make($model)->response();
     }
 
