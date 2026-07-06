@@ -31,11 +31,11 @@ describe('Button', () => {
     render(<Button variant="ghost">Edit</Button>);
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
-  it('ghost variant has transparent background and transparent border', () => {
+  it('ghost variant has transparent border and hover class', () => {
     render(<Button variant="ghost">Edit</Button>);
     const btn = screen.getByRole('button', { name: 'Edit' }) as HTMLElement;
-    expect(btn).toHaveStyle({ background: 'transparent' });
     expect(btn.style.border).toBe('1px solid transparent');
+    expect(btn.className).toContain('hover:bg-hover');
   });
   it('forwards disabled prop', () => {
     render(<Button disabled>Disabled</Button>);

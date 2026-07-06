@@ -26,8 +26,8 @@ const SIZE_STYLES: Record<string, React.CSSProperties> = {
 
 const VARIANT_STYLES: Record<string, React.CSSProperties> = {
     primary:   { background: 'var(--accent)', color: '#fff', border: '1px solid transparent' },
-    secondary: { background: 'transparent', color: 'var(--fg)', border: '1px solid var(--border)' },
-    ghost:     { background: 'transparent', color: 'var(--fg)', border: '1px solid transparent' },
+    secondary: { color: 'var(--fg)', border: '1px solid var(--border)' },
+    ghost:     { color: 'var(--fg)', border: '1px solid transparent' },
 };
 
 export function Button({ variant = 'primary', size = 'md', style, className, children, ...rest }: ButtonProps) {
@@ -35,7 +35,7 @@ export function Button({ variant = 'primary', size = 'md', style, className, chi
         <button
             type="button"
             {...rest}
-            className={className}
+            className={`hover:bg-hover ${className ?? ''}`}
             style={{
                 ...BASE,
                 ...SIZE_STYLES[size],

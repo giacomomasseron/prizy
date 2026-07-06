@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { Button } from './Button';
 import { Drawer } from './Drawer';
 import { Menu } from './Menu';
 import { Modal } from './Modal';
@@ -215,6 +216,13 @@ describe('Drawer / Modal autoFocus respect', () => {
         // Without autoFocus, the trap must move focus to the first focusable.
         expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Alpha' }));
         trigger.remove();
+    });
+});
+
+describe('Button', () => {
+    it('applies the shared hover class', () => {
+        render(<Button variant="ghost">x</Button>);
+        expect(screen.getByRole('button', { name: 'x' }).className).toContain('hover:bg-hover');
     });
 });
 

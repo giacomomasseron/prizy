@@ -62,7 +62,7 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
     if (status === 'cancelled') {
         return (
             <span
-                style={{ ...base, background: 'var(--fg3)', color: 'var(--bg)', fontSize: size * 0.58 }}
+                style={{ ...base, background: 'var(--fg2)', color: 'var(--bg)', fontSize: size * 0.58 }}
                 aria-label="cancelled"
             >
                 ✕
