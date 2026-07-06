@@ -46,13 +46,22 @@ final class ProjectRepository
             }
         }
 
+        $query->withCount('issues')
+            ->withCount(['issues as done_count' => fn ($q) => $q->where('status', 'done')])
+            ->with('lead');
+
         return $query->orderBy('created_at')->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after');
     }
 
     /** @return Collection<int, Project> */
     public function allWithMilestones(): Collection
     {
-        return Project::query()->with('milestones')->orderBy('start_date')->orderBy('id')->get();
+        return Project::query()
+            ->with('milestones')
+            ->with('lead')
+            ->withCount('issues')
+            ->withCount(['issues as done_count' => fn ($q) => $q->where('status', 'done')])
+            ->orderBy('start_date')->orderBy('id')->get();
     }
 
     /** @return Collection<int, Project> */

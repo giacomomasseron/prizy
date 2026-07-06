@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
@@ -135,6 +136,54 @@ it('accepts a same-workspace member as lead_id and persists it', function (): vo
     $resp->assertStatus(201)->assertJsonPath('data.lead_id', $lead->id);
 
     Workspace::forgetCurrent();
+});
+
+it('projects list includes lead, issue_count, and progress', function (): void {
+    [$token, $ws, $team] = projectWorld();
+    $lead = User::factory()->for($ws, 'workspace')->create(['name' => 'Lena Ops']);
+    $project = Project::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+        'name' => 'Proj', 'status' => 'in_progress', 'priority' => 'no_priority',
+        'color' => '#6d69f2', 'lead_id' => $lead->id, 'created_by' => $lead->id,
+    ]);
+    foreach (['done', 'done', 'todo', 'backlog'] as $st) {
+        Issue::forceCreate([
+            'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+            'project_id' => $project->id, 'created_by' => $lead->id, 'title' => 'I',
+            'status' => $st, 'priority' => 'no_priority',
+        ]);
+    }
+    $row = collect($this->withToken($token)->getJson('/v1/projects')->assertStatus(200)->json('data'))
+        ->firstWhere('id', $project->id);
+    expect($row['lead'])->toMatchArray(['id' => $lead->id, 'name' => 'Lena Ops']);
+    expect($row['issue_count'])->toBe(4);
+    expect($row['progress'])->toBe(50);            // 2 of 4 done
+});
+
+it('project with no issues reports progress 0 and lead null', function (): void {
+    [$token, $ws, $team] = projectWorld();
+    $creator = User::factory()->for($ws, 'workspace')->create();
+    $project = Project::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+        'name' => 'Empty', 'status' => 'planning', 'priority' => 'no_priority',
+        'color' => '#6d69f2', 'lead_id' => null, 'created_by' => $creator->id,
+    ]);
+    $row = collect($this->withToken($token)->getJson('/v1/projects')->json('data'))->firstWhere('id', $project->id);
+    expect($row['issue_count'])->toBe(0);
+    expect($row['progress'])->toBe(0);
+    expect($row['lead'])->toBeNull();
+});
+
+it('does not leak projects from another workspace', function (): void {
+    [$token, $ws, $team] = projectWorld();
+    $ws2 = Workspace::factory()->create();
+    $ws2->makeCurrent();
+    $team2 = Team::factory()->for($ws2, 'workspace')->create();
+    $ws2User = User::factory()->for($ws2, 'workspace')->create();
+    Project::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws2->id, 'team_id' => $team2->id, 'name' => 'FOREIGN', 'status' => 'planning', 'priority' => 'no_priority', 'color' => '#fff', 'created_by' => $ws2User->id]);
+    test()->actingInWorkspace($ws);
+    $names = collect($this->withToken($token)->getJson('/v1/projects')->json('data'))->pluck('name');
+    expect($names)->not->toContain('FOREIGN');
 });
 
 it('records created_by as the acting user', function (): void {

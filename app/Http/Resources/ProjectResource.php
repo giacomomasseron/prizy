@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\Concerns\ProjectProgress;
 use App\Http\Resources\Concerns\SparseFieldset;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 final class ProjectResource extends JsonResource
 {
+    use ProjectProgress;
     use SparseFieldset;
 
     /** @return array<string, mixed> */
@@ -27,6 +29,9 @@ final class ProjectResource extends JsonResource
             'priority'    => $this->priority,
             'start_date'  => $this->start_date,
             'target_date' => $this->target_date,
+            'lead'        => $this->leadData(),
+            'issue_count' => $this->issueCount(),
+            'progress'    => $this->progressPercent(),
             'created_by'  => $this->created_by,
             'created_at'  => $this->created_at,
             'updated_at'  => $this->updated_at,

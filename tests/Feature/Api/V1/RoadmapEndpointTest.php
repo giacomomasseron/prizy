@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Models\Issue;
 use App\Models\Milestone;
 use App\Models\Project;
+use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
@@ -64,5 +66,25 @@ it('is workspace-scoped', function (): void {
 it('is readable by any member (viewer)', function (): void {
     [$token] = roadmapWorld(['admin_level' => 'viewer', 'is_developer' => false]);
     $this->withToken($token)->getJson('/v1/roadmap')->assertStatus(200);
+    Workspace::forgetCurrent();
+});
+
+it('roadmap project includes lead, issue_count, and progress', function (): void {
+    [$token, $ws, $user] = roadmapWorld();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $lead = User::factory()->for($ws, 'workspace')->create(['name' => 'Road Lead']);
+    $project = makeProject($ws, $user, ['team_id' => $team->id, 'lead_id' => $lead->id]);
+    foreach (['done', 'todo'] as $st) {
+        Issue::forceCreate([
+            'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+            'project_id' => $project->id, 'created_by' => $user->id, 'title' => 'R',
+            'status' => $st, 'priority' => 'no_priority',
+        ]);
+    }
+    $res = $this->withToken($token)->getJson('/v1/roadmap')->assertStatus(200);
+    $row = collect($res->json('data'))->firstWhere('id', $project->id);
+    expect($row['issue_count'])->toBe(2);
+    expect($row['progress'])->toBe(50);
+    expect($row['lead'])->toMatchArray(['id' => $lead->id, 'name' => 'Road Lead']);
     Workspace::forgetCurrent();
 });
