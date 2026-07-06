@@ -84,7 +84,7 @@ export default function ProjectDetailPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         <h1 style={{ margin: 0, fontSize: 24, fontWeight: 600, letterSpacing: '-.02em' }}>{p.name}</h1>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '3px 10px', borderRadius: 20, background: 'var(--bg2)', border: '1px solid var(--border)', fontSize: 11.5, fontWeight: 600, color: 'var(--fg2)' }}>
+                        <span data-testid="project-status-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '3px 10px', borderRadius: 20, background: 'var(--bg2)', border: '1px solid var(--border)', fontSize: 11.5, fontWeight: 600, color: 'var(--fg2)' }}>
                             <span style={{ width: 7, height: 7, borderRadius: '50%', background: st.color }} />{st.label}
                         </span>
                     </div>
@@ -103,7 +103,9 @@ export default function ProjectDetailPage() {
                 <Meta label="Start"><span style={{ fontFamily: 'var(--font-mono)' }}>{fmtDate(p.start_date)}</span></Meta>
                 {members.length > 0 && (
                     <Meta label="Members">
-                        <AvatarStack avatars={members.map((m) => avatarFor(m))} size={20} max={4} />
+                        <span data-testid="members-stack">
+                            <AvatarStack avatars={members.map((m) => avatarFor(m))} size={20} max={4} />
+                        </span>
                     </Meta>
                 )}
             </div>
@@ -179,7 +181,7 @@ export default function ProjectDetailPage() {
                                         <div style={{ fontSize: 12.5, fontWeight: 500 }}>{m.name}</div>
                                         <div style={{ fontSize: 11, color: 'var(--fg3)' }}>{fmtDate(m.target_date)}</div>
                                     </div>
-                                    <span style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 9px', borderRadius: 20, whiteSpace: 'nowrap', color: tag.color, background: tag.bg }}>{tag.label}</span>
+                                    <span data-testid="milestone-tag" style={{ fontSize: 10.5, fontWeight: 600, padding: '2px 9px', borderRadius: 20, whiteSpace: 'nowrap', color: tag.color, background: tag.bg }}>{tag.label}</span>
                                     {canDevelop && (
                                         <button
                                             type="button"
@@ -214,7 +216,7 @@ export default function ProjectDetailPage() {
                     <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '26px 0 4px' }}>
                             <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Issues</h2>
-                            <span style={{ fontSize: 12, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{issues.length}</span>
+                            <span data-testid="issues-count" style={{ fontSize: 12, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{issues.length}</span>
                             <div style={{ marginLeft: 'auto', display: 'flex', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: 2, gap: 2 }}>
                                 <button type="button" onClick={() => setIssueFilter('all')} style={segBtn(issueFilter === 'all')}>All</button>
                                 <button type="button" onClick={() => setIssueFilter('active')} style={segBtn(issueFilter === 'active')}>Active</button>
