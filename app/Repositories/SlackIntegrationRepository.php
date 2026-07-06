@@ -14,6 +14,11 @@ final class SlackIntegrationRepository
         return SlackIntegration::query()->first();
     }
 
+    public function deleteForWorkspace(): void
+    {
+        SlackIntegration::query()->delete();
+    }
+
     /** @param array<string, mixed> $attributes */
     public function upsert(array $attributes): SlackIntegration
     {

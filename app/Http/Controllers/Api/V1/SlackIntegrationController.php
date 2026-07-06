@@ -7,10 +7,12 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UpdateSlackIntegrationRequest;
 use App\UseCases\Integrations\ConfigureSlackIntegration;
+use App\UseCases\Integrations\DisconnectSlackIntegration;
 use App\UseCases\Integrations\GetSlackIntegration;
 use App\UseCases\Integrations\SendTestSlackMessage;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 final class SlackIntegrationController extends Controller
 {
@@ -18,6 +20,7 @@ final class SlackIntegrationController extends Controller
         private readonly GetSlackIntegration $getSlack,
         private readonly ConfigureSlackIntegration $configureSlack,
         private readonly SendTestSlackMessage $sendTest,
+        private readonly DisconnectSlackIntegration $disconnectSlack,
     ) {}
 
     public function show(Request $request): JsonResponse
@@ -43,6 +46,13 @@ final class SlackIntegrationController extends Controller
 
         // 202 with a JSON body (the apiClient only treats 204 as empty; a bare 202 would break `res.json()`).
         return response()->json(['data' => ['status' => 'queued']], 202);
+    }
+
+    public function destroy(Request $request): Response
+    {
+        $this->disconnectSlack->handle($request->user());
+
+        return response()->noContent();
     }
 
     /** @param mixed $integration */

@@ -7,15 +7,18 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UpdateGithubIntegrationRequest;
 use App\UseCases\Integrations\ConfigureGithubIntegration;
+use App\UseCases\Integrations\DisconnectGithubIntegration;
 use App\UseCases\Integrations\GetGithubIntegration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 
 final class GithubIntegrationController extends Controller
 {
     public function __construct(
         private readonly GetGithubIntegration $getGithub,
         private readonly ConfigureGithubIntegration $configureGithub,
+        private readonly DisconnectGithubIntegration $disconnectGithub,
     ) {}
 
     public function show(Request $request): JsonResponse
@@ -33,6 +36,13 @@ final class GithubIntegrationController extends Controller
         );
 
         return response()->json(['data' => $this->present($integration, $request->getSchemeAndHttpHost())]);
+    }
+
+    public function destroy(Request $request): Response
+    {
+        $this->disconnectGithub->handle($request->user());
+
+        return response()->noContent();
     }
 
     /** @param mixed $integration */

@@ -62,3 +62,26 @@ it('forbids a non-admin (403)', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('lets an admin disconnect github — wipes the row and returns 204 (idempotent)', function (): void {
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $token = githubToken($ws, 'admin');
+    $this->withToken($token)->putJson('/v1/integrations/github', [
+        'webhook_secret' => 'top-secret-hmac', 'move_to_done_on_merge' => true, 'is_active' => true,
+    ])->assertOk();
+    $this->assertDatabaseCount('github_integrations', 1);
+
+    $this->withToken($token)->deleteJson('/v1/integrations/github')->assertStatus(204);
+    $this->assertDatabaseCount('github_integrations', 0);
+    $this->withToken($token)->deleteJson('/v1/integrations/github')->assertStatus(204);
+    Workspace::forgetCurrent();
+});
+
+it('forbids a non-admin from disconnecting github (403)', function (): void {
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $token = githubToken($ws, 'member');
+    $this->withToken($token)->deleteJson('/v1/integrations/github')->assertStatus(403);
+    Workspace::forgetCurrent();
+});

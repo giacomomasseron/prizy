@@ -72,3 +72,50 @@ it('returns 422 on test when no url configured, 202 when configured', function (
 
     Workspace::forgetCurrent();
 });
+
+it('lets an admin disconnect slack — wipes the row and returns 204 (idempotent)', function (): void {
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $token = slackToken($ws, 'admin');
+    $this->withToken($token)->putJson('/v1/integrations/slack', [
+        'webhook_url' => 'https://hooks.slack.com/services/T1/B1/tok', 'events' => ['created'], 'is_active' => true,
+    ])->assertOk();
+    $this->assertDatabaseCount('slack_integrations', 1);
+
+    $this->withToken($token)->deleteJson('/v1/integrations/slack')->assertStatus(204);
+    $this->assertDatabaseCount('slack_integrations', 0);
+    // second delete with no row is an idempotent 204
+    $this->withToken($token)->deleteJson('/v1/integrations/slack')->assertStatus(204);
+    Workspace::forgetCurrent();
+});
+
+it('forbids a non-admin from disconnecting slack (403)', function (): void {
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $token = slackToken($ws, 'member');
+    $this->withToken($token)->deleteJson('/v1/integrations/slack')->assertStatus(403);
+    Workspace::forgetCurrent();
+});
+
+it('slack disconnect only affects the actor workspace', function (): void {
+    // Set up wsB integration directly (no HTTP request) to avoid EnsureValidTenantSession
+    // cookie bleed when switching workspaces within a single test.
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    app(\App\Repositories\SlackIntegrationRepository::class)->upsert([
+        'webhook_url' => 'https://hooks.slack.com/services/TB/BB/tok', 'events' => ['created'], 'is_active' => true,
+    ]);
+    Workspace::forgetCurrent();
+
+    // wsA deletes its (empty) integration — should not touch wsB's row.
+    $wsA = Workspace::factory()->create();
+    test()->actingInWorkspace($wsA);
+    $tokenA = slackToken($wsA, 'admin');
+    $this->withToken($tokenA)->deleteJson('/v1/integrations/slack')->assertStatus(204);
+    Workspace::forgetCurrent();
+
+    // Verify wsB's integration is still intact via Eloquent.
+    $wsB->makeCurrent();
+    expect(\App\Models\SlackIntegration::query()->exists())->toBeTrue();
+    Workspace::forgetCurrent();
+});

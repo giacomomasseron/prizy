@@ -172,8 +172,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/integrations/slack', [SlackIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\SlackIntegration');
         Route::put('/integrations/slack', [SlackIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
         Route::post('/integrations/slack/test', [SlackIntegrationController::class, 'test'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
+        Route::delete('/integrations/slack', [SlackIntegrationController::class, 'destroy'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
 
         Route::get('/integrations/github', [GithubIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\GithubIntegration');
         Route::put('/integrations/github', [GithubIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\GithubIntegration']);
+        Route::delete('/integrations/github', [GithubIntegrationController::class, 'destroy'])->middleware(['verified', 'can:update,App\\Models\\GithubIntegration']);
     });
 });

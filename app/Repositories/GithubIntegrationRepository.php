@@ -14,6 +14,11 @@ final class GithubIntegrationRepository
         return GithubIntegration::query()->first();
     }
 
+    public function deleteForWorkspace(): void
+    {
+        GithubIntegration::query()->delete();
+    }
+
     public function findByToken(string $token): ?GithubIntegration
     {
         return GithubIntegration::query()->where('webhook_token', $token)->first();
