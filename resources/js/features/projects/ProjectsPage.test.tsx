@@ -164,4 +164,31 @@ describe('ProjectsPage', () => {
         await userEvent.click(btn);
         expect(mockNavigate).toHaveBeenCalledWith('/create?tab=project');
     });
+
+    it('New project button is hidden for a non-developer', async () => {
+        const meNonDev = { ...meOwnerDev, is_developer: false };
+        renderPage([], meNonDev);
+        // Wait for the page to settle (empty-state renders)
+        await screen.findByText('No projects yet.');
+        expect(screen.queryByRole('button', { name: /New project/i })).not.toBeInTheDocument();
+    });
+
+    it('New project button is hidden for a viewer', async () => {
+        const meViewer = { ...meOwnerDev, admin_level: 'viewer' };
+        renderPage([], meViewer);
+        await screen.findByText('No projects yet.');
+        expect(screen.queryByRole('button', { name: /New project/i })).not.toBeInTheDocument();
+    });
+
+    it('row delete × is hidden for a non-developer', async () => {
+        const meNonDev = { ...meOwnerDev, is_developer: false };
+        renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })], meNonDev);
+        await screen.findByText('Alpha Project');
+        expect(screen.queryByRole('button', { name: /Delete Alpha Project/i })).not.toBeInTheDocument();
+    });
+
+    it('row delete × is visible for a developer', async () => {
+        renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })]);
+        expect(await screen.findByRole('button', { name: /Delete Alpha Project/i })).toBeInTheDocument();
+    });
 });

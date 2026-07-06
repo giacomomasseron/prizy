@@ -158,6 +158,8 @@ it('projects list includes lead, issue_count, and progress', function (): void {
     expect($row['lead'])->toMatchArray(['id' => $lead->id, 'name' => 'Lena Ops']);
     expect($row['issue_count'])->toBe(4);
     expect($row['progress'])->toBe(50);            // 2 of 4 done
+
+    Workspace::forgetCurrent();
 });
 
 it('project with no issues reports progress 0 and lead null', function (): void {
@@ -172,6 +174,8 @@ it('project with no issues reports progress 0 and lead null', function (): void 
     expect($row['issue_count'])->toBe(0);
     expect($row['progress'])->toBe(0);
     expect($row['lead'])->toBeNull();
+
+    Workspace::forgetCurrent();
 });
 
 it('does not leak projects from another workspace', function (): void {
@@ -184,6 +188,8 @@ it('does not leak projects from another workspace', function (): void {
     test()->actingInWorkspace($ws);
     $names = collect($this->withToken($token)->getJson('/v1/projects')->json('data'))->pluck('name');
     expect($names)->not->toContain('FOREIGN');
+
+    Workspace::forgetCurrent();
 });
 
 it('records created_by as the acting user', function (): void {

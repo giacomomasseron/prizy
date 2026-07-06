@@ -36,13 +36,15 @@ export default function ProjectsPage() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '18px 26px 14px' }}>
                 <h1 style={{ fontSize: 16, fontWeight: 600 }}>All projects</h1>
                 <span style={{ fontSize: 12.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{rows.length}</span>
-                <button
-                    type="button"
-                    onClick={() => navigate('/create?tab=project')}
-                    style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}
-                >
-                    New project
-                </button>
+                {canDevelop && (
+                    <button
+                        type="button"
+                        onClick={() => navigate('/create?tab=project')}
+                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                    >
+                        New project
+                    </button>
+                )}
             </div>
             {error && (
                 <div role="alert" style={{ margin: '0 26px 12px', color: 'var(--red)', fontSize: 12.5 }}>
