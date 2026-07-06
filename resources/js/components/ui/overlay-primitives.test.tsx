@@ -145,3 +145,44 @@ describe('Modal focus-trap', () => {
         trigger.remove();
     });
 });
+
+describe('Menu keyboard + aria', () => {
+    function open3(onA = vi.fn()) {
+        render(<Menu trigger={<button>Open</button>} items={[
+            { key: 'a', label: 'Alpha', onActivate: onA },
+            { key: 'b', label: 'Beta', onActivate: vi.fn() },
+            { key: 'c', label: 'Gamma', onActivate: vi.fn() },
+        ]} />);
+        return onA;
+    }
+    it('trigger exposes aria-haspopup=menu + aria-expanded', () => {
+        open3();
+        const trigger = screen.getByRole('button', { name: 'Open' });
+        expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(trigger);
+        expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    });
+    it('focuses the first item on open and moves with ArrowDown', () => {
+        open3();
+        fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Alpha' }));
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Beta' }));
+    });
+    it('activates the focused item on Enter and closes', () => {
+        const onA = open3();
+        fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Enter' }); // Alpha focused
+        expect(onA).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+    it('closes on Escape and restores focus to the trigger', () => {
+        open3();
+        const trigger = screen.getByRole('button', { name: 'Open' });
+        fireEvent.click(trigger);
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+    });
+});

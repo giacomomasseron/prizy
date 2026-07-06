@@ -19,6 +19,9 @@ export interface MenuProps {
 export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLElement | null>(null);
+    const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     // Close on outside click
     useEffect(() => {
@@ -32,7 +35,7 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
         return () => document.removeEventListener('pointerdown', onPointerDown);
     }, [open]);
 
-    // Close on Escape
+    // Close on Escape (document-level listener — redundant with onMenuKeyDown but harmless)
     useEffect(() => {
         if (!open) return;
         function onKey(e: KeyboardEvent) {
@@ -40,6 +43,11 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
         }
         document.addEventListener('keydown', onKey);
         return () => document.removeEventListener('keydown', onKey);
+    }, [open]);
+
+    // Focus the first enabled item when the menu opens
+    useEffect(() => {
+        if (open) itemRefs.current[0]?.focus();
     }, [open]);
 
     const popoverStyle: React.CSSProperties = {
@@ -58,23 +66,42 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
     };
 
     const triggerWithClick = cloneElement(trigger, {
+        'aria-haspopup': 'menu',
+        'aria-expanded': open,
+        ref: (n: HTMLElement | null) => { triggerRef.current = n; },
         onClick: (e: React.MouseEvent) => {
             e.stopPropagation();
             setOpen((o) => !o);
             trigger.props.onClick?.(e);
         },
-    });
+    } as never);
+
+    function onMenuKeyDown(e: React.KeyboardEvent) {
+        const enabled = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
+        const activeIdx = itemRefs.current.findIndex((n) => n === document.activeElement);
+        const pos = enabled.indexOf(activeIdx);
+        const focusAt = (i: number) => itemRefs.current[enabled[i]]?.focus();
+        if (e.key === 'ArrowDown') { e.preventDefault(); focusAt((pos + 1 + enabled.length) % enabled.length); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); focusAt((pos - 1 + enabled.length) % enabled.length); }
+        else if (e.key === 'Home') { e.preventDefault(); focusAt(0); }
+        else if (e.key === 'End') { e.preventDefault(); focusAt(enabled.length - 1); }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const it = items[activeIdx]; if (it && !it.disabled) { setOpen(false); it.onActivate(); } }
+        else if (e.key === 'Tab') { setOpen(false); triggerRef.current?.focus(); }
+        else if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); }
+    }
 
     return (
         <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
             {triggerWithClick}
             {open && (
-                <div role="menu" style={popoverStyle}>
-                    {items.map((item) => (
+                <div ref={menuRef} role="menu" style={popoverStyle} onKeyDown={onMenuKeyDown}>
+                    {items.map((item, idx) => (
                         <button
                             key={item.key}
+                            ref={(n) => { itemRefs.current[idx] = n; }}
                             role="menuitem"
                             type="button"
+                            tabIndex={-1}
                             disabled={item.disabled}
                             onClick={() => {
                                 if (!item.disabled) {
