@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ApiError } from '../../lib/apiClient';
 import { useMe } from '../../auth/useAuth';
 import { useProject, useMilestones, useCreateMilestone, useDeleteMilestone } from './hooks';
-import { useIssues } from '../issues/hooks';
+import { useIssues, groupByStatus } from '../issues/hooks';
+import { IssueRow } from '../issues/IssueRow';
+import { useIssueDrawers } from '../issues/useIssueDrawers';
+import type { IssueStatus, Milestone } from '../../lib/types';
 import { PROJECT_STATUS } from './projectStatus';
 import { fmtDate, milestoneState, progressBreakdown, membersFromIssues } from './projectDetail';
 import { Avatar } from '../../components/ui/Avatar';
 import { AvatarStack } from '../../components/ui/AvatarStack';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { avatarFor } from '../../lib/avatarFor';
-import type { Milestone } from '../../lib/types';
 
 const MS_TAG: Record<'done' | 'active' | 'upcoming', { label: string; color: string; bg: string }> = {
     done:     { label: 'Done',        color: 'var(--accent)', bg: 'var(--accent2)' },
@@ -33,6 +35,8 @@ export default function ProjectDetailPage() {
     const [msName, setMsName] = useState('');
     const [msDate, setMsDate] = useState('');
     const [error, setError] = useState<string | null>(null);
+    const { openPeek } = useIssueDrawers();
+    const [issueFilter, setIssueFilter] = useState<'all' | 'active'>('all');
 
     const issues = useMemo(() => issuesQ.data?.items ?? [], [issuesQ.data]);
     const bd = progressBreakdown(issues);
@@ -199,7 +203,39 @@ export default function ProjectDetailPage() {
                 </div>
             </div>
 
-            {/* Task 4: issues section */}
+            {/* Issues section */}
+            {(() => {
+                const shown = issueFilter === 'active' ? issues.filter((i) => i.status !== 'done' && i.status !== 'cancelled') : issues;
+                const grouped = groupByStatus(shown);
+                const ORDER: IssueStatus[] = ['in_progress', 'in_review', 'todo', 'backlog', 'done']; // Cancelled hidden
+                const LABELS: Record<IssueStatus, string> = { in_progress: 'In Progress', in_review: 'In Review', todo: 'Todo', backlog: 'Backlog', done: 'Done', cancelled: 'Cancelled' };
+                const segBtn = (on: boolean): CSSProperties => ({ padding: '4px 13px', borderRadius: 6, border: 'none', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', fontWeight: 500, background: on ? 'var(--panel)' : 'transparent', color: on ? 'var(--fg)' : 'var(--fg2)' });
+                return (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '26px 0 4px' }}>
+                            <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600 }}>Issues</h2>
+                            <span style={{ fontSize: 12, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{issues.length}</span>
+                            <div style={{ marginLeft: 'auto', display: 'flex', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 8, padding: 2, gap: 2 }}>
+                                <button type="button" onClick={() => setIssueFilter('all')} style={segBtn(issueFilter === 'all')}>All</button>
+                                <button type="button" onClick={() => setIssueFilter('active')} style={segBtn(issueFilter === 'active')}>Active</button>
+                            </div>
+                        </div>
+                        {ORDER.filter((s) => grouped[s].length > 0).map((s) => (
+                            <div key={s} style={{ marginTop: 14 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 2, padding: '0 2px' }}>
+                                    <StatusIcon status={s} size={14} />
+                                    <span style={{ fontWeight: 600, fontSize: 12.5 }}>{LABELS[s]}</span>
+                                    <span style={{ fontSize: 12, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{grouped[s].length}</span>
+                                </div>
+                                <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+                                    {grouped[s].map((issue) => <IssueRow key={issue.id} issue={issue} onPeek={openPeek} projects={p ? [p] : []} />)}
+                                </div>
+                            </div>
+                        ))}
+                        {issues.length === 0 && !issuesQ.isLoading && <div style={{ padding: 24, color: 'var(--fg3)', fontSize: 13 }}>No issues in this project yet.</div>}
+                    </>
+                );
+            })()}
         </div>
     );
 }
