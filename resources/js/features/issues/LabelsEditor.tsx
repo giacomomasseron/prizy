@@ -3,6 +3,7 @@ import { Menu } from '../../components/ui/Menu';
 import { LabelChip } from '../../components/ui/LabelChip';
 import { useIssueLabels, useSetIssueLabels } from './hooks';
 import { useLabels } from '../labels/hooks';
+import { toggleExclusive } from '../labels/labelGroups';
 import type { Issue } from '../../lib/types';
 
 const triggerStyle: CSSProperties = {
@@ -53,7 +54,8 @@ export function LabelsEditor({ issue, canDevelop }: Props) {
         );
     }
 
-    const items = (allLabels.data?.items ?? []).map((l) => ({
+    const all = allLabels.data?.items ?? [];
+    const items = all.map((l) => ({
         key: l.id,
         label: l.name,
         icon: (
@@ -69,13 +71,7 @@ export function LabelsEditor({ issue, canDevelop }: Props) {
             />
         ),
         onActivate: () => {
-            const next = new Set(currentIds);
-            if (next.has(l.id)) {
-                next.delete(l.id);
-            } else {
-                next.add(l.id);
-            }
-            setLabels.mutateAsync([...next]);
+            setLabels.mutateAsync(toggleExclusive(currentIds, l, all));
         },
     }));
 

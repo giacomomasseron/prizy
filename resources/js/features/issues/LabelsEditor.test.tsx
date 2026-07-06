@@ -6,6 +6,7 @@ import { LabelsEditor } from './LabelsEditor';
 import type { Issue } from '../../lib/types';
 // Namespace import required for per-test mock overrides (vi.mocked — ESM-safe, no require())
 import * as hooks from './hooks';
+import * as labelHooks from '../labels/hooks';
 
 vi.mock('./hooks', () => ({
     useIssueLabels: vi.fn().mockReturnValue({ data: { items: [] } }),
@@ -13,14 +14,7 @@ vi.mock('./hooks', () => ({
 }));
 
 vi.mock('../labels/hooks', () => ({
-    useLabels: () => ({
-        data: {
-            items: [
-                { id: 'l1', name: 'Bug', color: '#e64980', created_at: '', updated_at: '' },
-                { id: 'l2', name: 'Feature', color: '#4bab66', created_at: '', updated_at: '' },
-            ],
-        },
-    }),
+    useLabels: vi.fn(),
 }));
 
 const baseIssue: Issue = {
@@ -55,6 +49,14 @@ describe('LabelsEditor', () => {
     beforeEach(() => {
         vi.mocked(hooks.useIssueLabels).mockReturnValue({ data: { items: [] } } as any);
         vi.mocked(hooks.useSetIssueLabels).mockReturnValue({ mutateAsync: vi.fn() } as any);
+        vi.mocked(labelHooks.useLabels).mockReturnValue({
+            data: {
+                items: [
+                    { id: 'l1', name: 'Bug', color: '#e64980', group: null, created_at: '', updated_at: '' },
+                    { id: 'l2', name: 'Feature', color: '#4bab66', group: null, created_at: '', updated_at: '' },
+                ],
+            },
+        } as any);
     });
 
     it('developer: shows Edit labels button', () => {
@@ -148,5 +150,34 @@ describe('LabelsEditor', () => {
         } as any);
         render(<LabelsEditor issue={baseIssue} canDevelop={false} />, { wrapper });
         expect(screen.getByText('Bug')).toBeInTheDocument();
+    });
+
+    it('radio-within-group: selecting a same-group label replaces the current one', async () => {
+        const setLabelsMock = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useSetIssueLabels).mockReturnValue({ mutateAsync: setLabelsMock } as any);
+        // Bug (a) is currently selected in group 'Type'
+        vi.mocked(hooks.useIssueLabels).mockReturnValue({
+            data: {
+                items: [{ id: 'a', name: 'Bug', color: '#fff', group: 'Type', created_at: '', updated_at: '' }],
+            },
+        } as any);
+        vi.mocked(labelHooks.useLabels).mockReturnValue({
+            data: {
+                items: [
+                    { id: 'a', name: 'Bug', color: '#fff', group: 'Type', created_at: '', updated_at: '' },
+                    { id: 'b', name: 'Feature', color: '#fff', group: 'Type', created_at: '', updated_at: '' },
+                    { id: 'c', name: 'needs-qa', color: '#fff', group: null, created_at: '', updated_at: '' },
+                ],
+            },
+        } as any);
+
+        const user = userEvent.setup();
+        render(<LabelsEditor issue={baseIssue} canDevelop />, { wrapper });
+
+        await user.click(screen.getByRole('button', { name: /Edit labels/i }));
+        await user.click(screen.getByRole('menuitem', { name: /Feature/i }));
+
+        // 'a' (Bug) is dropped because same exclusive group; 'b' (Feature) added → ['b']
+        await waitFor(() => expect(setLabelsMock).toHaveBeenCalledWith(['b']));
     });
 });
