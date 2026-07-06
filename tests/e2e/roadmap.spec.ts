@@ -15,11 +15,10 @@ test('roadmap: navigate via nav link and assert heading visible', async ({ page 
 
     // 4. Accept any of three valid roadmap states:
     //    a) No projects exist  → "No projects yet." empty-state text
-    //    b) Scheduled project  → at least one [data-testid^="bar-"] rendered
-    //    c) Unscheduled project (e.g. created by entities.spec with no dates)
-    //       → "Unscheduled" section heading is visible, no bars rendered
-    const noProjects = page.getByText('No projects yet.');
-    const firstBar = page.locator('[data-testid^="bar-"]').first();
-    const unscheduledSection = page.getByRole('heading', { name: /Unscheduled/i });
-    await expect(noProjects.or(firstBar).or(unscheduledSection)).toBeVisible();
+    //    The SmokeSeeder now seeds a scheduled project ("Smoke Roadmap Project"
+    //    with start_date + target_date), so the redesigned timeline card always
+    //    renders at least one bar. (An earlier multi-state .or() check became
+    //    ambiguous once dateless projects from other specs also render an
+    //    "Unscheduled" section — two matches tripped Playwright strict mode.)
+    await expect(page.locator('[data-testid^="bar-"]').first()).toBeVisible();
 });
