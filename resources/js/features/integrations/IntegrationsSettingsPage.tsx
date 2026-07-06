@@ -5,6 +5,7 @@ import { slackMeta, githubMeta } from './meta';
 import { SlackConfigDrawer } from './SlackConfigDrawer';
 import { GithubConfigDrawer } from './GithubConfigDrawer';
 import { useSlackIntegration, useGithubIntegration, useDisconnectSlack, useDisconnectGithub } from './hooks';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 const glyphStyle = (color: string): CSSProperties => ({ width: 40, height: 40, borderRadius: 10, background: color, color: color === '#e6e6e6' ? '#111' : '#fff', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, letterSpacing: '.02em' });
 const cardBase: CSSProperties = { border: '1px solid var(--border)', borderRadius: 13, padding: 16 };
@@ -16,6 +17,7 @@ export default function IntegrationsSettingsPage() {
     const github = useGithubIntegration();
     const disconnectSlack = useDisconnectSlack();
     const disconnectGithub = useDisconnectGithub();
+    const confirm = useConfirm();
     const [openDrawer, setOpenDrawer] = useState<'slack' | 'github' | null>(null);
     const [error, setError] = useState('');
 
@@ -36,9 +38,10 @@ export default function IntegrationsSettingsPage() {
         if (id === 'github') return githubMeta(!!github.data?.move_to_done_on_merge);
         return '';
     }
-    function disconnect(id: 'slack' | 'github') {
+    async function disconnect(id: 'slack' | 'github') {
         setError('');
-        if (!window.confirm(`Disconnect ${id === 'slack' ? 'Slack' : 'GitHub'}? This removes the stored configuration.`)) return;
+        const name = id === 'slack' ? 'Slack' : 'GitHub';
+        if (!(await confirm({ title: `Disconnect ${name}?`, message: 'This removes the stored configuration.', danger: true }))) return;
         const m = id === 'slack' ? disconnectSlack : disconnectGithub;
         m.mutate(undefined, { onError: (e: unknown) => setError(e instanceof ApiError ? e.detail : 'Failed to disconnect.') });
     }

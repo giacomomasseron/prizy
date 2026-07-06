@@ -7,6 +7,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
 import type { Project } from '../../lib/types';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 function fmtDate(iso: string | null): string {
     if (!iso) return '—';
@@ -22,12 +23,13 @@ export default function ProjectsPage() {
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
     const projects = useProjects();
     const del = useDeleteProject();
+    const confirm = useConfirm();
     const [error, setError] = useState<string | null>(null);
     const rows = projects.data?.items ?? [];
 
-    function remove(p: Project) {
+    async function remove(p: Project) {
         setError(null);
-        if (!window.confirm(`Delete ${p.name}?`)) return;
+        if (!(await confirm({ title: `Delete ${p.name}?`, danger: true }))) return;
         del.mutate(p.id, { onError: (e) => setError((e as ApiError).message) });
     }
 

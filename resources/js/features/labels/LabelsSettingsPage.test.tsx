@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import LabelsSettingsPage from './LabelsSettingsPage';
 import type { Label } from '../../lib/types';
+import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 
 const createMutate = vi.fn().mockResolvedValue(undefined);
 const updateMutate = vi.fn().mockResolvedValue(undefined);
@@ -38,13 +39,13 @@ describe('LabelsSettingsPage', () => {
         expect(createMutate).toHaveBeenCalledWith(expect.objectContaining({ name: 'Perf', group: 'Type' }));
     });
 
-    it('recolors via useUpdateLabel and deletes via useDeleteLabel', () => {
+    it('recolors via useUpdateLabel and deletes via useDeleteLabel', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         render(<LabelsSettingsPage />);
         fireEvent.click(screen.getAllByTestId('recolor-1')[0]); // first swatch of label 1
         expect(updateMutate).toHaveBeenCalledWith(expect.objectContaining({ id: '1' }));
         fireEvent.click(screen.getByTestId('delete-2'));
-        expect(deleteMutate).toHaveBeenCalledWith('2');
+        await waitFor(() => expect(deleteMutate).toHaveBeenCalledWith('2'));
     });
 
     it('hides the "New label" button for a non-developer (viewer gate)', () => {
@@ -54,5 +55,18 @@ describe('LabelsSettingsPage', () => {
         // Read access is open to all — stats grid and label list still render
         expect(screen.getByText('Total labels')).toBeInTheDocument();
         meData = { is_developer: true, admin_level: 'member' }; // restore for subsequent tests
+    });
+
+    it('deletes a label only after the ConfirmDialog is confirmed', async () => {
+        deleteMutate.mockClear();
+        render(<ConfirmProvider><LabelsSettingsPage /></ConfirmProvider>);
+        fireEvent.click(screen.getAllByTestId('delete-1')[0] ?? screen.getByTestId('delete-1'));
+        // Cancel first → no delete
+        fireEvent.click(await screen.findByTestId('confirm-dialog-cancel'));
+        expect(deleteMutate).not.toHaveBeenCalled();
+        // Confirm → delete fires
+        fireEvent.click(screen.getByTestId('delete-1'));
+        fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        await waitFor(() => expect(deleteMutate).toHaveBeenCalledWith('1'));
     });
 });

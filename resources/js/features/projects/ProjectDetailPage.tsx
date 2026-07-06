@@ -13,6 +13,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { AvatarStack } from '../../components/ui/AvatarStack';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { avatarFor } from '../../lib/avatarFor';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 const MS_TAG: Record<'done' | 'active' | 'upcoming', { label: string; color: string; bg: string }> = {
     done:     { label: 'Done',        color: 'var(--accent)', bg: 'var(--accent2)' },
@@ -30,6 +31,7 @@ export default function ProjectDetailPage() {
     const issuesQ = useIssues({ project_id: id });
     const createMs = useCreateMilestone(id);
     const delMs = useDeleteMilestone(id);
+    const confirm = useConfirm();
 
     const [msOpen, setMsOpen] = useState(false);
     const [msName, setMsName] = useState('');
@@ -186,9 +188,9 @@ export default function ProjectDetailPage() {
                                         <button
                                             type="button"
                                             aria-label={`Delete ${m.name}`}
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 setError(null);
-                                                if (window.confirm(`Delete ${m.name}?`)) {
+                                                if (await confirm({ title: `Delete "${m.name}"?`, danger: true })) {
                                                     delMs.mutate(m.id, { onError: (e) => setError((e as ApiError).message) });
                                                 }
                                             }}

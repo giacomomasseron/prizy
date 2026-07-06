@@ -13,6 +13,7 @@ import {
     useRemoveMember,
     useCancelInvitation,
 } from './workspaceHooks';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 // ─── chip styles ─────────────────────────────────────────────────────────────
 
@@ -68,6 +69,7 @@ export default function MembersPage() {
     const updateMember = useUpdateMember();
     const removeMember = useRemoveMember();
     const cancelInvitation = useCancelInvitation();
+    const confirm = useConfirm();
 
     const isOwner = me.data?.admin_level === 'owner';
     const rows = members.data ?? [];
@@ -532,7 +534,7 @@ export default function MembersPage() {
                                 <button
                                     type="button"
                                     data-testid={`remove-${row.email}`}
-                                    onClick={() => {
+                                    onClick={async () => {
                                         setActionError(null);
                                         if (isInvited) {
                                             cancelInvitation.mutate(row.id.replace('inv:', ''), {
@@ -540,7 +542,7 @@ export default function MembersPage() {
                                                 onError: (e) => setActionError((e as ApiError).message),
                                             });
                                         } else {
-                                            if (window.confirm(`Remove ${row.name}?`)) {
+                                            if (await confirm({ title: `Remove ${row.name}?`, danger: true })) {
                                                 removeMember.mutate(row.id, {
                                                     onSuccess: () => setActionError(null),
                                                     onError: (e) => setActionError((e as ApiError).message),

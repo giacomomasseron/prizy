@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import IntegrationsSettingsPage from './IntegrationsSettingsPage';
 
@@ -28,12 +28,12 @@ describe('IntegrationsSettingsPage', () => {
         expect(screen.queryByTestId('connect-figma')).toBeNull();           // no Connect on coming-soon
     });
 
-    it('opens the Slack drawer via Manage and disconnects with confirm', () => {
+    it('opens the Slack drawer via Manage and disconnects with confirm', async () => {
         vi.spyOn(window, 'confirm').mockReturnValue(true);
         render(<IntegrationsSettingsPage />);
         fireEvent.click(screen.getByTestId('manage-slack'));
         expect(screen.getByLabelText('Slack webhook URL')).toBeInTheDocument(); // drawer opened
         fireEvent.click(screen.getByTestId('disconnect-slack'));
-        expect(disconnectSlack).toHaveBeenCalled();
+        await waitFor(() => expect(disconnectSlack).toHaveBeenCalled());
     });
 });

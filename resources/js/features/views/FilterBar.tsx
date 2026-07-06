@@ -10,6 +10,7 @@ import type { IssueFilters } from '../issues/hooks';
 import { BUILTIN_VIEWS, FILTER_FIELDS, type FilterKey, PRESET_PILLS, SORT_OPTIONS, filtersToParams, paramsToFilters } from './filters';
 import { useCreateSavedView, useDeleteSavedView, useSavedViews } from './hooks';
 import { Button } from '../../components/ui/Button';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 function useFieldOptions() {
     const teams = useTeams();
@@ -73,6 +74,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
 
     const navigate = useNavigate();
     const me = useMe();
+    const confirm = useConfirm();
     const savedViews = useSavedViews();
     const createView = useCreateSavedView();
     const deleteView = useDeleteSavedView();
@@ -190,7 +192,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                         variant="ghost"
                                         size="sm"
                                         aria-label={`Delete view ${view.name}`}
-                                        onClick={() => { if (window.confirm(`Delete view ${view.name}?`)) deleteView.mutate(view.id); }}
+                                        onClick={async () => { if (await confirm({ title: `Delete view ${view.name}?`, danger: true })) deleteView.mutate(view.id); }}
                                         style={{ color: 'var(--red)', padding: '2px 6px', minWidth: 0 }}
                                     >
                                         ×

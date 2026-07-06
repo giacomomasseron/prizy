@@ -9,6 +9,7 @@ import type { Team } from '../../lib/types';
 import { useTeamMembers, useAddTeamMember, useSetTeamMemberRole, useRemoveTeamMember, useDeleteTeam, useUpdateTeam } from './hooks';
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { ROLES } from './roles';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 const EDIT_COLORS = ['#6366f1', '#e0a13a', '#4bab66', '#5b8def', '#eb5757', '#a855f7'];
 
@@ -17,6 +18,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
     const teamId = team?.id ?? '';
     const [error, setError] = useState<string | null>(null);
 
+    const confirm = useConfirm();
     const members = useTeamMembers(teamId, { enabled: open });
     const workspace = useWorkspaceMembers({ enabled: open });
     const add = useAddTeamMember(teamId);
@@ -101,9 +103,9 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                 </div>
 
                 <div style={{ marginTop: 24, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-                    <button type="button" aria-label="Delete team" onClick={() => {
+                    <button type="button" aria-label="Delete team" onClick={async () => {
                         clear();
-                        if (!window.confirm(`Delete team ${team.name}?`)) return;
+                        if (!(await confirm({ title: `Delete team ${team.name}?`, danger: true }))) return;
                         del.mutate(team.id, { onSuccess: () => onClose(), onError: surface });
                     }} style={{ color: 'var(--red)', background: 'transparent', border: '1px solid rgba(239,68,68,.3)', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, cursor: 'pointer' }}>
                         Delete team

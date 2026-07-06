@@ -5,6 +5,7 @@ import { LabelChip } from '../../components/ui/LabelChip';
 import type { Label } from '../../lib/types';
 import { useCreateLabel, useDeleteLabel, useLabels, useUpdateLabel } from './hooks';
 import { groupLabels, labelStats } from './labelGroups';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 const SWATCHES = ['#eb5757', '#e0894a', '#d0a23a', '#3a9a68', '#3aa8a0', '#5b8def'];
 
@@ -20,6 +21,7 @@ export default function LabelsSettingsPage() {
     const create = useCreateLabel();
     const update = useUpdateLabel();
     const del = useDeleteLabel();
+    const confirm = useConfirm();
 
     const [open, setOpen] = useState(false);
     const [name, setName] = useState('');
@@ -50,9 +52,9 @@ export default function LabelsSettingsPage() {
             setError(err instanceof ApiError ? err.detail : 'Failed to update label.'));
     }
 
-    function remove(l: Label) {
+    async function remove(l: Label) {
         setError('');
-        if (!window.confirm(`Delete label ${l.name}?`)) return;
+        if (!(await confirm({ title: `Delete label "${l.name}"?`, danger: true }))) return;
         del.mutateAsync(l.id).catch((err) =>
             setError(err instanceof ApiError ? err.detail : 'Failed to delete label.'));
     }

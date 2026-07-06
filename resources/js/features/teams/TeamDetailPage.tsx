@@ -2,6 +2,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { Button } from '../../components/ui/Button';
 import { useDeleteCycle, useCycles, useTeams } from './hooks';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 export default function TeamDetailPage() {
     const { id = '' } = useParams();
@@ -11,6 +12,7 @@ export default function TeamDetailPage() {
     const teams = useTeams();
     const cycles = useCycles(id);
     const del = useDeleteCycle(id);
+    const confirm = useConfirm();
 
     const team = teams.data?.items.find((t) => t.id === id);
 
@@ -32,7 +34,7 @@ export default function TeamDetailPage() {
                     <li key={c.id} className="flex items-center justify-between px-4 py-2">
                         <span>{c.name} <span className="text-xs text-fg2">{c.starts_at} → {c.ends_at}</span></span>
                         {canDevelop && (
-                            <button type="button" onClick={() => { if (window.confirm(`Delete ${c.name}?`)) del.mutate(c.id); }} className="text-sm text-red hover:underline">Delete</button>
+                            <button type="button" onClick={async () => { if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id); }} className="text-sm text-red hover:underline">Delete</button>
                         )}
                     </li>
                 ))}
