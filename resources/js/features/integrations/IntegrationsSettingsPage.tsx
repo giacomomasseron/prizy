@@ -19,6 +19,14 @@ export default function IntegrationsSettingsPage() {
     const [openDrawer, setOpenDrawer] = useState<'slack' | 'github' | null>(null);
     const [error, setError] = useState('');
 
+    if (slack.isLoading || github.isLoading) {
+        return (
+            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 30px 80px', width: '100%' }}>
+                <p style={{ color: 'var(--fg3)', fontSize: 13 }}>Loading…</p>
+            </div>
+        );
+    }
+
     const connectedIds = new Set<string>();
     if (slack.data?.configured && slack.data?.is_active) connectedIds.add('slack');
     if (github.data?.configured && github.data?.is_active) connectedIds.add('github');
