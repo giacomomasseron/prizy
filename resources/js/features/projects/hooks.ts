@@ -19,6 +19,14 @@ export function useProjects() {
     return useQuery({ queryKey: ['projects'], queryFn: () => api.page<Project>('/projects') });
 }
 
+export function useProject(id: string) {
+    return useQuery({
+        queryKey: ['project', id],
+        queryFn: () => api.get<Project>(`/projects/${id}`),
+        enabled: !!id,
+    });
+}
+
 export function useCreateProject() {
     const qc = useQueryClient();
     return useMutation({
