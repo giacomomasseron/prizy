@@ -37,7 +37,11 @@ final class LabelRepository
 
     public function paginate(int $limit): CursorPaginator
     {
-        return Label::query()->orderBy('name')->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after');
+        return Label::query()
+            ->withCount('issueLabels')
+            ->orderBy('name')
+            ->orderBy('id')
+            ->cursorPaginate(perPage: $limit, cursorName: 'after');
     }
 
     public function delete(Label $label): void

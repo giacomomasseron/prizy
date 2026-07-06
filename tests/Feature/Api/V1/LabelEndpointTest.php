@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\Issue;
 use App\Models\Label;
+use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
@@ -71,5 +73,36 @@ it('returns 404 for a label in another workspace', function (): void {
     [$token] = labelWorld();
     $this->withToken($token)->getJson("/v1/labels/{$labelB->id}")->assertStatus(404);
 
+    Workspace::forgetCurrent();
+});
+
+it('creates and returns a grouped label with issue_count', function (): void {
+    [$token, $ws] = labelWorld();
+    $res = $this->withToken($token)->postJson('/v1/labels', ['name' => 'Bug', 'color' => '#ff0000', 'group' => 'Type']);
+    $res->assertStatus(201)->assertJson(['data' => ['name' => 'Bug', 'group' => 'Type', 'issue_count' => 0]]);
+    $this->withToken($token)->getJson('/v1/labels')->assertStatus(200)
+        ->assertJsonPath('data.0.group', 'Type')
+        ->assertJsonPath('data.0.issue_count', 0);
+    Workspace::forgetCurrent();
+});
+
+it('clears a label group when patched with an empty string', function (): void {
+    [$token, $ws] = labelWorld();
+    $id = $this->withToken($token)->postJson('/v1/labels', ['name' => 'Sev1', 'group' => 'Severity'])->json('data.id');
+    $this->withToken($token)->patchJson("/v1/labels/{$id}", ['group' => ''])->assertStatus(200)
+        ->assertJsonPath('data.group', null);
+    Workspace::forgetCurrent();
+});
+
+it('counts label usage across issues', function (): void {
+    [$token, $ws] = labelWorld();
+    $user = User::where('workspace_id', $ws->id)->first();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $i1 = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
+    $i2 = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
+    $id = $this->withToken($token)->postJson('/v1/labels', ['name' => 'Perf'])->json('data.id');
+    $this->withToken($token)->putJson("/v1/issues/{$i1->id}/labels", ['label_ids' => [$id]])->assertStatus(200);
+    $this->withToken($token)->putJson("/v1/issues/{$i2->id}/labels", ['label_ids' => [$id]])->assertStatus(200);
+    $this->withToken($token)->getJson('/v1/labels')->assertStatus(200)->assertJsonPath('data.0.issue_count', 2);
     Workspace::forgetCurrent();
 });

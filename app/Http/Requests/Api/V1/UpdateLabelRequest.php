@@ -24,6 +24,7 @@ final class UpdateLabelRequest extends FormRequest
         return [
             'name'  => ['sometimes', 'string', 'max:64', Rule::unique('labels', 'name')->where('workspace_id', $workspaceId)->ignore($labelId)],
             'color' => ['sometimes', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'group' => ['sometimes', 'nullable', 'string', 'max:64'],
         ];
     }
 }

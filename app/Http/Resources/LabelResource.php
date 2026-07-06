@@ -16,11 +16,13 @@ final class LabelResource extends JsonResource
     public function toArray(Request $request): array
     {
         return $this->sparse($request, 'labels', [
-            'id'         => $this->id,
-            'name'       => $this->name,
-            'color'      => $this->color,
-            'created_at' => $this->created_at,
-            'updated_at' => $this->updated_at,
+            'id'          => $this->id,
+            'name'        => $this->name,
+            'color'       => $this->color,
+            'group'       => $this->group,
+            'issue_count' => $this->issue_labels_count ?? $this->issueLabels()->count(),
+            'created_at'  => $this->created_at,
+            'updated_at'  => $this->updated_at,
         ]);
     }
 }

@@ -23,6 +23,7 @@ final class StoreLabelRequest extends FormRequest
         return [
             'name'  => ['required', 'string', 'max:64', Rule::unique('labels', 'name')->where('workspace_id', $workspaceId)],
             'color' => ['sometimes', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'group' => ['sometimes', 'nullable', 'string', 'max:64'],
         ];
     }
 }

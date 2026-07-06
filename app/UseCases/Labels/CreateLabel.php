@@ -15,6 +15,11 @@ final class CreateLabel
     /** @param array<string, mixed> $data */
     public function handle(User $actor, array $data): Label
     {
-        return $this->labels->create(['name' => $data['name'], 'color' => $data['color'] ?? '#94a3b8']);
+        $group = isset($data['group']) ? trim((string) $data['group']) : '';
+        return $this->labels->create([
+            'name'  => $data['name'],
+            'color' => $data['color'] ?? '#94a3b8',
+            'group' => $group === '' ? null : $group,
+        ]);
     }
 }

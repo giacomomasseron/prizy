@@ -21,6 +21,11 @@ final class UpdateLabel
             throw ValidationException::withMessages(['label_id' => ['The selected label is invalid.']]);
         }
 
-        return $this->labels->update($label, array_intersect_key($data, array_flip(['name', 'color'])));
+        $attrs = array_intersect_key($data, array_flip(['name', 'color', 'group']));
+        if (array_key_exists('group', $attrs)) {
+            $g = trim((string) $attrs['group']);
+            $attrs['group'] = $g === '' ? null : $g;
+        }
+        return $this->labels->update($label, $attrs);
     }
 }

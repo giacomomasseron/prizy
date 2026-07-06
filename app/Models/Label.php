@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $workspace_id
  * @property string $name
  * @property string $color
+ * @property ?string $group
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Workspace $workspace
@@ -34,7 +35,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'name', 'color'])]
+#[Fillable(['id', 'name', 'color', 'group'])]
 class Label extends TenantAwareEntity
 {
     /**
@@ -47,6 +48,7 @@ class Label extends TenantAwareEntity
             'workspace_id' => 'string',
             'name' => 'string',
             'color' => 'string',
+            'group' => 'string',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
