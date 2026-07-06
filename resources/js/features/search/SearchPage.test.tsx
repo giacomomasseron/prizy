@@ -117,6 +117,52 @@ describe('Save this view', () => {
     });
 });
 
+describe('Pagination', () => {
+    it('starts with Prev disabled and clicking Next requests page 2; shows Page X of Y', async () => {
+        const fetcher = vi.fn(async (url: string) => {
+            if (String(url).includes('/search/issues')) {
+                return new Response(
+                    JSON.stringify({
+                        data: [
+                            { id: 'i1', title: 'Fix login bug', status: 'todo', priority: 'high', team_id: 't1', project_id: null, assignee_id: null, created_by: 'u', archived_at: null, created_at: '', updated_at: '', labels: [] },
+                        ],
+                        meta: { current_page: 1, last_page: 3 },
+                    }),
+                    { status: 200 },
+                );
+            }
+            return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        });
+        vi.stubGlobal('fetch', fetcher);
+        wrap(<SearchPage />);
+
+        // Wait for results to load
+        expect(await screen.findByText('Fix login bug')).toBeInTheDocument();
+
+        // Shows "Page 1 of 3"
+        expect(screen.getByText(/Page 1 of 3/)).toBeInTheDocument();
+
+        // Prev is disabled on page 1
+        expect(screen.getByTestId('search-prev')).toBeDisabled();
+
+        // Next is enabled (lastPage = 3)
+        const nextBtn = screen.getByTestId('search-next');
+        expect(nextBtn).not.toBeDisabled();
+
+        // Click Next — should request page=2
+        fetcher.mockClear();
+        fireEvent.click(nextBtn);
+
+        await waitFor(() => {
+            const searchCalls = fetcher.mock.calls.filter((args: unknown[]) =>
+                String(args[0]).includes('/search/issues'),
+            );
+            expect(searchCalls.length).toBeGreaterThan(0);
+            expect(String(searchCalls[0][0])).toContain('page=2');
+        });
+    });
+});
+
 describe('Sidebar saved views', () => {
     it('renders saved view rows and clicking one applies its definition to the search', async () => {
         const fetcher = vi.fn(async (url: string) => {

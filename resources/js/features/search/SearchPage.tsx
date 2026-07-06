@@ -19,6 +19,20 @@ const SORTS: { value: string; label: string }[] = [
     { value: 'status', label: 'Status' },
 ];
 
+function pagerBtn(disabled: boolean): React.CSSProperties {
+    return {
+        border: '1px solid var(--border)',
+        borderRadius: 7,
+        padding: '5px 14px',
+        fontSize: 12.5,
+        fontFamily: 'inherit',
+        background: 'var(--panel)',
+        color: 'var(--fg)',
+        opacity: disabled ? 0.4 : 1,
+        cursor: disabled ? 'not-allowed' : 'pointer',
+    };
+}
+
 // XSS-safe highlight: split on the query, render text spans (never dangerouslySetInnerHTML).
 function highlight(title: string, q: string): React.ReactNode {
     const query = q.trim();
@@ -50,6 +64,7 @@ export default function SearchPage() {
     const [debounced, setDebounced] = useState('');
     const [filters, setFilters] = useState<AdvancedSearchFilters>({});
     const [sort, setSort] = useState('updated');
+    const [page, setPage] = useState(1);
 
     // Save this view state
     const [saveOpen, setSaveOpen] = useState(false);
@@ -74,8 +89,15 @@ export default function SearchPage() {
         };
     }, []);
 
-    const search = useIssueSearch({ q: debounced, sort, page: 1, ...filters });
+    // Reset to page 1 whenever the query, sort, or any filter changes
+    useEffect(() => {
+        setPage(1);
+    }, [debounced, sort, filters]);
+
+    const search = useIssueSearch({ q: debounced, sort, page, ...filters });
     const rows = search.data?.items ?? [];
+    const currentPage = search.data?.currentPage ?? 1;
+    const lastPage = search.data?.lastPage ?? 1;
 
     const sortLabel = SORTS.find((s) => s.value === sort)?.label ?? 'Last updated';
 
@@ -212,7 +234,7 @@ export default function SearchPage() {
                         margin: '20px 0 10px',
                     }}
                 >
-                    <span style={{ fontSize: 12.5, fontWeight: 600 }}>{rows.length} results</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600 }}>Page {currentPage} of {lastPage}</span>
                     <span style={{ fontSize: 12, color: 'var(--fg3)' }}>· sorted by</span>
                     <Menu
                         trigger={
@@ -407,6 +429,28 @@ export default function SearchPage() {
                             </div>
                         </div>
                     )}
+                </div>
+
+                {/* Prev / Next pager */}
+                <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                    <button
+                        type="button"
+                        data-testid="search-prev"
+                        disabled={currentPage <= 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        style={pagerBtn(currentPage <= 1)}
+                    >
+                        Previous
+                    </button>
+                    <button
+                        type="button"
+                        data-testid="search-next"
+                        disabled={currentPage >= lastPage}
+                        onClick={() => setPage((p) => p + 1)}
+                        style={pagerBtn(currentPage >= lastPage)}
+                    >
+                        Next
+                    </button>
                 </div>
             </div>
         </div>
