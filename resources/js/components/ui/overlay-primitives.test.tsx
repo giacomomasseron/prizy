@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Drawer } from './Drawer';
 import { Menu } from './Menu';
 import { Modal } from './Modal';
+import { useRef } from 'react';
 
 describe('Modal', () => {
   it('renders nothing when open=false', () => {
@@ -103,4 +104,44 @@ describe('Menu', () => {
     expect(screen.getByText('Settings')).toBeInTheDocument();
     expect(screen.getByText('Configure things')).toBeInTheDocument();
   });
+});
+
+describe('Drawer focus-trap + a11y', () => {
+    it('sets role=dialog + aria-modal + aria-label and moves focus inside on open', () => {
+        render(<Drawer open onClose={() => {}} label="Test drawer"><button>Inside</button></Drawer>);
+        const dialog = screen.getByRole('dialog', { name: 'Test drawer' });
+        expect(dialog).toHaveAttribute('aria-modal', 'true');
+        expect(dialog.contains(document.activeElement)).toBe(true); // focus moved inside
+    });
+    it('wraps Tab within the panel and restores focus on close', () => {
+        const trigger = document.createElement('button');
+        document.body.appendChild(trigger);
+        trigger.focus();
+        const { rerender } = render(
+            <Drawer open onClose={() => {}} label="D"><button>A</button><button>B</button></Drawer>,
+        );
+        const [a, b] = screen.getAllByRole('button').filter((n) => ['A', 'B'].includes(n.textContent ?? ''));
+        b.focus();
+        fireEvent.keyDown(b, { key: 'Tab' });          // from last → wraps to first
+        expect(document.activeElement).toBe(a);
+        fireEvent.keyDown(a, { key: 'Tab', shiftKey: true }); // shift+Tab from first → wraps to last
+        expect(document.activeElement).toBe(b);
+        rerender(<Drawer open={false} onClose={() => {}} label="D"><button>A</button></Drawer>);
+        expect(document.activeElement).toBe(trigger);  // focus restored
+        trigger.remove();
+    });
+});
+
+describe('Modal focus-trap', () => {
+    it('moves focus inside on open and restores on close', () => {
+        const trigger = document.createElement('button');
+        document.body.appendChild(trigger);
+        trigger.focus();
+        const { rerender } = render(<Modal open onClose={() => {}} label="M"><button>OK</button></Modal>);
+        const dialog = screen.getByRole('dialog', { name: 'M' });
+        expect(dialog.contains(document.activeElement)).toBe(true);
+        rerender(<Modal open={false} onClose={() => {}} label="M"><button>OK</button></Modal>);
+        expect(document.activeElement).toBe(trigger);
+        trigger.remove();
+    });
 });
