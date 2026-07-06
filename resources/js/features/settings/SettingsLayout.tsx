@@ -117,13 +117,11 @@ export default function SettingsLayout() {
                             Labels
                         </NavLink>
                     )}
-                    {/* Integrations — navigate to existing /integrations page */}
-                    <a
-                        href="/integrations"
-                        style={navBtn(false)}
-                    >
-                        Integrations
-                    </a>
+                    {canManage && (
+                        <NavLink to="/settings/integrations" style={({ isActive }) => navBtn(isActive)}>
+                            Integrations
+                        </NavLink>
+                    )}
                     {/* Disabled stubs */}
                     <button
                         type="button"

@@ -157,7 +157,7 @@ export default function AppLayout() {
     const userMenuItems: MenuItem[] = [
         { key: 'settings', label: 'Settings', onActivate: () => navigate('/settings') },
         ...(canManage
-            ? [{ key: 'integrations', label: 'Integrations', onActivate: () => navigate('/integrations') }]
+            ? [{ key: 'integrations', label: 'Integrations', onActivate: () => navigate('/settings/integrations') }]
             : []),
         { key: 'logout', label: 'Logout', onActivate: () => logout.mutate(), danger: true },
     ];

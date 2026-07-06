@@ -15,7 +15,7 @@ import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import SearchPage from './features/search/SearchPage';
-import IntegrationsPage from './features/integrations/IntegrationsPage';
+import IntegrationsSettingsPage from './features/integrations/IntegrationsSettingsPage';
 import CreateScreen from './features/create/CreateScreen';
 import SettingsLayout, { RequireManage, StubPage } from './features/settings/SettingsLayout';
 import MembersPage from './features/members/MembersPage';
@@ -59,11 +59,12 @@ export default function AppRouter() {
                     <Route path="teams" element={<RequireManage><TeamsSettingsPage /></RequireManage>} />
                     <Route path="general" element={<GeneralPage />} />
                     <Route path="labels" element={<LabelsSettingsPage />} />
+                    <Route path="integrations" element={<RequireManage><IntegrationsSettingsPage /></RequireManage>} />
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />
                 </Route>
                 <Route path="/search" element={<SearchPage />} />
-                <Route path="/integrations" element={<IntegrationsPage />} />
+                <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
                 <Route path="/create" element={<CreateScreen />} />
             </Route>
         </Routes>

@@ -30,6 +30,7 @@ Route::view('/settings/general', 'app');
 Route::view('/settings/labels', 'app');
 Route::view('/settings/billing', 'app');
 Route::view('/settings/audit', 'app');
+Route::view('/settings/integrations', 'app');
 Route::view('/search', 'app');
 Route::view('/integrations', 'app');
 Route::view('/create', 'app');
