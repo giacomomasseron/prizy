@@ -123,6 +123,36 @@ describe('ProjectDetailPage', () => {
     });
 });
 
+describe('ProjectDetailPage — progress bar', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('renders a placeholder progress bar when the project has 0 issues', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string) => {
+                if (url.includes('/v1/me'))       return j({ data: ME });
+                if (url.includes('/milestones'))  return j({ data: [], links: { next: null, prev: null } });
+                if (url.includes('/issues'))      return j({ data: [], links: { next: null, prev: null } });
+                if (url.includes('/projects/'))   return j({ data: PROJECT });
+                return j({ data: {} });
+            }),
+        );
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/projects/p1']}>
+                    <Routes>
+                        <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        // Wait for the page to load (heading appears once project data resolves)
+        await screen.findByRole('heading', { name: 'Escalation Engine' });
+        expect(screen.getByTestId('progress-empty')).toBeInTheDocument();
+    });
+});
+
 describe('ProjectDetailPage — issues section', () => {
     afterEach(() => vi.unstubAllGlobals());
 

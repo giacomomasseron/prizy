@@ -122,9 +122,9 @@ export default function ProjectDetailPage() {
                         <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{doneN}/{total} issues</span>
                     </div>
                     <div style={{ display: 'flex', height: 10, borderRadius: 6, overflow: 'hidden', background: 'var(--bg2)', gap: 2 }}>
-                        {segs.map((s) => (
-                            <div key={s.key} data-testid={`seg-${s.key}`} style={{ flexGrow: s.n, background: s.color, minWidth: 6 }} />
-                        ))}
+                        {segs.length === 0
+                            ? <div data-testid="progress-empty" style={{ flexGrow: 1, background: 'var(--border2)', opacity: 0.5 }} />
+                            : segs.map((s) => <div key={s.key} data-testid={`seg-${s.key}`} style={{ flexGrow: s.n, background: s.color, minWidth: 6 }} />)}
                     </div>
                     <div style={{ display: 'flex', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
                         {segs.map((s) => (
@@ -142,7 +142,7 @@ export default function ProjectDetailPage() {
                         {canDevelop && (
                             <button
                                 type="button"
-                                onClick={() => setMsOpen((o) => !o)}
+                                onClick={() => { setError(null); setMsOpen((o) => !o); }}
                                 aria-label="New milestone"
                                 style={{ marginLeft: 'auto', border: 'none', background: 'transparent', color: 'var(--fg3)', fontSize: 16, cursor: 'pointer' }}
                             >+</button>

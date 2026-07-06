@@ -83,7 +83,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
 
     function applyFilters(next: IssueFilters) {
-        setSearchParams(filtersToParams(next));
+        setSearchParams(filtersToParams(next), { replace: true });
     }
 
     function applySavedView(view: SavedView) {
@@ -93,7 +93,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
         if (view.definition.view_type !== viewType) {
             navigate({ pathname: view.definition.view_type === 'board' ? '/board' : '/', search });
         } else {
-            setSearchParams(filtersToParams(next));
+            setSearchParams(filtersToParams(next), { replace: true });
         }
     }
 
@@ -117,7 +117,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
         const next = { ...filters } as IssueFilters;
         if (csv) (next as Record<string, string>)[key] = csv;
         else delete (next as Record<string, string>)[key];
-        setSearchParams(filtersToParams(next));
+        setSearchParams(filtersToParams(next), { replace: true });
     }
 
     function toggleValue(key: FilterKey, value: string) {
