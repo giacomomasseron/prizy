@@ -12,6 +12,7 @@
     })();
     </script>
     @fonts
+    @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/main.tsx'])
 </head>
 <body class="antialiased">
