@@ -6,7 +6,7 @@ import { avatarFor } from '../../lib/avatarFor';
 import { TeamTile } from '../../components/ui/TeamTile';
 import { ApiError } from '../../lib/apiClient';
 import type { Team } from '../../lib/types';
-import { useTeamMembers, useAddTeamMember, useSetTeamMemberRole, useRemoveTeamMember, useDeleteTeam, useUpdateTeam } from './hooks';
+import { useTeams, useTeamMembers, useAddTeamMember, useSetTeamMemberRole, useRemoveTeamMember, useDeleteTeam, useUpdateTeam } from './hooks';
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { ROLES } from './roles';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
@@ -26,8 +26,11 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
     const remove = useRemoveTeamMember(teamId);
     const del = useDeleteTeam();
     const updateTeam = useUpdateTeam();
+    const teamsQ = useTeams();
 
     if (!team) return <Drawer open={false} onClose={onClose}><span /></Drawer>;
+
+    const live = teamsQ.data?.items.find((t) => t.id === team.id) ?? team;
 
     const memberIds = new Set((members.data ?? []).map((m) => m.id));
     const addable = (workspace.data ?? []).filter((w) => w.status === 'active' && !memberIds.has(w.id));
@@ -45,8 +48,8 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
         <Drawer open={open} onClose={onClose} width={520}>
             <div style={{ padding: '20px 22px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <TeamTile identifier={team.identifier} color={team.color} size={30} />
-                    <input aria-label="Team name" defaultValue={team.name} key={team.id}
+                    <TeamTile identifier={live.identifier} color={live.color} size={30} />
+                    <input aria-label="Team name" defaultValue={live.name} key={`${live.id}-${live.name}-${live.color}`}
                         onBlur={(e) => commitName(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
                         style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 600, background: 'transparent', border: 'none', color: 'var(--fg)', outline: 'none' }} />
@@ -56,7 +59,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                     {EDIT_COLORS.map((c) => (
                         <button key={c} type="button" aria-label={`Set color ${c}`}
                             onClick={() => { clear(); updateTeam.mutate({ id: team.id, color: c }, { onError: surface }); }}
-                            style={{ width: 20, height: 20, borderRadius: 5, background: c, border: team.color === c ? '2px solid var(--fg)' : '2px solid transparent', cursor: 'pointer' }} />
+                            style={{ width: 20, height: 20, borderRadius: 5, background: c, border: live.color === c ? '2px solid var(--fg)' : '2px solid transparent', cursor: 'pointer' }} />
                     ))}
                 </div>
 

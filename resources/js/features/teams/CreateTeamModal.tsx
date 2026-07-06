@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { useCreateTeam } from './hooks';
@@ -21,6 +21,8 @@ export default function CreateTeamModal({ open, onClose }: { open: boolean; onCl
     function reset() {
         setName(''); setIdentifier(''); setIdTouched(false); setColor(COLORS[0]); setErrorMsg(null);
     }
+
+    useEffect(() => { if (!open) reset(); }, [open]);
 
     function onName(v: string) {
         setName(v);

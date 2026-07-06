@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import CreateTeamModal from './CreateTeamModal';
 
@@ -33,5 +34,17 @@ describe('CreateTeamModal', () => {
         fireEvent.click(screen.getByRole('button', { name: /create team/i }));
         expect(await screen.findByText('Identifier already taken.')).toBeInTheDocument();
         expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('clears the form when closed and reopened', () => {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+        const Wrapper = ({ open }: { open: boolean }) => (
+            <QueryClientProvider client={qc}><CreateTeamModal open={open} onClose={() => {}} /></QueryClientProvider>
+        );
+        const { rerender } = render(<Wrapper open />);
+        fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'Temp' } });
+        rerender(<Wrapper open={false} />);
+        rerender(<Wrapper open />);
+        expect(screen.getByLabelText(/team name/i)).toHaveValue('');
     });
 });
