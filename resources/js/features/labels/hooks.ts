@@ -9,7 +9,7 @@ export function useLabels() {
 export function useCreateLabel() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (input: { name: string; color?: string }) => api.post<Label>('/labels', input),
+        mutationFn: (input: { name: string; color?: string; group?: string | null }) => api.post<Label>('/labels', input),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['labels'] }),
     });
 }

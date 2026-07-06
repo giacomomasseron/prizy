@@ -114,6 +114,8 @@ export interface Label {
     id: string;
     name: string;
     color: string;
+    group?: string | null;
+    issue_count?: number;
     created_at: string;
     updated_at: string;
 }
