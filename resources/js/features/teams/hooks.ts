@@ -63,7 +63,7 @@ export function useCreateCycle(teamId: string) {
 export function useUpdateCycle(teamId: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, ...input }: { id: string; name?: string; starts_at?: string; ends_at?: string }) =>
+        mutationFn: ({ id, ...input }: { id: string; name?: string; starts_at?: string; ends_at?: string; cooldown_days?: number; description?: string }) =>
             api.patch<Cycle>(`/cycles/${id}`, input),
         onSuccess: () => qc.invalidateQueries({ queryKey: ['teams', teamId, 'cycles'] }),
     });

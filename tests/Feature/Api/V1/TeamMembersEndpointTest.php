@@ -192,3 +192,15 @@ it('PATCH and DELETE forbid a non-admin', function (): void {
     expect(\DB::table('team_members')->where('team_id', $team->id)->where('user_id', $u->id)->count())->toBe(1);
     Workspace::forgetCurrent();
 });
+
+it('the DB rejects a second lead per team (partial unique index)', function (): void {
+    [$token, $actor, $ws, $team] = teamMembersWorld();
+    $u1 = User::factory()->for($ws, 'workspace')->create();
+    $u2 = User::factory()->for($ws, 'workspace')->create();
+    addMemberRow($team->id, $u1->id, 'lead');
+    \DB::statement('SAVEPOINT before_second_lead');
+    expect(fn () => addMemberRow($team->id, $u2->id, 'lead'))->toThrow(\Illuminate\Database\QueryException::class);
+    \DB::statement('ROLLBACK TO SAVEPOINT before_second_lead');
+    expect(\DB::table('team_members')->where('team_id', $team->id)->where('role', 'lead')->count())->toBe(1);
+    Workspace::forgetCurrent();
+});

@@ -28,6 +28,6 @@ final class UpdateCycle
             throw ValidationException::withMessages(['ends_at' => ['The ends at must be after the starts at.']]);
         }
 
-        return $this->cycles->update($cycle, array_intersect_key($data, array_flip(['name', 'starts_at', 'ends_at', 'cooldown_days'])));
+        return $this->cycles->update($cycle, array_intersect_key($data, array_flip(['name', 'starts_at', 'ends_at', 'cooldown_days', 'description'])));
     }
 }

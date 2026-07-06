@@ -17,10 +17,11 @@ final class UpdateCycleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name'      => ['sometimes', 'string', 'max:255'],
-            'starts_at' => ['sometimes', 'date'],
+            'name'          => ['sometimes', 'string', 'max:255'],
+            'starts_at'     => ['sometimes', 'date'],
             'ends_at'       => ['sometimes', 'date', 'after:starts_at'],
             'cooldown_days' => ['sometimes', 'integer', 'min:0'],
+            'description'   => ['sometimes', 'nullable', 'string'],
         ];
     }
 }

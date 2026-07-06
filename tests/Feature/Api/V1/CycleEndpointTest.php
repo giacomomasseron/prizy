@@ -95,3 +95,13 @@ it('returns 404 for a cycle whose team is in another workspace (transitive isola
 
     Workspace::forgetCurrent();
 });
+
+it('updates a cycle description (update-path parity)', function (): void {
+    [$token, $ws, $team] = cycleWorld();
+    $id = $this->withToken($token)->postJson("/v1/teams/{$team->id}/cycles", [
+        'name' => 'Sprint X', 'starts_at' => '2026-05-01', 'ends_at' => '2026-05-14',
+    ])->json('data.id');
+    $this->withToken($token)->patchJson("/v1/cycles/{$id}", ['description' => 'Sprint goal'])
+        ->assertStatus(200)->assertJsonPath('data.description', 'Sprint goal');
+    Workspace::forgetCurrent();
+});
