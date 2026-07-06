@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\Issue;
 use App\Models\Notification;
+use App\Models\Project;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
@@ -66,6 +67,48 @@ final class SmokeSeeder extends Seeder
                 'team_id' => $team->id,
                 'created_by' => $user->id,
                 'title' => 'Starter issue',
+                'status' => 'todo',
+                'priority' => 'no_priority',
+            ]);
+        }
+
+        // Ensure a scheduled project exists so /projects shows a row and /roadmap
+        // renders a bar. Guard on name to stay idempotent.
+        $project = Project::withoutGlobalScopes()->firstWhere('name', 'Smoke Roadmap Project')
+            ?? Project::forceCreate([
+                'id' => (string) Str::uuid(),
+                'workspace_id' => $workspace->id,
+                'team_id' => $team->id,
+                'lead_id' => $user->id,
+                'created_by' => $user->id,
+                'name' => 'Smoke Roadmap Project',
+                'status' => 'in_progress',
+                'priority' => 'medium',
+                'color' => '#7C3AED',
+                'start_date' => now()->subDays(10)->toDateString(),
+                'target_date' => now()->addDays(20)->toDateString(),
+            ]);
+
+        // Add two issues linked to the project (one done, one todo) so the
+        // progress bar is non-zero. Idempotent: only when the project has no issues.
+        if ($project->issues()->count() === 0) {
+            Issue::forceCreate([
+                'id' => (string) Str::uuid(),
+                'workspace_id' => $workspace->id,
+                'team_id' => $team->id,
+                'project_id' => $project->id,
+                'created_by' => $user->id,
+                'title' => 'Smoke project issue A (done)',
+                'status' => 'done',
+                'priority' => 'medium',
+            ]);
+            Issue::forceCreate([
+                'id' => (string) Str::uuid(),
+                'workspace_id' => $workspace->id,
+                'team_id' => $team->id,
+                'project_id' => $project->id,
+                'created_by' => $user->id,
+                'title' => 'Smoke project issue B (todo)',
                 'status' => 'todo',
                 'priority' => 'no_priority',
             ]);
