@@ -21,6 +21,7 @@ import SettingsLayout, { RequireManage, StubPage } from './features/settings/Set
 import MembersPage from './features/members/MembersPage';
 import TeamsSettingsPage from './features/teams/TeamsSettingsPage';
 import GeneralPage from './features/settings/GeneralPage';
+import { ConfirmProvider } from './components/ui/ConfirmProvider';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -32,7 +33,9 @@ function RequireAuth({ children }: { children: ReactElement }) {
 function AuthedLayout() {
     return (
         <RequireAuth>
-            <AppLayout />
+            <ConfirmProvider>
+                <AppLayout />
+            </ConfirmProvider>
         </RequireAuth>
     );
 }
