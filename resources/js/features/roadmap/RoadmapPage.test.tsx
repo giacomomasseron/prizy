@@ -4,8 +4,31 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import RoadmapPage from './RoadmapPage';
 
-const scheduled = { id: 'p1', name: 'Website', color: '#4f46e5', status: 'in_progress', team_id: null, start_date: '2026-07-01T00:00:00.000000Z', target_date: '2026-09-30T00:00:00.000000Z', created_at: '', updated_at: '', milestones: [{ id: 'm1', name: 'Beta', target_date: '2026-08-01T00:00:00.000000Z' }] };
-const unscheduled = { id: 'p2', name: 'Research spike', color: '#888', status: 'planning', team_id: null, start_date: null, target_date: null, created_at: '', updated_at: '', milestones: [] };
+const scheduled = {
+    id: 'p1',
+    name: 'Website',
+    color: '#4f46e5',
+    status: 'in_progress',
+    team_id: null,
+    start_date: '2026-07-01T00:00:00.000000Z',
+    target_date: '2026-09-30T00:00:00.000000Z',
+    progress: 40,
+    created_at: '',
+    updated_at: '',
+    milestones: [{ id: 'm1', name: 'Beta', target_date: '2026-08-01T00:00:00.000000Z' }],
+};
+const unscheduled = {
+    id: 'p2',
+    name: 'Research spike',
+    color: '#888',
+    status: 'planning',
+    team_id: null,
+    start_date: null,
+    target_date: null,
+    created_at: '',
+    updated_at: '',
+    milestones: [],
+};
 
 function renderPage() {
     return render(
@@ -29,5 +52,22 @@ describe('RoadmapPage', () => {
         expect(screen.getByTestId('ms-m1')).toBeInTheDocument();
         expect(screen.getByText('Unscheduled')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'Research spike' })).toBeInTheDocument();
+    });
+
+    it('renders month header, bar with project name and progress, and milestone marker', async () => {
+        renderPage();
+
+        // Month header: at least one month label (Jul) should appear
+        expect(await screen.findByText('Jul')).toBeInTheDocument();
+
+        // Bar contains project name
+        const bar = screen.getByTestId('bar-p1');
+        expect(bar).toHaveTextContent('Website');
+
+        // Bar contains progress percentage
+        expect(bar).toHaveTextContent('40%');
+
+        // Milestone marker is present
+        expect(screen.getByTestId('ms-m1')).toBeInTheDocument();
     });
 });
