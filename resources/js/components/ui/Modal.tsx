@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { useFocusTrap } from './useFocusTrap';
+import { useOverlayEscape } from './useOverlayEscape';
 
 export interface ModalProps {
     open: boolean;
@@ -11,12 +12,7 @@ export interface ModalProps {
 
 export function Modal({ open, onClose, children, width = 520, label }: ModalProps) {
     const panelRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!open) return;
-        function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
-        document.addEventListener('keydown', onKey);
-        return () => document.removeEventListener('keydown', onKey);
-    }, [open, onClose]);
+    useOverlayEscape(onClose, open);
     useFocusTrap(panelRef, open);
 
     if (!open) return null;

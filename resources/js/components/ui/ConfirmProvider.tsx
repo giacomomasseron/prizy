@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 
@@ -35,6 +35,8 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
         setOpts(next);
         return new Promise<boolean>((resolve) => { resolverRef.current = resolve; });
     }, []);
+
+    useEffect(() => () => { resolverRef.current?.(false); resolverRef.current = null; }, []);
 
     const settle = useCallback((result: boolean) => {
         resolverRef.current?.(result);

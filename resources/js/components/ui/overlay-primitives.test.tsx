@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { Drawer } from './Drawer';
 import { Menu } from './Menu';
 import { Modal } from './Modal';
+import { isTopmost, popOverlay, pushOverlay } from './overlayStack';
 
 describe('Modal', () => {
   it('renders nothing when open=false', () => {
@@ -214,5 +215,34 @@ describe('Drawer / Modal autoFocus respect', () => {
         // Without autoFocus, the trap must move focus to the first focusable.
         expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Alpha' }));
         trigger.remove();
+    });
+});
+
+describe('overlayStack', () => {
+    it('tracks the top-most overlay', () => {
+        pushOverlay('a'); expect(isTopmost('a')).toBe(true);
+        pushOverlay('b'); expect(isTopmost('a')).toBe(false); expect(isTopmost('b')).toBe(true);
+        popOverlay('b'); expect(isTopmost('a')).toBe(true);
+        popOverlay('a');
+    });
+});
+
+describe('nested overlay Escape (Drawer under Modal)', () => {
+    it('Escape closes only the top-most overlay', () => {
+        const drawerClose = vi.fn();
+        const modalClose = vi.fn();
+        const { rerender } = render(
+            <>
+                <Drawer open onClose={drawerClose} label="D"><button>d</button></Drawer>
+                <Modal open onClose={modalClose} label="M"><button>m</button></Modal>
+            </>,
+        );
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(modalClose).toHaveBeenCalledTimes(1);
+        expect(drawerClose).not.toHaveBeenCalled();     // drawer stays (not top-most)
+        // close the modal; a second Escape now closes the drawer
+        rerender(<><Drawer open onClose={drawerClose} label="D"><button>d</button></Drawer><Modal open={false} onClose={modalClose} label="M"><button>m</button></Modal></>);
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(drawerClose).toHaveBeenCalledTimes(1);
     });
 });

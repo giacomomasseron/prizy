@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { useFocusTrap } from './useFocusTrap';
+import { useOverlayEscape } from './useOverlayEscape';
 
 export interface DrawerProps {
     open: boolean;
@@ -12,12 +13,7 @@ export interface DrawerProps {
 
 export function Drawer({ open, onClose, side = 'right', width = 480, label, children }: DrawerProps) {
     const panelRef = useRef<HTMLDivElement>(null);
-    useEffect(() => {
-        if (!open) return;
-        function onKey(e: KeyboardEvent) { if (e.key === 'Escape') onClose(); }
-        document.addEventListener('keydown', onKey);
-        return () => document.removeEventListener('keydown', onKey);
-    }, [open, onClose]);
+    useOverlayEscape(onClose, open);
     useFocusTrap(panelRef, open);
 
     if (!open) return null;

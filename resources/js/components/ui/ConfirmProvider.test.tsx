@@ -34,3 +34,13 @@ describe('ConfirmProvider / useConfirm', () => {
         await waitFor(() => expect(results).toEqual([false]));
     });
 });
+
+it('resolves a pending confirm false when the provider unmounts', async () => {
+    let result: boolean | undefined;
+    function Harness() { const confirm = useConfirm(); return <button onClick={async () => { result = await confirm({ title: 'x' }); }}>go</button>; }
+    const { unmount } = render(<ConfirmProvider><Harness /></ConfirmProvider>);
+    fireEvent.click(screen.getByText('go'));
+    await screen.findByTestId('confirm-dialog-confirm');
+    unmount();
+    await waitFor(() => expect(result).toBe(false));
+});
