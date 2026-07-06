@@ -13,7 +13,7 @@ export const COMMANDS: Command[] = [
     { id: 'goto-settings', label: 'Go to Settings', keywords: 'settings preferences', run: (nav) => nav('/settings') },
     { id: 'goto-teams', label: 'Go to Teams', keywords: 'teams', run: (nav) => nav('/teams') },
     { id: 'goto-projects', label: 'Go to Projects', keywords: 'projects', run: (nav) => nav('/projects') },
-    { id: 'goto-labels', label: 'Go to Labels', keywords: 'labels', run: (nav) => nav('/labels') },
+    { id: 'goto-labels', label: 'Go to Labels', keywords: 'labels', run: (nav) => nav('/settings/labels') },
 ];
 
 export function filterCommands(q: string): Command[] {
