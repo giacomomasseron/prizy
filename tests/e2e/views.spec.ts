@@ -24,22 +24,14 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
     await expect(page.getByRole('button').filter({ hasText: /Status/ })).toBeVisible();
     await expect(page).toHaveURL(/status=/);
 
-    // 4. Save view — accept the prompt dialog with the unique view name.
-    //    Wire up the dialog handler BEFORE clicking so it is in place when the prompt fires.
-    const dialogHandler = (dialog: import('@playwright/test').Dialog) => {
-        if (dialog.type() === 'prompt') {
-            dialog.accept(VIEW_NAME);
-        } else {
-            dialog.accept();
-        }
-    };
-    page.on('dialog', dialogHandler);
-
+    // 4. Save view — use the inline input (no native prompt).
     // Intercept the POST /v1/saved-views response so we can wait for it to complete.
     const saveResponsePromise = page.waitForResponse(
         (response) => response.url().includes('/saved-views') && response.request().method() === 'POST',
     );
     await page.getByRole('button', { name: 'Save view' }).click();
+    await page.getByLabel('View name').fill(VIEW_NAME);
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
     const saveResponse = await saveResponsePromise;
     expect(saveResponse.status()).toBe(201);
 
@@ -75,7 +67,7 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
     await expect(page.getByRole('button').filter({ hasText: /Status/ })).toBeVisible();
     await expect(page).toHaveURL(/status=/);
 
-    // 7. Delete the saved view — confirm dialog already handled by dialogHandler above
+    // 7. Delete the saved view — uses ConfirmDialog (getByTestId confirm-dialog-confirm)
     const deleteResponsePromise = page.waitForResponse(
         (response) => response.url().includes('/saved-views') && response.request().method() === 'DELETE',
     );

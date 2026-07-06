@@ -41,10 +41,12 @@ describe('FilterBar views', () => {
         expect(screen.getByTestId('qs').textContent).toContain('assignee_id=u1');
     });
 
-    it('saves the current filters as a view', async () => {
-        vi.spyOn(window, 'prompt').mockReturnValue('My view');
+    it('saves the current filters as a view via inline input', async () => {
         renderBar('/?status=todo');
         await userEvent.click(await screen.findByRole('button', { name: 'Save view' }));
+        const input = await screen.findByLabelText('View name');
+        await userEvent.type(input, 'My view');
+        await userEvent.click(screen.getByRole('button', { name: 'Save' }));
         await vi.waitFor(() => {
             const calls = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls;
             expect(calls.some(([u, i]) => u.includes('/v1/saved-views') && i?.method === 'POST')).toBe(true);

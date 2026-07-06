@@ -80,6 +80,8 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const deleteView = useDeleteSavedView();
     const [viewsOpen, setViewsOpen] = useState(false);
     const [error, setError] = useState('');
+    const [savingView, setSavingView] = useState(false);
+    const [newViewName, setNewViewName] = useState('');
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
 
     function applyFilters(next: IssueFilters) {
@@ -97,13 +99,14 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
         }
     }
 
-    async function saveView() {
+    async function submitView() {
         setError('');
-        const name = window.prompt('View name');
+        const name = newViewName.trim();
         if (!name) return;
         const { sort, ...filterOnly } = filters;
         try {
             await createView.mutateAsync({ name, definition: { filter: filterOnly as Record<string, string>, sort: sort ?? '', view_type: viewType } });
+            setSavingView(false); setNewViewName('');
         } catch (err) {
             setError(err instanceof ApiError ? err.detail : 'Failed to save view.');
         }
@@ -335,9 +338,26 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
 
             {/* Save view */}
             {canDevelop && (
-                <Button variant="ghost" size="sm" onClick={saveView} disabled={createView.isPending}>
-                    Save view
-                </Button>
+                savingView ? (
+                    <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                        <input
+                            autoFocus
+                            aria-label="View name"
+                            value={newViewName}
+                            onChange={(e) => setNewViewName(e.target.value)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter') submitView();
+                                if (e.key === 'Escape') { setSavingView(false); setNewViewName(''); }
+                            }}
+                            placeholder="View name"
+                            style={{ border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 7, padding: '4px 8px', color: 'var(--fg)', fontSize: 12 }}
+                        />
+                        <Button variant="primary" size="sm" onClick={submitView} disabled={createView.isPending || !newViewName.trim()}>Save</Button>
+                        <Button variant="ghost" size="sm" onClick={() => { setSavingView(false); setNewViewName(''); }}>Cancel</Button>
+                    </span>
+                ) : (
+                    <Button variant="ghost" size="sm" onClick={() => setSavingView(true)}>Save view</Button>
+                )
             )}
 
             {error && <span style={{ color: 'var(--red)', fontSize: 12 }}>{error}</span>}
