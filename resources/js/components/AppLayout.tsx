@@ -80,22 +80,7 @@ function TeamsIcon() {
         </span>
     );
 }
-function LabelsIcon() {
-    return (
-        <span style={{ width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <span
-                style={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: '50% 50% 50% 0',
-                    border: '1.5px solid currentColor',
-                    transform: 'rotate(-45deg)',
-                    display: 'inline-block',
-                }}
-            />
-        </span>
-    );
-}
+
 function SearchNavIcon() {
     return (
         <span style={{ width: 13, height: 13, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 13, lineHeight: 1 }}>
@@ -129,7 +114,6 @@ const NAV_LINKS = [
     { to: '/projects', label: 'Projects', icon: <ProjectsIcon />, end: false },
     { to: '/roadmap', label: 'Roadmap', icon: <RoadmapIcon />, end: false },
     { to: '/teams', label: 'Teams', icon: <TeamsIcon />, end: false },
-    { to: '/labels', label: 'Labels', icon: <LabelsIcon />, end: false },
     { to: '/search', label: 'Search', icon: <SearchNavIcon />, end: false },
 ] as const;
 

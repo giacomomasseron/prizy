@@ -33,6 +33,7 @@ export default function SettingsLayout() {
     const me = useMe();
     const navigate = useNavigate();
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
+    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
     const members = useWorkspaceMembers({ enabled: canManage });
     const memberCount = members.data?.length;
     const teams = useTeams({ enabled: canManage });
@@ -110,6 +111,12 @@ export default function SettingsLayout() {
                     >
                         General
                     </NavLink>
+                    {canDevelop && (
+                        <NavLink to="/settings/labels" style={({ isActive }) => navBtn(isActive)}>
+                            <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'currentColor', opacity: 0.85 }} />
+                            Labels
+                        </NavLink>
+                    )}
                     {/* Integrations — navigate to existing /integrations page */}
                     <a
                         href="/integrations"

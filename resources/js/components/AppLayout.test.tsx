@@ -48,7 +48,7 @@ describe('AppLayout sidebar', () => {
 
     it('renders primary nav links (no Board, no Cycles)', () => {
         renderLayout();
-        for (const label of ['Issues', 'Projects', 'Roadmap', 'Teams', 'Labels']) {
+        for (const label of ['Issues', 'Projects', 'Roadmap', 'Teams']) {
             expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
         }
         expect(screen.queryByRole('link', { name: 'Board' })).toBeNull();

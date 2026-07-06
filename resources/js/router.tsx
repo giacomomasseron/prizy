@@ -11,7 +11,7 @@ import TeamsPage from './features/teams/TeamsPage';
 import TeamDetailPage from './features/teams/TeamDetailPage';
 import ProjectsPage from './features/projects/ProjectsPage';
 import ProjectDetailPage from './features/projects/ProjectDetailPage';
-import LabelsPage from './features/labels/LabelsPage';
+import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import SearchPage from './features/search/SearchPage';
@@ -50,7 +50,7 @@ export default function AppRouter() {
                 <Route path="/teams/:id" element={<TeamDetailPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                <Route path="/labels" element={<LabelsPage />} />
+                <Route path="/labels" element={<Navigate to="/settings/labels" replace />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsLayout />}>
@@ -58,6 +58,7 @@ export default function AppRouter() {
                     <Route path="members" element={<RequireManage><MembersPage /></RequireManage>} />
                     <Route path="teams" element={<RequireManage><TeamsSettingsPage /></RequireManage>} />
                     <Route path="general" element={<GeneralPage />} />
+                    <Route path="labels" element={<LabelsSettingsPage />} />
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />
                 </Route>
