@@ -10,7 +10,7 @@ function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { statu
 const PROJECT: Project = { id: 'p1', name: 'Escalation Engine', description: 'Handles escalations automatically.', icon: null, color: '#6d69f2', status: 'in_progress', team_id: null, start_date: '2026-01-01', target_date: '2026-12-31', lead_id: 'u1', priority: 'high', created_by: 'u1', created_at: '2026-01-01T00:00:00.000000Z', updated_at: '2026-01-01T00:00:00.000000Z', lead: { id: 'u1', name: 'Alice Smith' }, issue_count: 4, progress: 50 };
 const MILESTONES: Milestone[] = [
     { id: 'm1', project_id: 'p1', name: 'Beta Launch', target_date: '2026-01-15', created_at: '', updated_at: '' },
-    { id: 'm2', project_id: 'p1', name: 'GA Release', target_date: '2026-12-31', created_at: '', updated_at: '' },
+    { id: 'm2', project_id: 'p1', name: 'GA Release', target_date: '2099-12-31', created_at: '', updated_at: '' },
 ];
 const ISSUES: Issue[] = [
     { id: 'i1', title: 'Issue 1', description: null, status: 'done', priority: 'medium', estimate: null, due_date: null, sort_order: 0, team_id: 't1', project_id: 'p1', cycle_id: null, parent_issue_id: null, assignee_id: 'u1', created_by: 'u1', archived_at: null, created_at: '', updated_at: '', assignee: { id: 'u1', name: 'Alice Smith' } },
