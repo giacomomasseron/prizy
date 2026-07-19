@@ -10,8 +10,12 @@ test('project detail: hero + progress + grouped issues render', async ({ page })
     // URL must match /projects/<uuid>
     await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+/);
 
-    // Progress card must be visible
+    // Progress card must be visible on the Overview tab
     await expect(page.getByText('Progress', { exact: true })).toBeVisible();
+
+    // Navigate to the Issues sub-tab via the project sidebar (accessible name has a trailing count)
+    await page.getByRole('link', { name: /^Issues/ }).click();
+    await expect(page).toHaveURL(/\/projects\/[0-9a-f-]+\/issues/);
 
     // Issues section heading
     await expect(page.getByRole('heading', { name: 'Issues' })).toBeVisible();
