@@ -18,7 +18,7 @@ function makeMe(adminLevel = 'member') {
     };
 }
 
-function renderLayout(adminLevel = 'member') {
+function renderLayout(adminLevel = 'member', path = '/') {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     // Stub fetch: /me → user, /unread-count → 0
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
@@ -30,13 +30,14 @@ function renderLayout(adminLevel = 'member') {
         if ((url as string).includes('/unread-count')) return j({ data: { count: 0 } });
         if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });
         if ((url as string).includes('/teams')) return j({ items: [], next: null });
+        if (/\/projects\/p1(\?|$)/.test(url as string)) return j({ data: { id: 'p1', name: 'Escalation Engine', color: '#6d69f2', status: 'in_progress', description: null, icon: null, team_id: null, start_date: null, target_date: null, lead_id: null, priority: 'high', created_by: 'u1', created_at: '', updated_at: '' } });
         if ((url as string).includes('/projects')) return j({ items: [], next: null });
         if ((url as string).includes('/issues')) return j({ data: [], links: { next: null } });
         return j({ data: {} });
     }));
     return render(
         <QueryClientProvider client={qc}>
-            <MemoryRouter>
+            <MemoryRouter initialEntries={[path]}>
                 <AppLayout />
             </MemoryRouter>
         </QueryClientProvider>,
@@ -171,5 +172,18 @@ describe('AppLayout C-hotkey', () => {
         await waitFor(() =>
             expect(screen.getAllByLabelText(/Issue title/i)).toHaveLength(1),
         );
+    });
+});
+
+describe('AppLayout project sidebar swap', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it('shows the project sidebar (not the global nav) on a project route', async () => {
+        renderLayout('member', '/projects/p1/issues');
+        expect(await screen.findByRole('link', { name: /All projects/ })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Teams' })).toBeNull(); // global nav hidden
+    });
+    it('shows the global nav on a non-project route', () => {
+        renderLayout('member', '/');
+        expect(screen.getByRole('link', { name: 'Teams' })).toBeInTheDocument();
     });
 });

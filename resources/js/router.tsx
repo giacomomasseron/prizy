@@ -10,7 +10,11 @@ import IssueDetailPage from './features/issues/IssueDetailPage';
 import TeamsPage from './features/teams/TeamsPage';
 import TeamDetailPage from './features/teams/TeamDetailPage';
 import ProjectsPage from './features/projects/ProjectsPage';
-import ProjectDetailPage from './features/projects/ProjectDetailPage';
+import ProjectWorkspace from './features/projects/ProjectWorkspace';
+import ProjectOverview from './features/projects/ProjectOverview';
+import ProjectIssues from './features/projects/ProjectIssues';
+import ProjectCycles from './features/projects/ProjectCycles';
+import ProjectRoadmap from './features/projects/ProjectRoadmap';
 import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
@@ -52,7 +56,12 @@ export default function AppRouter() {
                 <Route path="/teams" element={<TeamsPage />} />
                 <Route path="/teams/:id" element={<TeamDetailPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                <Route path="/projects/:id" element={<ProjectWorkspace />}>
+                    <Route index element={<ProjectOverview />} />
+                    <Route path="issues" element={<ProjectIssues />} />
+                    <Route path="cycles" element={<ProjectCycles />} />
+                    <Route path="roadmap" element={<ProjectRoadmap />} />
+                </Route>
                 <Route path="/labels" element={<Navigate to="/settings/labels" replace />} />
                 <Route path="/roadmap" element={<RoadmapPage />} />
                 <Route path="/notifications" element={<NotificationsPage />} />

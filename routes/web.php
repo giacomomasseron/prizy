@@ -20,6 +20,7 @@ Route::view('/teams', 'app');
 Route::view('/teams/{team}', 'app');
 Route::view('/projects', 'app');
 Route::view('/projects/{project}', 'app');
+Route::view('/projects/{project}/{view}', 'app');
 Route::view('/labels', 'app');
 Route::view('/roadmap', 'app');
 Route::view('/notifications', 'app');

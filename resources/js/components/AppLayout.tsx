@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useMatch } from 'react-router-dom';
 import { useUnreadCount } from '../features/notifications/hooks';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 import CommandPalette from '../features/search/CommandPalette';
@@ -9,6 +9,7 @@ import { PeekDrawer } from '../features/issues/PeekDrawer';
 import { CreateIssueDrawer } from '../features/issues/CreateIssueDrawer';
 import { Kbd } from './ui/Kbd';
 import { SidebarFooter } from './SidebarFooter';
+import { ProjectSidebar } from '../features/projects/ProjectSidebar';
 
 // Nav item row style — mirroring the mockup navCss helper
 function navItemStyle(active: boolean): React.CSSProperties {
@@ -128,6 +129,8 @@ export default function AppLayout() {
         window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true }));
     }
 
+    const projectMatch = useMatch('/projects/:id/*');
+
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden' }} className="bg-bg text-fg">
             {/* ── Sidebar ── */}
@@ -142,6 +145,10 @@ export default function AppLayout() {
                     overflow: 'hidden',
                 }}
             >
+                {projectMatch ? (
+                    <ProjectSidebar projectId={projectMatch.params.id!} />
+                ) : (
+                    <>
                 {/* 1. Workspace header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 12px 11px' }}>
                     <div
@@ -294,6 +301,8 @@ export default function AppLayout() {
 
                 {/* 6. User footer */}
                 <SidebarFooter />
+                    </>
+                )}
             </aside>
 
             {/* ── Main content ── */}
