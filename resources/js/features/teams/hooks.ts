@@ -2,10 +2,11 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { Cycle, Team } from '../../lib/types';
 
-export function useTeams(options?: { enabled?: boolean }) {
+export function useTeams(options?: { enabled?: boolean; mine?: boolean }) {
+    const mine = options?.mine ?? false;
     return useQuery({
-        queryKey: ['teams'],
-        queryFn: () => api.page<Team>('/teams'),
+        queryKey: mine ? ['teams', { mine: true }] : ['teams'],
+        queryFn: () => api.page<Team>(mine ? '/teams?mine=1' : '/teams'),
         enabled: options?.enabled ?? true,
     });
 }
