@@ -15,6 +15,14 @@ function renderLogin() {
     );
 }
 
+it('renders the redesigned login (Sign in button + Request access link + fields)', () => {
+    renderLogin();
+    expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Request access/i })).toBeInTheDocument();
+    expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
+});
+
 it('shows a field error when login returns 422', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: false, status: 422,
@@ -25,7 +33,7 @@ it('shows a field error when login returns 422', async () => {
     renderLogin();
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'a@b.com' } });
     fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'x' } });
-    fireEvent.click(screen.getByRole('button', { name: /log in/i }));
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
 
     await waitFor(() => expect(screen.getByText(/do not match/i)).toBeInTheDocument());
 });

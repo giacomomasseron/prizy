@@ -36,3 +36,18 @@ html, body { background: var(--bg); color: var(--fg); }
 @keyframes prizy-fade  { from { opacity: 0 }                              to { opacity: 1 } }
 @keyframes prizy-slide { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes prizy-pop   { from { transform: scale(.97) translateY(6px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+/* ── Login page (additive; no token changes) ── */
+@keyframes login-fade   { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes login-drift  { 0% { transform: translate(0,0) scale(1) } 50% { transform: translate(28px,-22px) scale(1.08) } 100% { transform: translate(0,0) scale(1) } }
+@keyframes login-drift2 { 0% { transform: translate(0,0) scale(1) } 50% { transform: translate(-24px,18px) scale(1.12) } 100% { transform: translate(0,0) scale(1) } }
+@keyframes login-grid   { from { background-position: 0 0 } to { background-position: 44px 44px } }
+@keyframes login-row    { 0%,100% { opacity: .28 } 50% { opacity: 1 } }
+.login-fade  { animation: login-fade .5s ease both; }
+.login-grid  { animation: login-grid 9s linear infinite; }
+.login-orb1  { animation: login-drift 13s ease-in-out infinite; }
+.login-orb2  { animation: login-drift2 16s ease-in-out infinite; }
+.login-row   { animation: login-row 3.4s ease-in-out infinite; }
+.login-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent2); }
+.login-submit:hover:not(:disabled) { filter: brightness(1.08); }
+@media (max-width: 900px) { .login-aside { display: none; } }
