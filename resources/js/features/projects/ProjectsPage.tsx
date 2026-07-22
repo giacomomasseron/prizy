@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, useDeleteProject } from './hooks';
 import { useMe } from '../../auth/useAuth';
 import { PROJECT_STATUS } from './projectStatus';
@@ -19,9 +19,11 @@ const COL = 'minmax(180px,1fr) 150px 160px 180px 90px 54px 22px';
 
 export default function ProjectsPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const teamId = searchParams.get('team_id') ?? undefined;
     const me = useMe();
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
-    const projects = useProjects();
+    const projects = useProjects(teamId ? { team_id: teamId } : undefined);
     const del = useDeleteProject();
     const confirm = useConfirm();
     const [error, setError] = useState<string | null>(null);

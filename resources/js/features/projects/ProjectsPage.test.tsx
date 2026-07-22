@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ProjectsPage from './ProjectsPage';
 import type { Project } from '../../lib/types';
@@ -190,5 +190,15 @@ describe('ProjectsPage', () => {
     it('row delete × is visible for a developer', async () => {
         renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })]);
         expect(await screen.findByRole('button', { name: /Delete Alpha Project/i })).toBeInTheDocument();
+    });
+
+    it('passes the URL team_id through to the projects query', async () => {
+        const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        vi.stubGlobal('fetch', fetchMock);
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/projects?team_id=t1']}><Routes><Route path="/projects" element={<ProjectsPage />} /></Routes></MemoryRouter></QueryClientProvider>);
+        await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+        const calledProjects = fetchMock.mock.calls.map((c) => c[0] as string).find((u) => u.includes('/projects'));
+        expect(calledProjects).toMatch(/filter(\[|%5B)team_id/);
     });
 });
