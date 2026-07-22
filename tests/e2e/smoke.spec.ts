@@ -9,7 +9,7 @@ test('login, create an issue, and move its card across the board', async ({ page
     await page.goto('/login');
     await page.getByLabel(/email/i).fill('smoke@example.com');
     await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
+    await page.getByRole('button', { name: /sign in/i }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
 
     // 2. Create an issue via the drawer (C hotkey opens it).

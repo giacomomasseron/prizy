@@ -30,7 +30,7 @@ export default async function globalSetup() {
     await page.goto('http://smoke.localhost:8001/login');
     await page.getByLabel(/email/i).fill('smoke@example.com');
     await page.getByLabel(/password/i).fill('password123');
-    await page.getByRole('button', { name: /log in/i }).click();
+    await page.getByRole('button', { name: /sign in/i }).click();
     await page.waitForURL('http://smoke.localhost:8001/');
 
     await context.storageState({ path: path.join(authDir, 'smoke.json') });
