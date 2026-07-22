@@ -31,8 +31,9 @@ final class TeamController extends Controller
     public function index(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
+        $memberUserId = $request->boolean('mine') ? $request->user()->id : null;
 
-        return TeamResource::collection($this->listTeams->handle($limit))->response();
+        return TeamResource::collection($this->listTeams->handle($limit, $memberUserId))->response();
     }
 
     public function show(Request $request, string $team): JsonResponse

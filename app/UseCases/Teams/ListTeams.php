@@ -11,8 +11,8 @@ final class ListTeams
 {
     public function __construct(private readonly TeamRepository $teams) {}
 
-    public function handle(int $limit): CursorPaginator
+    public function handle(int $limit, ?string $memberUserId = null): CursorPaginator
     {
-        return $this->teams->paginate($limit);
+        return $this->teams->paginate($limit, $memberUserId);
     }
 }

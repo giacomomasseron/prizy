@@ -37,9 +37,10 @@ final class TeamRepository
         return Team::find($id);
     }
 
-    public function paginate(int $limit): CursorPaginator
+    public function paginate(int $limit, ?string $memberUserId = null): CursorPaginator
     {
         return Team::query()
+            ->when($memberUserId !== null, fn ($q) => $q->whereHas('teamMembers', fn ($m) => $m->where('user_id', $memberUserId)))
             ->withCount('teamMembers as member_count')
             ->with('leadMembership.user')
             ->orderBy('name')

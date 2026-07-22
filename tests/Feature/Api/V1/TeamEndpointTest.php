@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -81,6 +82,23 @@ it('refuses to delete a team that still has issues (422)', function (): void {
 
     $this->withToken($token)->deleteJson("/v1/teams/{$team->id}")->assertStatus(422);
     $this->assertDatabaseHas('teams', ['id' => $team->id, 'deleted_at' => null]);
+
+    Workspace::forgetCurrent();
+});
+
+it('filters teams to the actor with ?mine=1', function (): void {
+    [$token, $ws] = teamWorld(['admin_level' => 'member', 'is_developer' => true]);
+    $me = User::where('email_verified_at', '!=', null)->firstWhere('workspace_id', $ws->id);
+
+    $mine  = Team::factory()->for($ws, 'workspace')->create(['name' => 'Mine', 'identifier' => 'MIN']);
+    $other = Team::factory()->for($ws, 'workspace')->create(['name' => 'Other', 'identifier' => 'OTH']);
+    DB::table('team_members')->insert(['team_id' => $mine->id, 'user_id' => $me->id, 'role' => 'member']);
+
+    // Unfiltered → both teams
+    $this->withToken($token)->getJson('/v1/teams')->assertStatus(200)->assertJsonCount(2, 'data');
+    // ?mine=1 → only the team the actor belongs to
+    $res = $this->withToken($token)->getJson('/v1/teams?mine=1')->assertStatus(200)->assertJsonCount(1, 'data');
+    expect($res->json('data.0.name'))->toBe('Mine');
 
     Workspace::forgetCurrent();
 });
