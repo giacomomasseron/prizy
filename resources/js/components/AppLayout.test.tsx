@@ -29,7 +29,7 @@ function renderLayout(adminLevel = 'member', path = '/') {
         if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel) });
         if ((url as string).includes('/unread-count')) return j({ data: { count: 0 } });
         if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });
-        if ((url as string).includes('/teams')) return j({ items: [], next: null });
+        if ((url as string).includes('/teams')) return j({ data: [], links: { next: null } });
         if (/\/projects\/p1(\?|$)/.test(url as string)) return j({ data: { id: 'p1', name: 'Escalation Engine', color: '#6d69f2', status: 'in_progress', description: null, icon: null, team_id: null, start_date: null, target_date: null, lead_id: null, priority: 'high', created_by: 'u1', created_at: '', updated_at: '' } });
         if ((url as string).includes('/projects')) return j({ items: [], next: null });
         if ((url as string).includes('/issues')) return j({ data: [], links: { next: null } });
@@ -45,15 +45,22 @@ function renderLayout(adminLevel = 'member', path = '/') {
 }
 
 describe('AppLayout sidebar', () => {
+    beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
     afterEach(() => vi.unstubAllGlobals());
 
-    it('renders primary nav links (no Board, no Cycles)', () => {
+    it('renders the redesigned sidebar sections', async () => {
         renderLayout();
-        for (const label of ['Issues', 'Projects', 'Roadmap', 'Teams']) {
-            expect(screen.getByRole('link', { name: label })).toBeInTheDocument();
-        }
-        expect(screen.queryByRole('link', { name: 'Board' })).toBeNull();
-        expect(screen.queryByRole('link', { name: 'Cycles' })).toBeNull();
+        expect(await screen.findByText('Workspace')).toBeInTheDocument();
+        expect(screen.getByText('My Teams')).toBeInTheDocument();
+        expect(screen.getByText('Support bridge')).toBeInTheDocument();
+    });
+
+    it('collapses the sidebar and shows a re-open control', async () => {
+        const user = userEvent.setup();
+        renderLayout();
+        await user.click(await screen.findByRole('button', { name: 'Collapse sidebar' }));
+        expect(screen.queryByText('Workspace')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
     });
 
     it('renders workspace name "Prizy"', () => {
@@ -101,6 +108,7 @@ describe('AppLayout sidebar', () => {
 });
 
 describe('AppLayout C-hotkey', () => {
+    beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
     afterEach(() => vi.unstubAllGlobals());
 
     // The create drawer contains aria-label="Issue title" (the title input).
@@ -176,14 +184,15 @@ describe('AppLayout C-hotkey', () => {
 });
 
 describe('AppLayout project sidebar swap', () => {
+    beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
     afterEach(() => vi.unstubAllGlobals());
-    it('shows the project sidebar (not the global nav) on a project route', async () => {
+    it('shows the project sidebar (not the global one) on a project route', async () => {
         renderLayout('member', '/projects/p1/issues');
         expect(await screen.findByRole('link', { name: /All projects/ })).toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: 'Teams' })).toBeNull(); // global nav hidden
+        expect(screen.queryByText('My Teams')).toBeNull(); // global nav hidden
     });
-    it('shows the global nav on a non-project route', () => {
+    it('shows the global nav on a non-project route', async () => {
         renderLayout('member', '/');
-        expect(screen.getByRole('link', { name: 'Teams' })).toBeInTheDocument();
+        expect(await screen.findByText('My Teams')).toBeInTheDocument();
     });
 });
