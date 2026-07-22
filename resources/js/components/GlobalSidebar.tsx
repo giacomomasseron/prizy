@@ -72,7 +72,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
                     </NavLink>
                     <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...rowStyle(false), opacity: 0.5, cursor: 'default' }}>
-                        <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
+                        <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
                         <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Soon</span>
                     </button>
                     <div style={{ ...rowStyle(false), opacity: 0.55, cursor: 'default' }}>
@@ -84,14 +84,14 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                 {/* Inbox (preserved — mockup omits it, we keep notifications reachable) */}
                 <div style={{ padding: '8px 8px 0' }}>
                     <NavLink to="/notifications" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')} aria-label="Inbox">
-                        <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>✉</span><span style={{ flex: 1 }}>Inbox</span>
+                        <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>✉</span><span style={{ flex: 1 }}>Inbox</span>
                         {unreadCount > 0 && <span data-testid="inbox-badge" style={{ fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
                     </NavLink>
                 </div>
 
                 {/* Workspace */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
-                    <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
+                    <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} aria-expanded={workspaceOpen} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
                 </div>
                 {workspaceOpen && (
                     <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
@@ -104,14 +104,14 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                             <span style={{ flex: 1 }}>Projects</span>
                         </NavLink>
                         <NavLink to="/roadmap" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
-                            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
+                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
                         </NavLink>
                     </nav>
                 )}
 
                 {/* My Teams */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
-                    <button type="button" onClick={() => setTeamsOpen((o) => !o)} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
+                    <button type="button" onClick={() => setTeamsOpen((o) => !o)} aria-expanded={teamsOpen} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
                     {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 22, height: 22, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
                 </div>
                 {teamsOpen && (
@@ -120,7 +120,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                             const expanded = !!teamExp[t.id];
                             return (
                                 <div key={t.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} style={rowStyle(false)} className="hover:bg-hover">
+                                    <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={expanded} style={rowStyle(false)} className="hover:bg-hover">
                                         <span aria-hidden="true" style={{ width: 12, ...caret(expanded), justifyContent: 'center', display: 'inline-flex' }}>▶</span>
                                         <span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: t.color, display: 'inline-block' }} /></span>
                                         <span style={{ flex: 1, textAlign: 'left' }}>{t.name}</span>
@@ -128,9 +128,9 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                                     </button>
                                     {expanded && (
                                         <div data-testid={`team-links-${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 20 }}>
-                                            <Link to={`/?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
-                                            <Link to={`/teams/${t.id}/cycles`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
-                                            <Link to={`/projects?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
+                                            <Link to={`/?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
+                                            <Link to={`/teams/${t.id}/cycles`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
+                                            <Link to={`/projects?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
                                         </div>
                                     )}
                                 </div>
