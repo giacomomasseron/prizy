@@ -18,6 +18,7 @@ Route::view('/board', 'app');
 Route::view('/issues/{issue}', 'app');
 Route::view('/teams', 'app');
 Route::view('/teams/{team}', 'app');
+Route::view('/teams/{team}/cycles', 'app');
 Route::view('/projects', 'app');
 Route::view('/projects/{project}', 'app');
 Route::view('/projects/{project}/{view}', 'app');

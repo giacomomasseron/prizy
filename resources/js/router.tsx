@@ -9,6 +9,7 @@ import BoardPage from './features/issues/BoardPage';
 import IssueDetailPage from './features/issues/IssueDetailPage';
 import TeamsPage from './features/teams/TeamsPage';
 import TeamDetailPage from './features/teams/TeamDetailPage';
+import CyclesPage from './features/cycles/CyclesPage';
 import ProjectsPage from './features/projects/ProjectsPage';
 import ProjectWorkspace from './features/projects/ProjectWorkspace';
 import ProjectOverview from './features/projects/ProjectOverview';
@@ -55,6 +56,7 @@ export default function AppRouter() {
                 <Route path="/issues/:id" element={<IssueDetailPage />} />
                 <Route path="/teams" element={<TeamsPage />} />
                 <Route path="/teams/:id" element={<TeamDetailPage />} />
+                <Route path="/teams/:id/cycles" element={<CyclesPage />} />
                 <Route path="/projects" element={<ProjectsPage />} />
                 <Route path="/projects/:id" element={<ProjectWorkspace />}>
                     <Route index element={<ProjectOverview />} />
