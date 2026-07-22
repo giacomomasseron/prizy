@@ -8,6 +8,7 @@ use App\Models\Issue;
 use App\Models\Team;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 final class TeamRepository
@@ -69,5 +70,10 @@ final class TeamRepository
     public function delete(Team $team): void
     {
         $team->delete();
+    }
+
+    public function addMember(string $teamId, string $userId, string $role): void
+    {
+        DB::table('team_members')->insert(['team_id' => $teamId, 'user_id' => $userId, 'role' => $role]);
     }
 }

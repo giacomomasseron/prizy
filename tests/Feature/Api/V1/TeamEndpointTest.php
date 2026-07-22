@@ -102,3 +102,18 @@ it('filters teams to the actor with ?mine=1', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('auto-adds the creator as lead member so the team shows up under ?mine=1', function (): void {
+    [$token] = teamWorld(['admin_level' => 'admin']);
+
+    $created = $this->withToken($token)->postJson('/v1/teams', ['name' => 'Design', 'identifier' => 'DSN']);
+    $created->assertStatus(201);
+    $id = $created->json('data.id');
+
+    $this->assertDatabaseHas('team_members', ['team_id' => $id, 'role' => 'lead']);
+
+    $res = $this->withToken($token)->getJson('/v1/teams?mine=1')->assertStatus(200)->assertJsonCount(1, 'data');
+    expect($res->json('data.0.id'))->toBe($id);
+
+    Workspace::forgetCurrent();
+});

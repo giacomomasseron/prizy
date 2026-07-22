@@ -11,6 +11,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 
@@ -59,6 +60,17 @@ final class SmokeSeeder extends Seeder
                 'email_verified_at' => now(),
             ]);
         $member->forceFill(['admin_level' => 'member', 'is_developer' => true, 'is_agent' => false])->save();
+
+        // The team was `forceCreate`d above (bypassing CreateTeam), so ensure
+        // membership explicitly: owner as lead, member as member. Idempotent.
+        DB::table('team_members')->updateOrInsert(
+            ['team_id' => $team->id, 'user_id' => $user->id],
+            ['role' => 'lead'],
+        );
+        DB::table('team_members')->updateOrInsert(
+            ['team_id' => $team->id, 'user_id' => $member->id],
+            ['role' => 'member'],
+        );
 
         if (Issue::doesntExist()) {
             Issue::forceCreate([
