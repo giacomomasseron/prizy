@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useLogout, useMe } from '../auth/useAuth';
 import { Avatar } from './ui/Avatar';
 import { Menu } from './ui/Menu';
@@ -47,6 +47,7 @@ export function SidebarFooter() {
                 }
                 items={userMenuItems}
             />
+            <Link to="/settings" title="Settings" aria-label="Settings" style={{ color: 'var(--fg2)', width: 28, height: 28, borderRadius: 7, fontSize: 15, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">⚙</Link>
             <ThemeToggle />
         </div>
     );

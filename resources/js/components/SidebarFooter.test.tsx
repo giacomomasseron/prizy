@@ -35,4 +35,8 @@ describe('SidebarFooter', () => {
         renderFooter();
         expect(screen.getByRole('button', { name: /switch to/i })).toBeInTheDocument();
     });
+    it('shows a Settings gear link', () => {
+        renderFooter();
+        expect(screen.getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/settings');
+    });
 });
