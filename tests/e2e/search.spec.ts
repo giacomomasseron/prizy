@@ -5,8 +5,13 @@ test('advanced search: palette footer → filter → save view', async ({ page }
     const viewName = `E2E view ${Date.now()}`;
 
     // Navigate to home and wait for the app shell to mount (so the Ctrl+K listener is registered).
+    // The redesigned GlobalSidebar has no top-level "Search" nav link — search is
+    // the sidebar header's "⌕" icon button (aria-label="Search", exact accessible
+    // name "Search"), not a link. exact:true disambiguates it from the Issues
+    // list page's own "⌕ Search ⌘K" button (IssuesHeader), whose accessible name
+    // also contains "Search" as a substring.
     await page.goto('/');
-    await expect(page.getByRole('link', { name: 'Search' })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeVisible({ timeout: 15_000 });
 
     // Open the command palette and navigate to Advanced search.
     await page.keyboard.press('Control+k');
