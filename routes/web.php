@@ -12,7 +12,10 @@ use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
 Route::view('/', 'app');
-Route::view('/login', 'app');
+// Login must stay reachable even with a stale/mismatched session (that's exactly
+// when you need it) — exempt it from EnsureValidTenantSession (keep NeedsTenant so
+// the workspace still resolves; the login handler regenerates the session anyway).
+Route::view('/login', 'app')->withoutMiddleware([EnsureValidTenantSession::class]);
 Route::view('/signup', 'app')->withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class]);
 Route::view('/board', 'app');
 Route::view('/issues/{issue}', 'app');
@@ -70,7 +73,9 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
 // "Forgot password" reuses this same endpoint (no separate flow needed).
 Route::post('/magic-link', [MagicLinkController::class, 'request'])->middleware(['throttle:6,1']);
 
-Route::post('/login', [LoginController::class, 'store'])->middleware(['throttle:10,1']);
+Route::post('/login', [LoginController::class, 'store'])
+    ->middleware(['throttle:10,1'])
+    ->withoutMiddleware([EnsureValidTenantSession::class]);
 Route::post('/logout', [LoginController::class, 'destroy']);
 
 // Resend verification email (tenant, authenticated, throttled).
