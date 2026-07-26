@@ -11,6 +11,10 @@ const tickets: TicketListItem[] = [
 
 vi.mock('./hooks', () => ({
     useTickets: () => ({ data: tickets, isLoading: false, isError: false }),
+    useTicket: (id: string) => {
+        const found = tickets.find((t) => t.id === id);
+        return { data: found ? { ...found, messages: [], requester_history: [] } : undefined, isLoading: false };
+    },
 }));
 vi.mock('../../auth/useAuth', () => ({
     useMe: () => ({ data: { id: 'u1', workspace_id: 'w1', name: 'Me', email: 'me@example.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off' } }),
