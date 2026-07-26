@@ -27,6 +27,8 @@ import MembersPage from './features/members/MembersPage';
 import TeamsSettingsPage from './features/teams/TeamsSettingsPage';
 import GeneralPage from './features/settings/GeneralPage';
 import { ConfirmProvider } from './components/ui/ConfirmProvider';
+import SupportLayout from './features/support/SupportLayout';
+import { RequireAgent } from './auth/RequireAgent';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -80,6 +82,8 @@ export default function AppRouter() {
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
                 <Route path="/create" element={<CreateScreen />} />
+                <Route path="/support" element={<RequireAgent><SupportLayout /></RequireAgent>} />
+                <Route path="/support/tickets/:id" element={<RequireAgent><SupportLayout /></RequireAgent>} />
             </Route>
         </Routes>
     );

@@ -71,6 +71,12 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
                         <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
                     </NavLink>
+                    {me.data?.is_agent && (
+                        <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◫</span>
+                            <span style={{ flex: 1 }}>Support desk</span>
+                        </NavLink>
+                    )}
                     <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...rowStyle(false), opacity: 0.5, cursor: 'default' }}>
                         <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
                         <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Soon</span>

@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalSidebar } from './GlobalSidebar';
 
 function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
-function renderSidebar(adminLevel = 'owner') {
+function renderSidebar(adminLevel = 'owner', isAgent = false) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/members')) return j({ data: [] });
-        if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: false, email_digest_frequency: 'off' } });
+        if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off' } });
         if (url.includes('/unread-count')) return j({ data: { count: 0 } });
         if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', member_count: 3, created_at: '', updated_at: '' }], links: { next: null } });
         if (url.includes('/issues')) return j({ data: [], links: { next: null } });
@@ -71,5 +71,14 @@ describe('GlobalSidebar', () => {
         renderSidebar('member');
         await screen.findByText('My Teams');
         expect(screen.queryByRole('link', { name: 'New team' })).toBeNull();
+    });
+    it('hides the Support desk link for non-agents', async () => {
+        renderSidebar('owner', false);
+        expect(await screen.findByText('Support bridge')).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Support desk/ })).toBeNull();
+    });
+    it('shows the Support desk link for agents, linking to /support', async () => {
+        renderSidebar('member', true);
+        expect(await screen.findByRole('link', { name: /Support desk/ })).toHaveAttribute('href', '/support');
     });
 });
