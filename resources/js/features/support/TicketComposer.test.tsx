@@ -73,4 +73,27 @@ describe('TicketComposer', () => {
         fireEvent.click(screen.getByRole('button', { name: /Submit as/ }));
         expect(await screen.findByText('Body is required')).toBeInTheDocument();
     });
+
+    it('clears the draft after a successful public reply (even with trailing whitespace)', async () => {
+        render(<TicketComposer ticket={ticket({ status: 'open' })} />);
+        const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+        fireEvent.change(box, { target: { value: 'All done here\n' } }); // trailing newline guards the trim comparison
+        fireEvent.click(screen.getByRole('button', { name: 'Submit as Pending' }));
+        await vi.waitFor(() => expect(box.value).toBe(''));
+    });
+
+    it('does not wipe a note typed while the reply request is still in flight', async () => {
+        let resolvePost: (() => void) | undefined;
+        postMutateAsync.mockImplementation(() => new Promise<void>((r) => { resolvePost = () => r(); }));
+        render(<TicketComposer ticket={ticket({ status: 'open' })} />);
+        const box = screen.getByRole('textbox') as HTMLTextAreaElement;
+        fireEvent.change(box, { target: { value: 'public reply' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Submit as Pending' }));
+        // agent switches to the note tab and types before the reply resolves
+        fireEvent.click(screen.getByRole('button', { name: 'Internal note' }));
+        fireEvent.change(box, { target: { value: 'a fresh note' } });
+        resolvePost!();
+        await vi.waitFor(() => expect(postMutateAsync).toHaveBeenCalled());
+        expect(box.value).toBe('a fresh note'); // the in-flight success must not clear the new draft
+    });
 });
