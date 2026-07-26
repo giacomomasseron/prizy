@@ -53,8 +53,8 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
         <div style={{ flexShrink: 0, borderTop: `1px solid var(--border)`, background: 'var(--panel)', padding: '12px 20px' }}>
             <div style={{ maxWidth: 760, margin: '0 auto' }}>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                    <button type="button" style={tabStyle(!isNote, 'var(--sup)')} onClick={() => setTab('public')}>Public reply</button>
-                    <button type="button" style={tabStyle(isNote, 'var(--note)')} onClick={() => setTab('note')}>Internal note</button>
+                    <button type="button" style={tabStyle(!isNote, 'var(--sup)')} onClick={() => { setTab('public'); setError(null); }}>Public reply</button>
+                    <button type="button" style={tabStyle(isNote, 'var(--note)')} onClick={() => { setTab('note'); setError(null); }}>Internal note</button>
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
@@ -81,6 +81,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         placeholder={isNote ? 'Write an internal note…' : 'Write a reply…'}
+                        aria-label={isNote ? 'Internal note' : 'Public reply'}
                         rows={3}
                         style={{ width: '100%', resize: 'vertical', border: 'none', outline: 'none', background: 'transparent', color: 'var(--fg)', fontSize: 13.2, lineHeight: 1.6, padding: '12px 14px', fontFamily: 'inherit', boxSizing: 'border-box' }}
                     />

@@ -26,7 +26,7 @@ export function useChangeTicketStatus(ticketId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (status: TicketStatus) =>
-            api.patch<TicketDetail>(`/tickets/${ticketId}`, { status }),
+            api.patch<TicketListItem>(`/tickets/${ticketId}`, { status }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
             qc.invalidateQueries({ queryKey: ['tickets'] });
