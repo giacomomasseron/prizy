@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\SlackIntegrationController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Controllers\Api\V1\TicketController;
+use App\Http\Controllers\Api\V1\TicketMessageController;
 use App\Http\Controllers\Api\V1\WorkspaceMemberController;
 use App\Http\Controllers\GithubWebhookController;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -102,6 +103,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/tickets', [TicketController::class, 'index']);
         Route::get('/tickets/{ticket}', [TicketController::class, 'show']);
+        Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store']);
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
