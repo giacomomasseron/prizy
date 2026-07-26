@@ -140,3 +140,94 @@ it('forbids an unverified agent from posting a message (403)', function (): void
 
     Workspace::forgetCurrent();
 });
+
+it('transitions status open→pending without setting resolved_at', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true]);
+    $ticket = seedWriteTicket($ws, ['status' => 'open']);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'pending'])
+        ->assertStatus(200)
+        ->assertJsonPath('data.status', 'pending');
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('pending');
+    expect($ticket->resolved_at)->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('sets resolved_at when moving to solved and clears it when reopening', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true]);
+    $ticket = seedWriteTicket($ws, ['status' => 'open']);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertStatus(200);
+    $ticket->refresh();
+    expect($ticket->resolved_at)->not->toBeNull();
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'open'])->assertStatus(200);
+    $ticket->refresh();
+    expect($ticket->resolved_at)->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('sets resolved_at when moving to closed', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true]);
+    $ticket = seedWriteTicket($ws, ['status' => 'pending']);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'closed'])->assertStatus(200);
+    $ticket->refresh();
+    expect($ticket->status)->toBe('closed');
+    expect($ticket->resolved_at)->not->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('rejects an invalid status (422)', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true]);
+    $ticket = seedWriteTicket($ws);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'frozen'])
+        ->assertStatus(422);
+
+    Workspace::forgetCurrent();
+});
+
+it('forbids a non-agent from changing status (403)', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => false, 'admin_level' => 'owner']);
+    $ticket = seedWriteTicket($ws, ['status' => 'open']);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])
+        ->assertStatus(403);
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('open');
+
+    Workspace::forgetCurrent();
+});
+
+it('returns 404 changing status on a ticket in another workspace', function (): void {
+    [$token, $wsA] = ticketWriteWorld(['is_agent' => true]);
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $other = seedWriteTicket($wsB);
+    $wsA->makeCurrent();
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$other->id}", ['status' => 'solved'])
+        ->assertStatus(404);
+
+    Workspace::forgetCurrent();
+});
+
+it('forbids an unverified agent from changing status (403)', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true, 'email_verified_at' => null]);
+    $ticket = seedWriteTicket($ws, ['status' => 'open']);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])
+        ->assertStatus(403);
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('open');
+
+    Workspace::forgetCurrent();
+});
