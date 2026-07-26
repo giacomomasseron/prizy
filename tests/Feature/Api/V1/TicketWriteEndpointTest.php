@@ -130,3 +130,13 @@ it('rejects an empty message body (422)', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('forbids an unverified agent from posting a message (403)', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true, 'email_verified_at' => null]);
+    $ticket = seedWriteTicket($ws);
+
+    $this->withToken($token)->postJson("/v1/tickets/{$ticket->id}/messages", ['body' => 'Hi'])
+        ->assertStatus(403);
+
+    Workspace::forgetCurrent();
+});
