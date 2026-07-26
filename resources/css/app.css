@@ -51,3 +51,8 @@ html, body { background: var(--bg); color: var(--fg); }
 .login-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent2); }
 .login-submit:hover:not(:disabled) { filter: brightness(1.08); }
 @media (max-width: 900px) { .login-aside { display: none; } }
+
+/* ── Support desk (agent workspace) — additive; no base-token changes ── */
+:root {
+  --sup:#3aa76d; --sup2:rgba(58,167,109,.15); --note:#e0a13a; --note2:rgba(224,161,58,.12);
+}
