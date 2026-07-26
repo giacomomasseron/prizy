@@ -101,6 +101,7 @@ Route::prefix('v1')->group(function (): void {
             ->middleware(['verified', 'can:viewWorkspaceMembers,App\\Models\\User']);
 
         Route::get('/tickets', [TicketController::class, 'index']);
+        Route::get('/tickets/{ticket}', [TicketController::class, 'show']);
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
