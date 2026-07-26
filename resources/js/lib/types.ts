@@ -187,3 +187,37 @@ export interface GithubLink {
     title: string | null;
     state: 'open' | 'merged' | 'closed';
 }
+
+export type TicketStatus = 'new' | 'open' | 'pending' | 'on_hold' | 'solved' | 'closed';
+export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
+export type TicketChannel = 'email' | 'chat' | 'portal' | 'api';
+
+export interface TicketListItem {
+    id: string;
+    subject: string;
+    status: TicketStatus;
+    priority: TicketPriority;
+    channel: TicketChannel;
+    requester: { id: string; name: string; email: string; org: string | null; plan: string | null } | null;
+    assignee: { id: string; name: string } | null;
+    tags: { name: string; color: string }[];
+    linked_issues: { id: string; identifier?: string; title: string }[];
+    sla: { policy_name: string | null; breached: boolean };
+    updated_at: string;
+    created_at: string;
+    first_replied_at: string | null;
+    resolved_at: string | null;
+}
+
+export interface TicketMessage {
+    id: string;
+    kind: 'customer' | 'agent' | 'note';
+    sender: { name: string | null };
+    body: string;
+    created_at: string;
+}
+
+export interface TicketDetail extends TicketListItem {
+    messages: TicketMessage[];
+    requester_history: { id: string; subject: string; status: TicketStatus }[];
+}
