@@ -34,7 +34,9 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
         try {
             await post.mutateAsync({ body, internal: isNote });
             if (!isNote) changeStatus.mutate(next);
-            setDraft('');
+            // Only clear the draft if it still holds what we just submitted — the request may
+            // resolve after the user has already switched tabs and started a new message.
+            setDraft((d) => (d === body ? '' : d));
         } catch (e) {
             setError(e instanceof ApiError ? e.detail : 'Something went wrong. Please try again.');
         }
