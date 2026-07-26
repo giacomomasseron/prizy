@@ -130,6 +130,16 @@ class Ticket extends TenantAwareEntity
         return $this->hasMany(TicketTag::class, 'ticket_id', 'id');
     }
 
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'ticket_tags', 'ticket_id', 'tag_id');
+    }
+
+    public function linkedIssues(): BelongsToMany
+    {
+        return $this->belongsToMany(Issue::class, 'issue_ticket_links', 'ticket_id', 'issue_id');
+    }
+
     /**
      * @return BelongsTo<AgentGroup, $this>
      */

@@ -4,35 +4,36 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
-use App\Http\Controllers\GithubWebhookController;
-use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 use App\Http\Controllers\Api\V1\CycleController;
-use App\Http\Controllers\Api\V1\MilestoneController;
+use App\Http\Controllers\Api\V1\GithubIntegrationController;
 use App\Http\Controllers\Api\V1\IssueActivityController;
 use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
 use App\Http\Controllers\Api\V1\IssueController;
-use App\Http\Controllers\Api\V1\IssueLabelController;
 use App\Http\Controllers\Api\V1\IssueGithubLinkController;
+use App\Http\Controllers\Api\V1\IssueLabelController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\LabelController;
+use App\Http\Controllers\Api\V1\MemberController;
+use App\Http\Controllers\Api\V1\MilestoneController;
+use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\RoadmapController;
-use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\SavedViewController;
-use App\Http\Controllers\Api\V1\GithubIntegrationController;
-use App\Http\Controllers\Api\V1\SlackIntegrationController;
 use App\Http\Controllers\Api\V1\SearchController;
-use App\Http\Controllers\Api\V1\MemberController;
-use App\Http\Controllers\Api\V1\WorkspaceMemberController;
+use App\Http\Controllers\Api\V1\SlackIntegrationController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
+use App\Http\Controllers\Api\V1\TicketController;
+use App\Http\Controllers\Api\V1\WorkspaceMemberController;
+use App\Http\Controllers\GithubWebhookController;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
+use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
 /*
 |--------------------------------------------------------------------------
@@ -98,6 +99,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/members/{user}', [WorkspaceMemberController::class, 'destroy'])->middleware('verified');
         Route::delete('/invitations/{invitation}', [WorkspaceMemberController::class, 'destroyInvitation'])
             ->middleware(['verified', 'can:viewWorkspaceMembers,App\\Models\\User']);
+
+        Route::get('/tickets', [TicketController::class, 'index']);
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
