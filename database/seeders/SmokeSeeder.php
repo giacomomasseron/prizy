@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\Contact;
 use App\Models\Issue;
 use App\Models\Notification;
 use App\Models\Project;
 use App\Models\Team;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
@@ -135,6 +137,28 @@ final class SmokeSeeder extends Seeder
                 'type' => 'issue_assigned',
                 'subject_type' => 'issue',
                 'subject_id' => $issue->id,
+            ]);
+        }
+
+        // Make the smoke owner an agent so the /support desk is reachable.
+        $user->forceFill(['is_agent' => true])->save();
+
+        $contact = Contact::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['email', 'grace@northwind.com']])
+            ?? Contact::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'name' => 'Grace Okonkwo', 'email' => 'grace@northwind.com']);
+        DB::table('contact_metadata')->updateOrInsert(['contact_id' => $contact->id, 'key' => 'organization'], ['value' => 'Northwind Traders']);
+        DB::table('contact_metadata')->updateOrInsert(['contact_id' => $contact->id, 'key' => 'plan'], ['value' => 'Enterprise']);
+
+        $ticket = Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Escalated issue shows blank customer profile']])
+            ?? Ticket::forceCreate([
+                'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                'assignee_id' => $user->id, 'subject' => 'Escalated issue shows blank customer profile',
+                'status' => 'open', 'priority' => 'urgent', 'channel' => 'email',
+            ]);
+        if ($ticket->ticketMessages()->count() === 0) {
+            DB::table('ticket_messages')->insert([
+                ['id' => (string) Str::uuid(), 'ticket_id' => $ticket->id, 'sender_type' => 'contact', 'sender_user_id' => null, 'sender_contact_id' => $contact->id, 'body' => 'After escalation the engineering issue shows a blank customer profile.', 'is_internal' => false, 'channel' => 'email', 'created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)],
+                ['id' => (string) Str::uuid(), 'ticket_id' => $ticket->id, 'sender_type' => 'user', 'sender_user_id' => $user->id, 'sender_contact_id' => null, 'body' => 'Thanks Grace — reproduced, escalating to engineering now.', 'is_internal' => false, 'channel' => 'email', 'created_at' => now()->subHours(1), 'updated_at' => now()->subHours(1)],
+                ['id' => (string) Str::uuid(), 'ticket_id' => $ticket->id, 'sender_type' => 'user', 'sender_user_id' => $user->id, 'sender_contact_id' => null, 'body' => 'Internal: same convert path as the attachments bug.', 'is_internal' => true, 'channel' => 'email', 'created_at' => now(), 'updated_at' => now()],
             ]);
         }
 
