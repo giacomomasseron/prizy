@@ -3,8 +3,10 @@ import { Link } from 'react-router-dom';
 import { useTicket } from './hooks';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
-import { TICKET_STATUS, TICKET_CHANNEL } from './ticketMeta';
+import { TICKET_CHANNEL } from './ticketMeta';
 import type { TicketMessage } from '../../lib/types';
+import { TicketComposer } from './TicketComposer';
+import { TicketStatusMenu } from './TicketStatusMenu';
 
 const mainStyle: CSSProperties = { flex: 1, minWidth: 460, display: 'flex', flexDirection: 'column', background: 'var(--bg)' };
 function Empty({ text }: { text: string }) { return <div style={{ margin: 'auto', color: 'var(--fg3)', fontSize: 13 }}>{text}</div>; }
@@ -36,7 +38,6 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
     const t = q.data;
     if (!ticketId) return <main style={mainStyle}><Empty text="Select a ticket" /></main>;
     if (q.isLoading || !t) return <main style={mainStyle}><Empty text="Loading…" /></main>;
-    const st = TICKET_STATUS[t.status];
     const linked = t.linked_issues[0];
     return (
         <main style={mainStyle}>
@@ -48,13 +49,14 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
                     </div>
                 </div>
                 {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 12, fontWeight: 500 }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: st.color }} />{st.label}</span>
+                <TicketStatusMenu ticket={t} />
             </header>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '22px 20px 20px' }}>
                 <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {t.messages.map((m) => <MessageRow key={m.id} m={m} />)}
                 </div>
             </div>
+            <TicketComposer ticket={t} />
         </main>
     );
 }

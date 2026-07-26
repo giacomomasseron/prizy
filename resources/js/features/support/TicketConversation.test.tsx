@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TicketConversation } from './TicketConversation';
 import type { TicketDetail, TicketMessage } from '../../lib/types';
@@ -35,6 +35,8 @@ let isLoading = false;
 
 vi.mock('./hooks', () => ({
     useTicket: () => ({ data: ticketData, isLoading }),
+    usePostTicketMessage: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
+    useChangeTicketStatus: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 
 function renderWithRouter(ticketId: string | undefined) {
@@ -77,20 +79,20 @@ describe('TicketConversation', () => {
         expect(rows[1]).toHaveAttribute('data-kind', 'agent');
         expect(rows[2]).toHaveAttribute('data-kind', 'note');
 
-        expect(screen.getByText('Customer')).toBeInTheDocument();
-        expect(screen.getByText('Agent')).toBeInTheDocument();
-        expect(screen.getByText('Internal note')).toBeInTheDocument();
-        expect(screen.getByText('It is broken')).toBeInTheDocument();
-        expect(screen.getByText('Looking into it')).toBeInTheDocument();
-        expect(screen.getByText('Escalate to eng')).toBeInTheDocument();
+        expect(within(rows[0]).getByText('Customer')).toBeInTheDocument();
+        expect(within(rows[1]).getByText('Agent')).toBeInTheDocument();
+        expect(within(rows[2]).getByText('Internal note')).toBeInTheDocument();
+        expect(within(rows[0]).getByText('It is broken')).toBeInTheDocument();
+        expect(within(rows[1]).getByText('Looking into it')).toBeInTheDocument();
+        expect(within(rows[2]).getByText('Escalate to eng')).toBeInTheDocument();
     });
 
-    it('does not render a composer/textarea (read-only)', () => {
+    it('renders the composer (textarea) below the thread', () => {
         ticketData = ticket({ messages: [msg({})] });
         isLoading = false;
         renderWithRouter('t1');
-        expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
-        expect(document.querySelector('textarea')).not.toBeInTheDocument();
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+        expect(document.querySelector('textarea')).toBeInTheDocument();
     });
 
     it('renders a linked-issue link pointing at /issues/:id', () => {
