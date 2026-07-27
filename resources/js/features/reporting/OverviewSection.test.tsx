@@ -27,4 +27,14 @@ describe('OverviewSection', () => {
         // escalation links to the engineering issue
         expect(screen.getByRole('link', { name: /Escalated one/ })).toHaveAttribute('href', '/issues/issue-9');
     });
+
+    it('renders an escalation with no linked issue as a non-link row', () => {
+        const reportWithoutIssue: OverviewReport = {
+            ...report,
+            escalations: { count: 1, created_total: 3, rate_pct: 33, recent: [{ ticket_id: 't2', subject: 'Unlinked escalation', issue_id: null }] },
+        };
+        render(<MemoryRouter><OverviewSection report={reportWithoutIssue} /></MemoryRouter>);
+        expect(screen.getByText('Unlinked escalation')).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Unlinked escalation/ })).not.toBeInTheDocument();
+    });
 });

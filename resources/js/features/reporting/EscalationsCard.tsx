@@ -1,5 +1,8 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import type { OverviewReport } from '../../lib/types';
+
+const rowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, padding: '6px 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', textDecoration: 'none' };
 
 export function EscalationsCard({ escalations }: { escalations: OverviewReport['escalations'] }) {
     return (
@@ -11,12 +14,17 @@ export function EscalationsCard({ escalations }: { escalations: OverviewReport['
                 <span style={{ fontSize: 11.5, color: 'var(--fg2)' }}>of {escalations.created_total} created · {escalations.rate_pct}%</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                {escalations.recent.map((e) => (
-                    <Link key={e.ticket_id} to={e.issue_id ? `/issues/${e.issue_id}` : '#'} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 9px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg2)', textDecoration: 'none' }}>
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.subject}</span>
-                        {e.issue_id && <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 5, color: 'var(--accent)', background: 'var(--accent2)', fontFamily: 'var(--font-mono)' }}>↩ {e.issue_id.slice(0, 6)}</span>}
-                    </Link>
-                ))}
+                {escalations.recent.map((e) => {
+                    const label = <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.subject}</span>;
+                    return e.issue_id ? (
+                        <Link key={e.ticket_id} to={`/issues/${e.issue_id}`} style={rowStyle}>
+                            {label}
+                            <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 5, color: 'var(--accent)', background: 'var(--accent2)', fontFamily: 'var(--font-mono)' }}>↩ {e.issue_id.slice(0, 6)}</span>
+                        </Link>
+                    ) : (
+                        <div key={e.ticket_id} style={rowStyle}>{label}</div>
+                    );
+                })}
             </div>
         </div>
     );
