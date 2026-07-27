@@ -36,7 +36,8 @@ final class ReportRepository
             ->where('created_at', '>=', $curStart)->where('created_at', '<', $now)
             ->whereHas('issueTicketLinks');
         $escCount = $escBase()->count();
-        $recent = $escBase()->with('linkedIssues')->orderByDesc('created_at')->limit(5)->get()
+        $recent = $escBase()->with(['linkedIssues' => fn ($q) => $q->orderBy('issue_ticket_links.created_at')])
+            ->orderByDesc('created_at')->limit(5)->get()
             ->map(fn (Ticket $t) => [
                 'ticket_id' => $t->id,
                 'subject' => $t->subject,
@@ -87,7 +88,7 @@ final class ReportRepository
         if ($rows->isEmpty()) {
             return null;
         }
-        $mins = $rows->map(fn (Ticket $t) => (int) $t->created_at->diffInMinutes($t->first_replied_at))->sort()->values();
+        $mins = $rows->map(fn (Ticket $t) => (int) round($t->created_at->diffInMinutes($t->first_replied_at)))->sort()->values();
         $n = $mins->count();
         $mid = intdiv($n, 2);
 

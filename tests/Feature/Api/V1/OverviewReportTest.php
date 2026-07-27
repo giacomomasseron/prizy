@@ -150,6 +150,31 @@ it('counts escalations (created-in-window tickets with an issue link) with a rat
     Workspace::forgetCurrent();
 });
 
+it('returns the earliest linked issue for an escalated ticket with multiple links', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws, $user] = reportWorld();
+    $team = Team::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'T', 'identifier' => 'TTT']);
+    $mk = fn (string $title) => Issue::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id, 'created_by' => $user->id, 'title' => $title, 'status' => 'todo', 'priority' => 'no_priority']);
+    // Create the "Later"-linked issue row FIRST (so it is physically earlier in the
+    // `issues` table, the join's driving side) while giving it the LATER pivot
+    // created_at. An unordered join naturally returns rows in the driving table's
+    // order, i.e. "Later" first — only an explicit ORDER BY on the pivot's
+    // created_at correctly yields "Earlier" first.
+    $later = $mk('Later');
+    $earlier = $mk('Earlier');
+    $ticket = reportTicket($ws, ['created_at' => Carbon::parse('2026-07-22 09:00:00', 'UTC')]);
+    DB::table('issue_ticket_links')->insert([
+        ['issue_id' => $later->id, 'ticket_id' => $ticket->id, 'created_by' => $user->id, 'created_at' => Carbon::parse('2026-07-23 10:00:00', 'UTC')],
+        ['issue_id' => $earlier->id, 'ticket_id' => $ticket->id, 'created_by' => $user->id, 'created_at' => Carbon::parse('2026-07-22 10:00:00', 'UTC')],
+    ]);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/overview?range=7d')->assertStatus(200);
+    expect($res->json('data.escalations.count'))->toBe(1);
+    expect($res->json('data.escalations.recent.0.issue_id'))->toBe($earlier->id);
+
+    Workspace::forgetCurrent();
+});
+
 it('isolates the report by workspace', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
     [$token, $wsA] = reportWorld();
