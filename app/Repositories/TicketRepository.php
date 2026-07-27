@@ -14,7 +14,7 @@ final class TicketRepository
     {
         return Ticket::query()
             ->where('workspace_id', $workspaceId)
-            ->with(['requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaBreaches'])
+            ->with(['requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaPolicy.schedule.businessHourIntervals', 'slaBreaches'])
             ->orderByDesc('updated_at')
             ->get();
     }
@@ -23,7 +23,7 @@ final class TicketRepository
     {
         return Ticket::query()
             ->with([
-                'requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaBreaches',
+                'requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaPolicy.schedule.businessHourIntervals', 'slaBreaches',
                 'ticketMessages' => fn ($q) => $q->orderBy('created_at')->with(['senderUser', 'senderContact']),
             ])
             ->find($id);

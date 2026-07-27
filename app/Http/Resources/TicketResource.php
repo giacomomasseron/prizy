@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Services\SlaCalculator;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,10 +31,16 @@ final class TicketResource extends JsonResource
             'assignee' => $this->assignee ? ['id' => $this->assignee->id, 'name' => $this->assignee->name] : null,
             'tags' => $this->tags->map(fn ($t) => ['name' => $t->name, 'color' => $t->color])->values(),
             'linked_issues' => $this->linkedIssues->map(fn ($i) => ['id' => $i->id, 'identifier' => $i->identifier, 'title' => $i->title])->values(),
-            'sla' => [
-                'policy_name' => $this->slaPolicy?->name,
-                'breached' => $this->slaBreaches->isNotEmpty(),
-            ],
+            'sla' => (function () {
+                $s = SlaCalculator::firstReplyStatus($this->resource);
+
+                return [
+                    'policy_name' => $s['policy_name'],
+                    'target_minutes' => $s['target_minutes'],
+                    'due_at' => $s['due_at']?->toISOString(),
+                    'state' => $s['state'],
+                ];
+            })(),
             'first_replied_at' => $this->first_replied_at,
             'resolved_at' => $this->resolved_at,
             'created_at' => $this->created_at,

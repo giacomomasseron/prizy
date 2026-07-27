@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\BusinessHourSchedule;
 use App\Models\Contact;
 use App\Models\Issue;
 use App\Models\Notification;
 use App\Models\Project;
+use App\Models\SlaPolicy;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\User;
@@ -148,12 +150,27 @@ final class SmokeSeeder extends Seeder
         DB::table('contact_metadata')->updateOrInsert(['contact_id' => $contact->id, 'key' => 'organization'], ['value' => 'Northwind Traders']);
         DB::table('contact_metadata')->updateOrInsert(['contact_id' => $contact->id, 'key' => 'plan'], ['value' => 'Enterprise']);
 
+        $schedule = BusinessHourSchedule::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['name', 'Standard']])
+            ?? BusinessHourSchedule::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'name' => 'Standard', 'timezone' => 'UTC']);
+        if (DB::table('business_hour_intervals')->where('schedule_id', $schedule->id)->count() === 0) {
+            foreach ([1, 2, 3, 4, 5] as $dow) {
+                DB::table('business_hour_intervals')->insert(['id' => (string) Str::uuid(), 'schedule_id' => $schedule->id, 'day_of_week' => $dow, 'opens_at' => '09:00:00', 'closes_at' => '17:00:00']);
+            }
+        }
+        $policy = SlaPolicy::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['name', 'Standard SLA']])
+            ?? SlaPolicy::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'name' => 'Standard SLA', 'first_reply_minutes' => 60, 'resolution_minutes' => 480, 'schedule_id' => $schedule->id]);
+
         $ticket = Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Escalated issue shows blank customer profile']])
             ?? Ticket::forceCreate([
                 'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
                 'assignee_id' => $user->id, 'subject' => 'Escalated issue shows blank customer profile',
                 'status' => 'open', 'priority' => 'urgent', 'channel' => 'email',
+                'sla_policy_id' => $policy->id, 'created_at' => now()->subHours(2), 'first_replied_at' => now()->subHour(),
             ]);
+        // Idempotent backfill for a pre-existing escalation ticket from before HD-4a.
+        if ($ticket->sla_policy_id === null) {
+            $ticket->forceFill(['sla_policy_id' => $policy->id, 'first_replied_at' => $ticket->first_replied_at ?? now()->subHour()])->save();
+        }
         if ($ticket->ticketMessages()->count() === 0) {
             DB::table('ticket_messages')->insert([
                 ['id' => (string) Str::uuid(), 'ticket_id' => $ticket->id, 'sender_type' => 'contact', 'sender_user_id' => null, 'sender_contact_id' => $contact->id, 'body' => 'After escalation the engineering issue shows a blank customer profile.', 'is_internal' => false, 'channel' => 'email', 'created_at' => now()->subHours(2), 'updated_at' => now()->subHours(2)],
@@ -162,7 +179,15 @@ final class SmokeSeeder extends Seeder
             ]);
         }
 
+        Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Cannot invite new agents — seat limit error']])
+            ?? Ticket::forceCreate([
+                'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                'assignee_id' => $user->id, 'subject' => 'Cannot invite new agents — seat limit error',
+                'status' => 'new', 'priority' => 'high', 'channel' => 'chat',
+                'sla_policy_id' => $policy->id, 'created_at' => now()->subMinutes(40),
+            ]);
+
         Workspace::forgetCurrent();
-        $this->command?->info("Smoke workspace ready (slug=smoke, user=smoke@example.com / password123).");
+        $this->command?->info('Smoke workspace ready (slug=smoke, user=smoke@example.com / password123).');
     }
 }
