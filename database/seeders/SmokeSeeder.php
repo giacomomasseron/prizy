@@ -194,6 +194,33 @@ final class SmokeSeeder extends Seeder
             DB::table('ticket_tags')->insert(['ticket_id' => $dueTicket->id, 'tag_id' => $billing->id]);
         }
 
+        // Historical tickets so /support/reporting has real numbers (idempotent: only when sparse).
+        if (Ticket::where('workspace_id', $workspace->id)->count() < 20) {
+            $issue = Issue::where('workspace_id', $workspace->id)->first();
+            $statuses = ['new', 'open', 'pending', 'on_hold', 'solved', 'closed'];
+            $channels = ['email', 'chat', 'portal', 'api'];
+            $priorities = ['low', 'normal', 'high', 'urgent'];
+            for ($i = 0; $i < 40; $i++) {
+                $daysAgo = (int) (($i * 90) / 40);                 // 0..~89, spread across the quarter
+                $createdAt = $daysAgo === 0 ? now()->subHours(3) : now()->subDays($daysAgo)->setTime(9 + ($i % 8), ($i * 7) % 60);
+                $status = $statuses[$i % 6];
+                $isSolved = in_array($status, ['solved', 'closed'], true);
+                $replied = $i % 10 !== 0;                          // ~90% replied
+                $t = Ticket::forceCreate([
+                    'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                    'assignee_id' => $i % 3 === 0 ? null : $user->id,
+                    'subject' => 'Historical ticket #'.($i + 1),
+                    'status' => $status, 'priority' => $priorities[$i % 4], 'channel' => $channels[$i % 4],
+                    'created_at' => $createdAt,
+                    'first_replied_at' => $replied ? $createdAt->copy()->addMinutes(5 + ($i % 12) * 6) : null,
+                    'resolved_at' => $isSolved ? $createdAt->copy()->addHours(2 + ($i % 10)) : null,
+                ]);
+                if ($issue !== null && $i % 7 === 0) {             // ~15% escalated
+                    DB::table('issue_ticket_links')->insert(['issue_id' => $issue->id, 'ticket_id' => $t->id, 'created_by' => $user->id]);
+                }
+            }
+        }
+
         Workspace::forgetCurrent();
         $this->command?->info('Smoke workspace ready (slug=smoke, user=smoke@example.com / password123).');
     }

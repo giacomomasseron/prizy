@@ -18,4 +18,13 @@ describe('SupportIconRail', () => {
         fireEvent.click(screen.getByRole('button', { name: 'New ticket' }));
         expect(onNewTicket).toHaveBeenCalledTimes(1);
     });
+
+    it('links to the reporting screen', () => {
+        render(
+            <MemoryRouter>
+                <SupportIconRail viewsOpen onToggleViews={vi.fn()} onNewTicket={vi.fn()} />
+            </MemoryRouter>,
+        );
+        expect(screen.getByRole('link', { name: 'Reporting' })).toHaveAttribute('href', '/support/reporting');
+    });
 });

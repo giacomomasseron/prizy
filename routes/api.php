@@ -19,6 +19,7 @@ use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\MilestoneController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\ReportingController;
 use App\Http\Controllers\Api\V1\RoadmapController;
 use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\SearchController;
@@ -101,6 +102,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/members/{user}', [WorkspaceMemberController::class, 'destroy'])->middleware('verified');
         Route::delete('/invitations/{invitation}', [WorkspaceMemberController::class, 'destroyInvitation'])
             ->middleware(['verified', 'can:viewWorkspaceMembers,App\\Models\\User']);
+
+        Route::get('/reports/overview', [ReportingController::class, 'overview']);
 
         Route::get('/tickets', [TicketController::class, 'index']);
         Route::get('/tickets/counts', [TicketController::class, 'counts']);
