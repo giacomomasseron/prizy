@@ -244,3 +244,32 @@ export interface TicketCounts {
     unassigned: number;
     mine_unsolved: number;
 }
+
+export interface Kpi {
+    value: number | null;
+    delta_pct: number | null;
+}
+
+export interface VolumeBucket {
+    label: string;
+    created: number;
+    solved: number;
+}
+
+export interface OverviewReport {
+    range: '7d' | '30d' | '90d';
+    kpis: {
+        tickets_created: Kpi;
+        solved: Kpi;
+        median_first_reply_minutes: Kpi;
+        csat: Kpi;
+    };
+    volume: VolumeBucket[];
+    by_status: Record<TicketStatus, number>;
+    escalations: {
+        count: number;
+        created_total: number;
+        rate_pct: number;
+        recent: { ticket_id: string; subject: string; issue_id: string | null }[];
+    };
+}
