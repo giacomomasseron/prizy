@@ -62,3 +62,20 @@ test('agent desk: the SLA card shows a first-reply countdown on a due ticket', a
     await expect(page.getByText(/First reply due|SLA breached/)).toBeVisible();
     await expect(page.getByText('First reply target · Standard SLA')).toBeVisible();
 });
+
+test('agent desk: filter by channel then by tag', async ({ page }) => {
+    await page.goto('/support');
+    // Default view is "mine" (both seeded tickets are assigned to the smoke owner + unsolved).
+    await expect(page.getByText('Escalated issue shows blank customer profile')).toBeVisible();
+
+    // Pick the Chat channel → the email escalation ticket drops out, the chat "seat limit" ticket remains.
+    await page.getByRole('button', { name: /Chat/ }).click();
+    await expect(page.getByText('Escalated issue shows blank customer profile')).toHaveCount(0);
+    await expect(page.getByText('Cannot invite new agents — seat limit error')).toBeVisible();
+
+    // Open the chat ticket and click its billing tag chip → list stays filtered to the tagged ticket + a clear chip appears.
+    await page.getByText('Cannot invite new agents — seat limit error').first().click();
+    await page.getByRole('button', { name: 'billing' }).click();
+    await expect(page.getByRole('button', { name: /Tag: billing/ })).toBeVisible();
+    await expect(page.getByText('Cannot invite new agents — seat limit error')).toBeVisible();
+});
