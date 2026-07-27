@@ -221,3 +221,19 @@ export interface TicketDetail extends TicketListItem {
     messages: TicketMessage[];
     requester_history: { id: string; subject: string; status: TicketStatus }[];
 }
+
+export interface ContactOption {
+    id: string;
+    name: string;
+    email: string;
+    org: string | null;
+    plan: string | null;
+}
+
+export interface NewTicketInput {
+    subject: string;
+    requester_id: string;
+    priority: TicketPriority;
+    channel: TicketChannel;
+    body: string;
+}
