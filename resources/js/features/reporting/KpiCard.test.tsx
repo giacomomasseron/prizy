@@ -20,4 +20,13 @@ describe('KpiCard', () => {
         expect(screen.getByText('5')).toBeInTheDocument();
         expect(screen.queryByText(/%/)).not.toBeInTheDocument();
     });
+
+    it('renders a neutral badge (not red/green) for a 0% delta', () => {
+        render(<KpiCard meta={{ key: 'tickets_created', label: 'Tickets created', unit: '', positiveIsGood: true }} kpi={{ value: 5, delta_pct: 0 }} />);
+        const badge = screen.getByText('0%');
+        expect(badge).toBeInTheDocument();
+        expect(badge).toHaveStyle({ color: 'var(--fg3)' });
+        expect(badge.style.color).not.toBe('var(--green)');
+        expect(badge.style.color).not.toBe('var(--red)');
+    });
 });

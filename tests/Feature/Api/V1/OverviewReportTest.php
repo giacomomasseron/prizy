@@ -116,6 +116,26 @@ it('buckets volume daily for 7d and weekly for 90d', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('attributes volume buckets to calendar days, not a rolling time-of-day window', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-06-15 14:30:00', 'UTC')); // mid-day report instant
+    [$token, $ws] = reportWorld();
+    reportTicket($ws, ['created_at' => Carbon::parse('2026-06-15 09:00:00', 'UTC')]); // today, before "now" time-of-day
+    reportTicket($ws, ['created_at' => Carbon::parse('2026-06-14 23:30:00', 'UTC')]); // yesterday, late
+
+    $res = $this->withToken($token)->getJson('/v1/reports/overview?range=7d')->assertStatus(200);
+    $volume = collect($res->json('data.volume'));
+    expect($volume)->toHaveCount(7);
+
+    $today = $volume->last();
+    $yesterday = $volume->slice(-2, 1)->first();
+    expect($today['label'])->toBe('Jun 15');
+    expect($today['created'])->toBe(1);
+    expect($yesterday['label'])->toBe('Jun 14');
+    expect($yesterday['created'])->toBe(1);
+
+    Workspace::forgetCurrent();
+});
+
 it('returns the current by-status snapshot', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
     [$token, $ws] = reportWorld();

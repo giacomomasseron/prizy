@@ -52,7 +52,7 @@ final class ReportRepository
                 'median_first_reply_minutes' => ['value' => $frtCur, 'delta_pct' => $this->delta($frtCur, $frtPrev)],
                 'csat' => ['value' => null, 'delta_pct' => null],
             ],
-            'volume' => $this->volumeBuckets($workspaceId, $curStart, $bucketDays, $numBuckets),
+            'volume' => $this->volumeBuckets($workspaceId, $now, $bucketDays, $numBuckets),
             'by_status' => collect(['new', 'open', 'pending', 'on_hold', 'solved', 'closed'])
                 ->mapWithKeys(fn ($s) => [$s => (int) ($byStatusRaw[$s] ?? 0)])->all(),
             'escalations' => [
@@ -96,17 +96,20 @@ final class ReportRepository
     }
 
     /** @return list<array{label:string,created:int,solved:int}> */
-    private function volumeBuckets(string $workspaceId, CarbonInterface $curStart, int $bucketDays, int $numBuckets): array
+    private function volumeBuckets(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
     {
-        $end = $curStart->copy()->addDays($bucketDays * $numBuckets);
+        $anchor = $bucketDays === 7
+            ? $now->copy()->startOfWeek(CarbonInterface::MONDAY)->subWeeks($numBuckets - 1)
+            : $now->copy()->startOfDay()->subDays($numBuckets - 1);
+        $end = $anchor->copy()->addDays($bucketDays * $numBuckets);
         $createdAts = Ticket::query()->where('workspace_id', $workspaceId)
-            ->where('created_at', '>=', $curStart)->where('created_at', '<', $end)->pluck('created_at');
+            ->where('created_at', '>=', $anchor)->where('created_at', '<', $end)->pluck('created_at');
         $resolvedAts = Ticket::query()->where('workspace_id', $workspaceId)
-            ->whereNotNull('resolved_at')->where('resolved_at', '>=', $curStart)->where('resolved_at', '<', $end)->pluck('resolved_at');
+            ->whereNotNull('resolved_at')->where('resolved_at', '>=', $anchor)->where('resolved_at', '<', $end)->pluck('resolved_at');
 
         $created = array_fill(0, $numBuckets, 0);
         $solved = array_fill(0, $numBuckets, 0);
-        $bucketOf = fn (CarbonInterface $ts): int => (int) floor($curStart->diffInDays($ts) / $bucketDays);
+        $bucketOf = fn (CarbonInterface $ts): int => (int) floor($anchor->diffInDays($ts) / $bucketDays);
         foreach ($createdAts as $ts) {
             $i = $bucketOf($ts);
             if ($i >= 0 && $i < $numBuckets) {
@@ -123,7 +126,7 @@ final class ReportRepository
         $out = [];
         for ($i = 0; $i < $numBuckets; $i++) {
             $out[] = [
-                'label' => $curStart->copy()->addDays($i * $bucketDays)->format('M j'),
+                'label' => $anchor->copy()->addDays($i * $bucketDays)->format('M j'),
                 'created' => $created[$i],
                 'solved' => $solved[$i],
             ];

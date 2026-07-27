@@ -5,9 +5,10 @@ import type { KpiMeta } from './reportMeta';
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: '15px 16px', background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 9 };
 
 export function KpiCard({ meta, kpi }: { meta: KpiMeta; kpi: Kpi }) {
-    const good = kpi.delta_pct !== null && (kpi.delta_pct > 0) === meta.positiveIsGood;
-    const color = good ? 'var(--green)' : 'var(--red)';
-    const bg = good ? 'rgba(75,171,102,.14)' : 'rgba(235,87,87,.14)';
+    const neutral = kpi.delta_pct === 0;
+    const good = !neutral && kpi.delta_pct !== null && (kpi.delta_pct > 0) === meta.positiveIsGood;
+    const color = neutral ? 'var(--fg3)' : good ? 'var(--green)' : 'var(--red)';
+    const bg = neutral ? 'rgba(255,255,255,.06)' : good ? 'rgba(75,171,102,.14)' : 'rgba(235,87,87,.14)';
     return (
         <div style={card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

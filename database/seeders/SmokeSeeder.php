@@ -202,7 +202,7 @@ final class SmokeSeeder extends Seeder
             $priorities = ['low', 'normal', 'high', 'urgent'];
             for ($i = 0; $i < 40; $i++) {
                 $daysAgo = (int) (($i * 90) / 40);                 // 0..~89, spread across the quarter
-                $createdAt = now()->subDays($daysAgo)->setTime(9 + ($i % 8), ($i * 7) % 60);
+                $createdAt = $daysAgo === 0 ? now()->subHours(3) : now()->subDays($daysAgo)->setTime(9 + ($i % 8), ($i * 7) % 60);
                 $status = $statuses[$i % 6];
                 $isSolved = in_array($status, ['solved', 'closed'], true);
                 $replied = $i % 10 !== 0;                          // ~90% replied
