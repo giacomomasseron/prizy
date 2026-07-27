@@ -29,7 +29,7 @@ final class TicketResource extends JsonResource
                 'plan' => $meta->get('plan')?->value,
             ] : null,
             'assignee' => $this->assignee ? ['id' => $this->assignee->id, 'name' => $this->assignee->name] : null,
-            'tags' => $this->tags->map(fn ($t) => ['name' => $t->name, 'color' => $t->color])->values(),
+            'tags' => $this->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values(),
             'linked_issues' => $this->linkedIssues->map(fn ($i) => ['id' => $i->id, 'identifier' => $i->identifier, 'title' => $i->title])->values(),
             'sla' => (function () {
                 $s = SlaCalculator::firstReplyStatus($this->resource);

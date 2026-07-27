@@ -10,6 +10,7 @@ use App\Models\Issue;
 use App\Models\Notification;
 use App\Models\Project;
 use App\Models\SlaPolicy;
+use App\Models\Tag;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\User;
@@ -179,13 +180,19 @@ final class SmokeSeeder extends Seeder
             ]);
         }
 
-        Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Cannot invite new agents — seat limit error']])
+        $dueTicket = Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Cannot invite new agents — seat limit error']])
             ?? Ticket::forceCreate([
                 'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
                 'assignee_id' => $user->id, 'subject' => 'Cannot invite new agents — seat limit error',
                 'status' => 'new', 'priority' => 'high', 'channel' => 'chat',
                 'sla_policy_id' => $policy->id, 'created_at' => now()->subMinutes(40),
             ]);
+
+        $billing = Tag::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['name', 'billing']])
+            ?? Tag::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'name' => 'billing', 'color' => '#5b8def']);
+        if (DB::table('ticket_tags')->where(['ticket_id' => $dueTicket->id, 'tag_id' => $billing->id])->doesntExist()) {
+            DB::table('ticket_tags')->insert(['ticket_id' => $dueTicket->id, 'tag_id' => $billing->id]);
+        }
 
         Workspace::forgetCurrent();
         $this->command?->info('Smoke workspace ready (slug=smoke, user=smoke@example.com / password123).');

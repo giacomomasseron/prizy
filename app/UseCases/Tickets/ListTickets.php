@@ -13,11 +13,14 @@ final class ListTickets
 {
     public function __construct(private readonly TicketRepository $tickets) {}
 
-    /** @return Collection<int, Ticket> */
-    public function handle(User $actor): Collection
+    /**
+     * @param  array<string, string>  $filters
+     * @return Collection<int, Ticket>
+     */
+    public function handle(User $actor, array $filters = []): Collection
     {
         abort_unless($actor->is_agent, 403);
 
-        return $this->tickets->forWorkspace($actor->workspace_id);
+        return $this->tickets->forWorkspace($actor->workspace_id, $filters);
     }
 }

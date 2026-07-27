@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\ListTicketsRequest;
 use App\Http\Requests\Api\V1\PatchTicketRequest;
 use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Resources\TicketMessageResource;
@@ -25,9 +26,9 @@ final class TicketController extends Controller
         private readonly CreateTicket $createTicket,
     ) {}
 
-    public function index(Request $request): JsonResponse
+    public function index(ListTicketsRequest $request): JsonResponse
     {
-        $tickets = $this->listTickets->handle($request->user());
+        $tickets = $this->listTickets->handle($request->user(), $request->filters());
 
         return TicketResource::collection($tickets)->response();
     }
