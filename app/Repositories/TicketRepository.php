@@ -64,4 +64,26 @@ final class TicketRepository
     {
         return Ticket::create($attributes);
     }
+
+    /**
+     * @return array{by_status: array<string, int>, by_channel: array<string, int>, unassigned: int, mine_unsolved: int}
+     */
+    public function counts(string $workspaceId, string $actorId): array
+    {
+        $statuses = ['new', 'open', 'pending', 'on_hold', 'solved', 'closed'];
+        $channels = ['email', 'chat', 'portal', 'api'];
+
+        $byStatus = Ticket::query()->where('workspace_id', $workspaceId)
+            ->selectRaw('status, count(*) as c')->groupBy('status')->pluck('c', 'status');
+        $byChannel = Ticket::query()->where('workspace_id', $workspaceId)
+            ->selectRaw('channel, count(*) as c')->groupBy('channel')->pluck('c', 'channel');
+
+        return [
+            'by_status' => collect($statuses)->mapWithKeys(fn ($s) => [$s => (int) ($byStatus[$s] ?? 0)])->all(),
+            'by_channel' => collect($channels)->mapWithKeys(fn ($c) => [$c => (int) ($byChannel[$c] ?? 0)])->all(),
+            'unassigned' => Ticket::query()->where('workspace_id', $workspaceId)->whereNull('assignee_id')->count(),
+            'mine_unsolved' => Ticket::query()->where('workspace_id', $workspaceId)
+                ->where('assignee_id', $actorId)->whereIn('status', ['new', 'open', 'pending', 'on_hold'])->count(),
+        ];
+    }
 }

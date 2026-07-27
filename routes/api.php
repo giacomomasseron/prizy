@@ -103,6 +103,7 @@ Route::prefix('v1')->group(function (): void {
             ->middleware(['verified', 'can:viewWorkspaceMembers,App\\Models\\User']);
 
         Route::get('/tickets', [TicketController::class, 'index']);
+        Route::get('/tickets/counts', [TicketController::class, 'counts']);
         Route::post('/tickets', [TicketController::class, 'store'])->middleware('verified');
         Route::get('/tickets/{ticket}', [TicketController::class, 'show']);
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->middleware('verified');

@@ -11,6 +11,7 @@ use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Resources\TicketMessageResource;
 use App\Http\Resources\TicketResource;
 use App\UseCases\Tickets\ChangeTicketStatus;
+use App\UseCases\Tickets\CountTickets;
 use App\UseCases\Tickets\CreateTicket;
 use App\UseCases\Tickets\FindTicket;
 use App\UseCases\Tickets\ListTickets;
@@ -24,6 +25,7 @@ final class TicketController extends Controller
         private readonly FindTicket $findTicket,
         private readonly ChangeTicketStatus $changeTicketStatus,
         private readonly CreateTicket $createTicket,
+        private readonly CountTickets $countTickets,
     ) {}
 
     public function index(ListTicketsRequest $request): JsonResponse
@@ -31,6 +33,11 @@ final class TicketController extends Controller
         $tickets = $this->listTickets->handle($request->user(), $request->filters());
 
         return TicketResource::collection($tickets)->response();
+    }
+
+    public function counts(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->countTickets->handle($request->user())]);
     }
 
     public function store(StoreTicketRequest $request): JsonResponse
