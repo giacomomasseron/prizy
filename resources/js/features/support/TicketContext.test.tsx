@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TicketContext } from './TicketContext';
 import type { TicketDetail } from '../../lib/types';
@@ -27,6 +27,7 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
 }
 
 let ticketData: TicketDetail | undefined;
+const onFilterTag = vi.fn();
 
 vi.mock('./hooks', () => ({
     useTicket: () => ({ data: ticketData, isLoading: false }),
@@ -82,11 +83,23 @@ describe('TicketContext', () => {
     });
 
     it('renders tags when present', () => {
-        ticketData = ticket({ tags: [{ name: 'billing', color: '#fff' }, { name: 'urgent', color: '#f00' }] });
+        ticketData = ticket({ tags: [{ id: 't-billing', name: 'billing', color: '#fff' }, { id: 't-urgent', name: 'urgent', color: '#f00' }] });
         renderWithRouter('t1');
         expect(screen.getByText('Tags')).toBeInTheDocument();
         expect(screen.getByText('billing')).toBeInTheDocument();
         expect(screen.getByText('urgent')).toBeInTheDocument();
+    });
+
+    it('calls onFilterTag when a tag chip is clicked', () => {
+        onFilterTag.mockReset();
+        ticketData = ticket({ tags: [{ id: 't-billing', name: 'billing', color: '#fff' }] });
+        render(
+            <MemoryRouter>
+                <TicketContext ticketId="t1" onFilterTag={onFilterTag} />
+            </MemoryRouter>,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'billing' }));
+        expect(onFilterTag).toHaveBeenCalledWith('t-billing', 'billing');
     });
 
     it('omits the Tags section when there are no tags', () => {

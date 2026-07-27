@@ -11,7 +11,7 @@ const asideStyle: CSSProperties = { width: 296, flexShrink: 0, borderLeft: '1px 
 const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12.2 };
 const label: CSSProperties = { padding: '16px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' };
 
-export function TicketContext({ ticketId }: { ticketId: string | undefined }) {
+export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void }) {
     const q = useTicket(ticketId ?? '');
     const t = q.data;
     const now = useNow();
@@ -54,7 +54,16 @@ export function TicketContext({ ticketId }: { ticketId: string | undefined }) {
             {t.tags.length > 0 && (<>
                 <div style={label}>Tags</div>
                 <div style={{ padding: '0 18px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {t.tags.map((tag) => <span key={tag.name} style={{ fontSize: 11, padding: '2px 9px', borderRadius: 20, background: 'var(--panel)', border: '1px solid var(--border2)', color: 'var(--fg2)' }}>{tag.name}</span>)}
+                    {t.tags.map((tag) => (
+                        <button
+                            key={tag.id}
+                            type="button"
+                            onClick={() => onFilterTag(tag.id, tag.name)}
+                            style={{ fontSize: 11, padding: '2px 9px', borderRadius: 20, background: 'var(--panel)', border: '1px solid var(--border2)', color: 'var(--fg2)', cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                            {tag.name}
+                        </button>
+                    ))}
                 </div>
             </>)}
             {linked && (<>

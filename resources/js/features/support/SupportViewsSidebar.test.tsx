@@ -11,14 +11,14 @@ const counts: TicketCounts = {
 
 describe('SupportViewsSidebar', () => {
     it('renders the six views with composed count badges', () => {
-        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel={null} onSelectChannel={vi.fn()} />);
+        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel={null} onSelectChannel={vi.fn()} tag={null} onClearTag={vi.fn()} />);
         expect(screen.getByText('Your unsolved tickets')).toBeInTheDocument();
         expect(screen.getByText('4')).toBeInTheDocument(); // mine_unsolved badge
     });
 
     it('renders the Channels list with per-channel counts and calls onSelectChannel', () => {
         const onSelectChannel = vi.fn();
-        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel={null} onSelectChannel={onSelectChannel} />);
+        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel={null} onSelectChannel={onSelectChannel} tag={null} onClearTag={vi.fn()} />);
         const chat = screen.getByRole('button', { name: /Chat/ });
         expect(chat).toBeInTheDocument();
         fireEvent.click(chat);
@@ -26,14 +26,21 @@ describe('SupportViewsSidebar', () => {
     });
 
     it('marks the active channel via aria-pressed', () => {
-        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel="email" onSelectChannel={vi.fn()} />);
+        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel="email" onSelectChannel={vi.fn()} tag={null} onClearTag={vi.fn()} />);
         expect(screen.getByRole('button', { name: /Email/ })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('calls onSelectView when a view is clicked', () => {
         const onSelectView = vi.fn();
-        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={onSelectView} channel={null} onSelectChannel={vi.fn()} />);
+        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={onSelectView} channel={null} onSelectChannel={vi.fn()} tag={null} onClearTag={vi.fn()} />);
         fireEvent.click(screen.getByText('Pending'));
         expect(onSelectView).toHaveBeenCalledWith('pending');
+    });
+
+    it('shows a clearable active-tag chip and calls onClearTag', () => {
+        const onClearTag = vi.fn();
+        render(<SupportViewsSidebar counts={counts} view="mine" onSelectView={vi.fn()} channel={null} onSelectChannel={vi.fn()} tag={{ id: 't1', name: 'billing' }} onClearTag={onClearTag} />);
+        fireEvent.click(screen.getByRole('button', { name: /Tag: billing/ }));
+        expect(onClearTag).toHaveBeenCalledTimes(1);
     });
 });

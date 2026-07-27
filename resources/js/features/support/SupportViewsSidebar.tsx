@@ -9,12 +9,14 @@ const rowCss = (active: boolean): CSSProperties => ({ display: 'flex', alignItem
 const sectionLabel: CSSProperties = { padding: '8px 14px 4px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' };
 const badge: CSSProperties = { fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' };
 
-export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSelectChannel }: {
+export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSelectChannel, tag, onClearTag }: {
     counts: TicketCounts | undefined;
     view: TicketViewKey;
     onSelectView: (v: TicketViewKey) => void;
     channel: TicketChannel | null;
     onSelectChannel: (c: TicketChannel) => void;
+    tag: { id: string; name: string } | null;
+    onClearTag: () => void;
 }) {
     return (
         <aside style={{ width: 216, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
@@ -42,6 +44,17 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                     </button>
                 ))}
             </div>
+
+            {tag && (
+                <>
+                    <div style={sectionLabel}>Filter</div>
+                    <div style={{ padding: '0 14px 12px' }}>
+                        <button type="button" onClick={onClearTag} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, padding: '3px 9px', borderRadius: 20, background: 'var(--sup2)', border: '1px solid var(--sup)', color: 'var(--sup)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Tag: {tag.name} <span aria-hidden="true">✕</span>
+                        </button>
+                    </div>
+                </>
+            )}
         </aside>
     );
 }

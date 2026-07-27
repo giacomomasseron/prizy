@@ -200,7 +200,7 @@ export interface TicketListItem {
     channel: TicketChannel;
     requester: { id: string; name: string; email: string; org: string | null; plan: string | null } | null;
     assignee: { id: string; name: string } | null;
-    tags: { name: string; color: string }[];
+    tags: { id: string; name: string; color: string }[];
     linked_issues: { id: string; identifier?: string; title: string }[];
     sla: { policy_name: string | null; target_minutes: number | null; due_at: string | null; state: 'none' | 'met' | 'due' | 'breached' };
     updated_at: string;

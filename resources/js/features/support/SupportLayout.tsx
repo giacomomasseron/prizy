@@ -17,13 +17,16 @@ export default function SupportLayout() {
     const { id } = useParams();
     const [view, setView] = useState<TicketViewKey>('mine');
     const [channel, setChannel] = useState<TicketChannel | null>(null);
+    const [tag, setTag] = useState<{ id: string; name: string } | null>(null);
     const [viewsOpen, setViewsOpen] = useState(true);
     const [newOpen, setNewOpen] = useState(false);
 
     const filters = useMemo(() => {
         const f = viewFilters(view, me.data?.id);
-        return channel ? { ...f, channel } : f;
-    }, [view, channel, me.data?.id]);
+        if (channel) f.channel = channel;
+        if (tag) f.tag_id = tag.id;
+        return f;
+    }, [view, channel, tag, me.data?.id]);
 
     const ticketsQ = useTickets(filters);
     const shown = useMemo(() => ticketsQ.data ?? [], [ticketsQ.data]);
@@ -40,11 +43,13 @@ export default function SupportLayout() {
                     onSelectView={setView}
                     channel={channel}
                     onSelectChannel={(c) => setChannel((cur) => (cur === c ? null : c))}
+                    tag={tag}
+                    onClearTag={() => setTag(null)}
                 />
             )}
             <TicketList tickets={shown} selectedId={selectedId} onSelect={(tid) => navigate(`/support/tickets/${tid}`)} />
             <TicketConversation ticketId={selectedId} />
-            <TicketContext ticketId={selectedId} />
+            <TicketContext ticketId={selectedId} onFilterTag={(id, name) => setTag({ id, name })} />
             <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} />
         </div>
     );
