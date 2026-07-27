@@ -237,3 +237,10 @@ export interface NewTicketInput {
     channel: TicketChannel;
     body: string;
 }
+
+export interface TicketCounts {
+    by_status: Record<TicketStatus, number>;
+    by_channel: Record<TicketChannel, number>;
+    unassigned: number;
+    mine_unsolved: number;
+}

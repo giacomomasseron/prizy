@@ -1,9 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput } from '../../lib/types';
+import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput, TicketCounts } from '../../lib/types';
 
-export function useTickets() {
-    return useQuery({ queryKey: ['tickets'], queryFn: () => api.get<TicketListItem[]>('/tickets') });
+export function useTickets(filters: Record<string, string> = {}) {
+    const qs = Object.entries(filters)
+        .filter(([, v]) => v !== '')
+        .map(([k, v]) => `filter[${k}]=${encodeURIComponent(v)}`)
+        .join('&');
+    return useQuery({ queryKey: ['tickets', filters], queryFn: () => api.get<TicketListItem[]>(`/tickets${qs ? `?${qs}` : ''}`) });
+}
+
+export function useTicketCounts() {
+    return useQuery({ queryKey: ['ticketCounts'], queryFn: () => api.get<TicketCounts>('/tickets/counts') });
 }
 
 export function useTicket(id: string) {
@@ -18,6 +26,7 @@ export function usePostTicketMessage(ticketId: string) {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
             qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
         },
     });
 }
@@ -30,6 +39,7 @@ export function useChangeTicketStatus(ticketId: string) {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
             qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
         },
     });
 }
@@ -42,6 +52,9 @@ export function useCreateTicket() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (input: NewTicketInput) => api.post<TicketListItem>('/tickets', input),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['tickets'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
+        },
     });
 }
