@@ -1,0 +1,21 @@
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { SupportIconRail } from './SupportIconRail';
+
+vi.mock('../../auth/useAuth', () => ({
+    useMe: () => ({ data: { id: 'u1', name: 'Me' } }),
+}));
+
+describe('SupportIconRail', () => {
+    it('invokes onNewTicket when the New ticket button is clicked', () => {
+        const onNewTicket = vi.fn();
+        render(
+            <MemoryRouter>
+                <SupportIconRail viewsOpen onToggleViews={vi.fn()} onNewTicket={onNewTicket} />
+            </MemoryRouter>,
+        );
+        fireEvent.click(screen.getByRole('button', { name: 'New ticket' }));
+        expect(onNewTicket).toHaveBeenCalledTimes(1);
+    });
+});
