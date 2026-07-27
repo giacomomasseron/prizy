@@ -37,3 +37,19 @@ test('agent desk: post a public reply, add an internal note, change status', asy
     await page.getByRole('menuitem', { name: 'On hold' }).click();
     await expect(page.getByRole('button', { name: 'Status: On hold' })).toBeVisible();
 });
+
+test('agent desk: create a new ticket from the rail', async ({ page }) => {
+    await page.goto('/support');
+    await page.getByRole('button', { name: 'New ticket' }).click();
+
+    const subject = `E2E new ticket ${Date.now()}`;
+    await page.getByLabel('Subject').fill(subject);
+    await page.getByRole('button', { name: 'Requester' }).click();
+    await page.getByRole('menuitem', { name: /Grace Okonkwo/ }).click();
+    await page.getByLabel('Description').fill('Customer cannot access their dashboard.');
+    await page.getByRole('button', { name: 'Create ticket' }).click();
+
+    await expect(page).toHaveURL(/\/support\/tickets\//);
+    await expect(page.getByText(subject)).toBeVisible();
+    await expect(page.getByText('Customer cannot access their dashboard.')).toBeVisible();
+});
