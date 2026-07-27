@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CycleController;
 use App\Http\Controllers\Api\V1\GithubIntegrationController;
 use App\Http\Controllers\Api\V1\IssueActivityController;
@@ -105,6 +106,8 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/tickets/{ticket}', [TicketController::class, 'show']);
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->middleware('verified');
         Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->middleware('verified');
+
+        Route::get('/contacts', [ContactController::class, 'index']);
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
