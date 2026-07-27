@@ -11,6 +11,7 @@ const tickets: TicketListItem[] = [
 
 vi.mock('./hooks', () => ({
     useTickets: () => ({ data: tickets, isLoading: false, isError: false }),
+    useTicketCounts: () => ({ data: { by_status: { new: 0, open: 0, pending: 0, on_hold: 0, solved: 0, closed: 0 }, by_channel: { email: 0, chat: 0, portal: 0, api: 0 }, unassigned: 0, mine_unsolved: 0 } }),
     useTicket: (id: string) => {
         const found = tickets.find((t) => t.id === id);
         return { data: found ? { ...found, messages: [], requester_history: [] } : undefined, isLoading: false };
