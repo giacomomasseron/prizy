@@ -4,6 +4,8 @@ import { useTicket } from './hooks';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
+import { slaPresentation } from './sla';
+import { useNow } from './useNow';
 
 const asideStyle: CSSProperties = { width: 296, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto' };
 const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12.2 };
@@ -12,6 +14,7 @@ const label: CSSProperties = { padding: '16px 18px 6px', fontSize: 10.5, fontWei
 export function TicketContext({ ticketId }: { ticketId: string | undefined }) {
     const q = useTicket(ticketId ?? '');
     const t = q.data;
+    const now = useNow();
     if (!ticketId || !t) return <aside style={asideStyle} />;
     const req = t.requester;
     const linked = t.linked_issues[0];
@@ -32,12 +35,22 @@ export function TicketContext({ ticketId }: { ticketId: string | undefined }) {
                 <div style={kv}><span style={{ color: 'var(--fg3)' }}>Assignee</span><span style={{ fontWeight: 500 }}>{t.assignee?.name ?? 'Unassigned'}</span></div>
                 <div style={kv}><span style={{ color: 'var(--fg3)' }}>Priority</span><span style={{ fontWeight: 500 }}>{TICKET_PRIORITY[t.priority].label}</span></div>
             </div>
-            <div style={{ margin: '0 18px', padding: '13px 14px', border: '1px solid var(--border2)', background: 'var(--panel)', borderRadius: 11 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: t.sla.breached ? 'var(--red)' : 'var(--sup)' }}>{t.sla.breached ? 'SLA breached' : 'SLA'}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' }}>{t.sla.policy_name ?? '—'}</span>
-                </div>
-            </div>
+            {(() => {
+                const pres = slaPresentation(t.sla, t.created_at, now);
+                if (!pres) return null;
+                return (
+                    <div style={{ margin: '0 18px', padding: '13px 14px', border: '1px solid var(--border2)', background: 'var(--panel)', borderRadius: 11 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: pres.color }}>{pres.title}</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, color: pres.color }}>{pres.remaining}</span>
+                        </div>
+                        <div style={{ marginTop: 8, height: 4, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${Math.round(pres.pct * 100)}%`, background: pres.color, borderRadius: 3 }} />
+                        </div>
+                        {t.sla.policy_name && <div style={{ marginTop: 7, fontSize: 11, color: 'var(--fg2)' }}>First reply target · {t.sla.policy_name}</div>}
+                    </div>
+                );
+            })()}
             {t.tags.length > 0 && (<>
                 <div style={label}>Tags</div>
                 <div style={{ padding: '0 18px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>

@@ -6,7 +6,7 @@ import SupportLayout from './SupportLayout';
 import type { TicketListItem } from '../../lib/types';
 
 const tickets: TicketListItem[] = [
-    { id: 'a', subject: 'Cannot log in', status: 'open', priority: 'high', channel: 'email', requester: null, assignee: { id: 'u1', name: 'Me' }, tags: [], linked_issues: [], sla: { policy_name: null, breached: false }, updated_at: '', created_at: '', first_replied_at: null, resolved_at: null },
+    { id: 'a', subject: 'Cannot log in', status: 'open', priority: 'high', channel: 'email', requester: null, assignee: { id: 'u1', name: 'Me' }, tags: [], linked_issues: [], sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' }, updated_at: '', created_at: '', first_replied_at: null, resolved_at: null },
 ];
 
 vi.mock('./hooks', () => ({

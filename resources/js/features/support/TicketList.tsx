@@ -1,6 +1,8 @@
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
+import { slaPresentation } from './sla';
+import { useNow } from './useNow';
 import type { TicketListItem, TicketPriority } from '../../lib/types';
 
 function tint(color: string) { return `color-mix(in srgb, ${color} 15%, transparent)`; }
@@ -14,6 +16,7 @@ function PriorityIcon({ priority }: { priority: TicketPriority }) {
 }
 
 export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketListItem[]; selectedId: string | undefined; onSelect: (id: string) => void }) {
+    const now = useNow();
     return (
         <section style={{ width: 342, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
             <header style={{ height: 52, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px' }}>
@@ -37,7 +40,14 @@ export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketL
                                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)' }}>#{t.id.slice(0, 8)}</span>
                                     <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.03em', padding: '1px 6px', borderRadius: 5, color: st.color, background: tint(st.color) }}>{st.label}</span>
                                     {linked && <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 5, color: 'var(--accent)', background: 'var(--accent2)', fontFamily: 'var(--font-mono)' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)}</span>}
-                                    <span style={{ marginLeft: 'auto', fontSize: 10.5, color: t.sla.breached ? 'var(--red)' : 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{t.sla.breached ? 'SLA' : (t.sla.policy_name ? 'OK' : '—')}</span>
+                                    {(() => {
+                                        const pres = slaPresentation(t.sla, t.created_at, now);
+                                        return (
+                                            <span style={{ marginLeft: 'auto', fontSize: 10.5, color: pres ? pres.color : 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
+                                                {pres ? pres.remaining : '—'}
+                                            </span>
+                                        );
+                                    })()}
                                 </div>
                                 <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--fg)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{t.subject}</div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>

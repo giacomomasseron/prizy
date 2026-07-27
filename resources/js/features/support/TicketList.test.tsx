@@ -4,7 +4,7 @@ import { TicketList } from './TicketList';
 import type { TicketListItem } from '../../lib/types';
 
 function t(over: Partial<TicketListItem>): TicketListItem {
-    return { id: 'x', subject: 's', status: 'open', priority: 'normal', channel: 'email', requester: null, assignee: null, tags: [], linked_issues: [], sla: { policy_name: null, breached: false }, updated_at: '', created_at: '', first_replied_at: null, resolved_at: null, ...over };
+    return { id: 'x', subject: 's', status: 'open', priority: 'normal', channel: 'email', requester: null, assignee: null, tags: [], linked_issues: [], sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' }, updated_at: '', created_at: '', first_replied_at: null, resolved_at: null, ...over };
 }
 
 const tickets: TicketListItem[] = [
@@ -38,5 +38,15 @@ describe('TicketList', () => {
         render(<TicketList tickets={tickets} selectedId={undefined} onSelect={onSelect} />);
         fireEvent.click(screen.getByText('Cannot log in'));
         expect(onSelect).toHaveBeenCalledWith('a');
+    });
+
+    it('renders an SLA countdown for a due ticket and a dash for none', () => {
+        const rows = [
+            t({ id: 'due', subject: 'Due one', created_at: new Date(Date.now() - 40 * 60000).toISOString(), sla: { policy_name: 'Std', target_minutes: 60, due_at: new Date(Date.now() + 20 * 60000).toISOString(), state: 'due' } }),
+            t({ id: 'none', subject: 'No sla' }),
+        ];
+        render(<TicketList tickets={rows} selectedId={undefined} onSelect={vi.fn()} />);
+        expect(screen.getByText(/^\d+m$|^\dh/)).toBeInTheDocument(); // e.g. "20m"
+        expect(screen.getByText('—')).toBeInTheDocument();
     });
 });

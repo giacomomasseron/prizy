@@ -19,7 +19,7 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
         assignee: null,
         tags: [],
         linked_issues: [],
-        sla: { policy_name: null, breached: false },
+        sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' },
         updated_at: '',
         created_at: '',
         first_replied_at: null,

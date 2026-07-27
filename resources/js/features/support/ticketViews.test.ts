@@ -3,7 +3,7 @@ import { filterByView } from './ticketViews';
 import type { TicketListItem } from '../../lib/types';
 
 function t(over: Partial<TicketListItem>): TicketListItem {
-    return { id: 'x', subject: 's', status: 'open', priority: 'normal', channel: 'email', requester: null, assignee: null, tags: [], linked_issues: [], sla: { policy_name: null, breached: false }, updated_at: '', created_at: '', first_replied_at: null, resolved_at: null, ...over };
+    return { id: 'x', subject: 's', status: 'open', priority: 'normal', channel: 'email', requester: null, assignee: null, tags: [], linked_issues: [], sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' }, updated_at: '', created_at: '', first_replied_at: null, resolved_at: null, ...over };
 }
 const me = 'u1';
 const list: TicketListItem[] = [

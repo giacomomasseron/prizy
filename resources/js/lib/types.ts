@@ -202,7 +202,7 @@ export interface TicketListItem {
     assignee: { id: string; name: string } | null;
     tags: { name: string; color: string }[];
     linked_issues: { id: string; identifier?: string; title: string }[];
-    sla: { policy_name: string | null; breached: boolean };
+    sla: { policy_name: string | null; target_minutes: number | null; due_at: string | null; state: 'none' | 'met' | 'due' | 'breached' };
     updated_at: string;
     created_at: string;
     first_replied_at: string | null;

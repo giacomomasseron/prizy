@@ -15,7 +15,7 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
         assignee: null,
         tags: [],
         linked_issues: [],
-        sla: { policy_name: null, breached: false },
+        sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' },
         updated_at: '',
         created_at: '',
         first_replied_at: null,
@@ -121,5 +121,28 @@ describe('TicketContext', () => {
         ticketData = ticket({ requester_history: [] });
         renderWithRouter('t1');
         expect(screen.queryByText(/^Recent from/)).not.toBeInTheDocument();
+    });
+
+    it('hides the SLA card when state is none', () => {
+        ticketData = ticket({ sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' } });
+        renderWithRouter('t1');
+        expect(screen.queryByText('First reply due')).not.toBeInTheDocument();
+        expect(screen.queryByText('SLA met')).not.toBeInTheDocument();
+    });
+
+    it('shows a first-reply countdown for a due ticket', () => {
+        ticketData = ticket({
+            created_at: new Date(Date.now() - 40 * 60000).toISOString(),
+            sla: { policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date(Date.now() + 20 * 60000).toISOString(), state: 'due' },
+        });
+        renderWithRouter('t1');
+        expect(screen.getByText('First reply due')).toBeInTheDocument();
+        expect(screen.getByText('First reply target · Standard SLA')).toBeInTheDocument();
+    });
+
+    it('shows SLA met', () => {
+        ticketData = ticket({ sla: { policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date().toISOString(), state: 'met' } });
+        renderWithRouter('t1');
+        expect(screen.getByText('SLA met')).toBeInTheDocument();
     });
 });
