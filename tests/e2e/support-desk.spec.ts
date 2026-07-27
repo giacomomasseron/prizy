@@ -53,3 +53,12 @@ test('agent desk: create a new ticket from the rail', async ({ page }) => {
     await expect(page.getByText(subject)).toBeVisible();
     await expect(page.getByText('Customer cannot access their dashboard.')).toBeVisible();
 });
+
+test('agent desk: the SLA card shows a first-reply countdown on a due ticket', async ({ page }) => {
+    await page.goto('/support');
+    await page.getByText('Cannot invite new agents — seat limit error').first().click();
+    await expect(page).toHaveURL(/\/support\/tickets\//);
+    // Context panel SLA card for the (unreplied, policy-bearing) due ticket.
+    await expect(page.getByText('First reply due')).toBeVisible();
+    await expect(page.getByText('First reply target · Standard SLA')).toBeVisible();
+});
