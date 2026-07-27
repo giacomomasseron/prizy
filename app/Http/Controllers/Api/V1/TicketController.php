@@ -6,9 +6,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\PatchTicketRequest;
+use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Resources\TicketMessageResource;
 use App\Http\Resources\TicketResource;
 use App\UseCases\Tickets\ChangeTicketStatus;
+use App\UseCases\Tickets\CreateTicket;
 use App\UseCases\Tickets\FindTicket;
 use App\UseCases\Tickets\ListTickets;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +22,7 @@ final class TicketController extends Controller
         private readonly ListTickets $listTickets,
         private readonly FindTicket $findTicket,
         private readonly ChangeTicketStatus $changeTicketStatus,
+        private readonly CreateTicket $createTicket,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -27,6 +30,13 @@ final class TicketController extends Controller
         $tickets = $this->listTickets->handle($request->user());
 
         return TicketResource::collection($tickets)->response();
+    }
+
+    public function store(StoreTicketRequest $request): JsonResponse
+    {
+        $ticket = $this->createTicket->handle($request->user(), $request->validated());
+
+        return (new TicketResource($ticket))->response()->setStatusCode(201);
     }
 
     public function show(Request $request, string $ticket): JsonResponse
