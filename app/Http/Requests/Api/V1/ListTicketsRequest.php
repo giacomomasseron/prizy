@@ -21,6 +21,7 @@ final class ListTicketsRequest extends FormRequest
     {
         return [
             'filter' => ['sometimes', Rule::array(self::FILTERS)],
+            'filter.*' => ['sometimes', 'string'],
         ];
     }
 

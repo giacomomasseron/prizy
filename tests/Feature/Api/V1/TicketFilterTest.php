@@ -135,6 +135,16 @@ it('still isolates workspaces under a filter', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('rejects a non-string (array) filter value (422)', function (): void {
+    [$token, $ws] = ticketFilterWorld();
+    filterTicket($ws, []);
+
+    // filter[status][]=a → an array value, not a CSV string.
+    $this->withToken($token)->getJson('/v1/tickets?filter[status][]=open')->assertStatus(422);
+
+    Workspace::forgetCurrent();
+});
+
 it('forbids a non-agent from listing tickets (403)', function (): void {
     [$token, $ws] = ticketFilterWorld(['is_agent' => false, 'admin_level' => 'owner']);
     filterTicket($ws, []);
