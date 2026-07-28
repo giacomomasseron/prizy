@@ -273,3 +273,39 @@ export interface OverviewReport {
         recent: { ticket_id: string; subject: string; issue_id: string | null }[];
     };
 }
+
+export interface AgentRow {
+    id: string;
+    name: string;
+    email: string;
+    avatar_url: string | null;
+    assigned: number;
+    solved: number;
+    median_first_reply_minutes: number | null;
+    median_resolution_minutes: number | null;
+    csat_pct: number | null;
+    csat_responses: number;
+}
+
+export interface RepliesBucket {
+    label: string;
+    count: number;
+}
+
+export interface CsatBreakdownRow {
+    key: 'positive' | 'negative';
+    label: string;
+    count: number;
+    pct: number;
+}
+
+export interface AgentsReport {
+    range: '7d' | '30d' | '90d';
+    agents: AgentRow[];
+    replies_per_day: RepliesBucket[];
+    csat: {
+        responses: number;
+        positive_pct: number | null;
+        breakdown: CsatBreakdownRow[];
+    };
+}

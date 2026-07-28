@@ -13,6 +13,7 @@ use App\Models\SlaPolicy;
 use App\Models\Tag;
 use App\Models\Team;
 use App\Models\Ticket;
+use App\Models\TicketMessage;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Seeder;
@@ -194,6 +195,30 @@ final class SmokeSeeder extends Seeder
             DB::table('ticket_tags')->insert(['ticket_id' => $dueTicket->id, 'tag_id' => $billing->id]);
         }
 
+        // Extra agents so the reporting Agents table has more than one row (idempotent).
+        $agentDefs = [
+            ['name' => 'Maya Chen', 'email' => 'agent-maya@example.com'],
+            ['name' => 'Sara Ito', 'email' => 'agent-sara@example.com'],
+            ['name' => 'Devin Park', 'email' => 'agent-devin@example.com'],
+        ];
+        $agents = [$user]; // the owner is already is_agent
+        foreach ($agentDefs as $def) {
+            $a = User::firstWhere('email', $def['email'])
+                ?? User::forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'workspace_id' => $workspace->id,
+                    'name' => $def['name'],
+                    'email' => $def['email'],
+                    'password_hash' => Hash::make('password123'),
+                    'admin_level' => 'member',
+                    'is_agent' => true,
+                    'email_verified_at' => now(),
+                ]);
+            $a->forceFill(['is_agent' => true])->save();
+            DB::table('team_members')->updateOrInsert(['team_id' => $team->id, 'user_id' => $a->id], ['role' => 'member']);
+            $agents[] = $a;
+        }
+
         // Historical tickets so /support/reporting has real numbers (idempotent: only when sparse).
         if (Ticket::where('workspace_id', $workspace->id)->count() < 20) {
             $issue = Issue::where('workspace_id', $workspace->id)->first();
@@ -208,13 +233,40 @@ final class SmokeSeeder extends Seeder
                 $replied = $i % 10 !== 0;                          // ~90% replied
                 $t = Ticket::forceCreate([
                     'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
-                    'assignee_id' => $i % 3 === 0 ? null : $user->id,
+                    'assignee_id' => $agents[$i % count($agents)]->id,
                     'subject' => 'Historical ticket #'.($i + 1),
                     'status' => $status, 'priority' => $priorities[$i % 4], 'channel' => $channels[$i % 4],
                     'created_at' => $createdAt,
                     'first_replied_at' => $replied ? $createdAt->copy()->addMinutes(5 + ($i % 12) * 6) : null,
                     'resolved_at' => $isSolved ? $createdAt->copy()->addHours(2 + ($i % 10)) : null,
                 ]);
+
+                $assignee = $agents[$i % count($agents)];
+
+                // An agent public reply for every replied ticket → drives replies-per-day + agent activity.
+                if ($replied) {
+                    TicketMessage::forceCreate([
+                        'id' => (string) Str::uuid(), 'ticket_id' => $t->id, 'sender_type' => 'user', 'sender_user_id' => $assignee->id,
+                        'body' => 'Thanks for reaching out — taking a look now.', 'is_internal' => false, 'channel' => $t->channel,
+                        'created_at' => $t->first_replied_at,
+                    ]);
+                    if ($i % 4 === 0) { // some internal notes too
+                        TicketMessage::forceCreate([
+                            'id' => (string) Str::uuid(), 'ticket_id' => $t->id, 'sender_type' => 'user', 'sender_user_id' => $assignee->id,
+                            'body' => 'Internal: escalating if no repro by EOD.', 'is_internal' => true, 'channel' => $t->channel,
+                            'created_at' => $t->first_replied_at->copy()->addMinutes(3),
+                        ]);
+                    }
+                }
+
+                // CSAT on most solved tickets (~85% positive), responded shortly after resolution.
+                if ($isSolved && $i % 5 !== 0) {
+                    $t->forceFill([
+                        'csat_rating' => $i % 7 === 0 ? 'thumbs_down' : 'thumbs_up',
+                        'csat_responded_at' => $t->resolved_at?->copy()->addMinutes(30),
+                    ])->save();
+                }
+
                 if ($issue !== null && $i % 7 === 0) {             // ~15% escalated
                     DB::table('issue_ticket_links')->insert(['issue_id' => $issue->id, 'ticket_id' => $t->id, 'created_by' => $user->id]);
                 }
