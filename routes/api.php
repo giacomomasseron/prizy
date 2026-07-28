@@ -105,6 +105,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/reports/overview', [ReportingController::class, 'overview']);
         Route::get('/reports/agents', [ReportingController::class, 'agents']);
+        Route::get('/reports/sla', [ReportingController::class, 'sla']);
 
         Route::get('/tickets', [TicketController::class, 'index']);
         Route::get('/tickets/counts', [TicketController::class, 'counts']);
