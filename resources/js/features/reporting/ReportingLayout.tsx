@@ -7,6 +7,7 @@ import { useOverviewReport } from './hooks';
 import { KPI_META, type ReportRange, type ReportSectionKey, REPORT_SECTIONS } from './reportMeta';
 import { KpiCard } from './KpiCard';
 import { OverviewSection } from './OverviewSection';
+import { AgentsSection } from './AgentsSection';
 import { ReportingSidebar } from './ReportingSidebar';
 import { RangeToggle } from './RangeToggle';
 import { ComingSoon } from './ComingSoon';
@@ -53,7 +54,7 @@ export default function ReportingLayout() {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
                                     {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} />)}
                                 </div>
-                                {section === 'overview' ? <OverviewSection report={report} /> : <ComingSoon label={sectionLabel} />}
+                                {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <ComingSoon label={sectionLabel} />}
                             </>
                         )}
                     </div>
