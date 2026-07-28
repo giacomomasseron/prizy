@@ -178,6 +178,55 @@ it('isolates the sla report by workspace', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('isolates tags and breach_risk across workspaces', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $wsA] = slaReportWorld();
+    $pA = slaReportPolicy($wsA, 'A', 60);
+    $bugA = Tag::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $wsA->id, 'name' => 'bug', 'color' => '#1']);
+    $taggedA = slaReportTicket($wsA, null, ['created_at' => Carbon::parse('2026-07-20 09:00:00', 'UTC')]);
+    DB::table('ticket_tags')->insert(['ticket_id' => $taggedA->id, 'tag_id' => $bugA->id]);
+    slaReportTicket($wsA, $pA->id, ['created_at' => Carbon::parse('2026-07-25 11:50:00', 'UTC'), 'subject' => 'DueA']);
+
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $pB = slaReportPolicy($wsB, 'B', 60);
+    $bugB = Tag::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $wsB->id, 'name' => 'bug', 'color' => '#2']);
+    $taggedB = slaReportTicket($wsB, null, ['created_at' => Carbon::parse('2026-07-20 09:00:00', 'UTC')]);
+    DB::table('ticket_tags')->insert(['ticket_id' => $taggedB->id, 'tag_id' => $bugB->id]);
+    slaReportTicket($wsB, $pB->id, ['created_at' => Carbon::parse('2026-07-25 11:50:00', 'UTC'), 'subject' => 'DueB']);
+    $wsA->makeCurrent();
+
+    $res = $this->withToken($token)->getJson('/v1/reports/sla?range=7d')->assertStatus(200);
+    $tags = collect($res->json('data.tags'));
+    expect($tags->firstWhere('name', 'bug')['count'])->toBe(1); // A's tagged ticket only, not A+B's 2
+
+    $risk = $res->json('data.breach_risk');
+    expect($risk)->toHaveCount(1);
+    expect($risk[0]['subject'])->toBe('DueA');
+
+    Workspace::forgetCurrent();
+});
+
+it('limits breach_risk to 5, ordered by soonest due', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = slaReportWorld();
+    $p = slaReportPolicy($ws, 'Std', 60);
+    $now = Carbon::parse('2026-07-25 12:00:00', 'UTC');
+    // due_at = created + 60m; all unreplied/open/policied → all 'due'. Staggered so due_at differs.
+    foreach ([10, 20, 30, 40, 50, 55] as $age) {
+        slaReportTicket($ws, $p->id, ['created_at' => $now->copy()->subMinutes($age), 'subject' => "Age{$age}"]);
+    }
+
+    $res = $this->withToken($token)->getJson('/v1/reports/sla?range=7d')->assertStatus(200);
+    $risk = $res->json('data.breach_risk');
+    expect($risk)->toHaveCount(5);
+    // Age10 (created most recently → latest due_at → most remaining) is the 6th, dropped.
+    expect(collect($risk)->pluck('subject')->all())->toBe(['Age55', 'Age50', 'Age40', 'Age30', 'Age20']);
+    expect(collect($risk)->pluck('remaining_minutes')->all())->toBe([5, 10, 20, 30, 40]);
+
+    Workspace::forgetCurrent();
+});
+
 it('forbids a non-agent (403)', function (): void {
     [$token] = slaReportWorld(['is_agent' => false, 'admin_level' => 'owner']);
     $this->withToken($token)->getJson('/v1/reports/sla?range=7d')->assertStatus(403);
