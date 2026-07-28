@@ -16,3 +16,16 @@ test('agent reaches reporting from the desk rail and sees the overview', async (
     await page.getByRole('button', { name: '30d' }).click();
     await expect(page.getByText('Ticket volume')).toBeVisible();
 });
+
+test('agent opens the Agents & CSAT section and sees the agent report', async ({ page }) => {
+    await page.goto('/support/reporting');
+    await page.getByRole('button', { name: 'Agents & CSAT' }).click();
+
+    // Widen to 90d so the seeded ratings/replies (spread across the quarter) are in-window.
+    await page.getByRole('button', { name: '90d' }).click();
+
+    // The agent report renders from the seeded agents / ratings / messages.
+    await expect(page.getByText('Agent performance')).toBeVisible();
+    await expect(page.getByText('Replies per day')).toBeVisible();
+    await expect(page.getByText('Satisfaction')).toBeVisible();
+});
