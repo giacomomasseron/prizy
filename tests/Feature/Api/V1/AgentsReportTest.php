@@ -184,3 +184,77 @@ it('rejects an invalid range (422)', function (): void {
     $this->withToken($token)->getJson('/v1/reports/agents?range=all')->assertStatus(422);
     Workspace::forgetCurrent();
 });
+
+it('sorts by assigned desc as a tiebreak when solved counts are equal', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = agentsReportWorld();
+    $xavier = agentsReportAgent($ws, 'Xavier');
+    $yara = agentsReportAgent($ws, 'Yara');
+    $inWin = Carbon::parse('2026-07-20 09:00:00', 'UTC');
+    // xavier: 2 assigned, 1 solved
+    agentsReportTicket($ws, $xavier->id, ['created_at' => $inWin, 'status' => 'solved', 'resolved_at' => $inWin->copy()->addHours(2)]);
+    agentsReportTicket($ws, $xavier->id, ['created_at' => $inWin]);
+    // yara: 1 assigned, 1 solved
+    agentsReportTicket($ws, $yara->id, ['created_at' => $inWin, 'status' => 'solved', 'resolved_at' => $inWin->copy()->addHours(3)]);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/agents?range=7d')->assertStatus(200);
+    $agents = $res->json('data.agents');
+    expect($agents)->toHaveCount(2);
+    expect($agents[0]['name'])->toBe('Xavier'); // tie on solved(1) broken by assigned desc
+    expect($agents[0]['assigned'])->toBe(2);
+    expect($agents[1]['name'])->toBe('Yara');
+    expect($agents[1]['assigned'])->toBe(1);
+
+    Workspace::forgetCurrent();
+});
+
+it('excludes a non-agent assignee from the agents report', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = agentsReportWorld();
+    $real = agentsReportAgent($ws, 'RealAgent');
+    $notAgent = User::factory()->for($ws, 'workspace')->create([
+        'is_agent' => false, 'name' => 'NotAgent', 'email' => 'not-agent-'.Str::uuid().'@x.com', 'email_verified_at' => now(),
+    ]);
+    $inWin = Carbon::parse('2026-07-20 09:00:00', 'UTC');
+    agentsReportTicket($ws, $real->id, ['created_at' => $inWin]);
+    agentsReportTicket($ws, $notAgent->id, ['created_at' => $inWin]);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/agents?range=7d')->assertStatus(200);
+    $names = collect($res->json('data.agents'))->pluck('name');
+    expect($res->json('data.agents'))->toHaveCount(1);
+    expect($names)->toContain('RealAgent');
+    expect($names)->not->toContain('NotAgent');
+});
+
+it('excludes a cross-workspace ticket_message from replies_per_day', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $wsA] = agentsReportWorld();
+    $aAgent = agentsReportAgent($wsA, 'A-Agent');
+    $aTicket = agentsReportTicket($wsA, $aAgent->id, ['created_at' => Carbon::parse('2026-07-24 09:00:00', 'UTC')]);
+    agentsReportUserMessage($aTicket, $aAgent->id, Carbon::parse('2026-07-24 09:05:00', 'UTC'));
+
+    $wsB = Workspace::factory()->create();
+    $wsB->makeCurrent();
+    $bAgent = agentsReportAgent($wsB, 'B-Agent');
+    $bTicket = agentsReportTicket($wsB, $bAgent->id, ['created_at' => Carbon::parse('2026-07-24 09:00:00', 'UTC')]);
+    agentsReportUserMessage($bTicket, $bAgent->id, Carbon::parse('2026-07-24 09:10:00', 'UTC'));
+    $wsA->makeCurrent();
+
+    $res = $this->withToken($token)->getJson('/v1/reports/agents?range=7d')->assertStatus(200);
+    expect(collect($res->json('data.replies_per_day'))->sum('count'))->toBe(1); // only A's message counted
+
+    Workspace::forgetCurrent();
+});
+
+it('returns null medians for an agent with only an unresolved, unreplied ticket', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = agentsReportWorld();
+    $a = agentsReportAgent($ws, 'NoActivity');
+    agentsReportTicket($ws, $a->id, ['created_at' => Carbon::parse('2026-07-20 09:00:00', 'UTC')]);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/agents?range=7d')->assertStatus(200);
+    $row = collect($res->json('data.agents'))->firstWhere('name', 'NoActivity');
+    expect($row['assigned'])->toBe(1);
+    expect($row['median_first_reply_minutes'])->toBeNull();
+    expect($row['median_resolution_minutes'])->toBeNull();
+});
