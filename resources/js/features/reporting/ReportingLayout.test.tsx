@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReportingLayout from './ReportingLayout';
-import type { AgentsReport, OverviewReport } from '../../lib/types';
+import type { AgentsReport, OverviewReport, SlaReport } from '../../lib/types';
 
 const report: OverviewReport = {
     range: '7d',
@@ -27,11 +27,20 @@ const agentsReport: AgentsReport = {
     ] },
 };
 
+const slaReport: SlaReport = {
+    range: '7d', attainment_pct: 94,
+    by_plan: [{ policy_id: 'p1', name: 'Enterprise SLA', target_minutes: 60, attainment_pct: 97, count: 12 }],
+    by_channel: [{ channel: 'email', count: 8 }, { channel: 'chat', count: 3 }, { channel: 'portal', count: 0 }, { channel: 'api', count: 1 }],
+    breach_risk: [], tags: [],
+};
+
 const useOverviewReport = vi.fn((_range: string) => ({ data: report, isLoading: false }));
 const useAgentsReport = vi.fn((_range: string, _enabled: boolean) => ({ data: agentsReport, isLoading: false }));
+const useSlaReport = vi.fn((_range: string, _enabled: boolean) => ({ data: slaReport, isLoading: false }));
 vi.mock('./hooks', () => ({
     useOverviewReport: (r: string) => useOverviewReport(r),
     useAgentsReport: (r: string, e: boolean) => useAgentsReport(r, e),
+    useSlaReport: (r: string, e: boolean) => useSlaReport(r, e),
 }));
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
 
@@ -49,10 +58,10 @@ describe('ReportingLayout', () => {
         expect(screen.getByText('Agent performance')).toBeInTheDocument();
     });
 
-    it('shows the coming-soon placeholder for the SLA section', () => {
+    it('renders the SLA section when SLA & channels is selected', () => {
         render(<MemoryRouter><ReportingLayout /></MemoryRouter>);
         fireEvent.click(screen.getByText('SLA & channels'));
-        expect(screen.getByText(/coming soon/i)).toBeInTheDocument();
+        expect(screen.getByText('SLA attainment')).toBeInTheDocument();
     });
 
     it('refetches when the range toggles to 30d', () => {
