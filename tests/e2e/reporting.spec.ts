@@ -29,3 +29,16 @@ test('agent opens the Agents & CSAT section and sees the agent report', async ({
     await expect(page.getByText('Replies per day')).toBeVisible();
     await expect(page.getByText('Satisfaction')).toBeVisible();
 });
+
+test('agent opens the SLA & channels section and sees the SLA report', async ({ page }) => {
+    await page.goto('/support/reporting');
+    await page.getByRole('button', { name: 'SLA & channels' }).click();
+
+    // Widen to 90d so the seeded policied history (spread across the quarter) is in-window.
+    await page.getByRole('button', { name: '90d' }).click();
+
+    // The SLA report renders from the seeded policies / tickets / tags.
+    await expect(page.getByText('SLA attainment')).toBeVisible();
+    await expect(page.getByText('By channel')).toBeVisible();
+    await expect(page.getByText('Breach risk')).toBeVisible();
+});
