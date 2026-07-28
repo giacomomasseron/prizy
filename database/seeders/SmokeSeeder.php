@@ -259,7 +259,7 @@ final class SmokeSeeder extends Seeder
                     }
                 }
 
-                // CSAT on ~60% of solved tickets (~85% positive), responded shortly after resolution.
+                // CSAT on most solved tickets (~85% positive), responded shortly after resolution.
                 if ($isSolved && $i % 5 !== 0) {
                     $t->forceFill([
                         'csat_rating' => $i % 7 === 0 ? 'thumbs_down' : 'thumbs_up',
