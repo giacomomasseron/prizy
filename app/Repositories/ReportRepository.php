@@ -25,6 +25,8 @@ final class ReportRepository
         $solvedPrev = $this->countBetween($workspaceId, 'resolved_at', $prevStart, $curStart);
         $frtCur = $this->medianFrtMinutes($workspaceId, $curStart, $now);
         $frtPrev = $this->medianFrtMinutes($workspaceId, $prevStart, $curStart);
+        $csatCur = $this->csatRate($workspaceId, $curStart, $now);
+        $csatPrev = $this->csatRate($workspaceId, $prevStart, $curStart);
 
         $bucketDays = $range === '90d' ? 7 : 1;
         $numBuckets = (int) ceil($days / $bucketDays);
@@ -50,7 +52,7 @@ final class ReportRepository
                 'tickets_created' => ['value' => $createdCur, 'delta_pct' => $this->delta($createdCur, $createdPrev)],
                 'solved' => ['value' => $solvedCur, 'delta_pct' => $this->delta($solvedCur, $solvedPrev)],
                 'median_first_reply_minutes' => ['value' => $frtCur, 'delta_pct' => $this->delta($frtCur, $frtPrev)],
-                'csat' => ['value' => null, 'delta_pct' => null],
+                'csat' => ['value' => $csatCur, 'delta_pct' => $this->delta($csatCur, $csatPrev)],
             ],
             'volume' => $this->volumeBuckets($workspaceId, $now, $bucketDays, $numBuckets),
             'by_status' => collect(['new', 'open', 'pending', 'on_hold', 'solved', 'closed'])
@@ -93,6 +95,20 @@ final class ReportRepository
         $mid = intdiv($n, 2);
 
         return (int) round($n % 2 === 1 ? $mins[$mid] : ($mins[$mid - 1] + $mins[$mid]) / 2);
+    }
+
+    private function csatRate(string $workspaceId, CarbonInterface $from, CarbonInterface $to): ?int
+    {
+        $ratings = Ticket::query()->where('workspace_id', $workspaceId)
+            ->whereNotNull('csat_responded_at')
+            ->where('csat_responded_at', '>=', $from)->where('csat_responded_at', '<', $to)
+            ->pluck('csat_rating');
+        if ($ratings->isEmpty()) {
+            return null;
+        }
+        $positive = $ratings->filter(fn ($r) => $r === 'thumbs_up')->count();
+
+        return (int) round($positive / $ratings->count() * 100);
     }
 
     /** @return list<array{label:string,created:int,solved:int}> */

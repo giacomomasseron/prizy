@@ -224,3 +224,34 @@ it('rejects an invalid range (422)', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('reports the CSAT positive rate for the current window with a delta', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC')); // 7d window = [Jul 18, Jul 25)
+    [$token, $ws] = reportWorld();
+    // current window: 3 up, 1 down → 75%
+    foreach (['thumbs_up', 'thumbs_up', 'thumbs_up', 'thumbs_down'] as $r) {
+        reportTicket($ws, ['csat_rating' => $r, 'csat_responded_at' => Carbon::parse('2026-07-22 10:00:00', 'UTC')]);
+    }
+    // previous window [Jul 11, Jul 18): 1 up, 1 down → 50%
+    foreach (['thumbs_up', 'thumbs_down'] as $r) {
+        reportTicket($ws, ['csat_rating' => $r, 'csat_responded_at' => Carbon::parse('2026-07-14 10:00:00', 'UTC')]);
+    }
+
+    $res = $this->withToken($token)->getJson('/v1/reports/overview?range=7d')->assertStatus(200);
+    expect($res->json('data.kpis.csat.value'))->toBe(75);
+    expect($res->json('data.kpis.csat.delta_pct'))->toBe(50); // (75-50)/50
+
+    Workspace::forgetCurrent();
+});
+
+it('returns a null CSAT value and delta when there are no ratings in the window', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = reportWorld();
+    reportTicket($ws, ['created_at' => Carbon::parse('2026-07-20 09:00:00', 'UTC')]); // no rating
+
+    $res = $this->withToken($token)->getJson('/v1/reports/overview?range=7d')->assertStatus(200);
+    expect($res->json('data.kpis.csat.value'))->toBeNull();
+    expect($res->json('data.kpis.csat.delta_pct'))->toBeNull();
+
+    Workspace::forgetCurrent();
+});
