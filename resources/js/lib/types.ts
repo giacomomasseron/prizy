@@ -309,3 +309,39 @@ export interface AgentsReport {
         breakdown: CsatBreakdownRow[];
     };
 }
+
+export interface SlaPlanRow {
+    policy_id: string;
+    name: string;
+    target_minutes: number;
+    attainment_pct: number | null;
+    count: number;
+}
+
+export interface ChannelCount {
+    channel: TicketChannel;
+    count: number;
+}
+
+export interface BreachRiskRow {
+    ticket_id: string;
+    subject: string;
+    requester_name: string | null;
+    target_minutes: number | null;
+    remaining_minutes: number;
+    pct: number;
+}
+
+export interface TagCount {
+    name: string;
+    count: number;
+}
+
+export interface SlaReport {
+    range: '7d' | '30d' | '90d';
+    attainment_pct: number | null;
+    by_plan: SlaPlanRow[];
+    by_channel: ChannelCount[];
+    breach_risk: BreachRiskRow[];
+    tags: TagCount[];
+}
