@@ -134,32 +134,47 @@ final class ReportRepository
         $now = now();
         $curStart = $now->copy()->subDays($days);
 
-        // In-window policied tickets → per-ticket first-reply state via the SLA engine.
+        // In-window policied tickets → per-ticket first-reply + resolution state via the SLA engine.
         $windowed = Ticket::query()->where('workspace_id', $workspaceId)
             ->whereNotNull('sla_policy_id')
             ->where('created_at', '>=', $curStart)->where('created_at', '<', $now)
-            ->with(['slaPolicy.schedule.businessHourIntervals', 'slaBreaches'])
+            ->with(['slaPolicy.schedule.businessHourIntervals', 'slaBreaches', 'latestPublicMessage'])
             ->get();
 
-        $met = 0;
-        $breached = 0;
-        $planAgg = []; // policy_id => ['name'=>?string, 'target'=>?int, 'met'=>int, 'breached'=>int]
+        $frMet = 0;
+        $frBreached = 0;
+        $resMet = 0;
+        $resBreached = 0;
+        $planAgg = []; // policy_id => ['name'=>?string,'target'=>?int,'met'=>int,'breached'=>int] (first-reply)
         foreach ($windowed as $t) {
-            $status = SlaCalculator::firstReplyStatus($t);
-            if (! in_array($status['state'], ['met', 'breached'], true)) {
-                continue; // decided outcomes only ('due'/'none' excluded)
-            }
-            $pid = $t->sla_policy_id;
-            $planAgg[$pid] ??= ['name' => $status['policy_name'], 'target' => $status['target_minutes'], 'met' => 0, 'breached' => 0];
-            if ($status['state'] === 'met') {
-                $met++;
-                $planAgg[$pid]['met']++;
-            } else {
-                $breached++;
-                $planAgg[$pid]['breached']++;
+            foreach (SlaCalculator::metrics($t) as $m) {
+                if (! in_array($m['state'], ['met', 'breached'], true)) {
+                    continue; // decided outcomes only
+                }
+                if ($m['metric'] === 'first_reply') {
+                    if ($m['state'] === 'met') {
+                        $frMet++;
+                    } else {
+                        $frBreached++;
+                    }
+                    $pid = $t->sla_policy_id;
+                    $planAgg[$pid] ??= ['name' => $m['policy_name'], 'target' => $m['target_minutes'], 'met' => 0, 'breached' => 0];
+                    if ($m['state'] === 'met') {
+                        $planAgg[$pid]['met']++;
+                    } else {
+                        $planAgg[$pid]['breached']++;
+                    }
+                } elseif ($m['metric'] === 'resolution') {
+                    if ($m['state'] === 'met') {
+                        $resMet++;
+                    } else {
+                        $resBreached++;
+                    }
+                }
             }
         }
-        $decided = $met + $breached;
+        $decided = $frMet + $frBreached;
+        $resDecided = $resMet + $resBreached;
 
         $byPlan = collect($planAgg)->map(function (array $p, string $pid): array {
             $d = $p['met'] + $p['breached'];
@@ -181,7 +196,8 @@ final class ReportRepository
 
         return [
             'range' => $range,
-            'attainment_pct' => $decided > 0 ? (int) round($met / $decided * 100) : null,
+            'attainment_pct' => $decided > 0 ? (int) round($frMet / $decided * 100) : null,
+            'resolution_attainment_pct' => $resDecided > 0 ? (int) round($resMet / $resDecided * 100) : null,
             'by_plan' => $byPlan,
             'by_channel' => $byChannel,
             'breach_risk' => $this->breachRisk($workspaceId),

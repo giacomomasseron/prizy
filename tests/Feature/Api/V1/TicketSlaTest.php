@@ -78,10 +78,11 @@ it('exposes a due first-reply SLA on the index for an unreplied policy ticket', 
     slaTicket($ws, $policy, ['created_at' => Carbon::parse('2026-07-29 10:00:00', 'UTC'), 'first_replied_at' => null]);
 
     $res = $this->withToken($token)->getJson('/v1/tickets')->assertStatus(200);
-    expect($res->json('data.0.sla.state'))->toBe('due');
-    expect($res->json('data.0.sla.target_minutes'))->toBe(60);
-    expect($res->json('data.0.sla.due_at'))->not->toBeNull();
-    expect($res->json('data.0.sla.policy_name'))->toBe('Standard SLA');
+    $fr = collect($res->json('data.0.sla_metrics'))->firstWhere('metric', 'first_reply');
+    expect($fr['state'])->toBe('due');
+    expect($fr['target_minutes'])->toBe(60);
+    expect($fr['due_at'])->not->toBeNull();
+    expect($fr['policy_name'])->toBe('Standard SLA');
 
     Workspace::forgetCurrent();
 });
@@ -93,18 +94,17 @@ it('exposes a met SLA on show when replied before the deadline', function (): vo
     $ticket = slaTicket($ws, $policy, ['created_at' => Carbon::parse('2026-07-29 10:00:00', 'UTC'), 'first_replied_at' => Carbon::parse('2026-07-29 10:30:00', 'UTC')]);
 
     $res = $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertStatus(200);
-    expect($res->json('data.sla.state'))->toBe('met');
+    expect(collect($res->json('data.sla_metrics'))->firstWhere('metric', 'first_reply')['state'])->toBe('met');
 
     Workspace::forgetCurrent();
 });
 
-it('reports state none and null due_at when the ticket has no policy', function (): void {
+it('exposes empty sla_metrics when the ticket has no policy', function (): void {
     [$token, $ws] = slaWorld();
     $ticket = slaTicket($ws, null, ['created_at' => now()]);
 
     $res = $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertStatus(200);
-    expect($res->json('data.sla.state'))->toBe('none');
-    expect($res->json('data.sla.due_at'))->toBeNull();
+    expect($res->json('data.sla_metrics'))->toBe([]);
 
     Workspace::forgetCurrent();
 });
@@ -120,8 +120,6 @@ it('exposes sla_metrics with first_reply and resolution for a policied ticket', 
     expect($metrics->pluck('metric'))->toContain('resolution');
     $fr = $metrics->firstWhere('metric', 'first_reply');
     expect($fr)->toHaveKeys(['metric', 'policy_name', 'target_minutes', 'due_at', 'state', 'remaining_minutes', 'within_business_hours']);
-    // the legacy first-reply `sla` field is unchanged
-    expect($res->json('data.sla.state'))->toBe($fr['state']);
 
     Workspace::forgetCurrent();
 });
