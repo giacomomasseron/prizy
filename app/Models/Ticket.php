@@ -125,7 +125,9 @@ class Ticket extends TenantAwareEntity
 
     /**
      * The most recent non-internal message on the ticket (either party). Used to detect
-     * a pending customer reply for the next-reply SLA. @return HasOne<TicketMessage, $this>
+     * a pending customer reply for the next-reply SLA.
+     *
+     * @return HasOne<TicketMessage, $this>
      */
     public function latestPublicMessage(): HasOne
     {
