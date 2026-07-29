@@ -33,6 +33,7 @@ Route::view('/settings/members', 'app');
 Route::view('/settings/teams', 'app');
 Route::view('/settings/general', 'app');
 Route::view('/settings/labels', 'app');
+Route::view('/settings/business-hours', 'app');
 Route::view('/settings/billing', 'app');
 Route::view('/settings/audit', 'app');
 Route::view('/settings/integrations', 'app');

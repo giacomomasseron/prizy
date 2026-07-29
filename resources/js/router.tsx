@@ -17,6 +17,7 @@ import ProjectIssues from './features/projects/ProjectIssues';
 import ProjectCycles from './features/projects/ProjectCycles';
 import ProjectRoadmap from './features/projects/ProjectRoadmap';
 import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
+import BusinessHoursSettingsPage from './features/business-hours/BusinessHoursSettingsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import SearchPage from './features/search/SearchPage';
@@ -76,6 +77,7 @@ export default function AppRouter() {
                     <Route path="teams" element={<RequireManage><TeamsSettingsPage /></RequireManage>} />
                     <Route path="general" element={<GeneralPage />} />
                     <Route path="labels" element={<LabelsSettingsPage />} />
+                    <Route path="business-hours" element={<RequireAgent><BusinessHoursSettingsPage /></RequireAgent>} />
                     <Route path="integrations" element={<RequireManage><IntegrationsSettingsPage /></RequireManage>} />
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />
