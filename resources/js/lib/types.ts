@@ -192,6 +192,16 @@ export type TicketStatus = 'new' | 'open' | 'pending' | 'on_hold' | 'solved' | '
 export type TicketPriority = 'low' | 'normal' | 'high' | 'urgent';
 export type TicketChannel = 'email' | 'chat' | 'portal' | 'api';
 
+export interface SlaMetric {
+    metric: 'first_reply' | 'next_reply' | 'resolution';
+    policy_name: string | null;
+    target_minutes: number;
+    due_at: string | null;
+    state: 'none' | 'met' | 'due' | 'breached';
+    remaining_minutes: number;
+    within_business_hours: boolean;
+}
+
 export interface TicketListItem {
     id: string;
     subject: string;
@@ -202,7 +212,7 @@ export interface TicketListItem {
     assignee: { id: string; name: string } | null;
     tags: { id: string; name: string; color: string }[];
     linked_issues: { id: string; identifier?: string; title: string }[];
-    sla: { policy_name: string | null; target_minutes: number | null; due_at: string | null; state: 'none' | 'met' | 'due' | 'breached' };
+    sla_metrics: SlaMetric[];
     updated_at: string;
     created_at: string;
     first_replied_at: string | null;

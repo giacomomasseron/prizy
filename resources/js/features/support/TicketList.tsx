@@ -1,8 +1,7 @@
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
-import { slaPresentation } from './sla';
-import { useNow } from './useNow';
+import { primarySlaMetric, slaMetricPresentation } from './sla';
 import type { TicketListItem, TicketPriority } from '../../lib/types';
 
 function tint(color: string) { return `color-mix(in srgb, ${color} 15%, transparent)`; }
@@ -16,7 +15,6 @@ function PriorityIcon({ priority }: { priority: TicketPriority }) {
 }
 
 export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketListItem[]; selectedId: string | undefined; onSelect: (id: string) => void }) {
-    const now = useNow();
     return (
         <section style={{ width: 342, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
             <header style={{ height: 52, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px' }}>
@@ -41,7 +39,8 @@ export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketL
                                     <span style={{ fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.03em', padding: '1px 6px', borderRadius: 5, color: st.color, background: tint(st.color) }}>{st.label}</span>
                                     {linked && <span style={{ fontSize: 9, fontWeight: 600, padding: '1px 5px', borderRadius: 5, color: 'var(--accent)', background: 'var(--accent2)', fontFamily: 'var(--font-mono)' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)}</span>}
                                     {(() => {
-                                        const pres = slaPresentation(t.sla, t.created_at, now);
+                                        const primary = primarySlaMetric(t.sla_metrics);
+                                        const pres = primary ? slaMetricPresentation(primary) : null;
                                         return (
                                             <span style={{ marginLeft: 'auto', fontSize: 10.5, color: pres ? pres.color : 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
                                                 {pres ? pres.remaining : '—'}
