@@ -40,6 +40,10 @@ export function SlaAttainmentCard({ report }: { report: SlaReport }) {
                     )}
                 </div>
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--fg2)' }}>
+                <span style={{ flex: 1 }}>Resolution</span>
+                <span style={{ fontFamily: 'var(--font-mono)' }}>{report.resolution_attainment_pct === null ? '—' : `${report.resolution_attainment_pct}% met`}</span>
+            </div>
             <div style={{ height: 1, background: 'var(--border)' }} />
             <div>
                 <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)', marginBottom: 11 }}>By channel</div>

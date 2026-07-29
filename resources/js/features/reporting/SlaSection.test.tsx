@@ -4,7 +4,7 @@ import { SlaSection } from './SlaSection';
 import type { SlaReport } from '../../lib/types';
 
 const report: SlaReport = {
-    range: '7d', attainment_pct: 94,
+    range: '7d', attainment_pct: 94, resolution_attainment_pct: 94,
     by_plan: [{ policy_id: 'p1', name: 'Enterprise SLA', target_minutes: 60, attainment_pct: 97, count: 12 }],
     by_channel: [{ channel: 'email', count: 8 }, { channel: 'chat', count: 3 }, { channel: 'portal', count: 0 }, { channel: 'api', count: 1 }],
     breach_risk: [{ ticket_id: 'abcdef123456', subject: 'Seat limit error', requester_name: 'Grace', target_minutes: 60, remaining_minutes: 42, pct: 70 }],

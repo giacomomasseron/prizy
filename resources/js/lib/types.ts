@@ -350,6 +350,7 @@ export interface TagCount {
 export interface SlaReport {
     range: '7d' | '30d' | '90d';
     attainment_pct: number | null;
+    resolution_attainment_pct: number | null;
     by_plan: SlaPlanRow[];
     by_channel: ChannelCount[];
     breach_risk: BreachRiskRow[];
