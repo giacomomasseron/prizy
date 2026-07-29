@@ -356,3 +356,16 @@ export interface SlaReport {
     breach_risk: BreachRiskRow[];
     tags: TagCount[];
 }
+
+export interface ScheduleInterval {
+    day_of_week: number; // 0=Sun..6=Sat
+    opens_at: string; // 'HH:MM'
+    closes_at: string; // 'HH:MM'
+}
+
+export interface Schedule {
+    id: string;
+    name: string;
+    timezone: string;
+    intervals: ScheduleInterval[];
+}

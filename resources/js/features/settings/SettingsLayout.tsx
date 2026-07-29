@@ -34,6 +34,7 @@ export default function SettingsLayout() {
     const navigate = useNavigate();
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const isAgent = !!me.data?.is_agent;
     const members = useWorkspaceMembers({ enabled: canManage });
     const memberCount = members.data?.length;
     const teams = useTeams({ enabled: canManage });
@@ -120,6 +121,11 @@ export default function SettingsLayout() {
                     {canManage && (
                         <NavLink to="/settings/integrations" style={({ isActive }) => navBtn(isActive)}>
                             Integrations
+                        </NavLink>
+                    )}
+                    {isAgent && (
+                        <NavLink to="/settings/business-hours" style={({ isActive }) => navBtn(isActive)}>
+                            Business hours
                         </NavLink>
                     )}
                     {/* Disabled stubs */}

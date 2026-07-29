@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\TokenController;
+use App\Http\Controllers\Api\V1\BusinessHourScheduleController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CycleController;
 use App\Http\Controllers\Api\V1\GithubIntegrationController;
@@ -142,6 +143,12 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/labels', [LabelController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Label']);
         Route::patch('/labels/{label}', [LabelController::class, 'update'])->middleware('verified');
         Route::delete('/labels/{label}', [LabelController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/business-hours', [BusinessHourScheduleController::class, 'index']);
+        Route::get('/business-hours/{id}', [BusinessHourScheduleController::class, 'show']);
+        Route::post('/business-hours', [BusinessHourScheduleController::class, 'store'])->middleware('verified');
+        Route::patch('/business-hours/{id}', [BusinessHourScheduleController::class, 'update'])->middleware('verified');
+        Route::delete('/business-hours/{id}', [BusinessHourScheduleController::class, 'destroy'])->middleware('verified');
 
         Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
         Route::get('/teams/{team}', [TeamController::class, 'show']);
