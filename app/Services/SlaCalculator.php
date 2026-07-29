@@ -85,8 +85,9 @@ final class SlaCalculator
 
         $latest = $ticket->latestPublicMessage;
         if ($policy->next_reply_minutes !== null && $ticket->first_replied_at !== null && $latest !== null && $latest->sender_type === 'contact') {
+            // recurring metric — computed live, never sticky (see fix)
             $out[] = ['metric' => 'next_reply', 'policy_name' => $policy->name]
-                + self::statusFor($latest->created_at, null, (int) $policy->next_reply_minutes, $policy->schedule, self::hasBreachRow($ticket, 'next_reply'));
+                + self::statusFor($latest->created_at, null, (int) $policy->next_reply_minutes, $policy->schedule, false);
         }
 
         return $out;

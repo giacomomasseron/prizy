@@ -99,6 +99,29 @@ it('records breaches across multiple workspaces', function (): void {
     expect(DB::table('sla_breaches')->count())->toBeGreaterThanOrEqual(2);
 });
 
+it('does not record a next_reply breach — recurring metric is computed live, not stored', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 14:00:00', 'UTC'));
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $p = SlaPolicy::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Std',
+        'first_reply_minutes' => 60, 'resolution_minutes' => 480, 'next_reply_minutes' => 120, 'schedule_id' => null]);
+    $t = breachTicket($ws, $p->id, [
+        'created_at' => Carbon::parse('2026-07-29 08:00:00', 'UTC'),
+        'first_replied_at' => Carbon::parse('2026-07-29 08:05:00', 'UTC'),
+    ]);
+    // Pending customer message at 11:30 → next_reply due 13:30 (24/7); now 14:00 → overdue.
+    DB::table('ticket_messages')->insert([
+        'id' => (string) Str::uuid(), 'ticket_id' => $t->id, 'sender_type' => 'contact',
+        'sender_contact_id' => $t->requester_id, 'body' => 'still broken', 'is_internal' => false,
+        'channel' => 'email', 'created_at' => Carbon::parse('2026-07-29 11:30:00', 'UTC'), 'updated_at' => Carbon::parse('2026-07-29 11:30:00', 'UTC'),
+    ]);
+    Workspace::forgetCurrent();
+
+    app(SlaBreachRepository::class)->recordDueBreaches();
+
+    expect(DB::table('sla_breaches')->where(['ticket_id' => $t->id, 'metric' => 'next_reply'])->exists())->toBeFalse();
+});
+
 it('the sla:record-breaches command runs and exits 0', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
     $ws = Workspace::factory()->create();

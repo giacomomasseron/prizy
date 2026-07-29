@@ -265,6 +265,22 @@ it('metrics includes next_reply only when policy sets it, first reply happened, 
     expect(collect(SlaCalculator::metrics($answered))->firstWhere('metric', 'next_reply'))->toBeNull();
 });
 
+it('next_reply state is computed live, never sticky from a recorded breach row', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    $policy = policyMetrics(60, 480, 120); // next_reply 120m, 24/7
+    // pending customer message at 11:30 → CURRENT window due 13:30, now 12:00 → not yet overdue.
+    // A stale next_reply breach row exists from a PREVIOUS window (sla_breaches is UNIQUE per
+    // ticket+metric, so a recurring metric can only ever have one — necessarily stale — row).
+    $t = metricsTicket($policy, '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, contactMessage('2026-07-29 11:30:00'), ['next_reply']);
+    $nr = collect(SlaCalculator::metrics($t))->firstWhere('metric', 'next_reply');
+    expect($nr['state'])->toBe('due'); // NOT 'breached' — the stale row must not stick
+
+    // Genuinely overdue pending next_reply (no breach row at all) → still 'breached', computed live.
+    Carbon::setTestNow(Carbon::parse('2026-07-29 14:00:00', 'UTC')); // due 13:30 already passed
+    $overdue = metricsTicket($policy, '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, contactMessage('2026-07-29 11:30:00'));
+    expect(collect(SlaCalculator::metrics($overdue))->firstWhere('metric', 'next_reply')['state'])->toBe('breached');
+});
+
 it('metrics remaining_minutes is business-time remaining when due, 0 otherwise', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-07-29 10:20:00', 'UTC'));
     // 24/7, first_reply 60m, created 10:00 → due 11:00; now 10:20 → 40m remaining

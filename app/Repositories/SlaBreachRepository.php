@@ -34,17 +34,24 @@ final class SlaBreachRepository
                                 if ($m['state'] !== 'breached') {
                                     continue;
                                 }
+                                if ($m['metric'] === 'next_reply') {
+                                    continue; // recurring metric — not representable by UNIQUE(ticket_id, metric); computed live on read
+                                }
                                 if ($ticket->slaBreaches->firstWhere('metric', $m['metric']) !== null) {
                                     continue;
                                 }
-                                SlaBreach::firstOrCreate(
+                                $breach = SlaBreach::firstOrCreate(
                                     ['ticket_id' => $ticket->id, 'metric' => $m['metric']],
                                     ['id' => (string) Str::uuid(), 'breached_at' => $m['due_at']],
                                 );
-                                $written++;
+                                if ($breach->wasRecentlyCreated) {
+                                    $written++;
+                                }
                             }
                         }
                     });
+            } catch (\Throwable $e) {
+                report($e); // don't let one workspace abort the run
             } finally {
                 $workspace->forgetCurrent();
             }
