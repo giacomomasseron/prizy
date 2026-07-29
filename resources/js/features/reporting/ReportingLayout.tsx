@@ -8,9 +8,9 @@ import { KPI_META, type ReportRange, type ReportSectionKey, REPORT_SECTIONS } fr
 import { KpiCard } from './KpiCard';
 import { OverviewSection } from './OverviewSection';
 import { AgentsSection } from './AgentsSection';
+import { SlaSection } from './SlaSection';
 import { ReportingSidebar } from './ReportingSidebar';
 import { RangeToggle } from './RangeToggle';
-import { ComingSoon } from './ComingSoon';
 
 const railIcon: CSSProperties = { width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: 'var(--fg3)', textDecoration: 'none' };
 
@@ -54,7 +54,7 @@ export default function ReportingLayout() {
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
                                     {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} />)}
                                 </div>
-                                {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <ComingSoon label={sectionLabel} />}
+                                {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <SlaSection range={range} />}
                             </>
                         )}
                     </div>

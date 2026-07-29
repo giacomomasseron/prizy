@@ -219,6 +219,22 @@ final class SmokeSeeder extends Seeder
             $agents[] = $a;
         }
 
+        // Tiered SLA policies so the reporting attainment donut + by-plan breakdown compare plans (idempotent).
+        $tierDefs = [['name' => 'Enterprise SLA', 'min' => 60], ['name' => 'Business SLA', 'min' => 240], ['name' => 'Startup SLA', 'min' => 480]];
+        $tierPolicies = [];
+        foreach ($tierDefs as $d) {
+            $tierPolicies[] = SlaPolicy::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['name', $d['name']]])
+                ?? SlaPolicy::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'name' => $d['name'],
+                    'first_reply_minutes' => $d['min'], 'resolution_minutes' => 480, 'schedule_id' => $schedule->id]);
+        }
+
+        // A small tag catalog so the reporting tag chips are non-trivial (idempotent).
+        $tagCatalog = [];
+        foreach (['bug', 'billing', 'how-to', 'sso', 'export'] as $tn) {
+            $tagCatalog[] = Tag::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['name', $tn]])
+                ?? Tag::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'name' => $tn, 'color' => '#5b8def']);
+        }
+
         // Historical tickets so /support/reporting has real numbers (idempotent: only when sparse).
         if (Ticket::where('workspace_id', $workspace->id)->count() < 20) {
             $issue = Issue::where('workspace_id', $workspace->id)->first();
@@ -236,10 +252,15 @@ final class SmokeSeeder extends Seeder
                     'assignee_id' => $agents[$i % count($agents)]->id,
                     'subject' => 'Historical ticket #'.($i + 1),
                     'status' => $status, 'priority' => $priorities[$i % 4], 'channel' => $channels[$i % 4],
+                    'sla_policy_id' => $tierPolicies[$i % 3]->id,
                     'created_at' => $createdAt,
                     'first_replied_at' => $replied ? $createdAt->copy()->addMinutes(5 + ($i % 12) * 6) : null,
                     'resolved_at' => $isSolved ? $createdAt->copy()->addHours(2 + ($i % 10)) : null,
                 ]);
+
+                if ($i % 2 === 0) {
+                    DB::table('ticket_tags')->insert(['ticket_id' => $t->id, 'tag_id' => $tagCatalog[$i % count($tagCatalog)]->id]);
+                }
 
                 $assignee = $agents[$i % count($agents)];
 
@@ -270,6 +291,18 @@ final class SmokeSeeder extends Seeder
                 if ($issue !== null && $i % 7 === 0) {             // ~15% escalated
                     DB::table('issue_ticket_links')->insert(['issue_id' => $issue->id, 'ticket_id' => $t->id, 'created_by' => $user->id]);
                 }
+            }
+
+            // A few open, unreplied tickets so the reporting breach-risk queue is non-empty.
+            for ($j = 0; $j < 4; $j++) {
+                Ticket::forceCreate([
+                    'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                    'assignee_id' => $agents[$j % count($agents)]->id,
+                    'subject' => 'Awaiting first reply #'.($j + 1),
+                    'status' => $j % 2 === 0 ? 'new' : 'open', 'priority' => 'high', 'channel' => $channels[$j % 4],
+                    'sla_policy_id' => $tierPolicies[$j % 3]->id,
+                    'created_at' => now()->subMinutes(10 + $j * 10), // 10/20/30/40 min ago, unreplied
+                ]);
             }
         }
 

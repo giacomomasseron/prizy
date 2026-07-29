@@ -7,7 +7,9 @@ namespace App\Repositories;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
+use App\Services\SlaCalculator;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\DB;
 
 final class ReportRepository
 {
@@ -123,6 +125,117 @@ final class ReportRepository
             'replies_per_day' => $this->repliesPerDay($workspaceId, $now, $bucketDays, $numBuckets),
             'csat' => $this->csatBreakdown($workspaceId, $curStart, $now),
         ];
+    }
+
+    /** @return array<string, mixed> */
+    public function sla(string $workspaceId, string $range): array
+    {
+        $days = self::RANGE_DAYS[$range] ?? 7;
+        $now = now();
+        $curStart = $now->copy()->subDays($days);
+
+        // In-window policied tickets → per-ticket first-reply state via the SLA engine.
+        $windowed = Ticket::query()->where('workspace_id', $workspaceId)
+            ->whereNotNull('sla_policy_id')
+            ->where('created_at', '>=', $curStart)->where('created_at', '<', $now)
+            ->with(['slaPolicy.schedule.businessHourIntervals', 'slaBreaches'])
+            ->get();
+
+        $met = 0;
+        $breached = 0;
+        $planAgg = []; // policy_id => ['name'=>?string, 'target'=>?int, 'met'=>int, 'breached'=>int]
+        foreach ($windowed as $t) {
+            $status = SlaCalculator::firstReplyStatus($t);
+            if (! in_array($status['state'], ['met', 'breached'], true)) {
+                continue; // decided outcomes only ('due'/'none' excluded)
+            }
+            $pid = $t->sla_policy_id;
+            $planAgg[$pid] ??= ['name' => $status['policy_name'], 'target' => $status['target_minutes'], 'met' => 0, 'breached' => 0];
+            if ($status['state'] === 'met') {
+                $met++;
+                $planAgg[$pid]['met']++;
+            } else {
+                $breached++;
+                $planAgg[$pid]['breached']++;
+            }
+        }
+        $decided = $met + $breached;
+
+        $byPlan = collect($planAgg)->map(function (array $p, string $pid): array {
+            $d = $p['met'] + $p['breached'];
+
+            return [
+                'policy_id' => $pid,
+                'name' => $p['name'],
+                'target_minutes' => $p['target'],
+                'attainment_pct' => $d > 0 ? (int) round($p['met'] / $d * 100) : null,
+                'count' => $d,
+            ];
+        })->sortBy('target_minutes')->values()->all();
+
+        $chanRaw = Ticket::query()->where('workspace_id', $workspaceId)
+            ->where('created_at', '>=', $curStart)->where('created_at', '<', $now)
+            ->selectRaw('channel, count(*) as c')->groupBy('channel')->pluck('c', 'channel');
+        $byChannel = collect(['email', 'chat', 'portal', 'api'])
+            ->map(fn (string $ch) => ['channel' => $ch, 'count' => (int) ($chanRaw[$ch] ?? 0)])->all();
+
+        return [
+            'range' => $range,
+            'attainment_pct' => $decided > 0 ? (int) round($met / $decided * 100) : null,
+            'by_plan' => $byPlan,
+            'by_channel' => $byChannel,
+            'breach_risk' => $this->breachRisk($workspaceId),
+            'tags' => $this->tagCounts($workspaceId, $curStart, $now),
+        ];
+    }
+
+    /** @return list<array{ticket_id:string,subject:string,requester_name:?string,target_minutes:?int,remaining_minutes:int,pct:int}> */
+    private function breachRisk(string $workspaceId): array
+    {
+        $now = now();
+        $open = Ticket::query()->where('workspace_id', $workspaceId)
+            ->whereNull('resolved_at')->whereNull('first_replied_at')->whereNotNull('sla_policy_id')
+            ->with(['slaPolicy.schedule.businessHourIntervals', 'slaBreaches', 'requester'])
+            ->get();
+
+        return $open->map(fn (Ticket $t) => ['t' => $t, 'status' => SlaCalculator::firstReplyStatus($t)])
+            ->filter(fn (array $r) => $r['status']['state'] === 'due')
+            ->sortBy(fn (array $r) => $r['status']['due_at']->getTimestamp())
+            ->take(5)
+            ->map(function (array $r) use ($now): array {
+                $t = $r['t'];
+                $target = $r['status']['target_minutes'];
+                $remaining = max(0, (int) round($now->diffInMinutes($r['status']['due_at'], false)));
+                $pct = ($target !== null && $target > 0) ? min(100, max(0, (int) round($remaining / $target * 100))) : 0;
+
+                return [
+                    'ticket_id' => $t->id,
+                    'subject' => $t->subject,
+                    'requester_name' => $t->requester?->name,
+                    'target_minutes' => $target,
+                    'remaining_minutes' => $remaining,
+                    'pct' => $pct,
+                ];
+            })->values()->all();
+    }
+
+    /** @return list<array{name:string,count:int}> */
+    private function tagCounts(string $workspaceId, CarbonInterface $from, CarbonInterface $to): array
+    {
+        $ticketIds = Ticket::query()->where('workspace_id', $workspaceId)
+            ->where('created_at', '>=', $from)->where('created_at', '<', $to)->select('id');
+
+        return DB::table('ticket_tags')
+            ->join('tags', 'tags.id', '=', 'ticket_tags.tag_id')
+            ->where('tags.workspace_id', $workspaceId)
+            ->whereIn('ticket_tags.ticket_id', $ticketIds)
+            ->groupBy('tags.name')
+            ->selectRaw('tags.name as name, count(*) as c')
+            ->orderByDesc('c')->orderBy('tags.name')
+            ->limit(8)
+            ->get()
+            ->map(fn ($r) => ['name' => $r->name, 'count' => (int) $r->c])
+            ->all();
     }
 
     /** @return array<string, int> assignee_id => count */
