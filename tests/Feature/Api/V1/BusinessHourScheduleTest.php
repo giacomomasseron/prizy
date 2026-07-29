@@ -91,6 +91,29 @@ it('forbids a non-agent (403)', function (): void {
     $this->withToken($token)->postJson('/v1/business-hours', bhPayload())->assertStatus(403);
 });
 
+it('forbids a non-agent from show/update/delete (403)', function (): void {
+    [$agentToken, $ws] = bhWorld();
+    $id = $this->withToken($agentToken)->postJson('/v1/business-hours', bhPayload())->json('data.id');
+
+    $nonAgent = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => false, 'admin_level' => 'owner']);
+    $nonAgentToken = app(CreatePersonalAccessToken::class)->handle($nonAgent, 't', null)['token'];
+
+    $this->withToken($nonAgentToken)->getJson("/v1/business-hours/{$id}")->assertStatus(403);
+    $this->withToken($nonAgentToken)->patchJson("/v1/business-hours/{$id}", bhPayload())->assertStatus(403);
+    $this->withToken($nonAgentToken)->deleteJson("/v1/business-hours/{$id}")->assertStatus(403);
+});
+
+it('forbids cross-workspace update/delete (404)', function (): void {
+    [$aToken, $ws] = bhWorld();
+    $other = Workspace::factory()->create();
+    $other->makeCurrent();
+    $bSched = BusinessHourSchedule::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $other->id, 'name' => 'B', 'timezone' => 'UTC']);
+    $ws->makeCurrent();
+
+    $this->withToken($aToken)->patchJson("/v1/business-hours/{$bSched->id}", bhPayload())->assertStatus(404);
+    $this->withToken($aToken)->deleteJson("/v1/business-hours/{$bSched->id}")->assertStatus(404);
+});
+
 it('validates name, timezone, day_of_week, and opens<closes (422)', function (): void {
     [$token] = bhWorld();
     $this->withToken($token)->postJson('/v1/business-hours', bhPayload(['name' => '']))->assertStatus(422);
