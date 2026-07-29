@@ -1,13 +1,14 @@
 <?php
 
+use App\Support\Http\ProblemDetails;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
+use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -20,7 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'tenant'         => NeedsTenant::class,
+            'tenant' => NeedsTenant::class,
             'tenant.session' => EnsureValidTenantSession::class,
         ]);
 
@@ -39,7 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // RFC 7807 Problem Details for the v1 API surface.
         $exceptions->render(function (Throwable $e, Request $request): ?JsonResponse {
             if ($request->is('v1/*')) {
-                return \App\Support\Http\ProblemDetails::render($e, $request);
+                return ProblemDetails::render($e, $request);
             }
 
             return null;
@@ -48,5 +49,6 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('notifications:send-digests --frequency=daily')->dailyAt('08:00');
         $schedule->command('notifications:send-digests --frequency=weekly')->weeklyOn(1, '08:00');
+        $schedule->command('sla:record-breaches')->everyFiveMinutes();
     })
     ->create();
