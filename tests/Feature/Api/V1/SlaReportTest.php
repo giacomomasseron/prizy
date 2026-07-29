@@ -30,10 +30,10 @@ function slaReportWorld(array $userAttrs = ['is_agent' => true]): array
 }
 
 // A policy with NO schedule → SlaCalculator 24/7 fallback (due = created + minutes).
-function slaReportPolicy(Workspace $ws, string $name, int $minutes): SlaPolicy
+function slaReportPolicy(Workspace $ws, string $name, int $firstReply, int $resolution = 480): SlaPolicy
 {
     return SlaPolicy::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => $name,
-        'first_reply_minutes' => $minutes, 'resolution_minutes' => 480, 'schedule_id' => null]);
+        'first_reply_minutes' => $firstReply, 'resolution_minutes' => $resolution, 'schedule_id' => null]);
 }
 
 function slaReportTicket(Workspace $ws, ?string $policyId, array $attrs): Ticket
@@ -91,6 +91,34 @@ it('breaks attainment down by plan sorted by target ascending', function (): voi
     expect($plans[0]['count'])->toBe(2);
     expect($plans[1]['name'])->toBe('Slow');
     expect($plans[1]['attainment_pct'])->toBe(100);
+
+    Workspace::forgetCurrent();
+});
+
+it('computes resolution attainment over decided in-window policied tickets', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = slaReportWorld();
+    $p = slaReportPolicy($ws, 'Std', 60, 480); // first_reply 60, resolution 480 (8h)
+    $c = Carbon::parse('2026-07-20 09:00:00', 'UTC');
+    // resolution met (resolved 2h in), breached (resolved 10h in)
+    slaReportTicket($ws, $p->id, ['created_at' => $c, 'first_replied_at' => $c->copy()->addMinutes(5), 'resolved_at' => $c->copy()->addHours(2), 'status' => 'solved']);
+    slaReportTicket($ws, $p->id, ['created_at' => $c, 'first_replied_at' => $c->copy()->addMinutes(5), 'resolved_at' => $c->copy()->addHours(10), 'status' => 'solved']);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/sla?range=7d')->assertStatus(200);
+    expect($res->json('data.resolution_attainment_pct'))->toBe(50); // 1 met / 2 decided
+
+    Workspace::forgetCurrent();
+});
+
+it('returns a null resolution attainment when no resolution outcomes are decided', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC'));
+    [$token, $ws] = slaReportWorld();
+    $p = slaReportPolicy($ws, 'Std', 60, 480);
+    // unresolved + not past resolution due → resolution 'due' (undecided)
+    slaReportTicket($ws, $p->id, ['created_at' => Carbon::parse('2026-07-25 11:00:00', 'UTC')]);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/sla?range=7d')->assertStatus(200);
+    expect($res->json('data.resolution_attainment_pct'))->toBeNull();
 
     Workspace::forgetCurrent();
 });

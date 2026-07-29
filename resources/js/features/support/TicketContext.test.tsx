@@ -15,7 +15,7 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
         assignee: null,
         tags: [],
         linked_issues: [],
-        sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' },
+        sla_metrics: [],
         updated_at: '',
         created_at: '',
         first_replied_at: null,
@@ -136,8 +136,8 @@ describe('TicketContext', () => {
         expect(screen.queryByText(/^Recent from/)).not.toBeInTheDocument();
     });
 
-    it('hides the SLA card when state is none', () => {
-        ticketData = ticket({ sla: { policy_name: null, target_minutes: null, due_at: null, state: 'none' } });
+    it('hides the SLA card when there are no metrics', () => {
+        ticketData = ticket({ sla_metrics: [] });
         renderWithRouter('t1');
         expect(screen.queryByText('First reply due')).not.toBeInTheDocument();
         expect(screen.queryByText('SLA met')).not.toBeInTheDocument();
@@ -145,8 +145,7 @@ describe('TicketContext', () => {
 
     it('shows a first-reply countdown for a due ticket', () => {
         ticketData = ticket({
-            created_at: new Date(Date.now() - 40 * 60000).toISOString(),
-            sla: { policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date(Date.now() + 20 * 60000).toISOString(), state: 'due' },
+            sla_metrics: [{ metric: 'first_reply', policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date(Date.now() + 20 * 60000).toISOString(), state: 'due', remaining_minutes: 20, within_business_hours: true }],
         });
         renderWithRouter('t1');
         expect(screen.getByText('First reply due')).toBeInTheDocument();
@@ -154,8 +153,16 @@ describe('TicketContext', () => {
     });
 
     it('shows SLA met', () => {
-        ticketData = ticket({ sla: { policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date().toISOString(), state: 'met' } });
+        ticketData = ticket({ sla_metrics: [{ metric: 'first_reply', policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date().toISOString(), state: 'met', remaining_minutes: 0, within_business_hours: true }] });
         renderWithRouter('t1');
         expect(screen.getByText('SLA met')).toBeInTheDocument();
+    });
+
+    it('shows a paused chip for a due metric outside business hours', () => {
+        ticketData = ticket({
+            sla_metrics: [{ metric: 'first_reply', policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date(Date.now() + 20 * 60000).toISOString(), state: 'due', remaining_minutes: 20, within_business_hours: false }],
+        });
+        renderWithRouter('t1');
+        expect(screen.getByText('⏸ Paused')).toBeInTheDocument();
     });
 });

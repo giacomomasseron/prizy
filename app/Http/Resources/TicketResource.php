@@ -31,16 +31,6 @@ final class TicketResource extends JsonResource
             'assignee' => $this->assignee ? ['id' => $this->assignee->id, 'name' => $this->assignee->name] : null,
             'tags' => $this->tags->map(fn ($t) => ['id' => $t->id, 'name' => $t->name, 'color' => $t->color])->values(),
             'linked_issues' => $this->linkedIssues->map(fn ($i) => ['id' => $i->id, 'identifier' => $i->identifier, 'title' => $i->title])->values(),
-            'sla' => (function () {
-                $s = SlaCalculator::firstReplyStatus($this->resource);
-
-                return [
-                    'policy_name' => $s['policy_name'],
-                    'target_minutes' => $s['target_minutes'],
-                    'due_at' => $s['due_at']?->toISOString(),
-                    'state' => $s['state'],
-                ];
-            })(),
             'sla_metrics' => collect(SlaCalculator::metrics($this->resource))->map(fn (array $m) => [
                 'metric' => $m['metric'],
                 'policy_name' => $m['policy_name'],
