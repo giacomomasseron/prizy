@@ -128,6 +128,11 @@ export default function SettingsLayout() {
                             Business hours
                         </NavLink>
                     )}
+                    {isAgent && (
+                        <NavLink to="/settings/sla-policies" style={({ isActive }) => navBtn(isActive)}>
+                            SLA policies
+                        </NavLink>
+                    )}
                     {/* Disabled stubs */}
                     <button
                         type="button"

@@ -369,3 +369,13 @@ export interface Schedule {
     timezone: string;
     intervals: ScheduleInterval[];
 }
+
+export interface SlaPolicy {
+    id: string;
+    name: string;
+    first_reply_minutes: number;
+    next_reply_minutes: number | null;
+    resolution_minutes: number;
+    schedule_id: string | null;
+    schedule_name: string | null;
+}

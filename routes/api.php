@@ -25,6 +25,7 @@ use App\Http\Controllers\Api\V1\RoadmapController;
 use App\Http\Controllers\Api\V1\SavedViewController;
 use App\Http\Controllers\Api\V1\SearchController;
 use App\Http\Controllers\Api\V1\SlackIntegrationController;
+use App\Http\Controllers\Api\V1\SlaPolicyController;
 use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Controllers\Api\V1\TicketController;
@@ -149,6 +150,12 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/business-hours', [BusinessHourScheduleController::class, 'store'])->middleware('verified');
         Route::patch('/business-hours/{id}', [BusinessHourScheduleController::class, 'update'])->middleware('verified');
         Route::delete('/business-hours/{id}', [BusinessHourScheduleController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/sla-policies', [SlaPolicyController::class, 'index']);
+        Route::get('/sla-policies/{id}', [SlaPolicyController::class, 'show']);
+        Route::post('/sla-policies', [SlaPolicyController::class, 'store'])->middleware('verified');
+        Route::patch('/sla-policies/{id}', [SlaPolicyController::class, 'update'])->middleware('verified');
+        Route::delete('/sla-policies/{id}', [SlaPolicyController::class, 'destroy'])->middleware('verified');
 
         Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
         Route::get('/teams/{team}', [TeamController::class, 'show']);
