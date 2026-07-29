@@ -18,6 +18,7 @@ import ProjectCycles from './features/projects/ProjectCycles';
 import ProjectRoadmap from './features/projects/ProjectRoadmap';
 import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
 import BusinessHoursSettingsPage from './features/business-hours/BusinessHoursSettingsPage';
+import SlaPoliciesSettingsPage from './features/sla-policies/SlaPoliciesSettingsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import SearchPage from './features/search/SearchPage';
@@ -78,6 +79,7 @@ export default function AppRouter() {
                     <Route path="general" element={<GeneralPage />} />
                     <Route path="labels" element={<LabelsSettingsPage />} />
                     <Route path="business-hours" element={<RequireAgent><BusinessHoursSettingsPage /></RequireAgent>} />
+                    <Route path="sla-policies" element={<RequireAgent><SlaPoliciesSettingsPage /></RequireAgent>} />
                     <Route path="integrations" element={<RequireManage><IntegrationsSettingsPage /></RequireManage>} />
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />
