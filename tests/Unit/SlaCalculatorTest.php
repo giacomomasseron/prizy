@@ -180,3 +180,139 @@ it('returns breached when a first_reply breach row exists even if before due', f
     $s = SlaCalculator::firstReplyStatus(ticketWith(policy60(), '2026-07-29 10:00:00', null, ['first_reply']));
     expect($s['state'])->toBe('breached');
 });
+
+// ---- HD-6a: multi-metric engine ----
+
+function policyMetrics(int $firstReply, int $resolution, ?int $nextReply = null, ?BusinessHourSchedule $sched = null): SlaPolicy
+{
+    $p = new SlaPolicy([
+        'name' => 'Tiered SLA', 'first_reply_minutes' => $firstReply,
+        'resolution_minutes' => $resolution, 'next_reply_minutes' => $nextReply,
+    ]);
+    $p->setRelation('schedule', $sched); // null → 24/7 fallback
+
+    return $p;
+}
+
+/** @param array<int,string> $breachMetrics */
+function metricsTicket(SlaPolicy $policy, string $createdAt, ?string $repliedAt = null, ?string $resolvedAt = null, ?App\Models\TicketMessage $latestPublic = null, array $breachMetrics = []): Ticket
+{
+    $t = new Ticket;
+    $t->created_at = Carbon::parse($createdAt, 'UTC');
+    $t->first_replied_at = $repliedAt ? Carbon::parse($repliedAt, 'UTC') : null;
+    $t->resolved_at = $resolvedAt ? Carbon::parse($resolvedAt, 'UTC') : null;
+    $t->setRelation('slaPolicy', $policy);
+    $t->setRelation('latestPublicMessage', $latestPublic);
+    $t->setRelation('slaBreaches', new Collection(array_map(fn ($m) => new SlaBreach(['metric' => $m]), $breachMetrics)));
+
+    return $t;
+}
+
+function contactMessage(string $at): App\Models\TicketMessage
+{
+    $m = new App\Models\TicketMessage(['sender_type' => 'contact', 'is_internal' => false]);
+    $m->created_at = Carbon::parse($at, 'UTC');
+
+    return $m;
+}
+
+it('metrics returns empty for a ticket with no policy', function (): void {
+    $t = new Ticket;
+    $t->created_at = Carbon::parse('2026-07-29 10:00:00', 'UTC');
+    $t->setRelation('slaPolicy', null);
+    expect(SlaCalculator::metrics($t))->toBe([]);
+});
+
+it('metrics always includes first_reply and resolution for a policied ticket', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 10:30:00', 'UTC'));
+    $t = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00'); // 24/7
+    $metrics = collect(SlaCalculator::metrics($t));
+    expect($metrics->pluck('metric')->all())->toBe(['first_reply', 'resolution']);
+    expect($metrics->firstWhere('metric', 'resolution')['target_minutes'])->toBe(480);
+});
+
+it('metrics resolution is met when resolved before due, breached when after', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 20:00:00', 'UTC'));
+    // 24/7, resolution 480m = 8h; created 10:00 → due 18:00
+    $met = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00', '2026-07-29 10:05:00', '2026-07-29 17:00:00');
+    expect(collect(SlaCalculator::metrics($met))->firstWhere('metric', 'resolution')['state'])->toBe('met');
+    $breached = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00', '2026-07-29 10:05:00', '2026-07-29 19:00:00');
+    expect(collect(SlaCalculator::metrics($breached))->firstWhere('metric', 'resolution')['state'])->toBe('breached');
+    // unresolved, now past due → breached
+    $overdue = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00', '2026-07-29 10:05:00');
+    expect(collect(SlaCalculator::metrics($overdue))->firstWhere('metric', 'resolution')['state'])->toBe('breached');
+});
+
+it('metrics includes next_reply only when policy sets it, first reply happened, and latest public message is from the customer', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    $policy = policyMetrics(60, 480, 120); // next_reply 120m
+    // pending customer message at 11:30 → next_reply due at 13:30, state due
+    $pending = metricsTicket($policy, '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, contactMessage('2026-07-29 11:30:00'));
+    $nr = collect(SlaCalculator::metrics($pending))->firstWhere('metric', 'next_reply');
+    expect($nr)->not->toBeNull();
+    expect($nr['state'])->toBe('due');
+    expect($nr['target_minutes'])->toBe(120);
+    // no next_reply target on the policy → omitted
+    $noTarget = metricsTicket(policyMetrics(60, 480, null), '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, contactMessage('2026-07-29 11:30:00'));
+    expect(collect(SlaCalculator::metrics($noTarget))->firstWhere('metric', 'next_reply'))->toBeNull();
+    // first reply not yet made → next_reply omitted (that is first_reply territory)
+    $noFirst = metricsTicket($policy, '2026-07-29 09:00:00', null, null, contactMessage('2026-07-29 11:30:00'));
+    expect(collect(SlaCalculator::metrics($noFirst))->firstWhere('metric', 'next_reply'))->toBeNull();
+    // latest public message is from an agent → answered → omitted
+    $agentMsg = new App\Models\TicketMessage(['sender_type' => 'user', 'is_internal' => false]);
+    $agentMsg->created_at = Carbon::parse('2026-07-29 11:40:00', 'UTC');
+    $answered = metricsTicket($policy, '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, $agentMsg);
+    expect(collect(SlaCalculator::metrics($answered))->firstWhere('metric', 'next_reply'))->toBeNull();
+});
+
+it('next_reply state is computed live, never sticky from a recorded breach row', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    $policy = policyMetrics(60, 480, 120); // next_reply 120m, 24/7
+    // pending customer message at 11:30 → CURRENT window due 13:30, now 12:00 → not yet overdue.
+    // A stale next_reply breach row exists from a PREVIOUS window (sla_breaches is UNIQUE per
+    // ticket+metric, so a recurring metric can only ever have one — necessarily stale — row).
+    $t = metricsTicket($policy, '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, contactMessage('2026-07-29 11:30:00'), ['next_reply']);
+    $nr = collect(SlaCalculator::metrics($t))->firstWhere('metric', 'next_reply');
+    expect($nr['state'])->toBe('due'); // NOT 'breached' — the stale row must not stick
+
+    // Genuinely overdue pending next_reply (no breach row at all) → still 'breached', computed live.
+    Carbon::setTestNow(Carbon::parse('2026-07-29 14:00:00', 'UTC')); // due 13:30 already passed
+    $overdue = metricsTicket($policy, '2026-07-29 09:00:00', '2026-07-29 09:10:00', null, contactMessage('2026-07-29 11:30:00'));
+    expect(collect(SlaCalculator::metrics($overdue))->firstWhere('metric', 'next_reply')['state'])->toBe('breached');
+});
+
+it('metrics remaining_minutes is business-time remaining when due, 0 otherwise', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 10:20:00', 'UTC'));
+    // 24/7, first_reply 60m, created 10:00 → due 11:00; now 10:20 → 40m remaining
+    $t = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00');
+    $fr = collect(SlaCalculator::metrics($t))->firstWhere('metric', 'first_reply');
+    expect($fr['state'])->toBe('due');
+    expect($fr['remaining_minutes'])->toBe(40);
+    expect($fr['within_business_hours'])->toBeTrue(); // null schedule → always in-hours
+    // a met metric → remaining 0
+    $met = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00', '2026-07-29 10:05:00');
+    expect(collect(SlaCalculator::metrics($met))->firstWhere('metric', 'first_reply')['remaining_minutes'])->toBe(0);
+});
+
+it('metrics honours a recorded breach row stickily', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 10:20:00', 'UTC')); // before first_reply due 11:00
+    $t = metricsTicket(policyMetrics(60, 480), '2026-07-29 10:00:00', null, null, null, ['first_reply']);
+    expect(collect(SlaCalculator::metrics($t))->firstWhere('metric', 'first_reply')['state'])->toBe('breached');
+});
+
+it('businessMinutesBetween counts business minutes and clamps to 0 when to<=from', function (): void {
+    // Wed 09:00–17:00; from Wed 16:00 to Thu 10:00 → 60 (Wed) + 60 (Thu 09-10) = 120
+    $mins = SlaCalculator::businessMinutesBetween(Carbon::parse('2026-07-29 16:00:00', 'UTC'), Carbon::parse('2026-07-30 10:00:00', 'UTC'), weekdays9to5());
+    expect($mins)->toBe(120);
+    // 24/7 fallback = wall-clock
+    expect(SlaCalculator::businessMinutesBetween(Carbon::parse('2026-07-29 10:00:00', 'UTC'), Carbon::parse('2026-07-29 12:30:00', 'UTC'), null))->toBe(150);
+    // to <= from → 0
+    expect(SlaCalculator::businessMinutesBetween(Carbon::parse('2026-07-29 12:00:00', 'UTC'), Carbon::parse('2026-07-29 11:00:00', 'UTC'), null))->toBe(0);
+});
+
+it('withinBusinessHours reflects the schedule', function (): void {
+    expect(SlaCalculator::withinBusinessHours(Carbon::parse('2026-07-29 10:00:00', 'UTC'), weekdays9to5()))->toBeTrue();  // Wed 10:00
+    expect(SlaCalculator::withinBusinessHours(Carbon::parse('2026-07-29 18:00:00', 'UTC'), weekdays9to5()))->toBeFalse(); // Wed 18:00
+    expect(SlaCalculator::withinBusinessHours(Carbon::parse('2026-08-01 10:00:00', 'UTC'), weekdays9to5()))->toBeFalse(); // Saturday
+    expect(SlaCalculator::withinBusinessHours(Carbon::parse('2026-08-01 03:00:00', 'UTC'), null))->toBeTrue();            // 24/7
+});

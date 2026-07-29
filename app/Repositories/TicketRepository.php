@@ -17,7 +17,7 @@ final class TicketRepository
     {
         $query = Ticket::query()
             ->where('workspace_id', $workspaceId)
-            ->with(['requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaPolicy.schedule.businessHourIntervals', 'slaBreaches']);
+            ->with(['requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaPolicy.schedule.businessHourIntervals', 'slaBreaches', 'latestPublicMessage']);
 
         // tag_id: tickets having ANY of the given tags (junction subquery).
         if (isset($filters['tag_id'])) {
@@ -53,7 +53,7 @@ final class TicketRepository
     {
         return Ticket::query()
             ->with([
-                'requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaPolicy.schedule.businessHourIntervals', 'slaBreaches',
+                'requester.contactMetadata', 'assignee', 'tags', 'linkedIssues', 'slaPolicy', 'slaPolicy.schedule.businessHourIntervals', 'slaBreaches', 'latestPublicMessage',
                 'ticketMessages' => fn ($q) => $q->orderBy('created_at')->with(['senderUser', 'senderContact']),
             ])
             ->find($id);

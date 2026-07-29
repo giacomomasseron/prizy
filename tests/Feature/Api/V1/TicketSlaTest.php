@@ -50,6 +50,25 @@ function slaTicket(Workspace $ws, ?SlaPolicy $policy, array $attrs): Ticket
     ], $attrs));
 }
 
+/**
+ * An agent token + a ticket on a policy (Wed 10:00 UTC creation, unreplied). Pass policy
+ * attribute overrides (e.g. ['next_reply_minutes' => 120]) to tune the seeded SlaPolicy.
+ *
+ * @param  array<string, mixed>  $policyAttrs
+ * @return array{0:string,1:Workspace,2:Ticket}
+ */
+function ticketSlaWorld(array $policyAttrs = []): array
+{
+    [$token, $ws] = slaWorld();
+    $policy = weekday9to5Policy($ws);
+    if ($policyAttrs !== []) {
+        $policy->forceFill($policyAttrs)->save();
+    }
+    $ticket = slaTicket($ws, $policy, ['created_at' => Carbon::parse('2026-07-29 10:00:00', 'UTC'), 'first_replied_at' => null]);
+
+    return [$token, $ws, $ticket];
+}
+
 afterEach(fn () => Carbon::setTestNow());
 
 it('exposes a due first-reply SLA on the index for an unreplied policy ticket', function (): void {
@@ -86,6 +105,42 @@ it('reports state none and null due_at when the ticket has no policy', function 
     $res = $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertStatus(200);
     expect($res->json('data.sla.state'))->toBe('none');
     expect($res->json('data.sla.due_at'))->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('exposes sla_metrics with first_reply and resolution for a policied ticket', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    [$token, $ws, $ticket] = ticketSlaWorld(); // existing helper: agent token + a ticket on a policy
+    // (the helper's ticket has an SLA policy; see the file's existing 'sla' test)
+
+    $res = $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertStatus(200);
+    $metrics = collect($res->json('data.sla_metrics'));
+    expect($metrics->pluck('metric'))->toContain('first_reply');
+    expect($metrics->pluck('metric'))->toContain('resolution');
+    $fr = $metrics->firstWhere('metric', 'first_reply');
+    expect($fr)->toHaveKeys(['metric', 'policy_name', 'target_minutes', 'due_at', 'state', 'remaining_minutes', 'within_business_hours']);
+    // the legacy first-reply `sla` field is unchanged
+    expect($res->json('data.sla.state'))->toBe($fr['state']);
+
+    Workspace::forgetCurrent();
+});
+
+it('includes next_reply in sla_metrics when a pending customer message exists', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    [$token, $ws, $ticket] = ticketSlaWorld(['next_reply_minutes' => 120]);
+    // first reply already happened + a later customer message → next_reply pending
+    $ticket->forceFill(['first_replied_at' => Carbon::parse('2026-07-29 09:10:00', 'UTC')])->save();
+    DB::table('ticket_messages')->insert([
+        'id' => (string) Str::uuid(), 'ticket_id' => $ticket->id, 'sender_type' => 'contact',
+        'sender_contact_id' => $ticket->requester_id, 'body' => 'still broken', 'is_internal' => false,
+        'channel' => 'email', 'created_at' => Carbon::parse('2026-07-29 11:30:00', 'UTC'), 'updated_at' => Carbon::parse('2026-07-29 11:30:00', 'UTC'),
+    ]);
+
+    $res = $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertStatus(200);
+    $nr = collect($res->json('data.sla_metrics'))->firstWhere('metric', 'next_reply');
+    expect($nr)->not->toBeNull();
+    expect($nr['target_minutes'])->toBe(120);
 
     Workspace::forgetCurrent();
 });

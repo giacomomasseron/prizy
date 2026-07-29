@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -120,6 +121,20 @@ class Ticket extends TenantAwareEntity
     public function ticketMessages(): HasMany
     {
         return $this->hasMany(TicketMessage::class, 'ticket_id', 'id');
+    }
+
+    /**
+     * The most recent non-internal message on the ticket (either party). Used to detect
+     * a pending customer reply for the next-reply SLA.
+     *
+     * @return HasOne<TicketMessage, $this>
+     */
+    public function latestPublicMessage(): HasOne
+    {
+        return $this->hasOne(TicketMessage::class)->ofMany(
+            ['created_at' => 'max'],
+            fn ($q) => $q->where('is_internal', false),
+        );
     }
 
     /**

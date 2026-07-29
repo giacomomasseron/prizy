@@ -41,6 +41,15 @@ final class TicketResource extends JsonResource
                     'state' => $s['state'],
                 ];
             })(),
+            'sla_metrics' => collect(SlaCalculator::metrics($this->resource))->map(fn (array $m) => [
+                'metric' => $m['metric'],
+                'policy_name' => $m['policy_name'],
+                'target_minutes' => $m['target_minutes'],
+                'due_at' => $m['due_at']?->toISOString(),
+                'state' => $m['state'],
+                'remaining_minutes' => $m['remaining_minutes'],
+                'within_business_hours' => $m['within_business_hours'],
+            ])->values(),
             'first_replied_at' => $this->first_replied_at,
             'resolved_at' => $this->resolved_at,
             'created_at' => $this->created_at,
