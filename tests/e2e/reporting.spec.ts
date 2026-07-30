@@ -42,3 +42,18 @@ test('agent opens the SLA & channels section and sees the SLA report', async ({ 
     await expect(page.getByText('By channel')).toBeVisible();
     await expect(page.getByText('Breach risk')).toBeVisible();
 });
+
+test('exposes an Export CSV button on each reporting section', async ({ page }) => {
+    await page.goto('/support/reporting');
+    const exportBtn = page.getByRole('button', { name: 'Export CSV' });
+    await expect(exportBtn).toBeVisible();
+    await expect(exportBtn).toBeEnabled(); // overview data loads by default
+
+    await page.getByRole('button', { name: 'Agents & CSAT' }).click();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
+
+    await page.getByRole('button', { name: 'SLA & channels' }).click();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
+});
