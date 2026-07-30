@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\BusinessHourSchedule;
 use App\Models\Contact;
+use App\Models\HelpdeskSavedView;
 use App\Models\Issue;
 use App\Models\Notification;
 use App\Models\Project;
@@ -306,6 +307,26 @@ final class SmokeSeeder extends Seeder
                     'sla_policy_id' => $tierPolicies[$j % 3]->id,
                     'created_at' => $dueTicketCreatedAt,
                     'first_reply_due_at' => SlaCalculator::dueAt($dueTicketCreatedAt, $tierPolicies[$j % 3]->first_reply_minutes, $schedule),
+                ]);
+            }
+        }
+
+        $demoViews = [
+            ['name' => 'Urgent · unassigned', 'definition' => ['filter' => ['status' => 'new,open,pending,on_hold', 'assignee_id' => 'none'], 'sort' => 'sla_due']],
+            ['name' => 'Email backlog', 'definition' => ['filter' => ['channel' => 'email', 'status' => 'new,open,pending,on_hold'], 'sort' => 'created_at']],
+        ];
+        foreach ($demoViews as $dv) {
+            $exists = HelpdeskSavedView::withoutGlobalScopes()
+                ->where('workspace_id', $workspace->id)
+                ->where('name', $dv['name'])
+                ->exists();
+            if (! $exists) {
+                HelpdeskSavedView::forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'workspace_id' => $workspace->id,
+                    'name' => $dv['name'],
+                    'created_by' => $user->id,
+                    'definition' => $dv['definition'],
                 ]);
             }
         }

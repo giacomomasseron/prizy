@@ -128,3 +128,33 @@ test('agent desk: load more tickets then sort the queue', async ({ page }) => {
     await expect(page.locator('[data-testid="ticket-row"]').first()).toBeVisible();
     expect(await page.locator('[data-testid="ticket-row"]').count()).toBeGreaterThan(0);
 });
+
+test('saves, applies, and deletes a custom view', async ({ page }) => {
+    await page.goto('/support');
+    await expect(page.locator('[data-testid="ticket-row"]').first()).toBeVisible();
+
+    // Apply a built-in view + a non-default sort, then save it.
+    await page.getByRole('button', { name: 'All unsolved' }).click();
+    await page.getByRole('button', { name: 'Sort tickets' }).click();
+    await page.getByRole('menuitem', { name: 'Priority' }).click();
+
+    await page.getByRole('button', { name: /\+ Save view/ }).click();
+    await page.getByPlaceholder('View name').fill('My urgent queue');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+
+    // It appears in the Saved views group and is applied. (The delete "✕" button's
+    // accessible name — "Delete view My urgent queue" — also contains this substring, so
+    // disambiguate via the row's rendered text, which the delete button lacks.)
+    const savedRow = page.getByRole('button', { name: 'My urgent queue' }).filter({ hasText: 'My urgent queue' });
+    await expect(savedRow).toBeVisible();
+    await expect(page.locator('[data-testid="ticket-row"]').first()).toBeVisible();
+
+    // Switch to a built-in, then re-select the saved view — the list still renders.
+    await page.getByRole('button', { name: 'Your unsolved tickets' }).click();
+    await savedRow.click();
+    await expect(page.locator('[data-testid="ticket-row"]').first()).toBeVisible();
+
+    // Delete it — it disappears.
+    await page.getByRole('button', { name: 'Delete view My urgent queue' }).click();
+    await expect(page.getByRole('button', { name: 'My urgent queue' })).toHaveCount(0);
+});
