@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\UseCases\Tickets;
 
-use App\Models\Ticket;
 use App\Models\User;
 use App\Repositories\TicketRepository;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\CursorPaginator;
 
 final class ListTickets
 {
@@ -15,12 +14,11 @@ final class ListTickets
 
     /**
      * @param  array<string, string>  $filters
-     * @return Collection<int, Ticket>
      */
-    public function handle(User $actor, array $filters = []): Collection
+    public function handle(User $actor, array $filters = [], string $sort = 'updated_at', int $limit = 25): CursorPaginator
     {
         abort_unless($actor->is_agent, 403);
 
-        return $this->tickets->forWorkspace($actor->workspace_id, $filters);
+        return $this->tickets->forWorkspace($actor->workspace_id, $filters, $sort, $limit);
     }
 }
