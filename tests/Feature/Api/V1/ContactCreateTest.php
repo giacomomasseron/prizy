@@ -13,7 +13,7 @@ uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
 /** @return array{0:string,1:Workspace,2:User} */
-function contactWorld(array $userAttrs = ['is_agent' => true]): array
+function contactCreateWorld(array $userAttrs = ['is_agent' => true]): array
 {
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
@@ -26,7 +26,7 @@ function contactWorld(array $userAttrs = ['is_agent' => true]): array
 afterEach(fn () => Workspace::forgetCurrent());
 
 it('creates a contact', function (): void {
-    [$token, $ws] = contactWorld();
+    [$token, $ws] = contactCreateWorld();
     $res = $this->withToken($token)->postJson('/v1/contacts', ['name' => 'Ada Byron', 'email' => 'ada@x.com', 'phone' => '+15551234'])->assertStatus(201);
     expect($res->json('data.name'))->toBe('Ada Byron');
     expect($res->json('data.email'))->toBe('ada@x.com');
@@ -34,7 +34,7 @@ it('creates a contact', function (): void {
 });
 
 it('rejects a duplicate email within the workspace (422) but allows it in another', function (): void {
-    [$token, $ws] = contactWorld();
+    [$token, $ws] = contactCreateWorld();
     $this->withToken($token)->postJson('/v1/contacts', ['name' => 'A', 'email' => 'dup@x.com'])->assertStatus(201);
     $this->withToken($token)->postJson('/v1/contacts', ['name' => 'B', 'email' => 'dup@x.com'])->assertStatus(422);
 
@@ -55,12 +55,12 @@ it('rejects a duplicate email within the workspace (422) but allows it in anothe
 });
 
 it('forbids a non-agent (403)', function (): void {
-    [$token] = contactWorld(['is_agent' => false, 'admin_level' => 'owner']);
+    [$token] = contactCreateWorld(['is_agent' => false, 'admin_level' => 'owner']);
     $this->withToken($token)->postJson('/v1/contacts', ['name' => 'A', 'email' => 'a@x.com'])->assertStatus(403);
 });
 
 it('validates name and email (422)', function (): void {
-    [$token] = contactWorld();
+    [$token] = contactCreateWorld();
     $this->withToken($token)->postJson('/v1/contacts', ['name' => '', 'email' => 'a@x.com'])->assertStatus(422);
     $this->withToken($token)->postJson('/v1/contacts', ['name' => 'A', 'email' => 'not-an-email'])->assertStatus(422);
 });
