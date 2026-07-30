@@ -9,8 +9,10 @@ const tickets: TicketListItem[] = [
     { id: 'a', subject: 'Cannot log in', status: 'open', priority: 'high', channel: 'email', requester: null, assignee: { id: 'u1', name: 'Me' }, tags: [], linked_issues: [], sla_metrics: [], updated_at: '', created_at: '', first_replied_at: null, resolved_at: null },
 ];
 
+const useTicketsSpy = vi.hoisted(() => vi.fn((_filters?: Record<string, string>, _sort?: string) => ({ data: { pages: [{ items: tickets, next: null }] }, hasNextPage: false, fetchNextPage: vi.fn(), isFetchingNextPage: false, isLoading: false, isError: false })));
+
 vi.mock('./hooks', () => ({
-    useTickets: () => ({ data: { pages: [{ items: tickets, next: null }] }, hasNextPage: false, fetchNextPage: vi.fn(), isFetchingNextPage: false, isLoading: false, isError: false }),
+    useTickets: useTicketsSpy,
     useTicketCounts: () => ({ data: { by_status: { new: 0, open: 0, pending: 0, on_hold: 0, solved: 0, closed: 0 }, by_channel: { email: 0, chat: 0, portal: 0, api: 0 }, unassigned: 0, mine_unsolved: 0 } }),
     useTicket: (id: string) => {
         const found = tickets.find((t) => t.id === id);
@@ -21,6 +23,9 @@ vi.mock('./hooks', () => ({
     useContacts: () => ({ data: [] }),
     useCreateTicket: () => ({ mutate: vi.fn(), isPending: false }),
     useCreateContact: () => ({ mutate: vi.fn(), isPending: false }),
+    useSavedViews: () => ({ data: [{ id: 'sv1', name: 'Email backlog', created_by: 'u1', definition: { filter: { channel: 'email' }, sort: 'created_at' }, created_at: '', updated_at: '' }] }),
+    useCreateSavedView: () => ({ mutate: vi.fn() }),
+    useDeleteSavedView: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('../../auth/useAuth', () => ({
     useMe: () => ({ data: { id: 'u1', workspace_id: 'w1', name: 'Me', email: 'me@example.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off' } }),
@@ -56,5 +61,14 @@ describe('SupportLayout', () => {
         expect(screen.getByText('Support')).toBeInTheDocument();
         fireEvent.click(screen.getByTitle('Views'));
         expect(screen.queryByText('Support')).not.toBeInTheDocument();
+    });
+
+    it('applies a saved view: clicking it calls useTickets with the stored filter + sort', () => {
+        useTicketsSpy.mockClear();
+        render(<SupportLayout />, { wrapper: ({ children }) => wrapper(children) });
+        fireEvent.click(screen.getByText('Email backlog'));
+        const [lastFilters, lastSort] = useTicketsSpy.mock.calls.at(-1)!;
+        expect(lastFilters).toEqual({ channel: 'email' });
+        expect(lastSort).toBe('created_at');
     });
 });

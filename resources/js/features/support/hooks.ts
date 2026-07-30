@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput, TicketCounts } from '../../lib/types';
+import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput, TicketCounts, HelpdeskSavedView } from '../../lib/types';
 
 function ticketsPath(filters: Record<string, string>, sort: string): string {
     const params = new URLSearchParams();
@@ -81,5 +81,26 @@ export function useCreateContact() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['contacts'] });
         },
+    });
+}
+
+export function useSavedViews() {
+    return useQuery({ queryKey: ['support', 'saved-views'], queryFn: () => api.get<HelpdeskSavedView[]>('/ticket-views') });
+}
+
+export function useCreateSavedView() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { name: string; definition: { filter: Record<string, string>; sort: string } }) =>
+            api.post<HelpdeskSavedView>('/ticket-views', input),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['support', 'saved-views'] }); },
+    });
+}
+
+export function useDeleteSavedView() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.del(`/ticket-views/${id}`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['support', 'saved-views'] }); },
     });
 }

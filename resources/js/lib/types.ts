@@ -379,3 +379,12 @@ export interface SlaPolicy {
     schedule_id: string | null;
     schedule_name: string | null;
 }
+
+export interface HelpdeskSavedView {
+    id: string;
+    name: string;
+    created_by: string;
+    definition: { filter: Record<string, string>; sort: string };
+    created_at: string;
+    updated_at: string;
+}
