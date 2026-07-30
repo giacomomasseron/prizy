@@ -55,7 +55,7 @@ final class TicketRepository
             $query->orderBy('updated_at', 'desc');
         }
 
-        return $query->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after');
+        return $query->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after')->withQueryString();
     }
 
     public function find(string $id): ?Ticket

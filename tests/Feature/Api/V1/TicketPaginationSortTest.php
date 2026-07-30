@@ -78,6 +78,55 @@ it('keeps filters working under pagination+sort', function (): void {
     expect($res->json('data.0.status'))->toBe('open');
 });
 
+it('carries sort, filter, and limit forward on links.next so paging never drops them', function (): void {
+    [$token, $ws] = ticketPageWorld();
+
+    // 5 open tickets across the priority spectrum (a tie at 'urgent' is fine — the id
+    // tiebreak still makes the overall order deterministic for a single query run).
+    $open = collect(['urgent', 'urgent', 'high', 'normal', 'low'])
+        ->map(fn (string $priority, int $i) => ticketPageTicket($ws, ['subject' => "open-{$i}", 'status' => 'open', 'priority' => $priority]));
+
+    // Closed tickets with priorities interleaved among the open ones — if the filter were
+    // dropped from links.next these would surface on page 2+.
+    ticketPageTicket($ws, ['subject' => 'closed-high', 'status' => 'closed', 'priority' => 'high', 'resolved_at' => now()]);
+    ticketPageTicket($ws, ['subject' => 'closed-normal', 'status' => 'closed', 'priority' => 'normal', 'resolved_at' => now()]);
+
+    $rank = ['low' => 1, 'normal' => 2, 'high' => 3, 'urgent' => 4];
+
+    $p1 = $this->withToken($token)->getJson('/v1/tickets?sort=priority&filter[status]=open&limit=2')->assertStatus(200);
+    $p1Rows = collect($p1->json('data'));
+    expect($p1Rows)->toHaveCount(2);
+    expect($p1Rows->pluck('status')->unique()->all())->toBe(['open']);
+
+    $next = $p1->json('links.next');
+    expect($next)->not->toBeNull();
+    expect($next)->toContain('sort=priority');
+    expect($next)->toContain('filter'); // url-encoded filter[status] is fine
+
+    $seenIds = $p1Rows->pluck('id');
+    $lastRank = $rank[$p1Rows->last()['priority']];
+
+    while ($next !== null) {
+        $path = (string) parse_url($next, PHP_URL_PATH);
+        $query = (string) parse_url($next, PHP_URL_QUERY);
+        $page = $this->withToken($token)->getJson($path.'?'.$query)->assertStatus(200); // not 500
+
+        $rows = collect($page->json('data'));
+        expect($rows->pluck('status')->unique()->all())->toBe($rows->isEmpty() ? [] : ['open']);
+        expect($seenIds->intersect($rows->pluck('id')))->toHaveCount(0);
+
+        foreach ($rows as $row) {
+            expect($rank[$row['priority']])->toBeLessThanOrEqual($lastRank);
+            $lastRank = $rank[$row['priority']];
+        }
+
+        $seenIds = $seenIds->merge($rows->pluck('id'));
+        $next = $page->json('links.next');
+    }
+
+    expect($seenIds->sort()->values()->all())->toBe($open->pluck('id')->sort()->values()->all());
+});
+
 it('rejects an invalid sort or limit (422) and forbids a non-agent (403)', function (): void {
     [$token, $ws] = ticketPageWorld();
     $this->withToken($token)->getJson('/v1/tickets?sort=nope')->assertStatus(422);
