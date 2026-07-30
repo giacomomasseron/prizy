@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\V1\BusinessHourScheduleController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CycleController;
 use App\Http\Controllers\Api\V1\GithubIntegrationController;
+use App\Http\Controllers\Api\V1\HelpdeskSavedViewController;
 use App\Http\Controllers\Api\V1\IssueActivityController;
 use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
@@ -118,6 +119,10 @@ Route::prefix('v1')->group(function (): void {
 
         Route::get('/contacts', [ContactController::class, 'index']);
         Route::post('/contacts', [ContactController::class, 'store'])->middleware('verified');
+
+        Route::get('/ticket-views', [HelpdeskSavedViewController::class, 'index']);
+        Route::post('/ticket-views', [HelpdeskSavedViewController::class, 'store'])->middleware('verified');
+        Route::delete('/ticket-views/{ticketView}', [HelpdeskSavedViewController::class, 'destroy'])->middleware('verified');
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');
