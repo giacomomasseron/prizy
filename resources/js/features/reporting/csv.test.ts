@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { toCsv, sectionCsv } from './csv';
 import type { OverviewReport, AgentsReport, SlaReport } from '../../lib/types';
 

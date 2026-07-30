@@ -51,7 +51,9 @@ test('exposes an Export CSV button on each reporting section', async ({ page }) 
 
     await page.getByRole('button', { name: 'Agents & CSAT' }).click();
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
 
     await page.getByRole('button', { name: 'SLA & channels' }).click();
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
 });

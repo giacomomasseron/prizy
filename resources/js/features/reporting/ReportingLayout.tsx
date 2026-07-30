@@ -1,12 +1,10 @@
 import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { useQueryClient } from '@tanstack/react-query';
 import { useMe } from '../../auth/useAuth';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
-import { useOverviewReport } from './hooks';
+import { useOverviewReport, useAgentsReport, useSlaReport } from './hooks';
 import { sectionCsv, toCsv, downloadCsv } from './csv';
-import type { OverviewReport, AgentsReport, SlaReport } from '../../lib/types';
 import { KPI_META, type ReportRange, type ReportSectionKey, REPORT_SECTIONS } from './reportMeta';
 import { KpiCard } from './KpiCard';
 import { OverviewSection } from './OverviewSection';
@@ -23,10 +21,11 @@ export default function ReportingLayout() {
     const [section, setSection] = useState<ReportSectionKey>('overview');
     const q = useOverviewReport(range);
     const report = q.data;
+    const agentsQ = useAgentsReport(range, section === 'agents');
+    const slaQ = useSlaReport(range, section === 'sla');
     const sectionLabel = REPORT_SECTIONS.find((s) => s.key === section)?.label ?? 'Overview';
 
-    const qc = useQueryClient();
-    const cached = qc.getQueryData<OverviewReport | AgentsReport | SlaReport>(['report', section, range]);
+    const cached = section === 'overview' ? q.data : section === 'agents' ? agentsQ.data : slaQ.data;
     const exportable = cached ? sectionCsv(section, cached, range) : null;
     const onExport = () => {
         if (exportable) downloadCsv(exportable.filename, toCsv(exportable.headers, exportable.rows));

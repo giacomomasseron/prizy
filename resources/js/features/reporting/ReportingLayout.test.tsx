@@ -41,7 +41,7 @@ const slaReport: SlaReport = {
     breach_risk: [], tags: [],
 };
 
-const useOverviewReport = vi.fn((_range: string) => ({ data: report, isLoading: false }));
+const useOverviewReport = vi.fn((_range: string): { data: OverviewReport | undefined; isLoading: boolean } => ({ data: report, isLoading: false }));
 const useAgentsReport = vi.fn((_range: string, _enabled: boolean) => ({ data: agentsReport, isLoading: false }));
 const useSlaReport = vi.fn((_range: string, _enabled: boolean) => ({ data: slaReport, isLoading: false }));
 vi.mock('./hooks', () => ({
@@ -88,19 +88,31 @@ describe('ReportingLayout', () => {
 
     it('exports the active section as CSV via the header button', async () => {
         const { downloadCsv } = await import('./csv');
-        const qc = new QueryClient();
-        qc.setQueryData(['report', 'overview', '7d'], {
-            ...report,
-            volume: [{ label: 'Mon', created: 3, solved: 2 }],
-        });
-        renderLayout(qc);
+        renderLayout();
 
         fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
-        expect(downloadCsv).toHaveBeenCalledWith('helpdesk-overview-7d.csv', toCsv(['Date', 'Created', 'Solved'], [['Mon', 3, 2]]));
+        expect(downloadCsv).toHaveBeenCalledWith('helpdesk-overview-7d.csv', toCsv(['Date', 'Created', 'Solved'], [['Jul 20', 3, 2]]));
     });
 
-    it('disables Export CSV until the active section report is cached', () => {
-        renderLayout(new QueryClient());
+    it('disables Export CSV until the active section report is loaded', () => {
+        useOverviewReport.mockReturnValueOnce({ data: undefined, isLoading: true });
+        renderLayout();
         expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled();
+    });
+
+    it('enables Export CSV on the Agents section and exports the agent table', async () => {
+        const { downloadCsv } = await import('./csv');
+        renderLayout();
+        fireEvent.click(screen.getByText('Agents & CSAT'));
+        const btn = screen.getByRole('button', { name: 'Export CSV' });
+        expect(btn).toBeEnabled();
+        fireEvent.click(btn);
+        expect(downloadCsv).toHaveBeenCalledWith(
+            'helpdesk-agents-7d.csv',
+            toCsv(
+                ['Agent', 'Email', 'Assigned', 'Solved', 'Median first reply (min)', 'Median resolution (min)', 'CSAT %', 'CSAT responses'],
+                [['Maya Chen', 'maya@x.com', 10, 8, 12, 250, 91, 5]],
+            ),
+        );
     });
 });
