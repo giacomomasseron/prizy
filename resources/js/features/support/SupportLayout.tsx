@@ -20,6 +20,7 @@ export default function SupportLayout() {
     const [tag, setTag] = useState<{ id: string; name: string } | null>(null);
     const [viewsOpen, setViewsOpen] = useState(true);
     const [newOpen, setNewOpen] = useState(false);
+    const [sort, setSort] = useState<string>('updated_at');
 
     const filters = useMemo(() => {
         const f = viewFilters(view, me.data?.id);
@@ -28,8 +29,8 @@ export default function SupportLayout() {
         return f;
     }, [view, channel, tag, me.data?.id]);
 
-    const ticketsQ = useTickets(filters);
-    const shown = useMemo(() => ticketsQ.data ?? [], [ticketsQ.data]);
+    const ticketsQ = useTickets(filters, sort);
+    const shown = useMemo(() => ticketsQ.data?.pages.flatMap((p) => p.items) ?? [], [ticketsQ.data]);
     const selectedId = id ?? shown[0]?.id;
     const counts = useTicketCounts().data;
 
@@ -47,7 +48,16 @@ export default function SupportLayout() {
                     onClearTag={() => setTag(null)}
                 />
             )}
-            <TicketList tickets={shown} selectedId={selectedId} onSelect={(tid) => navigate(`/support/tickets/${tid}`)} />
+            <TicketList
+                tickets={shown}
+                selectedId={selectedId}
+                onSelect={(tid) => navigate(`/support/tickets/${tid}`)}
+                sort={sort}
+                onSortChange={setSort}
+                hasMore={!!ticketsQ.hasNextPage}
+                onLoadMore={() => ticketsQ.fetchNextPage()}
+                loadingMore={ticketsQ.isFetchingNextPage}
+            />
             <TicketConversation ticketId={selectedId} />
             <TicketContext ticketId={selectedId} onFilterTag={(id, name) => setTag({ id, name })} />
             <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} />
