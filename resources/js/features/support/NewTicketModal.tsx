@@ -5,7 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Menu } from '../../components/ui/Menu';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { useContacts, useCreateTicket } from './hooks';
+import { useContacts, useCreateTicket, useCreateContact } from './hooks';
 import { ApiError } from '../../lib/apiClient';
 import type { TicketPriority, TicketChannel } from '../../lib/types';
 
@@ -30,6 +30,12 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
     const navigate = useNavigate();
     const contactsQ = useContacts();
     const create = useCreateTicket();
+    const createContact = useCreateContact();
+    const [showNewContact, setShowNewContact] = useState(false);
+    const [ncName, setNcName] = useState('');
+    const [ncEmail, setNcEmail] = useState('');
+    const [ncPhone, setNcPhone] = useState('');
+    const [contactError, setContactError] = useState<string | null>(null);
 
     const [subject, setSubject] = useState('');
     const [requesterId, setRequesterId] = useState<string | null>(null);
@@ -41,6 +47,7 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
     useEffect(() => {
         if (!open) {
             setSubject(''); setRequesterId(null); setPriority('normal'); setChannel('email'); setBody(''); setError(null);
+            setShowNewContact(false); setNcName(''); setNcEmail(''); setNcPhone(''); setContactError(null);
         }
     }, [open]);
 
@@ -61,6 +68,17 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
         );
     }
 
+    function saveContact() {
+        setContactError(null);
+        createContact.mutate(
+            { name: ncName.trim(), email: ncEmail.trim(), phone: ncPhone.trim() || null },
+            {
+                onSuccess: (c) => { setRequesterId(c.id); setShowNewContact(false); setNcName(''); setNcEmail(''); setNcPhone(''); },
+                onError: (e) => setContactError(e instanceof ApiError ? e.detail : 'Could not create the contact.'),
+            },
+        );
+    }
+
     return (
         <Modal open={open} onClose={onClose} width={520} label="New ticket">
             <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -73,18 +91,34 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
 
                 <div>
                     <span style={fieldLabel}>Requester</span>
-                    {contacts.length === 0 ? (
-                        <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>No contacts yet.</div>
+                    {!showNewContact ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            {contacts.length === 0 ? (
+                                <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>No contacts yet.</div>
+                            ) : (
+                                <Menu
+                                    placement="bottom-start"
+                                    trigger={
+                                        <button type="button" aria-label="Requester" style={{ ...pickerTrigger, color: requester ? 'var(--fg)' : 'var(--fg3)' }}>
+                                            {requester ? label(requester) : 'Select a contact…'}
+                                        </button>
+                                    }
+                                    items={contacts.map((c) => ({ key: c.id, label: label(c), onActivate: () => setRequesterId(c.id) }))}
+                                />
+                            )}
+                            <button type="button" onClick={() => { setShowNewContact(true); setContactError(null); }} style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', color: 'var(--sup)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>+ New contact</button>
+                        </div>
                     ) : (
-                        <Menu
-                            placement="bottom-start"
-                            trigger={
-                                <button type="button" aria-label="Requester" style={{ ...pickerTrigger, color: requester ? 'var(--fg)' : 'var(--fg3)' }}>
-                                    {requester ? label(requester) : 'Select a contact…'}
-                                </button>
-                            }
-                            items={contacts.map((c) => ({ key: c.id, label: label(c), onActivate: () => setRequesterId(c.id) }))}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border)', borderRadius: 9, padding: 12 }}>
+                            <Input aria-label="Contact name" placeholder="Name" value={ncName} onChange={(e) => setNcName(e.target.value)} />
+                            <Input aria-label="Contact email" placeholder="Email" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} />
+                            <Input aria-label="Contact phone" placeholder="Phone (optional)" value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} />
+                            {contactError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{contactError}</div>}
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button type="button" aria-label="Create contact" disabled={createContact.isPending || ncName.trim() === '' || ncEmail.trim() === ''} onClick={saveContact} style={{ background: 'var(--sup)', color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: (createContact.isPending || ncName.trim() === '' || ncEmail.trim() === '') ? 0.5 : 1 }}>Create contact</button>
+                                <button type="button" onClick={() => setShowNewContact(false)} style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                            </div>
+                        </div>
                     )}
                 </div>
 

@@ -7,6 +7,7 @@ import type { ContactOption } from '../../lib/types';
 
 const navigate = vi.fn();
 const createMutate = vi.fn();
+const createContactMutate = vi.fn();
 let contactsData: ContactOption[] = [];
 
 vi.mock('react-router-dom', async (orig) => {
@@ -17,6 +18,7 @@ vi.mock('react-router-dom', async (orig) => {
 vi.mock('./hooks', () => ({
     useContacts: () => ({ data: contactsData }),
     useCreateTicket: () => ({ mutate: createMutate, isPending: false }),
+    useCreateContact: () => ({ mutate: createContactMutate, isPending: false }),
 }));
 
 function renderModal() {
@@ -30,6 +32,7 @@ function renderModal() {
 beforeEach(() => {
     navigate.mockReset();
     createMutate.mockReset();
+    createContactMutate.mockReset();
     contactsData = [
         { id: 'c1', name: 'Grace Okonkwo', email: 'grace@northwind.com', org: 'Northwind Traders', plan: 'Enterprise' },
     ];
@@ -82,5 +85,37 @@ describe('NewTicketModal', () => {
         fireEvent.click(screen.getByRole('menuitem', { name: 'Grace Okonkwo · Northwind Traders' }));
         fireEvent.click(screen.getByRole('button', { name: 'Create ticket' }));
         expect(screen.getByRole('alert')).toHaveTextContent('Requester is invalid');
+    });
+
+    it('creates a new contact inline and selects it as the requester', () => {
+        contactsData = [];
+        createContactMutate.mockImplementation((input, opts) => {
+            const newContact: ContactOption = { id: 'new-1', name: 'New Person', email: input.email, org: null, plan: null };
+            contactsData = [...contactsData, newContact];
+            opts.onSuccess(newContact);
+        });
+        renderModal();
+        expect(screen.getByText('No contacts yet.')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: '+ New contact' }));
+        fireEvent.change(screen.getByLabelText('Contact name'), { target: { value: 'New Person' } });
+        fireEvent.change(screen.getByLabelText('Contact email'), { target: { value: 'new@person.com' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+
+        expect(createContactMutate).toHaveBeenCalledWith(
+            { name: 'New Person', email: 'new@person.com', phone: null },
+            expect.anything(),
+        );
+        expect(screen.getByRole('button', { name: 'Requester' })).toHaveTextContent('New Person');
+    });
+
+    it('surfaces an ApiError inline when contact creation fails', () => {
+        createContactMutate.mockImplementation((_input, opts) => opts.onError(new ApiError(422, 'Unprocessable', 'Email already in use')));
+        renderModal();
+        fireEvent.click(screen.getByRole('button', { name: '+ New contact' }));
+        fireEvent.change(screen.getByLabelText('Contact name'), { target: { value: 'Dup Person' } });
+        fireEvent.change(screen.getByLabelText('Contact email'), { target: { value: 'dup@person.com' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
+        expect(screen.getByRole('alert')).toHaveTextContent('Email already in use');
     });
 });
