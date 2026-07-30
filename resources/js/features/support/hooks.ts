@@ -58,3 +58,13 @@ export function useCreateTicket() {
         },
     });
 }
+
+export function useCreateContact() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { name: string; email: string; phone: string | null }) => api.post<ContactOption>('/contacts', input),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['contacts'] });
+        },
+    });
+}

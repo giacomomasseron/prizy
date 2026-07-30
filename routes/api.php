@@ -117,6 +117,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->middleware('verified');
 
         Route::get('/contacts', [ContactController::class, 'index']);
+        Route::post('/contacts', [ContactController::class, 'store'])->middleware('verified');
 
         Route::get('/issues', [IssueController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Issue');

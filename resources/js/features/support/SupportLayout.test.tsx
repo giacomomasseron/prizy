@@ -20,6 +20,7 @@ vi.mock('./hooks', () => ({
     useChangeTicketStatus: () => ({ mutate: vi.fn(), isPending: false }),
     useContacts: () => ({ data: [] }),
     useCreateTicket: () => ({ mutate: vi.fn(), isPending: false }),
+    useCreateContact: () => ({ mutate: vi.fn(), isPending: false }),
 }));
 vi.mock('../../auth/useAuth', () => ({
     useMe: () => ({ data: { id: 'u1', workspace_id: 'w1', name: 'Me', email: 'me@example.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off' } }),

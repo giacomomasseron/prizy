@@ -54,6 +54,32 @@ test('agent desk: create a new ticket from the rail', async ({ page }) => {
     await expect(page.getByText('Customer cannot access their dashboard.')).toBeVisible();
 });
 
+test('agent desk: file a ticket for a newly-created contact', async ({ page }) => {
+    await page.goto('/support');
+    await page.getByRole('button', { name: 'New ticket' }).click();
+
+    const subject = `E2E new-contact ticket ${Date.now()}`;
+    await page.getByLabel('Subject').fill(subject);
+
+    // Inline contact creation instead of picking an existing requester.
+    await page.getByRole('button', { name: '+ New contact' }).click();
+    const contactName = `E2E Contact ${Date.now()}`;
+    const contactEmail = `e2e-${Date.now()}@x.com`;
+    await page.getByLabel('Contact name').fill(contactName);
+    await page.getByLabel('Contact email').fill(contactEmail);
+    await page.getByRole('button', { name: 'Create contact' }).click();
+
+    // The inline form closes and the new contact becomes the selected requester.
+    await expect(page.getByRole('button', { name: 'Requester' })).toContainText(contactName);
+
+    await page.getByLabel('Description').fill('Customer reports a billing discrepancy on their invoice.');
+    await page.getByRole('button', { name: 'Create ticket' }).click();
+
+    await expect(page).toHaveURL(/\/support\/tickets\//);
+    await expect(page.getByText(subject)).toBeVisible();
+    await expect(page.getByText('Customer reports a billing discrepancy on their invoice.')).toBeVisible();
+});
+
 test('agent desk: the SLA card shows a first-reply countdown on a due ticket', async ({ page }) => {
     await page.goto('/support');
     await page.getByText('Cannot invite new agents — seat limit error').first().click();
