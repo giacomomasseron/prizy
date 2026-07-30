@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import ReportingLayout from './ReportingLayout';
+import { toCsv } from './csv';
 import type { AgentsReport, OverviewReport, SlaReport } from '../../lib/types';
+
+vi.mock('./csv', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('./csv')>();
+    return { ...actual, downloadCsv: vi.fn() };
+});
 
 const report: OverviewReport = {
     range: '7d',
@@ -44,30 +51,56 @@ vi.mock('./hooks', () => ({
 }));
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
 
+function renderLayout(qc: QueryClient = new QueryClient()) {
+    return render(
+        <QueryClientProvider client={qc}>
+            <MemoryRouter><ReportingLayout /></MemoryRouter>
+        </QueryClientProvider>,
+    );
+}
+
 describe('ReportingLayout', () => {
     it('renders the KPI cards and the Overview section', () => {
-        render(<MemoryRouter><ReportingLayout /></MemoryRouter>);
+        renderLayout();
         expect(screen.getByText('Tickets created')).toBeInTheDocument();
         expect(screen.getByText('84')).toBeInTheDocument();
         expect(screen.getByText('Ticket volume')).toBeInTheDocument();
     });
 
     it('renders the Agents section (agent table) when Agents is selected', () => {
-        render(<MemoryRouter><ReportingLayout /></MemoryRouter>);
+        renderLayout();
         fireEvent.click(screen.getByText('Agents & CSAT'));
         expect(screen.getByText('Agent performance')).toBeInTheDocument();
     });
 
     it('renders the SLA section when SLA & channels is selected', () => {
-        render(<MemoryRouter><ReportingLayout /></MemoryRouter>);
+        renderLayout();
         fireEvent.click(screen.getByText('SLA & channels'));
         expect(screen.getByText('SLA attainment')).toBeInTheDocument();
     });
 
     it('refetches when the range toggles to 30d', () => {
         useOverviewReport.mockClear();
-        render(<MemoryRouter><ReportingLayout /></MemoryRouter>);
+        renderLayout();
         fireEvent.click(screen.getByRole('button', { name: '30d' }));
         expect(useOverviewReport).toHaveBeenCalledWith('30d');
+    });
+
+    it('exports the active section as CSV via the header button', async () => {
+        const { downloadCsv } = await import('./csv');
+        const qc = new QueryClient();
+        qc.setQueryData(['report', 'overview', '7d'], {
+            ...report,
+            volume: [{ label: 'Mon', created: 3, solved: 2 }],
+        });
+        renderLayout(qc);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+        expect(downloadCsv).toHaveBeenCalledWith('helpdesk-overview-7d.csv', toCsv(['Date', 'Created', 'Solved'], [['Mon', 3, 2]]));
+    });
+
+    it('disables Export CSV until the active section report is cached', () => {
+        renderLayout(new QueryClient());
+        expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled();
     });
 });
