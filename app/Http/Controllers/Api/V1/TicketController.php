@@ -30,7 +30,7 @@ final class TicketController extends Controller
 
     public function index(ListTicketsRequest $request): JsonResponse
     {
-        $tickets = $this->listTickets->handle($request->user(), $request->filters());
+        $tickets = $this->listTickets->handle($request->user(), $request->filters(), $request->sort(), $request->limit());
 
         return TicketResource::collection($tickets)->response();
     }

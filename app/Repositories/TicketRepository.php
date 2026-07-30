@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\Ticket;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\CursorPaginator;
 
 final class TicketRepository
 {
     /**
      * @param  array<string, string>  $filters  field => CSV value (assignee_id supports the 'none' sentinel)
-     * @return Collection<int, Ticket>
      */
-    public function forWorkspace(string $workspaceId, array $filters = []): Collection
+    public function forWorkspace(string $workspaceId, array $filters = [], string $sort = 'updated_at', int $limit = 25): CursorPaginator
     {
         $query = Ticket::query()
             ->where('workspace_id', $workspaceId)
@@ -46,7 +45,17 @@ final class TicketRepository
             $query->whereIn($field, array_filter(array_map('trim', explode(',', $value))));
         }
 
-        return $query->orderByDesc('updated_at')->get();
+        if ($sort === 'sla_due') {
+            $query->whereNotNull('first_reply_due_at')->orderBy('first_reply_due_at', 'asc');
+        } elseif ($sort === 'priority') {
+            $query->orderBy('priority', 'desc');
+        } elseif ($sort === 'created_at') {
+            $query->orderBy('created_at', 'desc');
+        } else {
+            $query->orderBy('updated_at', 'desc');
+        }
+
+        return $query->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after')->withQueryString();
     }
 
     public function find(string $id): ?Ticket

@@ -122,6 +122,19 @@ it('does not record a next_reply breach — recurring metric is computed live, n
     expect(DB::table('sla_breaches')->where(['ticket_id' => $t->id, 'metric' => 'next_reply'])->exists())->toBeFalse();
 });
 
+it('refreshes first_reply_due_at on open policied tickets', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $p = breachPolicy($ws, 60, 480); // first_reply 60m, no schedule
+    $t = breachTicket($ws, $p->id, ['created_at' => Carbon::parse('2026-07-29 11:30:00', 'UTC')]); // due = 12:30
+    Workspace::forgetCurrent();
+
+    app(SlaBreachRepository::class)->recordDueBreaches();
+
+    expect(Ticket::find($t->id)->first_reply_due_at?->toIso8601String())->toBe('2026-07-29T12:30:00+00:00');
+});
+
 it('the sla:record-breaches command runs and exits 0', function (): void {
     Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
     $ws = Workspace::factory()->create();

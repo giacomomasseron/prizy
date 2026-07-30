@@ -1,8 +1,16 @@
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
+import { Menu, type MenuItem } from '../../components/ui/Menu';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { primarySlaMetric, slaMetricPresentation } from './sla';
 import type { TicketListItem, TicketPriority } from '../../lib/types';
+
+const SORTS = [
+    { key: 'updated_at', label: 'Recently updated' },
+    { key: 'created_at', label: 'Newest' },
+    { key: 'priority', label: 'Priority' },
+    { key: 'sla_due', label: 'SLA due' },
+];
 
 function tint(color: string) { return `color-mix(in srgb, ${color} 15%, transparent)`; }
 
@@ -14,7 +22,18 @@ function PriorityIcon({ priority }: { priority: TicketPriority }) {
     return <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 11, flexShrink: 0 }} aria-label={priority}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 3, borderRadius: 1, height: 4 + i * 3, background: i < fill ? 'var(--fg2)' : 'var(--border2)' }} />)}</span>;
 }
 
-export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketListItem[]; selectedId: string | undefined; onSelect: (id: string) => void }) {
+export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, hasMore, onLoadMore, loadingMore }: {
+    tickets: TicketListItem[];
+    selectedId: string | undefined;
+    onSelect: (id: string) => void;
+    sort: string;
+    onSortChange: (sort: string) => void;
+    hasMore: boolean;
+    onLoadMore: () => void;
+    loadingMore: boolean;
+}) {
+    const activeSort = SORTS.find((s) => s.key === sort) ?? SORTS[0];
+    const sortItems: MenuItem[] = SORTS.map((s) => ({ key: s.key, label: s.label, onActivate: () => onSortChange(s.key) }));
     return (
         <section style={{ width: 342, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
             <header style={{ height: 52, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8, padding: '0 14px' }}>
@@ -22,6 +41,20 @@ export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketL
                     <div style={{ fontSize: 14, fontWeight: 600 }}>Tickets</div>
                     <div style={{ fontSize: 11, color: 'var(--fg3)' }}>{tickets.length} tickets</div>
                 </div>
+                <Menu
+                    placement="bottom-start"
+                    trigger={
+                        <button
+                            type="button"
+                            aria-label="Sort tickets"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 11.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                            {activeSort.label}
+                            <span aria-hidden="true" style={{ color: 'var(--fg3)' }}>▾</span>
+                        </button>
+                    }
+                    items={sortItems}
+                />
             </header>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {tickets.map((t) => {
@@ -59,6 +92,18 @@ export function TicketList({ tickets, selectedId, onSelect }: { tickets: TicketL
                     );
                 })}
                 {tickets.length === 0 && <div style={{ padding: 32, textAlign: 'center', color: 'var(--fg3)', fontSize: 13 }}>No tickets in this view.</div>}
+                {hasMore && (
+                    <div style={{ padding: 14, textAlign: 'center' }}>
+                        <button
+                            type="button"
+                            onClick={onLoadMore}
+                            disabled={loadingMore}
+                            style={{ padding: '7px 16px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 12.5, fontWeight: 500, cursor: loadingMore ? 'not-allowed' : 'pointer', fontFamily: 'inherit', opacity: loadingMore ? 0.6 : 1 }}
+                        >
+                            {loadingMore ? 'Loading…' : 'Load more'}
+                        </button>
+                    </div>
+                )}
             </div>
         </section>
     );

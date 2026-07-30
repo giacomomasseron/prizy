@@ -30,7 +30,18 @@ final class SlaBreachRepository
                     ->with(['slaPolicy.schedule.businessHourIntervals', 'slaBreaches', 'latestPublicMessage'])
                     ->chunkById(200, function ($tickets) use (&$written): void {
                         foreach ($tickets as $ticket) {
-                            foreach (SlaCalculator::metrics($ticket) as $m) {
+                            $metrics = SlaCalculator::metrics($ticket);
+
+                            // Persist the first-reply deadline (for the desk's SLA-due sort). Only write on change.
+                            $firstReply = collect($metrics)->firstWhere('metric', 'first_reply');
+                            if ($firstReply !== null) {
+                                $due = $firstReply['due_at'];
+                                if ($ticket->first_reply_due_at === null || ! $ticket->first_reply_due_at->equalTo($due)) {
+                                    $ticket->update(['first_reply_due_at' => $due]);
+                                }
+                            }
+
+                            foreach ($metrics as $m) {
                                 if ($m['state'] !== 'breached') {
                                     continue;
                                 }

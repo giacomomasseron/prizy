@@ -105,3 +105,26 @@ test('agent desk: filter by channel then by tag', async ({ page }) => {
     await expect(page.getByRole('button', { name: /Tag: billing/ })).toBeVisible();
     await expect(page.locator('[data-testid="ticket-row"]', { hasText: 'Cannot invite new agents — seat limit error' })).toBeVisible();
 });
+
+test('agent desk: load more tickets then sort the queue', async ({ page }) => {
+    await page.goto('/support');
+    // Default "mine" view renders the ticket rows.
+    await expect(page.locator('[data-testid="ticket-row"]').first()).toBeVisible();
+
+    // "All unsolved" pulls in the seed's ~34 unsolved tickets — more than the 25-per-page
+    // default — so a "Load more" button should appear.
+    await page.getByRole('button', { name: /All unsolved/ }).click();
+    const loadMore = page.getByRole('button', { name: /load more/i });
+    await expect(loadMore).toBeVisible();
+
+    const before = await page.locator('[data-testid="ticket-row"]').count();
+    await loadMore.click();
+    await expect.poll(() => page.locator('[data-testid="ticket-row"]').count()).toBeGreaterThan(before);
+
+    // Sort by priority — the list still renders tickets; exact order is data-dependent and
+    // deliberately not asserted.
+    await page.getByRole('button', { name: 'Sort tickets' }).click();
+    await page.getByRole('menuitem', { name: 'Priority' }).click();
+    await expect(page.locator('[data-testid="ticket-row"]').first()).toBeVisible();
+    expect(await page.locator('[data-testid="ticket-row"]').count()).toBeGreaterThan(0);
+});

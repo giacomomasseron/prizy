@@ -1,13 +1,28 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput, TicketCounts } from '../../lib/types';
 
-export function useTickets(filters: Record<string, string> = {}) {
-    const qs = Object.entries(filters)
-        .filter(([, v]) => v !== '')
-        .map(([k, v]) => `filter[${k}]=${encodeURIComponent(v)}`)
-        .join('&');
-    return useQuery({ queryKey: ['tickets', filters], queryFn: () => api.get<TicketListItem[]>(`/tickets${qs ? `?${qs}` : ''}`) });
+function ticketsPath(filters: Record<string, string>, sort: string): string {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v !== '') params.set(`filter[${k}]`, v); });
+    if (sort !== 'updated_at') params.set('sort', sort);
+    const qs = params.toString();
+    return `/tickets${qs ? `?${qs}` : ''}`;
+}
+
+function relNext(next: string | null): string | null {
+    if (!next) return null;
+    const u = new URL(next, window.location.origin);
+    return u.pathname + u.search; // a /v1/... path the api client uses as-is
+}
+
+export function useTickets(filters: Record<string, string> = {}, sort: string = 'updated_at') {
+    return useInfiniteQuery({
+        queryKey: ['tickets', filters, sort],
+        queryFn: ({ pageParam }) => api.page<TicketListItem>((pageParam as string | null) ?? ticketsPath(filters, sort)),
+        initialPageParam: null as string | null,
+        getNextPageParam: (last) => relNext(last.next),
+    });
 }
 
 export function useTicketCounts() {

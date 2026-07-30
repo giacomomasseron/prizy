@@ -16,6 +16,7 @@ use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\SlaCalculator;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -256,6 +257,7 @@ final class SmokeSeeder extends Seeder
                     'created_at' => $createdAt,
                     'first_replied_at' => $replied ? $createdAt->copy()->addMinutes(5 + ($i % 12) * 6) : null,
                     'resolved_at' => $isSolved ? $createdAt->copy()->addHours(2 + ($i % 10)) : null,
+                    'first_reply_due_at' => SlaCalculator::dueAt($createdAt, $tierPolicies[$i % 3]->first_reply_minutes, $schedule),
                 ]);
 
                 if ($i % 2 === 0) {
@@ -295,13 +297,15 @@ final class SmokeSeeder extends Seeder
 
             // A few open, unreplied tickets so the reporting breach-risk queue is non-empty.
             for ($j = 0; $j < 4; $j++) {
+                $dueTicketCreatedAt = now()->subMinutes(10 + $j * 10); // 10/20/30/40 min ago, unreplied
                 Ticket::forceCreate([
                     'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
                     'assignee_id' => $agents[$j % count($agents)]->id,
                     'subject' => 'Awaiting first reply #'.($j + 1),
                     'status' => $j % 2 === 0 ? 'new' : 'open', 'priority' => 'high', 'channel' => $channels[$j % 4],
                     'sla_policy_id' => $tierPolicies[$j % 3]->id,
-                    'created_at' => now()->subMinutes(10 + $j * 10), // 10/20/30/40 min ago, unreplied
+                    'created_at' => $dueTicketCreatedAt,
+                    'first_reply_due_at' => SlaCalculator::dueAt($dueTicketCreatedAt, $tierPolicies[$j % 3]->first_reply_minutes, $schedule),
                 ]);
             }
         }
