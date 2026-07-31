@@ -48,6 +48,9 @@ vi.mock('./hooks', () => ({
     useOverviewReport: (r: string) => useOverviewReport(r),
     useAgentsReport: (r: string, e: boolean) => useAgentsReport(r, e),
     useSlaReport: (r: string, e: boolean) => useSlaReport(r, e),
+    useSavedReports: () => ({ data: [{ id: 'sr1', name: 'Weekly overview', created_by: 'u1', definition: { section: 'overview', range: '7d' }, created_at: '', updated_at: '' }] }),
+    useCreateSavedReport: () => ({ mutate: vi.fn() }),
+    useDeleteSavedReport: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
 
@@ -98,6 +101,20 @@ describe('ReportingLayout', () => {
         useOverviewReport.mockReturnValueOnce({ data: undefined, isLoading: true });
         renderLayout();
         expect(screen.getByRole('button', { name: 'Export CSV' })).toBeDisabled();
+    });
+
+    it('applies a saved report\'s section+range when selected', () => {
+        useOverviewReport.mockClear();
+        renderLayout();
+        fireEvent.click(screen.getByRole('button', { name: '30d' }));
+        expect(useOverviewReport).toHaveBeenCalledWith('30d');
+
+        fireEvent.click(screen.getByText('Agents & CSAT'));
+        expect(screen.getByText('Agent performance')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Weekly overview'));
+        expect(screen.getByText('Ticket volume')).toBeInTheDocument();
+        expect(useOverviewReport).toHaveBeenCalledWith('7d');
     });
 
     it('enables Export CSV on the Agents section and exports the agent table', async () => {
