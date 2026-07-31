@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\BusinessHourSchedule;
 use App\Models\Contact;
+use App\Models\HelpdeskSavedReport;
 use App\Models\HelpdeskSavedView;
 use App\Models\Issue;
 use App\Models\Notification;
@@ -327,6 +328,26 @@ final class SmokeSeeder extends Seeder
                     'name' => $dv['name'],
                     'created_by' => $user->id,
                     'definition' => $dv['definition'],
+                ]);
+            }
+        }
+
+        $demoReports = [
+            ['name' => 'Weekly overview', 'definition' => ['section' => 'overview', 'range' => '7d']],
+            ['name' => 'Quarterly SLA', 'definition' => ['section' => 'sla', 'range' => '90d']],
+        ];
+        foreach ($demoReports as $dr) {
+            $exists = HelpdeskSavedReport::withoutGlobalScopes()
+                ->where('workspace_id', $workspace->id)
+                ->where('name', $dr['name'])
+                ->exists();
+            if (! $exists) {
+                HelpdeskSavedReport::forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'workspace_id' => $workspace->id,
+                    'name' => $dr['name'],
+                    'created_by' => $user->id,
+                    'definition' => $dr['definition'],
                 ]);
             }
         }
