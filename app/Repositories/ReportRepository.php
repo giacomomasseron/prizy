@@ -50,6 +50,8 @@ final class ReportRepository
                 'issue_id' => $t->linkedIssues->first()?->id,
             ])->values()->all();
 
+        $volume = $this->volumeBuckets($workspaceId, $now, $bucketDays, $numBuckets);
+
         return [
             'range' => $range,
             'kpis' => [
@@ -58,7 +60,13 @@ final class ReportRepository
                 'median_first_reply_minutes' => ['value' => $frtCur, 'delta_pct' => $this->delta($frtCur, $frtPrev)],
                 'csat' => ['value' => $csatCur, 'delta_pct' => $this->delta($csatCur, $csatPrev)],
             ],
-            'volume' => $this->volumeBuckets($workspaceId, $now, $bucketDays, $numBuckets),
+            'volume' => $volume,
+            'sparklines' => [
+                'tickets_created' => array_map(fn (array $b): int => $b['created'], $volume),
+                'solved' => array_map(fn (array $b): int => $b['solved'], $volume),
+                'median_first_reply_minutes' => $this->medianFrtByBucket($workspaceId, $now, $bucketDays, $numBuckets),
+                'csat' => $this->csatRateByBucket($workspaceId, $now, $bucketDays, $numBuckets),
+            ],
             'by_status' => collect(['new', 'open', 'pending', 'on_hold', 'solved', 'closed'])
                 ->mapWithKeys(fn ($s) => [$s => (int) ($byStatusRaw[$s] ?? 0)])->all(),
             'escalations' => [
@@ -377,6 +385,56 @@ final class ReportRepository
         $positive = $ratings->filter(fn ($r) => $r === 'thumbs_up')->count();
 
         return (int) round($positive / $ratings->count() * 100);
+    }
+
+    /** @return list<int|null> */
+    private function medianFrtByBucket(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
+    {
+        ['anchor' => $anchor, 'end' => $end, 'bucketOf' => $bucketOf] = $this->bucketScaffold($now, $bucketDays, $numBuckets);
+        $rows = Ticket::query()->where('workspace_id', $workspaceId)
+            ->whereNotNull('first_replied_at')
+            ->where('first_replied_at', '>=', $anchor)->where('first_replied_at', '<', $end)
+            ->get(['created_at', 'first_replied_at']);
+
+        /** @var list<list<int>> $buckets */
+        $buckets = array_fill(0, $numBuckets, []);
+        foreach ($rows as $t) {
+            $i = $bucketOf($t->first_replied_at);
+            if ($i >= 0 && $i < $numBuckets) {
+                $buckets[$i][] = (int) round($t->created_at->diffInMinutes($t->first_replied_at));
+            }
+        }
+
+        return array_map(fn (array $vals): ?int => $this->median($vals), $buckets);
+    }
+
+    /** @return list<int|null> */
+    private function csatRateByBucket(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
+    {
+        ['anchor' => $anchor, 'end' => $end, 'bucketOf' => $bucketOf] = $this->bucketScaffold($now, $bucketDays, $numBuckets);
+        $rows = Ticket::query()->where('workspace_id', $workspaceId)
+            ->whereNotNull('csat_responded_at')
+            ->where('csat_responded_at', '>=', $anchor)->where('csat_responded_at', '<', $end)
+            ->get(['csat_responded_at', 'csat_rating']);
+
+        $pos = array_fill(0, $numBuckets, 0);
+        $tot = array_fill(0, $numBuckets, 0);
+        foreach ($rows as $t) {
+            $i = $bucketOf($t->csat_responded_at);
+            if ($i >= 0 && $i < $numBuckets) {
+                $tot[$i]++;
+                if ($t->csat_rating === 'thumbs_up') {
+                    $pos[$i]++;
+                }
+            }
+        }
+
+        $out = [];
+        for ($i = 0; $i < $numBuckets; $i++) {
+            $out[] = $tot[$i] > 0 ? (int) round($pos[$i] / $tot[$i] * 100) : null;
+        }
+
+        return $out;
     }
 
     /**

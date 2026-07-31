@@ -255,3 +255,38 @@ it('returns a null CSAT value and delta when there are no ratings in the window'
 
     Workspace::forgetCurrent();
 });
+
+it('returns per-bucket sparkline series aligned to the volume buckets', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-25 12:00:00', 'UTC')); // 7d daily buckets Jul 19..Jul 25 (index 0..6)
+    [$token, $ws] = reportWorld();
+
+    reportTicket($ws, ['created_at' => Carbon::parse('2026-07-20 09:00:00', 'UTC')]); // created bucket 1
+
+    // median first-reply on Jul 21 (bucket 2): FRT 10 & 30 → median 20
+    foreach ([10, 30] as $m) {
+        $c = Carbon::parse('2026-07-21 08:00:00', 'UTC');
+        reportTicket($ws, ['created_at' => $c, 'first_replied_at' => $c->copy()->addMinutes($m)]);
+    }
+
+    // csat on Jul 22 (bucket 3): 2 up + 1 down → 67%
+    reportTicket($ws, ['csat_responded_at' => Carbon::parse('2026-07-22 10:00:00', 'UTC'), 'csat_rating' => 'thumbs_up']);
+    reportTicket($ws, ['csat_responded_at' => Carbon::parse('2026-07-22 11:00:00', 'UTC'), 'csat_rating' => 'thumbs_up']);
+    reportTicket($ws, ['csat_responded_at' => Carbon::parse('2026-07-22 12:00:00', 'UTC'), 'csat_rating' => 'thumbs_down']);
+
+    $res = $this->withToken($token)->getJson('/v1/reports/overview?range=7d')->assertStatus(200);
+    $sp = $res->json('data.sparklines');
+    $volumeLen = count($res->json('data.volume'));
+
+    expect($sp)->toHaveKeys(['tickets_created', 'solved', 'median_first_reply_minutes', 'csat']);
+    foreach ($sp as $series) {
+        expect($series)->toHaveCount($volumeLen); // 7
+    }
+    expect($sp['tickets_created'])->toBe(collect($res->json('data.volume'))->pluck('created')->all());
+    expect($sp['solved'])->toBe(collect($res->json('data.volume'))->pluck('solved')->all());
+    expect($sp['median_first_reply_minutes'][2])->toBe(20);
+    expect($sp['median_first_reply_minutes'][0])->toBeNull();
+    expect($sp['csat'][3])->toBe(67);
+    expect($sp['csat'][0])->toBeNull();
+
+    Workspace::forgetCurrent();
+});
