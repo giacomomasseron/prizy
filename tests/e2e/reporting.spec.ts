@@ -43,6 +43,12 @@ test('agent opens the SLA & channels section and sees the SLA report', async ({ 
     await expect(page.getByText('Breach risk')).toBeVisible();
 });
 
+test('renders sparklines on the Overview KPI cards', async ({ page }) => {
+    await page.goto('/support/reporting');
+    // Overview is the default section; KPI cards render sparkline SVGs once the report loads.
+    await expect(page.locator('svg polyline').first()).toBeVisible();
+});
+
 test('exposes an Export CSV button on each reporting section', async ({ page }) => {
     await page.goto('/support/reporting');
     const exportBtn = page.getByRole('button', { name: 'Export CSV' });
