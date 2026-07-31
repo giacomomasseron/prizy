@@ -63,3 +63,28 @@ test('exposes an Export CSV button on each reporting section', async ({ page }) 
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Export CSV' })).toBeEnabled();
 });
+
+test('saves, applies, and deletes a report', async ({ page }) => {
+    await page.goto('/support/reporting');
+
+    // Pick a non-default section + range, then save it.
+    await page.getByRole('button', { name: 'SLA & channels' }).click();
+    await page.getByRole('button', { name: '90d' }).click();
+    await page.getByRole('button', { name: /\+ Save report/ }).click();
+    await page.getByPlaceholder('Report name').fill('My SLA view');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+
+    const savedRow = page.getByRole('button', { name: 'My SLA view' }).filter({ hasText: 'My SLA view' });
+    await expect(savedRow).toBeVisible();
+
+    // Switch away, then re-select the saved report — the SLA section renders again.
+    // Note: a bare "Overview" name substring-matches the seeded "Weekly overview" saved-report
+    // row (and its delete button) — the section switcher's icon+label disambiguates.
+    await page.getByRole('button', { name: '◫ Overview' }).click();
+    await savedRow.click();
+    await expect(page.getByText('SLA attainment')).toBeVisible();
+
+    // Delete it — it disappears.
+    await page.getByRole('button', { name: 'Delete report My SLA view' }).click();
+    await expect(page.getByRole('button', { name: 'My SLA view' })).toHaveCount(0);
+});
