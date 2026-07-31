@@ -275,6 +275,12 @@ export interface OverviewReport {
         csat: Kpi;
     };
     volume: VolumeBucket[];
+    sparklines?: {
+        tickets_created: (number | null)[];
+        solved: (number | null)[];
+        median_first_reply_minutes: (number | null)[];
+        csat: (number | null)[];
+    };
     by_status: Record<TicketStatus, number>;
     escalations: {
         count: number;

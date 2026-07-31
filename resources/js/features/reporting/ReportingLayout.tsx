@@ -69,7 +69,7 @@ export default function ReportingLayout() {
                         ) : (
                             <>
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
-                                    {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} />)}
+                                    {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} series={report.sparklines?.[m.key]} />)}
                                 </div>
                                 {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <SlaSection range={range} />}
                             </>

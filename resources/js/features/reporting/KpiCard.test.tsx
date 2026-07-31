@@ -29,4 +29,14 @@ describe('KpiCard', () => {
         expect(badge.style.color).not.toBe('var(--green)');
         expect(badge.style.color).not.toBe('var(--red)');
     });
+
+    it('renders a sparkline when a plottable series is provided', () => {
+        const { container } = render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: 14 }} series={[1, 2, 3]} />);
+        expect(container.querySelector('polyline')).not.toBeNull();
+    });
+
+    it('renders no sparkline when series is omitted', () => {
+        const { container } = render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: 14 }} />);
+        expect(container.querySelector('svg')).toBeNull();
+    });
 });
