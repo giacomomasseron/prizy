@@ -16,7 +16,7 @@ export function Sparkline({ series, color }: { series: (number | null)[]; color:
 
     const coords = points
         .map((p) => {
-            const x = PAD + (n > 1 ? (p.i / (n - 1)) * (W - 2 * PAD) : 0);
+            const x = PAD + (p.i / (n - 1)) * (W - 2 * PAD);
             const y = spanV === 0 ? H / 2 : PAD + (1 - (p.v - minV) / spanV) * (H - 2 * PAD);
             return `${x.toFixed(1)},${y.toFixed(1)}`;
         })

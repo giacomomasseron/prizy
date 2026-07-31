@@ -39,4 +39,11 @@ describe('KpiCard', () => {
         const { container } = render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: 14 }} />);
         expect(container.querySelector('svg')).toBeNull();
     });
+
+    it('colors the sparkline neutral (not red) when the delta is null', () => {
+        const { container } = render(<KpiCard meta={{ key: 'csat', label: 'CSAT', unit: '%', positiveIsGood: true }} kpi={{ value: 80, delta_pct: null }} series={[1, 2, 3]} />);
+        const poly = container.querySelector('polyline');
+        expect(poly).not.toBeNull();
+        expect(poly?.getAttribute('stroke')).toBe('var(--fg3)');
+    });
 });

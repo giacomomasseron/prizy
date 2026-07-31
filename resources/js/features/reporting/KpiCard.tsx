@@ -9,6 +9,7 @@ export function KpiCard({ meta, kpi, series }: { meta: KpiMeta; kpi: Kpi; series
     const neutral = kpi.delta_pct === 0;
     const good = !neutral && kpi.delta_pct !== null && (kpi.delta_pct > 0) === meta.positiveIsGood;
     const color = neutral ? 'var(--fg3)' : good ? 'var(--green)' : 'var(--red)';
+    const sparkColor = kpi.delta_pct === null ? 'var(--fg3)' : color;
     const bg = neutral ? 'rgba(255,255,255,.06)' : good ? 'rgba(75,171,102,.14)' : 'rgba(235,87,87,.14)';
     return (
         <div style={card}>
@@ -20,7 +21,7 @@ export function KpiCard({ meta, kpi, series }: { meta: KpiMeta; kpi: Kpi; series
                     </span>
                 )}
             </div>
-            {series && <Sparkline series={series} color={color} />}
+            {series && <Sparkline series={series} color={sparkColor} />}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 29, fontWeight: 600, lineHeight: 1, color: 'var(--fg)' }}>{kpi.value ?? '—'}</span>
                 {kpi.value !== null && meta.unit !== '' && <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{meta.unit}</span>}
