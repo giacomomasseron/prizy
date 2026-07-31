@@ -394,3 +394,12 @@ export interface HelpdeskSavedView {
     created_at: string;
     updated_at: string;
 }
+
+export interface HelpdeskSavedReport {
+    id: string;
+    name: string;
+    created_by: string;
+    definition: { section: 'overview' | 'agents' | 'sla'; range: '7d' | '30d' | '90d' };
+    created_at: string;
+    updated_at: string;
+}

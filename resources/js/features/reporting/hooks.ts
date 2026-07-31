@@ -1,7 +1,7 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { AgentsReport, OverviewReport, SlaReport } from '../../lib/types';
-import type { ReportRange } from './reportMeta';
+import type { AgentsReport, HelpdeskSavedReport, OverviewReport, SlaReport } from '../../lib/types';
+import type { ReportRange, ReportSectionKey } from './reportMeta';
 
 export function useOverviewReport(range: ReportRange) {
     return useQuery({
@@ -26,5 +26,26 @@ export function useSlaReport(range: ReportRange, enabled: boolean) {
         queryFn: () => api.get<SlaReport>(`/reports/sla?range=${range}`),
         placeholderData: keepPreviousData,
         enabled,
+    });
+}
+
+export function useSavedReports() {
+    return useQuery({ queryKey: ['reporting', 'saved-reports'], queryFn: () => api.get<HelpdeskSavedReport[]>('/report-views') });
+}
+
+export function useCreateSavedReport() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { name: string; definition: { section: ReportSectionKey; range: ReportRange } }) =>
+            api.post<HelpdeskSavedReport>('/report-views', input),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['reporting', 'saved-reports'] }); },
+    });
+}
+
+export function useDeleteSavedReport() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.del(`/report-views/${id}`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['reporting', 'saved-reports'] }); },
     });
 }

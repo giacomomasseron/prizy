@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
-import { useOverviewReport, useAgentsReport, useSlaReport } from './hooks';
+import { useOverviewReport, useAgentsReport, useSlaReport, useSavedReports, useCreateSavedReport, useDeleteSavedReport } from './hooks';
 import { sectionCsv, toCsv, downloadCsv } from './csv';
 import { KPI_META, type ReportRange, type ReportSectionKey, REPORT_SECTIONS } from './reportMeta';
 import { KpiCard } from './KpiCard';
@@ -23,6 +23,9 @@ export default function ReportingLayout() {
     const report = q.data;
     const agentsQ = useAgentsReport(range, section === 'agents');
     const slaQ = useSlaReport(range, section === 'sla');
+    const savedReportsQ = useSavedReports();
+    const createReport = useCreateSavedReport();
+    const deleteReport = useDeleteSavedReport();
     const sectionLabel = REPORT_SECTIONS.find((s) => s.key === section)?.label ?? 'Overview';
 
     const cached = section === 'overview' ? q.data : section === 'agents' ? agentsQ.data : slaQ.data;
@@ -43,7 +46,14 @@ export default function ReportingLayout() {
                 {me.data && <span style={{ marginTop: 6 }}><Avatar {...avatarFor({ id: me.data.id, name: me.data.name })} size={30} /></span>}
             </div>
 
-            <ReportingSidebar section={section} onSelectSection={setSection} />
+            <ReportingSidebar
+                section={section}
+                onSelectSection={setSection}
+                savedReports={savedReportsQ.data ?? []}
+                onSelectReport={(s, r) => { setSection(s); setRange(r); }}
+                onSaveReport={(name) => createReport.mutate({ name, definition: { section, range } })}
+                onDeleteReport={(id) => deleteReport.mutate(id)}
+            />
 
             <main style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
                 <header style={{ minHeight: 52, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, padding: '8px 22px' }}>
