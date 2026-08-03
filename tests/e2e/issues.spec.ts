@@ -212,4 +212,29 @@ test('issue detail: change status via dropdown, set assignee, add comment', asyn
     const commentRes = await commentPost;
     expect(commentRes.status()).toBe(201);
     await expect(page.getByText(commentText)).toBeVisible({ timeout: 8_000 });
+
+    // ── Comment renders in the redesigned "Comments {count}" section with an author card ──
+    await expect(page.getByText(/Comments/)).toBeVisible();
+
+    // ── Add a reaction: open the palette on the first comment, pick 🎯, see the pill ──
+    await page.getByRole('button', { name: 'Add reaction' }).first().click();
+    const reactionAdd = page.waitForResponse(
+        (r) => r.url().includes('/reactions') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+    );
+    // Exact match: the palette button's accessible name is exactly "🎯", whereas the
+    // resulting reaction pill's accessible name is "🎯 1" — a plain substring match
+    // would match both, so pin this one down with exact:true.
+    await page.getByRole('button', { name: '🎯', exact: true }).click();
+    await reactionAdd;
+    await expect(page.getByRole('button', { name: /🎯 1/ })).toBeVisible({ timeout: 8_000 });
+
+    // ── Toggle it off (self-cleaning) ──
+    const reactionRemove = page.waitForResponse(
+        (r) => r.url().includes('/reactions') && r.request().method() === 'POST',
+        { timeout: 15_000 },
+    );
+    await page.getByRole('button', { name: /🎯 1/ }).click();
+    await reactionRemove;
+    await expect(page.getByRole('button', { name: /🎯 1/ })).toHaveCount(0);
 });
