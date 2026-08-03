@@ -23,8 +23,8 @@ test('github: configure integration + link a PR', async ({ page }) => {
     // Link a PR on the first issue (unchanged — independent of the integrations move)
     await page.goto('/');
     await page.locator('[data-testid="issue-row"]').first().click();
-    await expect(page.getByRole('link', { name: /Open full issue/i })).toBeVisible({ timeout: 8_000 });
-    await page.getByRole('link', { name: /Open full issue/i }).click();
+    await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('link', { name: /Open full page/i }).click();
     await expect(page).toHaveURL(/\/issues\//);
     await page.getByLabel('Add PR URL').fill('https://github.com/acme/app/pull/1');
     await page.getByRole('button', { name: 'Add PR' }).click();
