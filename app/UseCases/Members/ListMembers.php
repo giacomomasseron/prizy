@@ -13,7 +13,7 @@ final class ListMembers
     public function handle(User $actor): Collection
     {
         return User::where('workspace_id', $actor->workspace_id)
-            ->select(['id', 'name'])
+            ->select(['id', 'name', 'is_agent'])
             ->orderBy('name')
             ->withoutTrashed()
             ->get();

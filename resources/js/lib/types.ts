@@ -33,6 +33,7 @@ export interface IssueComment {
     edited_at: string | null;
     created_at: string;
     updated_at: string;
+    reactions: { emoji: string; count: number; reacted: boolean }[];
 }
 
 export interface IssueActivity {

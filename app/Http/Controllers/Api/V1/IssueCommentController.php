@@ -25,7 +25,7 @@ final class IssueCommentController extends Controller
     public function store(StoreCommentRequest $request, string $issue): JsonResponse
     {
         $model = $this->findIssue->handle($issue);
-        Gate::authorize('update', $model);
+        Gate::authorize('view', $model);
 
         $comment = $this->addComment->handle($request->user(), array_merge(
             $request->validated(),

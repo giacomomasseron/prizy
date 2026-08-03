@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
     useIssue, useUpdateIssue,
-    useComments, useAddComment, useActivities,
+    useComments, useAddComment, useActivities, useToggleReaction,
 } from './hooks';
 import { StatusEditor } from './StatusEditor';
 import { PriorityEditor } from './PriorityEditor';
@@ -14,6 +14,8 @@ import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubL
 import { useMe } from '../../auth/useAuth';
 import { useMembers } from '../members/hooks';
 import { avatarFor } from '../../lib/avatarFor';
+import { timeAgo } from '../../lib/timeAgo';
+import { CommentReactions } from './CommentReactions';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -44,12 +46,19 @@ const sectionHeader: React.CSSProperties = {
     marginBottom: 8,
 };
 
+const badgeCss = (variant: 'assignee' | 'support'): React.CSSProperties => ({
+    fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, letterSpacing: '.02em',
+    color: variant === 'support' ? 'var(--green)' : 'var(--fg2)',
+    background: variant === 'support' ? 'rgba(75,171,102,.14)' : 'var(--hover)',
+});
+
 export default function IssueDetailPage() {
     const { id = '' } = useParams();
     const issue         = useIssue(id);
     const comments      = useComments(id);
     const activities    = useActivities(id);
     const addComment    = useAddComment(id);
+    const toggleReaction = useToggleReaction(id);
     const updateIssue   = useUpdateIssue(id);
     const githubLinks   = useGithubLinks(id);
     const addGithubLink    = useAddGithubLink(id);
@@ -315,18 +324,31 @@ export default function IssueDetailPage() {
                         </div>
                     );
                 })}
-                {(comments.data?.items ?? []).map((c) => (
-                    <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                        <Avatar size={20} />
-                        <div style={{
-                            fontSize: 12.5, color: 'var(--fg2)', background: 'var(--panel)',
-                            border: '1px solid var(--border)', borderRadius: 8,
-                            padding: '6px 10px', flex: 1,
-                        }}>
-                            {c.body}
+            </div>
+
+            {/* Comments */}
+            <div style={sectionHeader}>Comments <span style={{ color: 'var(--fg2)' }}>{comments.data?.items.length ?? 0}</span></div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+                {(comments.data?.items ?? []).map((c) => {
+                    const author = memberById.get(c.user_id);
+                    const badge: 'assignee' | 'support' | null =
+                        c.user_id === issue.data?.assignee_id ? 'assignee'
+                        : author?.is_agent ? 'support' : null;
+                    return (
+                        <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
+                            {author ? <Avatar {...avatarFor(author)} size={28} /> : <Avatar size={28} />}
+                            <div style={{ flex: 1, minWidth: 0, border: '1px solid var(--border)', borderRadius: 11, background: 'var(--panel)', padding: '12px 14px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                                    <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{author?.name ?? 'Unknown'}</span>
+                                    {badge && <span style={badgeCss(badge)}>{badge === 'support' ? 'Support' : 'Assignee'}</span>}
+                                    <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--fg3)', whiteSpace: 'nowrap' }}>{timeAgo(c.created_at)}</span>
+                                </div>
+                                <div style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--fg2)' }}>{c.body}</div>
+                                <CommentReactions reactions={c.reactions} onToggle={(emoji) => toggleReaction.mutate({ commentId: c.id, emoji })} />
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Comment box */}

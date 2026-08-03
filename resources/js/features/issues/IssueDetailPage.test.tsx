@@ -20,9 +20,10 @@ vi.mock('./hooks', () => ({
             created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
         },
     }),
-    useComments: () => ({ data: { items: [] } }),
+    useComments: vi.fn().mockReturnValue({ data: { items: [] } }),
     useActivities: vi.fn().mockReturnValue({ data: { items: [] } }),
     useAddComment: () => ({ mutateAsync: vi.fn() }),
+    useToggleReaction: () => ({ mutate: vi.fn() }),
     useIssueLabels: () => ({ data: { items: [] } }),
     useSetIssueLabels: () => ({ mutateAsync: vi.fn() }),
     // vi.fn() so per-test overrides via vi.mocked(...).mockReturnValue() work
@@ -37,7 +38,7 @@ vi.mock('./githubLinks', () => ({
     useRemoveGithubLink: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('../../features/members/hooks', () => ({
-    useMembers: () => ({ data: [{ id: 'm1', name: 'Alice' }] }),
+    useMembers: () => ({ data: [{ id: 'm1', name: 'Alice', is_agent: false }] }),
 }));
 vi.mock('../../auth/useAuth', () => ({
     // vi.fn() so per-test viewer override works via vi.mocked(authModule.useMe).mockReturnValue(...)
@@ -84,6 +85,34 @@ describe('IssueDetailPage', () => {
     it('shows comment input', () => {
         render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
         expect(screen.getByLabelText(/Leave a comment/i)).toBeInTheDocument();
+    });
+
+    it('renders a comment card with author name, body, and a reaction pill', () => {
+        vi.mocked(hooks.useComments).mockReturnValue({
+            data: {
+                items: [{
+                    id: 'c1',
+                    issue_id: 'abc123',
+                    user_id: 'm1',
+                    body: 'This looks great, thanks!',
+                    is_internal: false,
+                    edited_at: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                    reactions: [{ emoji: '👀', count: 2, reacted: false }],
+                }],
+            },
+        } as any);
+
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+
+        expect(screen.getByText('Alice')).toBeInTheDocument();
+        expect(screen.getByText('This looks great, thanks!')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /👀 2/ })).toBeInTheDocument();
+
+        // Reset so later tests (e.g. the activity-feed one, which also asserts on
+        // a lone "Alice" text node) don't see this test's leaked comment mock.
+        vi.mocked(hooks.useComments).mockReturnValue({ data: { items: [] } } as any);
     });
 
     it('activity feed: shows member name (not raw type) when user_id matches a member', () => {
