@@ -18,7 +18,7 @@ final class MemberController extends Controller
         $members = $this->listMembers->handle($request->user());
 
         return response()->json([
-            'data' => $members->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values(),
+            'data' => $members->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'is_agent' => $u->is_agent])->values(),
         ]);
     }
 }

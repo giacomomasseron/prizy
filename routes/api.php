@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\HelpdeskSavedViewController;
 use App\Http\Controllers\Api\V1\IssueActivityController;
 use App\Http\Controllers\Api\V1\IssueBlockerController;
 use App\Http\Controllers\Api\V1\IssueCommentController;
+use App\Http\Controllers\Api\V1\IssueCommentReactionController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueGithubLinkController;
 use App\Http\Controllers\Api\V1\IssueLabelController;
@@ -140,6 +141,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/issues/{issue}/archive', [IssueController::class, 'archive'])->middleware('verified');
         Route::post('/issues/{issue}/comments', [IssueCommentController::class, 'store'])->middleware('verified');
         Route::get('/issues/{issue}/comments', [IssueCommentController::class, 'index']);
+        Route::post('/issues/{issue}/comments/{comment}/reactions', [IssueCommentReactionController::class, 'toggle'])->middleware('verified');
         Route::get('/issues/{issue}/activities', [IssueActivityController::class, 'index']);
         Route::post('/issues/{issue}/blockers', [IssueBlockerController::class, 'store'])->middleware('verified');
         Route::delete('/issues/{issue}/blockers/{blockingIssue}', [IssueBlockerController::class, 'destroy'])->middleware('verified');
