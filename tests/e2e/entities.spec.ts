@@ -55,10 +55,10 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // leading "Issues" text so this targets the Workspace link unambiguously.
     await page.getByRole('link', { name: /^Issues/ }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/');
-    // R-C redesign: issue rows are <div data-testid="issue-row">. Click to open peek, then follow "Open full issue →".
+    // R-C redesign: issue rows are <div data-testid="issue-row">. Click to open peek, then follow "Open full page →".
     await page.locator('[data-testid="issue-row"]').filter({ hasText: 'Starter issue' }).click();
-    await expect(page.getByRole('link', { name: /Open full issue/i })).toBeVisible({ timeout: 8_000 });
-    await page.getByRole('link', { name: /Open full issue/i }).click();
+    await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
+    await page.getByRole('link', { name: /Open full page/i }).click();
     await expect(page).toHaveURL(/\/issues\//);
 
     // R-C redesign: Labels and Project are now Menu-based editors (no checkboxes/selects).

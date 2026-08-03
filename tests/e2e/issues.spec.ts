@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('peek drawer: open from list → follow "Open full issue →" to /issues/:id', async ({ page }) => {
+test('peek drawer: open from list → follow "Open full page ↗" to /issues/:id', async ({ page }) => {
     test.setTimeout(60_000);
     // Pre-authenticated via storageState
     await page.goto('/');
@@ -13,8 +13,8 @@ test('peek drawer: open from list → follow "Open full issue →" to /issues/:i
     // Click the row to open peek
     await firstRow.click();
 
-    // Peek drawer appears: "Open full issue →" link
-    const openLink = page.getByRole('link', { name: /Open full issue/i });
+    // Peek drawer appears: "Open full page ↗" link
+    const openLink = page.getByRole('link', { name: /Open full page/i });
     await expect(openLink).toBeVisible({ timeout: 8_000 });
 
     // URL contains ?peek=
@@ -126,9 +126,9 @@ test('board drag: moves the card and does NOT open peek drawer', async ({ page }
     await page.waitForTimeout(500);
 
     // Guard: the peek drawer must NOT have opened after the drag.
-    // The URL must have no ?peek= and the "Open full issue" link must be absent.
+    // The URL must have no ?peek= and the "Open full page" link must be absent.
     expect(page.url()).not.toContain('peek=');
-    await expect(page.getByRole('link', { name: /Open full issue/i })).not.toBeVisible();
+    await expect(page.getByRole('link', { name: /Open full page/i })).not.toBeVisible();
 
     // Status transition happened: the card is now visible in col-in_progress.
     await expect(
@@ -145,12 +145,12 @@ test('issue detail: change status via dropdown, set assignee, add comment', asyn
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
-    // Navigate to detail via peek → "Open full issue →"
+    // Navigate to detail via peek → "Open full page ↗"
     const firstRow = page.locator('[data-testid="issue-row"]').first();
     await expect(firstRow).toBeVisible({ timeout: 10_000 });
     await firstRow.click();
 
-    const openLink = page.getByRole('link', { name: /Open full issue/i });
+    const openLink = page.getByRole('link', { name: /Open full page/i });
     await expect(openLink).toBeVisible({ timeout: 8_000 });
     await openLink.click();
     await expect(page).toHaveURL(/\/issues\/[^?]+$/);
@@ -237,4 +237,19 @@ test('issue detail: change status via dropdown, set assignee, add comment', asyn
     await page.getByRole('button', { name: /🎯 1/ }).click();
     await reactionRemove;
     await expect(page.getByRole('button', { name: /🎯 1/ })).toHaveCount(0);
+});
+
+// ── Issue peek drawer: full-detail pane (Comments section, "Open full page ↗" link, comment input) ──
+test('issue peek drawer shows full detail', async ({ page }) => {
+    await page.goto('/');
+    // Open the peek for the first issue row (clicking a row opens the drawer, per useIssueDrawers).
+    await page.locator('[data-testid="issue-row"]').first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText('Comments')).toBeVisible();
+    await expect(dialog.getByRole('link', { name: /Open full page/ })).toBeVisible();
+    await expect(dialog.getByPlaceholder('Leave a comment…')).toBeVisible();
+    // Close via Escape.
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
 });

@@ -45,7 +45,7 @@ final class IssueController extends Controller
     {
         $model = $this->findIssue->handle($issue);
         Gate::authorize('view', $model);
-        $model->load('assignee');
+        $model->load(['assignee', 'supportTickets.requester.contactMetadata']);
 
         return IssueResource::make($model)->response();
     }
@@ -77,7 +77,7 @@ final class IssueController extends Controller
 
         $updated = $this->transitionStatus->handle($request->user(), [
             'issue_id' => $issue,
-            'status'   => $request->validated('status'),
+            'status' => $request->validated('status'),
         ]);
 
         return IssueResource::make($updated)->response();
@@ -89,7 +89,7 @@ final class IssueController extends Controller
         Gate::authorize('update', $model);
 
         $updated = $this->assignIssue->handle($request->user(), [
-            'issue_id'    => $issue,
+            'issue_id' => $issue,
             'assignee_id' => $request->validated('assignee_id'),
         ]);
 

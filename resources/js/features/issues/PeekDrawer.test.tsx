@@ -1,68 +1,64 @@
-import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { vi, describe, it, expect } from 'vitest';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PeekDrawer } from './PeekDrawer';
 
-vi.mock('./hooks', async (orig) => {
-    const real = await orig<typeof import('./hooks')>();
-    return {
-        ...real,
-        useIssue: (id: string) => ({
-            data: id ? {
-                id: 'i1', title: 'Peek issue', description: 'Some desc', status: 'todo',
-                priority: 'low', estimate: null, due_date: null, sort_order: 0,
-                team_id: 't1', project_id: null, cycle_id: null, parent_issue_id: null,
-                assignee_id: null, created_by: 'u1', archived_at: null, labels: [],
-                identifier: 'PRZ-7',
-                created_at: '2026-07-04T00:00:00.000000Z',
-                updated_at: '2026-07-04T00:00:00.000000Z',
-            } : undefined,
-            isLoading: false,
-        }),
-        useIssueLabels: () => ({ data: { items: [] } }),
-        useActivities: () => ({ data: { items: [] } }),
-    };
-});
+const issue = {
+    id: 'i1', title: 'Escalated ticket loses attachments', status: 'in_progress', priority: 'urgent',
+    team_id: 't1', identifier: 'PRZ-238', assignee_id: 'u2', assignee: { id: 'u2', name: 'Maya Chen' },
+    project_id: null, cycle_id: null, labels: [], created_by: 'u1', created_at: '', updated_at: '',
+    support_ticket: { id: 'tk1', ref: 'TKT-ABC123', subject: 'Attachments missing', customer: 'Acme Corp', plan: 'Business' },
+};
+const addCommentMutate = vi.fn();
+let overrideIssue: typeof issue | null = null;
+
+vi.mock('./hooks', () => ({
+    useIssue: () => ({ data: overrideIssue ?? issue, isLoading: false }),
+    useIssueLabels: () => ({ data: { items: [] } }),
+    useActivities: () => ({ data: { items: [{ id: 'a1', user_id: 'u2', type: 'created', to_value: null, created_at: new Date().toISOString() }] } }),
+    useComments: () => ({ data: { items: [{ id: 'c1', user_id: 'u2', body: 'Confirmed on staging.', created_at: new Date().toISOString(), reactions: [] }] } }),
+    useAddComment: () => ({ mutate: addCommentMutate, isPending: false }),
+}));
+vi.mock('../members/hooks', () => ({ useMembers: () => ({ data: [{ id: 'u2', name: 'Maya Chen', is_agent: true }] }) }));
 vi.mock('../projects/hooks', () => ({ useProjects: () => ({ data: { items: [] } }) }));
 vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [] } }) }));
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
 
-function mount(issueId: string | null) {
-    const qc = new QueryClient();
-    return render(
-        <QueryClientProvider client={qc}>
-            <MemoryRouter>
-                <PeekDrawer issueId={issueId} onClose={vi.fn()} />
-            </MemoryRouter>
-        </QueryClientProvider>
-    );
-}
+function wrap(ui: React.ReactNode) { return <MemoryRouter>{ui}</MemoryRouter>; }
 
 describe('PeekDrawer', () => {
-    it('renders nothing when issueId is null', () => {
-        const { container } = mount(null);
-        expect(container).toBeEmptyDOMElement();
+    it('renders the escalation banner + open-original-ticket link when support_ticket is set', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByText(/Escalated from Support/)).toBeInTheDocument();
+        expect(screen.getByText('Attachments missing')).toBeInTheDocument();
+        expect(screen.getByText(/Acme Corp/)).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Open original ticket/ })).toHaveAttribute('href', '/support/tickets/tk1');
     });
-
-    it('renders issue title', () => {
-        mount('i1');
-        expect(screen.getByText('Peek issue')).toBeInTheDocument();
+    it('has an Open full page header link to the issue', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByRole('link', { name: /Open full page/ })).toHaveAttribute('href', '/issues/i1');
     });
-
-    it('renders identifier in breadcrumb', () => {
-        mount('i1');
-        expect(screen.getByText(/PRZ-7/)).toBeInTheDocument();
+    it('renders comment cards and posts a comment', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        const commentBody = screen.getByText('Confirmed on staging.');
+        // "Maya Chen" also appears as the Assignee value and in the Activity feed,
+        // so scope to the comment row (avatar + card) to avoid a multi-match error.
+        const commentRow = commentBody.parentElement!.parentElement as HTMLElement;
+        expect(within(commentRow).getByText('Maya Chen')).toBeInTheDocument();
+        const input = screen.getByPlaceholderText('Leave a comment…');
+        fireEvent.change(input, { target: { value: 'Looks good' } });
+        fireEvent.submit(input.closest('form')!);
+        expect(addCommentMutate).toHaveBeenCalled();
     });
-
-    it('renders description', () => {
-        mount('i1');
-        expect(screen.getByText('Some desc')).toBeInTheDocument();
+    it('shows the synthetic auto-linked activity row when escalated', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByText(/Auto-linked from support ticket/)).toBeInTheDocument();
     });
-
-    it('renders "Open full issue →" link to /issues/i1', () => {
-        mount('i1');
-        const link = screen.getByRole('link', { name: /Open full issue/i });
-        expect(link).toBeInTheDocument();
-        expect(link.getAttribute('href')).toBe('/issues/i1');
+    it('hides the escalation banner and the auto-linked row when the issue is not escalated', () => {
+        overrideIssue = { ...issue, support_ticket: null } as unknown as typeof issue;
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.queryByText(/Escalated from Support/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Auto-linked from support ticket/)).not.toBeInTheDocument();
+        overrideIssue = null;
     });
 });
