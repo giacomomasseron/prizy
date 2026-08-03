@@ -21,21 +21,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 import { ApiError } from '../../lib/apiClient';
-
-function humanizeActivityType(type: string): string {
-    switch (type) {
-        case 'status_changed':      return 'changed status';
-        case 'priority_changed':    return 'changed priority';
-        case 'assigned':            return 'assigned';
-        case 'title_changed':       return 'changed title';
-        case 'description_changed': return 'changed description';
-        case 'label_added':         return 'added a label';
-        case 'label_removed':       return 'removed a label';
-        case 'project_changed':     return 'changed project';
-        case 'cycle_changed':       return 'changed cycle';
-        default:                    return type;
-    }
-}
+import { humanizeActivityType } from './activityMeta';
+import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
 
 const sectionHeader: React.CSSProperties = {
     fontSize: 11,
@@ -45,12 +32,6 @@ const sectionHeader: React.CSSProperties = {
     color: 'var(--fg3)',
     marginBottom: 8,
 };
-
-const badgeCss = (variant: 'assignee' | 'support'): React.CSSProperties => ({
-    fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, letterSpacing: '.02em',
-    color: variant === 'support' ? 'var(--green)' : 'var(--fg2)',
-    background: variant === 'support' ? 'rgba(75,171,102,.14)' : 'var(--hover)',
-});
 
 export default function IssueDetailPage() {
     const { id = '' } = useParams();
@@ -331,16 +312,14 @@ export default function IssueDetailPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
                 {(comments.data?.items ?? []).map((c) => {
                     const author = memberById.get(c.user_id);
-                    const badge: 'assignee' | 'support' | null =
-                        c.user_id === issue.data?.assignee_id ? 'assignee'
-                        : author?.is_agent ? 'support' : null;
+                    const badge = commentBadge(c.user_id, issue.data?.assignee_id, author?.is_agent);
                     return (
                         <div key={c.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 11 }}>
                             {author ? <Avatar {...avatarFor(author)} size={28} /> : <Avatar size={28} />}
                             <div style={{ flex: 1, minWidth: 0, border: '1px solid var(--border)', borderRadius: 11, background: 'var(--panel)', padding: '12px 14px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                                     <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{author?.name ?? 'Unknown'}</span>
-                                    {badge && <span style={badgeCss(badge)}>{badge === 'support' ? 'Support' : 'Assignee'}</span>}
+                                    {badge && <span style={badgeCss(badge)}>{badgeLabel(badge)}</span>}
                                     <span style={{ marginLeft: 'auto', fontSize: 11.5, color: 'var(--fg3)', whiteSpace: 'nowrap' }}>{timeAgo(c.created_at)}</span>
                                 </div>
                                 <div style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--fg2)' }}>{c.body}</div>
