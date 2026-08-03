@@ -127,6 +127,14 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                 <div>
                     <div style={sectionLabel}>Activity</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        {st && (
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>↩</span>
+                                <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
+                                    Auto-linked from support ticket <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{st.ref}</span> — customer context synced
+                                </div>
+                            </div>
+                        )}
                         {(activities.data?.items ?? []).map((a) => {
                             const actor = a.user_id ? memberById.get(a.user_id) : undefined;
                             return (
@@ -140,14 +148,6 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                                 </div>
                             );
                         })}
-                        {st && (
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                                <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>↩</span>
-                                <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
-                                    Auto-linked from support ticket <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{st.ref}</span> — customer context synced
-                                </div>
-                            </div>
-                        )}
                     </div>
                 </div>
 

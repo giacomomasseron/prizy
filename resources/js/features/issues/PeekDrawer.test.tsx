@@ -10,9 +10,10 @@ const issue = {
     support_ticket: { id: 'tk1', ref: 'TKT-ABC123', subject: 'Attachments missing', customer: 'Acme Corp', plan: 'Business' },
 };
 const addCommentMutate = vi.fn();
+let overrideIssue: typeof issue | null = null;
 
 vi.mock('./hooks', () => ({
-    useIssue: () => ({ data: issue, isLoading: false }),
+    useIssue: () => ({ data: overrideIssue ?? issue, isLoading: false }),
     useIssueLabels: () => ({ data: { items: [] } }),
     useActivities: () => ({ data: { items: [{ id: 'a1', user_id: 'u2', type: 'created', to_value: null, created_at: new Date().toISOString() }] } }),
     useComments: () => ({ data: { items: [{ id: 'c1', user_id: 'u2', body: 'Confirmed on staging.', created_at: new Date().toISOString(), reactions: [] }] } }),
@@ -52,5 +53,12 @@ describe('PeekDrawer', () => {
     it('shows the synthetic auto-linked activity row when escalated', () => {
         render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
         expect(screen.getByText(/Auto-linked from support ticket/)).toBeInTheDocument();
+    });
+    it('hides the escalation banner and the auto-linked row when the issue is not escalated', () => {
+        overrideIssue = { ...issue, support_ticket: null } as unknown as typeof issue;
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.queryByText(/Escalated from Support/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Auto-linked from support ticket/)).not.toBeInTheDocument();
+        overrideIssue = null;
     });
 });
