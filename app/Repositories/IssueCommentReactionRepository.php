@@ -26,11 +26,13 @@ final class IssueCommentReactionRepository
                 return;
             }
 
-            IssueCommentReaction::create([
+            IssueCommentReaction::query()->insertOrIgnore([
                 'id' => (string) Str::uuid(),
                 'issue_comment_id' => $commentId,
                 'user_id' => $userId,
                 'emoji' => $emoji,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         });
     }

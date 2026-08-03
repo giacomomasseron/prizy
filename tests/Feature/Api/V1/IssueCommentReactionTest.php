@@ -115,6 +115,25 @@ it('lets a non-developer member add a comment (authz relaxed to view)', function
         ->assertStatus(201);
 });
 
+it('computes reacted per-emoji per-caller, not from count', function (): void {
+    ['token' => $tokenA, 'issue' => $issue, 'comment' => $comment, 'workspace' => $ws] = reactionWorld();
+    $userB = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
+    $tokenB = app(CreatePersonalAccessToken::class)->handle($userB, 't', null)['token'];
+    $url = "/v1/issues/{$issue->id}/comments/{$comment->id}/reactions";
+
+    // A reacts 👀, B reacts 🎯.
+    $this->withToken($tokenA)->postJson($url, ['emoji' => '👀'])->assertStatus(200);
+    $this->withToken($tokenB)->postJson($url, ['emoji' => '🎯'])->assertStatus(200);
+
+    // As A: 👀 has count 1 + reacted TRUE; 🎯 has count 1 + reacted FALSE (A did not react to 🎯).
+    $list = $this->withToken($tokenA)->getJson("/v1/issues/{$issue->id}/comments")->assertStatus(200);
+    $reactions = collect($list->json('data.0.reactions'))->keyBy('emoji');
+    expect($reactions['👀']['count'])->toBe(1);
+    expect($reactions['👀']['reacted'])->toBeTrue();
+    expect($reactions['🎯']['count'])->toBe(1);
+    expect($reactions['🎯']['reacted'])->toBeFalse(); // count>0 but caller A didn't react → the lock
+});
+
 it('includes is_agent in the members list', function (): void {
     ['token' => $token] = reactionWorld();
     $this->withToken($token)->getJson('/v1/members')

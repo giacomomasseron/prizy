@@ -80,6 +80,6 @@ class IssueComment extends Model
     /** @return HasMany<IssueCommentReaction, $this> */
     public function reactions(): HasMany
     {
-        return $this->hasMany(IssueCommentReaction::class, 'issue_comment_id');
+        return $this->hasMany(IssueCommentReaction::class, 'issue_comment_id')->orderBy('created_at');
     }
 }
