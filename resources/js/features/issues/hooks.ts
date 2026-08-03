@@ -136,6 +136,15 @@ export function useAddComment(id: string) {
     });
 }
 
+export function useToggleReaction(id: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { commentId: string; emoji: string }) =>
+            api.post<IssueComment>(`/issues/${id}/comments/${vars.commentId}/reactions`, { emoji: vars.emoji }),
+        onSuccess: () => qc.invalidateQueries({ queryKey: ['issue', id, 'comments'] }),
+    });
+}
+
 export function useUpdateIssue(id: string) {
     const qc = useQueryClient();
     return useMutation({
