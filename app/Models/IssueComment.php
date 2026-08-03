@@ -8,8 +8,10 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Connection;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -26,6 +28,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon|null $deleted_at
  * @property Issue $issue
  * @property User $user
+ * @property Collection<int, IssueCommentReaction> $reactions
  */
 #[Table(
     name: 'issue_comments',
@@ -72,5 +75,11 @@ class IssueComment extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** @return HasMany<IssueCommentReaction, $this> */
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(IssueCommentReaction::class, 'issue_comment_id');
     }
 }
