@@ -82,16 +82,16 @@ class Issue extends TenantAwareEntity
     public function toSearchableArray(): array
     {
         return [
-            'id'           => $this->id,
+            'id' => $this->id,
             'workspace_id' => $this->workspace_id,
-            'title'        => $this->title,
-            'description'  => $this->description,
-            'status'       => $this->status,
-            'team_id'      => $this->team_id,
-            'project_id'   => $this->project_id,
-            'priority'     => $this->priority,
-            'assignee_id'  => $this->assignee_id,
-            'source'       => $this->source,
+            'title' => $this->title,
+            'description' => $this->description,
+            'status' => $this->status,
+            'team_id' => $this->team_id,
+            'project_id' => $this->project_id,
+            'priority' => $this->priority,
+            'assignee_id' => $this->assignee_id,
+            'source' => $this->source,
         ];
     }
 
@@ -302,6 +302,17 @@ class Issue extends TenantAwareEntity
     {
         return $this->belongsToMany(Ticket::class, 'issue_ticket_links', 'id', 'id')
             ->withPivot('ticket_id', 'created_by', 'created_at');
+    }
+
+    /**
+     * The support ticket(s) this issue was escalated from (via issue_ticket_links).
+     * Correct pivot keys — the auto-generated issueTicketLinksTickets() relation is broken.
+     *
+     * @return BelongsToMany<Ticket, $this>
+     */
+    public function supportTickets(): BelongsToMany
+    {
+        return $this->belongsToMany(Ticket::class, 'issue_ticket_links', 'issue_id', 'ticket_id');
     }
 
     /**
