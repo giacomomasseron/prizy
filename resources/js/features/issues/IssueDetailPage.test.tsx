@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -10,13 +10,15 @@ import * as authModule from '../../auth/useAuth';
 
 // Minimal mocks — vi.fn() on hooks that need per-test override
 vi.mock('./hooks', () => ({
-    useIssue: () => ({
+    // vi.fn() so per-test overrides via vi.mocked(...).mockReturnValue() work (e.g. support_ticket)
+    useIssue: vi.fn().mockReturnValue({
         isLoading: false,
         isError: false,
         data: {
             id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
             description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
             assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+            support_ticket: null,
             created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
         },
     }),
@@ -136,6 +138,102 @@ describe('IssueDetailPage', () => {
         expect(screen.getByText('Alice')).toBeInTheDocument();
         // Raw type string must NOT appear as the actor label
         expect(screen.queryByText('status_changed')).not.toBeInTheDocument();
+    });
+
+    it('activity feed: "created" shows "created this issue" without a " → title" suffix', () => {
+        vi.mocked(hooks.useActivities).mockReturnValue({
+            data: {
+                items: [{
+                    id: 'act2',
+                    issue_id: 'abc123',
+                    user_id: 'm1',
+                    type: 'created',
+                    from_value: null,
+                    to_value: 'Test Issue',
+                    created_at: '2026-07-04T00:00:00Z',
+                }],
+            },
+        } as any);
+
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+
+        expect(screen.getByText(/created this issue/)).toBeInTheDocument();
+        expect(screen.queryByText(/created this issue.*→/)).not.toBeInTheDocument();
+
+        // Reset so later tests don't see this leaked activity mock.
+        vi.mocked(hooks.useActivities).mockReturnValue({ data: { items: [] } } as any);
+    });
+
+    it('escalation banner: shows ref/subject/customer/plan + an "Open original ticket" link when support_ticket is set', () => {
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false,
+            isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: { id: 'tk1', ref: 'TKT-9', subject: 'Login is broken', customer: 'Acme Corp', plan: 'Pro' },
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
+
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+
+        // Scope to the banner container — the synthetic activity row below also
+        // renders a "TKT-9" ref span, so an unscoped query would be ambiguous.
+        const bannerHeader = screen.getByText(/Escalated from Support/);
+        const banner = bannerHeader.parentElement as HTMLElement;
+        expect(within(banner).getByText('TKT-9')).toBeInTheDocument();
+        expect(within(banner).getByText('Login is broken')).toBeInTheDocument();
+        expect(within(banner).getByText(/Acme Corp/)).toBeInTheDocument();
+        expect(within(banner).getByRole('link', { name: /Open original ticket/ })).toHaveAttribute('href', '/support/tickets/tk1');
+
+        // Reset so later tests see the default (no ticket) issue.
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false,
+            isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: null,
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
+    });
+
+    it('activity feed: shows the synthetic "Auto-linked from support ticket" row when support_ticket is set', () => {
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false,
+            isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: { id: 'tk1', ref: 'TKT-9', subject: 'Login is broken', customer: 'Acme Corp', plan: 'Pro' },
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
+
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+
+        // The escalation banner (also shown when support_ticket is set) has its own
+        // "TKT-9" ref span, so scope to the synthetic row to avoid ambiguity.
+        const autoLinkRow = screen.getByText(/Auto-linked from support ticket/);
+        expect(within(autoLinkRow).getByText('TKT-9')).toBeInTheDocument();
+
+        // Reset so later tests see the default (no ticket) issue.
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false,
+            isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: null,
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
     });
 });
 
