@@ -281,3 +281,15 @@ test('issue peek drawer shows full detail', async ({ page }) => {
     await page.keyboard.press('Escape');
     await expect(dialog).not.toBeVisible();
 });
+
+// ── Toolbar: text-size control (A−/⟲/A+) zooms the main content, persisted ──
+test('toolbar: text-size controls render and Increase enables Reset', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Decrease text size' })).toBeVisible();
+    const increase = page.getByRole('button', { name: 'Increase text size' });
+    await expect(increase).toBeVisible();
+    // At 100% the reset control is disabled; increasing must enable it.
+    await expect(page.getByRole('button', { name: 'Reset text size' })).toBeDisabled();
+    await increase.click();
+    await expect(page.getByRole('button', { name: 'Reset text size' })).toBeEnabled();
+});

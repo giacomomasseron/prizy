@@ -2,6 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { IssuesHeader } from './IssuesHeader';
+import { setFontScale } from '../../lib/fontScale';
 
 // Hoist a shared navigate spy so the vi.mock factory can close over it.
 // vi.mock is hoisted before imports by Vitest, but the factory is called
@@ -28,6 +29,8 @@ function wrap(ui: React.ReactNode, path = '/') {
 describe('IssuesHeader', () => {
     beforeEach(() => {
         mockNavigate.mockReset();
+        setFontScale(1);       // reset the font-scale singleton between tests
+        localStorage.clear();
     });
 
     it('renders "Issues" title', () => {
@@ -86,5 +89,35 @@ describe('IssuesHeader', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'List' }));
         expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+    });
+
+    // ── Text-size control (A−/⟲/A+) ──
+    it('renders the A−/⟲/A+ text-size buttons', () => {
+        wrap(<IssuesHeader view="list" />);
+        expect(screen.getByRole('button', { name: 'Decrease text size' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Reset text size' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Increase text size' })).toBeInTheDocument();
+    });
+
+    it('at 100% the reset button is disabled; increase/decrease are enabled', () => {
+        wrap(<IssuesHeader view="list" />);
+        expect(screen.getByRole('button', { name: 'Reset text size' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Increase text size' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Decrease text size' })).toBeEnabled();
+    });
+
+    it('clicking Increase enables the reset button (scale moved off 100%)', () => {
+        wrap(<IssuesHeader view="list" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Increase text size' }));
+        expect(screen.getByRole('button', { name: 'Reset text size' })).toBeEnabled();
+    });
+
+    it('Reset returns to 100% and disables itself again', () => {
+        wrap(<IssuesHeader view="list" />);
+        fireEvent.click(screen.getByRole('button', { name: 'Increase text size' }));
+        const resetBtn = screen.getByRole('button', { name: 'Reset text size' });
+        expect(resetBtn).toBeEnabled();
+        fireEvent.click(resetBtn);
+        expect(resetBtn).toBeDisabled();
     });
 });
