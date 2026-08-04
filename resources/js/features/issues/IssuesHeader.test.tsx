@@ -15,6 +15,12 @@ vi.mock('react-router-dom', async (importOriginal) => {
     return { ...actual, useNavigate: () => mockNavigate };
 });
 
+// UserMenu pulls in react-query (useMe/useLogout); stub it — its behaviour is
+// covered by UserMenu.test.tsx / SidebarFooter.test.tsx / AppLayout.test.tsx.
+vi.mock('../../components/UserMenu', () => ({
+    UserMenu: () => <div data-testid="user-menu-stub" />,
+}));
+
 function wrap(ui: React.ReactNode, path = '/') {
     return render(
         <MemoryRouter initialEntries={[path]}>
@@ -119,5 +125,12 @@ describe('IssuesHeader', () => {
         expect(resetBtn).toBeEnabled();
         fireEvent.click(resetBtn);
         expect(resetBtn).toBeDisabled();
+    });
+
+    // ── Theme toggle + user avatar (right side of the toolbar) ──
+    it('renders a Toggle theme button and the user avatar menu', () => {
+        wrap(<IssuesHeader view="list" />);
+        expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
+        expect(screen.getByTestId('user-menu-stub')).toBeInTheDocument();
     });
 });

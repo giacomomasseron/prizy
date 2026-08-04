@@ -2,7 +2,9 @@ import { useState, type CSSProperties, type JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Kbd } from '../../components/ui/Kbd';
+import { UserMenu } from '../../components/UserMenu';
 import { useFontScale } from '../../lib/fontScale';
+import { useTheme } from '../../lib/theme';
 
 export interface IssuesHeaderProps {
     view: 'list' | 'board';
@@ -38,7 +40,9 @@ function fontBtnStyle(enabled: boolean, size: number): CSSProperties {
 export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
     const navigate = useNavigate();
     const { scale, step, reset, canDecrease, canIncrease, canReset } = useFontScale();
+    const { theme, toggle: toggleTheme } = useTheme();
     const [searchHover, setSearchHover] = useState(false);
+    const [themeHover, setThemeHover] = useState(false);
 
     function handleNav(value: 'list' | 'board') {
         if (value === 'list') navigate('/', { replace: true });
@@ -143,6 +147,37 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
                     Search
                     <Kbd>⌘K</Kbd>
                 </button>
+
+                {/* Theme toggle (bordered, matches the mockup header) */}
+                <button
+                    type="button"
+                    onClick={toggleTheme}
+                    onMouseEnter={() => setThemeHover(true)}
+                    onMouseLeave={() => setThemeHover(false)}
+                    title="Toggle theme"
+                    aria-label="Toggle theme"
+                    style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 8,
+                        border: '1px solid',
+                        borderColor: themeHover ? 'var(--border2)' : 'var(--border)',
+                        background: 'transparent',
+                        color: 'var(--fg2)',
+                        cursor: 'pointer',
+                        fontSize: 14,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        fontFamily: 'inherit',
+                    }}
+                >
+                    {theme === 'dark' ? '☾' : '☀'}
+                </button>
+
+                {/* User avatar → account menu */}
+                <UserMenu variant="compact" />
             </div>
         </div>
     );

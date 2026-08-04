@@ -293,3 +293,14 @@ test('toolbar: text-size controls render and Increase enables Reset', async ({ p
     await increase.click();
     await expect(page.getByRole('button', { name: 'Reset text size' })).toBeEnabled();
 });
+
+// ── Toolbar right side: theme toggle + user avatar menu ──
+test('toolbar: theme toggle and user avatar menu are present', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Toggle theme' })).toBeVisible();
+    const avatar = page.getByTestId('toolbar-user-menu-trigger');
+    await expect(avatar).toBeVisible();
+    // Opening the avatar menu reveals account actions.
+    await avatar.click();
+    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
+});
