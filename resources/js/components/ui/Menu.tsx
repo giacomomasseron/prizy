@@ -13,8 +13,16 @@ export interface MenuItem {
 export interface MenuProps {
     trigger: ReactElement<{ onClick?: React.MouseEventHandler }>;
     items: MenuItem[];
-    placement?: 'bottom-start' | 'top-start';
+    placement?: 'bottom-start' | 'bottom-end' | 'top-start';
 }
+
+// Where the popover sits relative to the trigger. `*-end` right-aligns the
+// popover to the trigger (use when the trigger is near the right viewport edge).
+const PLACEMENT_STYLE: Record<NonNullable<MenuProps['placement']>, React.CSSProperties> = {
+    'bottom-start': { top: '100%', left: 0, marginTop: 4 },
+    'bottom-end': { top: '100%', right: 0, marginTop: 4 },
+    'top-start': { bottom: '100%', left: 0, marginBottom: 4 },
+};
 
 export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) {
     const [open, setOpen] = useState(false);
@@ -60,9 +68,7 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
         boxShadow: '0 8px 32px rgba(0,0,0,.28)',
         padding: '4px',
         animation: 'prizy-pop .14s cubic-bezier(.2,.8,.2,1)',
-        ...(placement === 'bottom-start'
-            ? { top: '100%', left: 0, marginTop: 4 }
-            : { bottom: '100%', left: 0, marginBottom: 4 }),
+        ...PLACEMENT_STYLE[placement],
     };
 
     const triggerWithClick = cloneElement(trigger, {

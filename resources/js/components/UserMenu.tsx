@@ -47,7 +47,7 @@ export function UserMenu({ variant = 'full' }: UserMenuProps) {
     if (variant === 'compact') {
         return (
             <Menu
-                placement="bottom-start"
+                placement="bottom-end"
                 trigger={
                     <button
                         type="button"
