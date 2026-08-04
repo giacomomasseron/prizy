@@ -1,18 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Drawer } from '../../components/ui/Drawer';
-import { Input } from '../../components/ui/Input';
-import { Textarea } from '../../components/ui/Textarea';
-import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
 import { Menu } from '../../components/ui/Menu';
-import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { ProjectPill } from '../../components/ui/ProjectPill';
+import { StatusIcon } from '../../components/ui/StatusIcon';
+import { PriorityIcon } from '../../components/ui/PriorityIcon';
+import { Avatar } from '../../components/ui/Avatar';
+import { avatarFor } from '../../lib/avatarFor';
 import { useTeams } from '../teams/hooks';
 import { useProjects } from '../projects/hooks';
 import { useMembers } from '../members/hooks';
+import { useLabels } from '../labels/hooks';
 import { useCreateIssue } from './hooks';
-import { Avatar } from '../../components/ui/Avatar';
-import { avatarFor } from '../../lib/avatarFor';
 import type { IssueStatus, IssuePriority } from '../../lib/types';
 
 export interface CreateIssueDrawerProps {
@@ -21,31 +19,60 @@ export interface CreateIssueDrawerProps {
     onClose(): void;
 }
 
+// New-issue statuses (Done excluded — you don't file a new issue as done).
 const STATUS_OPTIONS: Array<{ label: string; value: IssueStatus }> = [
     { label: 'Backlog', value: 'backlog' },
     { label: 'Todo', value: 'todo' },
     { label: 'In Progress', value: 'in_progress' },
     { label: 'In Review', value: 'in_review' },
-    { label: 'Done', value: 'done' },
 ];
 
 const PRIORITY_OPTIONS: Array<{ label: string; value: IssuePriority }> = [
-    { label: 'None', value: 'no_priority' },
-    { label: 'Low', value: 'low' },
-    { label: 'Medium', value: 'medium' },
-    { label: 'High', value: 'high' },
     { label: 'Urgent', value: 'urgent' },
+    { label: 'High', value: 'high' },
+    { label: 'Medium', value: 'medium' },
+    { label: 'Low', value: 'low' },
+    { label: 'No priority', value: 'no_priority' },
 ];
+
+// The design's chip: bordered pill, accent when selected (matches Prizy Create.dc.html).
+function chipStyle(active: boolean): CSSProperties {
+    return {
+        display: 'inline-flex', alignItems: 'center', gap: 7,
+        padding: '6px 11px', borderRadius: 8, border: '1px solid',
+        cursor: 'pointer', fontSize: 12.5, fontFamily: 'inherit',
+        borderColor: active ? 'var(--accent)' : 'var(--border)',
+        background: active ? 'var(--accent2)' : 'transparent',
+        color: active ? 'var(--fg)' : 'var(--fg2)',
+    };
+}
+
+const rowLabel: CSSProperties = { width: 72, flexShrink: 0, fontSize: 12.5, color: 'var(--fg3)', paddingTop: 7 };
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+    return (
+        <div style={{ display: 'flex', gap: 12, padding: '9px 0' }}>
+            <span style={rowLabel}>{label}</span>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>{children}</div>
+        </div>
+    );
+}
+
+function colorDot(color: string) {
+    return <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />;
+}
 
 export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
     const teams = useTeams();
     const projects = useProjects();
     const members = useMembers();
+    const labels = useLabels();
     const createIssue = useCreateIssue();
 
     const [teamId, setTeamId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState<string | null>(null);
     const [assigneeId, setAssigneeId] = useState<string | null>(null);
+    const [labelIds, setLabelIds] = useState<string[]>([]);
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<IssueStatus>(initialStatus ?? 'todo');
     const [priority, setPriority] = useState<IssuePriority>('no_priority');
@@ -58,23 +85,35 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
         }
     }, [teams.data]);
 
+    function resetFields() {
+        setTitle('');
+        setStatus(initialStatus ?? 'todo');
+        setPriority('no_priority');
+        setDescription('');
+        setProjectId(null);
+        setAssigneeId(null);
+        setLabelIds([]);
+    }
+
     // Reset form fields each time the drawer opens
     useEffect(() => {
-        if (open) {
-            setTitle('');
-            setStatus(initialStatus ?? 'todo');
-            setPriority('no_priority');
-            setDescription('');
-            setProjectId(null);
-            setAssigneeId(null);
-        }
+        if (open) resetFields();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, initialStatus]);
 
-    const selectedTeam = teams.data?.items?.find((t) => t.id === teamId);
-    const singleTeam = (teams.data?.items?.length ?? 0) === 1;
-    const selectedProject = projects.data?.items?.find((p) => p.id === projectId);
+    const teamList = teams.data?.items ?? [];
+    const selectedTeam = teamList.find((t) => t.id === teamId);
+    const singleTeam = teamList.length === 1;
+    const projectList = projects.data?.items ?? [];
+    const memberList = members.data ?? [];
+    const labelList = labels.data?.items ?? [];
+    const canSubmit = !!teamId && !!title.trim() && !createIssue.isPending;
 
-    async function handleSubmit() {
+    function toggleLabel(id: string) {
+        setLabelIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+    }
+
+    async function submit(keepOpen: boolean) {
         if (!teamId || !title.trim()) return;
         try {
             await createIssue.mutateAsync({
@@ -85,211 +124,150 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                 assignee_id: assigneeId,
                 description: description.trim() || null,
                 project_id: projectId,
+                label_ids: labelIds,
             });
-            onClose();
+            if (keepOpen) resetFields();
+            else onClose();
         } catch {
-            // error stays silent in R-B; R-C adds inline error display
+            // inline error handling arrives with a later slice
         }
     }
 
     return (
         <Drawer open={open} onClose={onClose} side="right" width={520}>
-            <div
-                style={{
-                    padding: '24px 28px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 20,
-                    height: '100%',
-                }}
-            >
-                {/* Header row */}
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 600, fontSize: 15, color: 'var(--fg)' }}>New issue</span>
-                    <IconButton title="Close" style={{ marginLeft: 'auto' }} onClick={onClose}>
-                        ✕
-                    </IconButton>
-                </div>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-                {/* Team selector — hidden (static text) when exactly one team */}
-                {singleTeam ? (
-                    <div style={{ fontSize: 13, color: 'var(--fg2)' }}>{selectedTeam?.name}</div>
-                ) : (
-                    <Menu
-                        placement="bottom-start"
-                        trigger={
-                            <button
-                                type="button"
-                                aria-label="Issue team"
-                                style={{
-                                    background: 'var(--panel)',
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 9,
-                                    color: teamId ? 'var(--fg)' : 'var(--fg3)',
-                                    fontSize: 13,
-                                    padding: '6px 10px',
-                                    fontFamily: 'inherit',
-                                    cursor: 'pointer',
-                                    textAlign: 'left',
-                                    width: '100%',
-                                }}
-                            >
-                                {selectedTeam?.name ?? 'Select team…'}
-                            </button>
-                        }
-                        items={
-                            teams.data?.items?.map((t) => ({
-                                key: t.id,
-                                label: t.name,
-                                onActivate: () => setTeamId(t.id),
-                            })) ?? []
-                        }
-                    />
-                )}
-
-                {/* Project (optional) */}
-                <Menu
-                    placement="bottom-start"
-                    trigger={
-                        <button
-                            type="button"
-                            aria-label="Issue project"
-                            style={{
-                                background: 'var(--panel)',
-                                border: '1px solid var(--border)',
-                                borderRadius: 9,
-                                color: projectId ? 'var(--fg)' : 'var(--fg3)',
-                                fontSize: 13,
-                                padding: '6px 10px',
-                                fontFamily: 'inherit',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                width: '100%',
-                            }}
-                        >
-                            {selectedProject ? (
-                                <ProjectPill name={selectedProject.name} color={selectedProject.color} />
-                            ) : (
-                                'No project'
-                            )}
-                        </button>
-                    }
-                    items={[
-                        { key: '__none__', label: 'No project', onActivate: () => setProjectId(null) },
-                        ...(projects.data?.items?.map((p) => ({
-                            key: p.id,
-                            label: p.name,
-                            onActivate: () => setProjectId(p.id),
-                        })) ?? []),
-                    ]}
-                />
-
-                {/* Title */}
-                <Input
-                    autoFocus
-                    placeholder="Issue title…"
-                    aria-label="Issue title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                />
-
-                {/* Status */}
-                <SegmentedControl<IssueStatus>
-                    options={STATUS_OPTIONS}
-                    value={status}
-                    onChange={setStatus}
-                />
-
-                {/* Priority */}
-                <SegmentedControl<IssuePriority>
-                    options={PRIORITY_OPTIONS}
-                    value={priority}
-                    onChange={setPriority}
-                />
-
-                {/* Assignee (optional) */}
-                {(() => {
-                    const selectedMember = members.data?.find((m) => m.id === assigneeId);
-                    return (
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
+                    <span style={{ width: 20, height: 20, borderRadius: 6, background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1, flexShrink: 0 }}>+</span>
+                    <span style={{ fontWeight: 600, fontSize: 14.5, color: 'var(--fg)' }}>New issue</span>
+                    {singleTeam ? (
+                        selectedTeam && <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>{selectedTeam.name}</span>
+                    ) : (
                         <Menu
                             placement="bottom-start"
                             trigger={
-                                <button
-                                    type="button"
-                                    aria-label="Issue assignee"
-                                    style={{
-                                        background: 'var(--panel)',
-                                        border: '1px solid var(--border)',
-                                        borderRadius: 9,
-                                        color: assigneeId ? 'var(--fg)' : 'var(--fg3)',
-                                        fontSize: 13,
-                                        padding: '6px 10px',
-                                        fontFamily: 'inherit',
-                                        cursor: 'pointer',
-                                        textAlign: 'left',
-                                        width: '100%',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                    }}
-                                >
-                                    {selectedMember ? (
-                                        <>
-                                            <Avatar {...avatarFor(selectedMember)} size={16} />
-                                            {selectedMember.name}
-                                        </>
-                                    ) : (
-                                        'Unassigned'
-                                    )}
+                                <button type="button" aria-label="Issue team" className="hover:bg-hover"
+                                    style={{ ...chipStyle(false), padding: '3px 9px', color: teamId ? 'var(--fg2)' : 'var(--fg3)' }}>
+                                    {selectedTeam?.name ?? 'Select team…'}
                                 </button>
                             }
-                            items={[
-                                {
-                                    key: '__none__',
-                                    label: 'Unassigned',
-                                    icon: <Avatar size={14} />,
-                                    onActivate: () => setAssigneeId(null),
-                                },
-                                ...(members.data ?? []).map((m) => ({
-                                    key: m.id,
-                                    label: m.name,
-                                    icon: <Avatar {...avatarFor(m)} size={14} />,
-                                    onActivate: () => setAssigneeId(m.id),
-                                })),
-                            ]}
+                            items={teamList.map((t) => ({ key: t.id, label: t.name, onActivate: () => setTeamId(t.id) }))}
                         />
-                    );
-                })()}
+                    )}
+                    <IconButton title="Close" style={{ marginLeft: 'auto' }} onClick={onClose}>✕</IconButton>
+                </div>
 
-                {/* Description */}
-                <Textarea
-                    placeholder="Add a description…"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={4}
-                />
+                {/* Scrollable body */}
+                <div style={{ flex: 1, overflow: 'auto', padding: '22px 24px' }}>
+                    <input
+                        autoFocus
+                        aria-label="Issue title"
+                        placeholder="Issue title"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        style={{
+                            border: 'none', background: 'none', outline: 'none', width: '100%',
+                            fontSize: 20, fontWeight: 600, letterSpacing: '-.01em',
+                            color: 'var(--fg)', fontFamily: 'inherit', padding: 0, marginBottom: 14,
+                        }}
+                    />
+
+                    <textarea
+                        aria-label="Issue description"
+                        placeholder="Describe the problem, expected behavior, and steps to reproduce…"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        style={{
+                            width: '100%', minHeight: 118, background: 'var(--bg2)',
+                            border: '1px solid var(--border)', borderRadius: 10,
+                            padding: '12px 13px', fontSize: 13.5, lineHeight: 1.6,
+                            color: 'var(--fg)', fontFamily: 'inherit', resize: 'vertical',
+                            boxSizing: 'border-box', outline: 'none', marginBottom: 20,
+                        }}
+                    />
+
+                    {/* Status */}
+                    <Row label="Status">
+                        {STATUS_OPTIONS.map((o) => (
+                            <button key={o.value} type="button" aria-label={`Status ${o.label}`}
+                                aria-pressed={status === o.value} onClick={() => setStatus(o.value)}
+                                style={chipStyle(status === o.value)}>
+                                <StatusIcon status={o.value} size={13} />{o.label}
+                            </button>
+                        ))}
+                    </Row>
+
+                    {/* Priority */}
+                    <Row label="Priority">
+                        {PRIORITY_OPTIONS.map((o) => (
+                            <button key={o.value} type="button" aria-label={`Priority ${o.label}`}
+                                aria-pressed={priority === o.value} onClick={() => setPriority(o.value)}
+                                style={chipStyle(priority === o.value)}>
+                                <PriorityIcon priority={o.value} />{o.label}
+                            </button>
+                        ))}
+                    </Row>
+
+                    {/* Assignee */}
+                    <Row label="Assignee">
+                        {memberList.map((m) => (
+                            <button key={m.id} type="button" aria-label={`Assign ${m.name}`}
+                                aria-pressed={assigneeId === m.id} onClick={() => setAssigneeId(m.id)}
+                                style={chipStyle(assigneeId === m.id)}>
+                                <Avatar {...avatarFor(m)} size={18} />{m.name}
+                            </button>
+                        ))}
+                        <button type="button" aria-label="Unassigned"
+                            aria-pressed={assigneeId === null} onClick={() => setAssigneeId(null)}
+                            style={chipStyle(assigneeId === null)}>
+                            <Avatar size={18} />Unassigned
+                        </button>
+                    </Row>
+
+                    {/* Project */}
+                    <Row label="Project">
+                        {projectList.map((p) => (
+                            <button key={p.id} type="button" aria-label={`Project ${p.name}`}
+                                aria-pressed={projectId === p.id} onClick={() => setProjectId(p.id)}
+                                style={chipStyle(projectId === p.id)}>
+                                {colorDot(p.color)}{p.name}
+                            </button>
+                        ))}
+                        <button type="button" aria-label="No project"
+                            aria-pressed={projectId === null} onClick={() => setProjectId(null)}
+                            style={chipStyle(projectId === null)}>
+                            No project
+                        </button>
+                    </Row>
+
+                    {/* Labels (multi-select) */}
+                    {labelList.length > 0 && (
+                        <Row label="Labels">
+                            {labelList.map((l) => (
+                                <button key={l.id} type="button" aria-label={`Label ${l.name}`}
+                                    aria-pressed={labelIds.includes(l.id)} onClick={() => toggleLabel(l.id)}
+                                    style={chipStyle(labelIds.includes(l.id))}>
+                                    {colorDot(l.color)}{l.name}
+                                </button>
+                            ))}
+                        </Row>
+                    )}
+                </div>
 
                 {/* Footer */}
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: 8,
-                        marginTop: 'auto',
-                        paddingTop: 16,
-                        borderTop: '1px solid var(--border)',
-                    }}
-                >
-                    <Button variant="secondary" onClick={onClose}>
-                        Cancel
-                    </Button>
-                    <Button
-                        variant="primary"
-                        disabled={!teamId || !title.trim() || createIssue.isPending}
-                        onClick={() => void handleSubmit()}
-                        aria-label="Create issue"
-                    >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 20px', borderTop: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: 12, color: 'var(--fg3)' }}>
+                        {title.trim() ? '' : 'Add a title to create this issue'}
+                    </span>
+                    <button type="button" onClick={() => void submit(true)} disabled={!canSubmit} className="hover:border-border2"
+                        style={{ marginLeft: 'auto', border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg)', padding: '8px 14px', borderRadius: 9, fontSize: 12.5, fontWeight: 500, cursor: canSubmit ? 'pointer' : 'default', opacity: canSubmit ? 1 : 0.5, fontFamily: 'inherit' }}>
+                        Create more
+                    </button>
+                    <button type="button" aria-label="Create issue" onClick={() => void submit(false)} disabled={!canSubmit}
+                        style={{ border: 'none', background: 'var(--accent)', color: '#fff', padding: '9px 16px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'default', opacity: canSubmit ? 1 : 0.5, fontFamily: 'inherit' }}>
                         Create issue
-                    </Button>
+                    </button>
                 </div>
             </div>
         </Drawer>

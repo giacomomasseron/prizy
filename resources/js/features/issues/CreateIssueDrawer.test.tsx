@@ -5,55 +5,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { CreateIssueDrawer } from './CreateIssueDrawer';
 import type { IssueStatus } from '../../lib/types';
 
-const mockMutateAsync = vi.fn().mockResolvedValue({});
+const mockMutateAsync = vi.fn().mockResolvedValue({ id: 'new1' });
 vi.mock('./hooks', async (orig) => {
     const real = await orig<typeof import('./hooks')>();
-    return {
-        ...real,
-        useCreateIssue: () => ({ mutateAsync: mockMutateAsync, isPending: false }),
-    };
+    return { ...real, useCreateIssue: () => ({ mutateAsync: mockMutateAsync, isPending: false }) };
 });
 vi.mock('../teams/hooks', () => ({
-    useTeams: () => ({
-        data: {
-            items: [
-                {
-                    id: 't1',
-                    name: 'Platform',
-                    identifier: 'PLT',
-                    color: '#6d69f2',
-                    created_at: '2026-07-04T00:00:00.000000Z',
-                    updated_at: '2026-07-04T00:00:00.000000Z',
-                },
-            ],
-        },
-    }),
+    useTeams: () => ({ data: { items: [{ id: 't1', name: 'Platform', identifier: 'PLT', color: '#6d69f2', created_at: '', updated_at: '' }] } }),
 }));
 vi.mock('../projects/hooks', () => ({
-    useProjects: () => ({
-        data: {
-            items: [
-                {
-                    id: 'p1',
-                    name: 'Apollo',
-                    description: null,
-                    icon: null,
-                    color: '#6d69f2',
-                    status: 'in_progress',
-                    team_id: 't1',
-                    start_date: null,
-                    target_date: null,
-                    created_by: 'u1',
-                    created_at: '2026-07-04T00:00:00.000000Z',
-                    updated_at: '2026-07-04T00:00:00.000000Z',
-                },
-            ],
-            next: null,
-        },
-    }),
+    useProjects: () => ({ data: { items: [{ id: 'p1', name: 'Apollo', description: null, icon: null, color: '#6d69f2', status: 'in_progress', team_id: 't1', start_date: null, target_date: null, created_by: 'u1', created_at: '', updated_at: '' }], next: null } }),
 }));
 vi.mock('../members/hooks', () => ({
     useMembers: () => ({ data: [{ id: 'u1', name: 'Bob Smith' }] }),
+}));
+vi.mock('../labels/hooks', () => ({
+    useLabels: () => ({ data: { items: [{ id: 'l1', name: 'Bug', color: '#eb5757', group: null }], next: null } }),
 }));
 
 function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onClose?: () => void }) {
@@ -62,11 +29,7 @@ function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onCl
     render(
         <QueryClientProvider client={qc}>
             <MemoryRouter>
-                <CreateIssueDrawer
-                    open={props.open ?? true}
-                    initialStatus={props.initialStatus ?? null}
-                    onClose={onClose}
-                />
+                <CreateIssueDrawer open={props.open ?? true} initialStatus={props.initialStatus ?? null} onClose={onClose} />
             </MemoryRouter>
         </QueryClientProvider>,
     );
@@ -74,9 +37,7 @@ function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onCl
 }
 
 describe('CreateIssueDrawer', () => {
-    beforeEach(() => {
-        mockMutateAsync.mockClear();
-    });
+    beforeEach(() => { mockMutateAsync.mockClear(); });
 
     it('renders nothing when open=false', () => {
         const { container } = render(
@@ -89,82 +50,78 @@ describe('CreateIssueDrawer', () => {
         expect(container).toBeEmptyDOMElement();
     });
 
-    it('Create issue button is disabled without a title', () => {
+    it('Create issue is disabled without a title', () => {
         mount({});
-        const btn = screen.getByRole('button', { name: /Create issue/i });
-        expect(btn).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Create issue' })).toBeDisabled();
+        expect(screen.getByText('Add a title to create this issue')).toBeInTheDocument();
     });
 
-    it('Create issue button enabled once title is filled (team auto-selected)', () => {
+    it('Create issue enabled once a title is filled (team auto-selected)', () => {
         mount({});
-        const input = screen.getByLabelText(/Issue title/i);
-        fireEvent.change(input, { target: { value: 'My new issue' } });
-        const btn = screen.getByRole('button', { name: /Create issue/i });
-        expect(btn).not.toBeDisabled();
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'My new issue' } });
+        expect(screen.getByRole('button', { name: 'Create issue' })).not.toBeDisabled();
     });
 
-    it('calls createIssue.mutateAsync with team_id + title on submit', async () => {
+    it('creates with team_id + title on submit', async () => {
         const { onClose } = mount({});
         fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task A' } });
-        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
-        await waitFor(() =>
-            expect(mockMutateAsync).toHaveBeenCalledWith(
-                expect.objectContaining({ team_id: 't1', title: 'Task A' }),
-            ),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ team_id: 't1', title: 'Task A' })));
         await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
 
-    it('includes project_id=null by default and project_id when selected', async () => {
-        const { onClose } = mount({});
+    it('selecting a Status chip passes that status', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task S' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Status In Progress' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ status: 'in_progress' })));
+    });
+
+    it('selecting a Project chip passes project_id (No project by default)', async () => {
+        mount({});
         fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task B' } });
-        // Select project "Apollo"
-        fireEvent.click(screen.getByRole('button', { name: /Issue project/i }));
-        fireEvent.click(screen.getByRole('menuitem', { name: 'Apollo' }));
-        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
-        await waitFor(() =>
-            expect(mockMutateAsync).toHaveBeenCalledWith(
-                expect.objectContaining({ project_id: 'p1', title: 'Task B' }),
-            ),
-        );
-        await waitFor(() => expect(onClose).toHaveBeenCalled());
+        fireEvent.click(screen.getByRole('button', { name: 'Project Apollo' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ project_id: 'p1', title: 'Task B' })));
     });
 
-    it('pre-fills status when initialStatus is passed', () => {
+    it('selecting an Assignee chip passes assignee_id (null by default)', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task C' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Assign Bob Smith' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: 'u1' })));
+    });
+
+    it('defaults assignee_id to null when Unassigned', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task D' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: null })));
+    });
+
+    it('selecting Label chips passes label_ids', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task L' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Label Bug' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ label_ids: ['l1'] })));
+    });
+
+    it('pre-selects the status chip from initialStatus', () => {
         mount({ initialStatus: 'in_progress' });
-        // SegmentedControl marks the active segment with background:var(--panel);
-        // inactive segments get background:transparent.
-        // This test must FAIL if the pre-fill is ignored (active would be 'Todo', not 'In Progress').
-        const activeBtn = screen.getByRole('button', { name: 'In Progress' });
-        const inactiveBtn = screen.getByRole('button', { name: 'Todo' });
-        expect(activeBtn.style.background).toBe('var(--panel)');
-        expect(inactiveBtn.style.background).toBe('transparent');
+        expect(screen.getByRole('button', { name: 'Status In Progress' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Status Todo' })).toHaveAttribute('aria-pressed', 'false');
     });
 
-    it('Assignee field appears and passes assignee_id on create', async () => {
-        mount({});
-        // Open the assignee menu and pick Bob Smith
-        fireEvent.click(screen.getByRole('button', { name: /Issue assignee/i }));
-        fireEvent.click(screen.getByRole('menuitem', { name: 'Bob Smith' }));
-        // Fill the required title
-        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task with assignee' } });
-        // Submit
-        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
-        await waitFor(() =>
-            expect(mockMutateAsync).toHaveBeenCalledWith(
-                expect.objectContaining({ assignee_id: 'u1' }),
-            ),
-        );
-    });
-
-    it('creates with assignee_id null when no assignee selected (default)', async () => {
-        mount({});
-        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task no assignee' } });
-        fireEvent.click(screen.getByRole('button', { name: /Create issue/i }));
-        await waitFor(() =>
-            expect(mockMutateAsync).toHaveBeenCalledWith(
-                expect.objectContaining({ assignee_id: null }),
-            ),
-        );
+    it('Create more keeps the drawer open and resets the title', async () => {
+        const { onClose } = mount({});
+        const titleInput = screen.getByLabelText(/Issue title/i) as HTMLInputElement;
+        fireEvent.change(titleInput, { target: { value: 'Task M' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create more' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled());
+        expect(onClose).not.toHaveBeenCalled();
+        await waitFor(() => expect(titleInput.value).toBe(''));
     });
 });
