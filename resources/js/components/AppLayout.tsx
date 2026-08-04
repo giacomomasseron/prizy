@@ -7,10 +7,12 @@ import { PeekDrawer } from '../features/issues/PeekDrawer';
 import { CreateIssueDrawer } from '../features/issues/CreateIssueDrawer';
 import { ProjectSidebar } from '../features/projects/ProjectSidebar';
 import { GlobalSidebar } from './GlobalSidebar';
+import { useFontScale } from '../lib/fontScale';
 
 export default function AppLayout() {
     useRealtimeNotifications();
     const { peekId, createOpen, createStatus, openCreate, close } = useIssueDrawers();
+    const { scale } = useFontScale();
 
     const [navHidden, setNavHidden] = useState<boolean>(() => {
         try { return localStorage.getItem('prizy-nav-hidden') === '1'; } catch { return false; }
@@ -87,8 +89,8 @@ export default function AppLayout() {
                 </button>
             )}
 
-            {/* ── Main content ── */}
-            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg)', overflow: 'auto' }}>
+            {/* ── Main content (zoom = user text-size preference from the toolbar) ── */}
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg)', overflow: 'auto', zoom: scale }}>
                 <Outlet />
             </main>
 
