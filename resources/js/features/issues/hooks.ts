@@ -165,7 +165,10 @@ export function useSetIssueLabels(issueId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (labelIds: string[]) => api.put<Label[]>(`/issues/${issueId}/labels`, { label_ids: labelIds }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['issue', issueId, 'labels'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['issue', issueId, 'labels'] });
+            qc.invalidateQueries({ queryKey: ['issue', issueId, 'activities'] });
+        },
     });
 }
 

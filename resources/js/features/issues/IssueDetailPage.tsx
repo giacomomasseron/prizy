@@ -21,7 +21,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 import { ApiError } from '../../lib/apiClient';
-import { humanizeActivityType } from './activityMeta';
+import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
 
 const sectionHeader: React.CSSProperties = {
@@ -145,32 +145,28 @@ export default function IssueDetailPage() {
                 </h1>
             )}
 
-            {/* support_ticket_id is an untyped Phase-3 field (always null today); block renders only when set */}
-            {(data as any).support_ticket_id && (
+            {/* Escalated from Support */}
+            {data.support_ticket && (
                 <div style={{
                     border: '1px solid var(--accent)', background: 'var(--accent2)',
-                    borderRadius: 12, padding: '14px 16px', marginBottom: 22,
+                    borderRadius: 12, padding: '16px 18px', marginBottom: 26,
                 }}>
-                    <div style={{
-                        display: 'flex', alignItems: 'center', gap: 8,
-                        fontSize: 12, fontWeight: 600, color: 'var(--accent)',
-                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 600, color: 'var(--accent)' }}>
                         ↩ Escalated from Support
-                        <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11 }}>
-                            {(data as any).support_ticket_id}
-                        </span>
+                        <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>{data.support_ticket.ref}</span>
                     </div>
-                    <button
-                        type="button"
+                    <div style={{ marginTop: 11, fontSize: 14, color: 'var(--fg)', fontWeight: 500 }}>{data.support_ticket.subject}</div>
+                    <div style={{ marginTop: 6, fontSize: 12.5, color: 'var(--fg2)' }}>Customer · {data.support_ticket.customer ?? '—'} · {data.support_ticket.plan ?? '—'}</div>
+                    <Link
+                        to={`/support/tickets/${data.support_ticket.id}`}
                         style={{
-                            marginTop: 12, display: 'inline-flex', alignItems: 'center',
-                            gap: 6, padding: '6px 11px', borderRadius: 8,
-                            border: '1px solid var(--accent)', background: 'transparent',
-                            color: 'var(--accent)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            marginTop: 14, display: 'inline-flex', alignItems: 'center', gap: 6,
+                            padding: '7px 12px', borderRadius: 8, border: '1px solid var(--accent)',
+                            color: 'var(--accent)', fontSize: 12.5, fontWeight: 600, textDecoration: 'none',
                         }}
                     >
                         Open original ticket ↗
-                    </button>
+                    </Link>
                 </div>
             )}
 
@@ -280,6 +276,14 @@ export default function IssueDetailPage() {
             {/* Activity */}
             <div style={sectionHeader}>Activity</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 24 }}>
+                {data.support_ticket && (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                        <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>↩</span>
+                        <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
+                            Auto-linked from support ticket <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{data.support_ticket.ref}</span> — customer context synced
+                        </div>
+                    </div>
+                )}
                 {(activities.data?.items ?? []).map((a) => {
                     const actor = a.user_id ? memberById.get(a.user_id) : undefined;
                     return (
@@ -297,9 +301,9 @@ export default function IssueDetailPage() {
                                     {actor ? actor.name : 'Someone'}
                                 </span>
                                 {' '}{humanizeActivityType(a.type)}
-                                {a.to_value ? ` → ${a.to_value}` : ''}
+                                {activityDetail(a.type, a.to_value)}
                                 <span style={{ marginLeft: 6, color: 'var(--fg3)', fontSize: 11 }}>
-                                    {new Date(a.created_at).toLocaleDateString()}
+                                    {timeAgo(a.created_at)}
                                 </span>
                             </div>
                         </div>

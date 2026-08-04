@@ -145,15 +145,43 @@ test('issue detail: change status via dropdown, set assignee, add comment', asyn
     await page.goto('/');
     await page.waitForLoadState('networkidle');
 
+    // Create a fresh issue for this test (same drawer flow as the "create issue via
+    // drawer" test above). Pre-seeded issues are `forceCreate`d by SmokeSeeder, which
+    // bypasses the CreateIssue use case and its activity logging, so they carry no
+    // "created" activity — creating one here guarantees the Activity feed assertion
+    // below has real data to show.
+    const title = `E2E Detail ${Date.now()}`;
+    await page.keyboard.press('c');
+    await expect(page.getByLabel(/Issue title/i)).toBeVisible({ timeout: 6_000 });
+    try {
+        const teamPicker = page.getByRole('button', { name: /Issue team/i });
+        await teamPicker.waitFor({ state: 'visible', timeout: 3_000 });
+        await teamPicker.click();
+        await page.getByRole('menuitem', { name: 'Smoke Team' }).click();
+    } catch {
+        // Single-team workspace: auto-selection already fired — no action needed.
+    }
+    await page.getByLabel(/Issue title/i).fill(title);
+    await expect(page.getByRole('button', { name: /Create issue/i })).not.toBeDisabled({ timeout: 5_000 });
+    const createResponsePromise = page.waitForResponse(
+        (r) => r.url().includes('/issues') && r.request().method() === 'POST',
+    );
+    await page.getByRole('button', { name: /Create issue/i }).click();
+    await createResponsePromise;
+    await expect(page.getByLabel(/Issue title/i)).not.toBeVisible({ timeout: 5_000 });
+
     // Navigate to detail via peek → "Open full page ↗"
-    const firstRow = page.locator('[data-testid="issue-row"]').first();
-    await expect(firstRow).toBeVisible({ timeout: 10_000 });
-    await firstRow.click();
+    const ownRow = page.locator('[data-testid="issue-row"]').filter({ hasText: title });
+    await expect(ownRow).toBeVisible({ timeout: 8_000 });
+    await ownRow.click();
 
     const openLink = page.getByRole('link', { name: /Open full page/i });
     await expect(openLink).toBeVisible({ timeout: 8_000 });
     await openLink.click();
     await expect(page).toHaveURL(/\/issues\/[^?]+$/);
+
+    // Activity feed shows humanized copy (proves the real feed + humanizeActivityType).
+    await expect(page.getByText(/created this issue/i)).toBeVisible();
 
     // ── Change Status via Menu ──
     const changeStatusBtn = page.getByRole('button', { name: 'Change status' });

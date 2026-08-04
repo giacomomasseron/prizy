@@ -14,7 +14,7 @@ import { useProjects } from '../projects/hooks';
 import { useCycles } from '../teams/hooks';
 import { useMembers } from '../members/hooks';
 import { useMe } from '../../auth/useAuth';
-import { humanizeActivityType } from './activityMeta';
+import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -142,7 +142,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                                     {actor ? <Avatar {...avatarFor(actor)} size={20} /> : <div style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--hover)', flexShrink: 0 }} />}
                                     <div style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.4 }}>
                                         <span style={{ color: 'var(--fg)', fontWeight: 500 }}>{actor ? actor.name : 'Someone'}</span>{' '}
-                                        {humanizeActivityType(a.type)}{a.to_value ? ` → ${a.to_value}` : ''}
+                                        {humanizeActivityType(a.type)}{activityDetail(a.type, a.to_value)}
                                         <span style={{ marginLeft: 6, color: 'var(--fg3)', fontSize: 11 }}>{timeAgo(a.created_at)}</span>
                                     </div>
                                 </div>
