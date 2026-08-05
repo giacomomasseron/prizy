@@ -86,12 +86,23 @@ describe('CreateIssueDrawer', () => {
         await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ project_id: 'p1', title: 'Task B' })));
     });
 
-    it('selecting an Assignee chip passes assignee_id (null by default)', async () => {
+    it('the assignee picker opens a searchable list and selecting a member passes assignee_id', async () => {
         mount({});
         fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task C' } });
-        fireEvent.click(screen.getByRole('button', { name: 'Assign Bob Smith' }));
+        // Single picker: open it, then pick from the dropdown.
+        fireEvent.click(screen.getByRole('button', { name: 'Issue assignee' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Bob Smith' }));
         fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
         await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: 'u1' })));
+    });
+
+    it('the assignee picker filters members via its search box', () => {
+        mount({});
+        fireEvent.click(screen.getByRole('button', { name: 'Issue assignee' }));
+        expect(screen.getByRole('menuitem', { name: 'Bob Smith' })).toBeInTheDocument();
+        fireEvent.change(screen.getByRole('searchbox', { name: /search options/i }), { target: { value: 'zzz' } });
+        expect(screen.queryByRole('menuitem', { name: 'Bob Smith' })).not.toBeInTheDocument();
+        expect(screen.getByText('No matches')).toBeInTheDocument();
     });
 
     it('defaults assignee_id to null when Unassigned', async () => {

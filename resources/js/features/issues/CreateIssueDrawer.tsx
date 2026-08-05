@@ -106,6 +106,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const singleTeam = teamList.length === 1;
     const projectList = projects.data?.items ?? [];
     const memberList = members.data ?? [];
+    const selectedMember = memberList.find((m) => m.id === assigneeId);
     const labelList = labels.data?.items ?? [];
     const canSubmit = !!teamId && !!title.trim() && !createIssue.isPending;
 
@@ -209,20 +210,34 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                         ))}
                     </Row>
 
-                    {/* Assignee */}
+                    {/* Assignee — single searchable picker */}
                     <Row label="Assignee">
-                        {memberList.map((m) => (
-                            <button key={m.id} type="button" aria-label={`Assign ${m.name}`}
-                                aria-pressed={assigneeId === m.id} onClick={() => setAssigneeId(m.id)}
-                                style={chipStyle(assigneeId === m.id)}>
-                                <Avatar {...avatarFor(m)} size={18} />{m.name}
-                            </button>
-                        ))}
-                        <button type="button" aria-label="Unassigned"
-                            aria-pressed={assigneeId === null} onClick={() => setAssigneeId(null)}
-                            style={chipStyle(assigneeId === null)}>
-                            <Avatar size={18} />Unassigned
-                        </button>
+                        <Menu
+                            searchable
+                            searchPlaceholder="Search people…"
+                            placement="bottom-start"
+                            trigger={
+                                <button type="button" aria-label="Issue assignee" className="hover:border-border2"
+                                    style={{
+                                        display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 190,
+                                        border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 8,
+                                        padding: '6px 10px', fontSize: 12.5, fontFamily: 'inherit', cursor: 'pointer',
+                                        color: selectedMember ? 'var(--fg)' : 'var(--fg3)', textAlign: 'left',
+                                    }}>
+                                    {selectedMember ? <Avatar {...avatarFor(selectedMember)} size={18} /> : <Avatar size={18} />}
+                                    <span style={{ flex: 1 }}>{selectedMember?.name ?? 'Unassigned'}</span>
+                                    <span style={{ color: 'var(--fg3)', fontSize: 10 }}>▾</span>
+                                </button>
+                            }
+                            items={[
+                                { key: '__none__', label: 'Unassigned', icon: <Avatar size={16} />, onActivate: () => setAssigneeId(null) },
+                                ...memberList.map((m) => ({
+                                    key: m.id, label: m.name,
+                                    icon: <Avatar {...avatarFor(m)} size={16} />,
+                                    onActivate: () => setAssigneeId(m.id),
+                                })),
+                            ]}
+                        />
                     </Row>
 
                     {/* Project */}
