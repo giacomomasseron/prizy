@@ -49,7 +49,7 @@ final class AssignIssue
             $this->issues->update($issue, ['assignee_id' => $assigneeId]);
             $this->activities->log($issue->id, $actor->id, 'assigned', $previous, $assigneeId);
 
-            if ($assigneeId !== null) {
+            if ($assigneeId !== null && $assigneeId !== $actor->id) {
                 $notif = $this->notifications->create($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
             }
         });

@@ -11,6 +11,7 @@ use App\Models\Workspace;
 use App\UseCases\Issues\AssignIssue;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -21,10 +22,10 @@ it('assigns an issue, logs activity, notifies and broadcasts', function (): void
     Event::fake([IssueAssigned::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
-    $actor    = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
+    $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
     $assignee = User::factory()->for($ws, 'workspace')->create();
-    $team     = Team::factory()->for($ws, 'workspace')->create();
-    $issue    = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
     app(AssignIssue::class)->handle($actor, ['issue_id' => $issue->id, 'assignee_id' => $assignee->id]);
 
@@ -36,14 +37,32 @@ it('assigns an issue, logs activity, notifies and broadcasts', function (): void
     Workspace::forgetCurrent();
 });
 
+it('does not notify when assigning an issue to the actor themselves', function (): void {
+    Event::fake([IssueAssigned::class, NotificationCreated::class]);
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $actor = User::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
+
+    app(AssignIssue::class)->handle($actor, ['issue_id' => $issue->id, 'assignee_id' => $actor->id]);
+
+    $this->assertDatabaseHas('issues', ['id' => $issue->id, 'assignee_id' => $actor->id]);
+    $this->assertDatabaseMissing('notifications', ['user_id' => $actor->id, 'type' => 'issue_assigned', 'subject_id' => $issue->id]);
+    Event::assertNotDispatched(NotificationCreated::class);
+    Event::assertDispatched(IssueAssigned::class, fn (IssueAssigned $e): bool => $e->assigneeId === $actor->id);
+
+    Workspace::forgetCurrent();
+});
+
 it('unassigns an issue (null assignee) without a notification', function (): void {
     Event::fake([IssueAssigned::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
-    $actor    = User::factory()->for($ws, 'workspace')->create();
+    $actor = User::factory()->for($ws, 'workspace')->create();
     $assignee = User::factory()->for($ws, 'workspace')->create();
-    $team     = Team::factory()->for($ws, 'workspace')->create();
-    $issue    = Issue::factory()->for($ws, 'workspace')->create([
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $issue = Issue::factory()->for($ws, 'workspace')->create([
         'team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id,
     ]);
 
@@ -60,10 +79,10 @@ it('rejects an assignee from another workspace', function (): void {
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create();
-    $team  = Team::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    expect(fn () => app(AssignIssue::class)->handle($actor, ['issue_id' => $issue->id, 'assignee_id' => (string) \Illuminate\Support\Str::uuid()]))
+    expect(fn () => app(AssignIssue::class)->handle($actor, ['issue_id' => $issue->id, 'assignee_id' => (string) Str::uuid()]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();

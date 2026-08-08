@@ -54,7 +54,7 @@ final class CreateIssue
 
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
-            if ($issue->assignee_id !== null) {
+            if ($issue->assignee_id !== null && $issue->assignee_id !== $actor->id) {
                 $notif = $this->notifications->create($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
             }
 

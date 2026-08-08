@@ -21,12 +21,12 @@ it('drops the completed issue as a blocker and notifies a now-fully-unblocked as
     Event::fake([IssueUnblocked::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
-    $actor    = User::factory()->for($ws, 'workspace')->create();
+    $actor = User::factory()->for($ws, 'workspace')->create();
     $assignee = User::factory()->for($ws, 'workspace')->create();
-    $team     = Team::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
 
     $blocking = Issue::factory()->for($ws, 'workspace')->status('done')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
-    $blocked  = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
+    $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
     app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
 
     $unblocked = app(ResolveBlockersOnIssueCompleted::class)->handle($blocking);
@@ -40,15 +40,60 @@ it('drops the completed issue as a blocker and notifies a now-fully-unblocked as
     Workspace::forgetCurrent();
 });
 
+it('does not notify when the newly-unblocked issue is assigned to the actor who completed the blocker', function (): void {
+    Event::fake([IssueUnblocked::class, NotificationCreated::class]);
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $actor = User::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+
+    $blocking = Issue::factory()->for($ws, 'workspace')->status('done')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
+    $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $actor->id]);
+    app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
+
+    $unblocked = app(ResolveBlockersOnIssueCompleted::class)->handle($blocking, $actor->id);
+
+    expect($unblocked)->toBe([$blocked->id]);
+    $this->assertDatabaseMissing('notifications', ['user_id' => $actor->id, 'type' => 'issue_unblocked', 'subject_id' => $blocked->id]);
+    Event::assertNotDispatched(NotificationCreated::class);
+    // IssueUnblocked broadcasts on the assignee's private "users.{id}" channel — it's
+    // the real-time counterpart of the notification for this path, so it's gated by
+    // the same self-exclusion condition (unlike IssueAssigned's workspace-wide channel).
+    Event::assertNotDispatched(IssueUnblocked::class);
+
+    Workspace::forgetCurrent();
+});
+
+it('still notifies when the newly-unblocked issue is assigned to a different user than the completing actor', function (): void {
+    Event::fake([IssueUnblocked::class, NotificationCreated::class]);
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $actor = User::factory()->for($ws, 'workspace')->create();
+    $assignee = User::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+
+    $blocking = Issue::factory()->for($ws, 'workspace')->status('done')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
+    $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
+    app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
+
+    $unblocked = app(ResolveBlockersOnIssueCompleted::class)->handle($blocking, $actor->id);
+
+    expect($unblocked)->toBe([$blocked->id]);
+    $this->assertDatabaseHas('notifications', ['user_id' => $assignee->id, 'type' => 'issue_unblocked', 'subject_id' => $blocked->id]);
+    Event::assertDispatched(IssueUnblocked::class, fn (IssueUnblocked $e): bool => $e->assigneeId === $assignee->id);
+
+    Workspace::forgetCurrent();
+});
+
 it('does not notify when the blocked issue still has another blocker', function (): void {
     Event::fake([IssueUnblocked::class, NotificationCreated::class]);
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
-    $actor    = User::factory()->for($ws, 'workspace')->create();
+    $actor = User::factory()->for($ws, 'workspace')->create();
     $assignee = User::factory()->for($ws, 'workspace')->create();
-    $team     = Team::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
 
-    $done  = Issue::factory()->for($ws, 'workspace')->status('done')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
+    $done = Issue::factory()->for($ws, 'workspace')->status('done')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
     $other = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
     $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
     app(IssueBlockerRepository::class)->create($done->id, $blocked->id, $actor->id);
