@@ -73,7 +73,7 @@ final class AddCommentToIssue
 
         $mentions = $this->recipients->mentioned($body, $members, $actor->id);
         foreach ($mentions as $userId) {
-            $notification = $this->dispatcher->dispatch($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt);
+            $notification = $this->dispatcher->dispatch($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt, $issue->team_id, $issue->project_id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'issue_mentioned');
             }
@@ -83,7 +83,7 @@ final class AddCommentToIssue
         // also a comment notification.
         $others = array_values(array_diff($this->recipients->participants($issue, $actor->id), $mentions));
         foreach ($others as $userId) {
-            $notification = $this->dispatcher->dispatch($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt);
+            $notification = $this->dispatcher->dispatch($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt, $issue->team_id, $issue->project_id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'issue_commented');
             }

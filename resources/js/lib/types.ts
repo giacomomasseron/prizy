@@ -154,6 +154,12 @@ export interface NotificationPreferences {
     preferences: { event_type: string; in_app: boolean; email: boolean }[];
 }
 
+export interface NotificationSubscription {
+    scope_type: string;
+    scope_id: string;
+    level: string;
+}
+
 export interface SlackIntegration {
     configured: boolean;
     is_active: boolean;

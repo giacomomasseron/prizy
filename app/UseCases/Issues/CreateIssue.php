@@ -55,7 +55,7 @@ final class CreateIssue
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
             if ($issue->assignee_id !== null && $issue->assignee_id !== $actor->id) {
-                $notification = $this->dispatcher->dispatch($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                $notification = $this->dispatcher->dispatch($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title, $issue->team_id, $issue->project_id);
                 if ($notification !== null) {
                     $notificationEvent = new NotificationCreated($issue->assignee_id, $notification->id, 'issue_assigned');
                 }

@@ -7,10 +7,14 @@ namespace App\UseCases\Notifications;
 use App\Models\Notification;
 use App\Repositories\NotificationPreferenceRepository;
 use App\Repositories\NotificationRepository;
+use App\Repositories\NotificationSubscriptionRepository;
 
 /**
- * Single chokepoint for creating a notification: gates creation on the
- * recipient's `in_app` preference for the event category $type maps to (via
+ * Single chokepoint for creating a notification: gates creation first on the
+ * recipient's team/project subscription level for issue-scoped subjects (via
+ * NotificationSubscriptionRepository::levelFor — 'off' always skips, 'mentions'
+ * skips everything except issue_mentioned), then on the recipient's `in_app`
+ * preference for the event category $type maps to (via
  * NotificationPreferenceRepository::TYPE_TO_EVENT), then persists it. Types
  * with no known event-category mapping default to creating (never silently
  * dropped).
@@ -26,6 +30,7 @@ final class NotificationDispatcher
     public function __construct(
         private readonly NotificationRepository $notifications,
         private readonly NotificationPreferenceRepository $preferences,
+        private readonly NotificationSubscriptionRepository $subscriptions,
     ) {}
 
     public function dispatch(
@@ -35,7 +40,21 @@ final class NotificationDispatcher
         string $subjectId,
         ?string $actorId = null,
         ?string $body = null,
+        ?string $teamId = null,
+        ?string $projectId = null,
     ): ?Notification {
+        if ($subjectType === 'issue' && $teamId !== null) {
+            $level = $this->subscriptions->levelFor($recipientId, $teamId, $projectId);
+
+            if ($level === 'off') {
+                return null;
+            }
+
+            if ($level === 'mentions' && $type !== 'issue_mentioned') {
+                return null;
+            }
+        }
+
         $eventType = NotificationPreferenceRepository::TYPE_TO_EVENT[$type] ?? null;
 
         if ($eventType !== null && ! $this->preferences->wants($recipientId, $eventType, 'in_app')) {

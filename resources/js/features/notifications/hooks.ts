@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { AppNotification, NotificationPreferences } from '../../lib/types';
+import type { AppNotification, NotificationPreferences, NotificationSubscription } from '../../lib/types';
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: ['notifications'] });
@@ -84,6 +84,25 @@ export function useSetPreference() {
             api.patch<void>('/notifications/preferences', { preferences: [body] }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['notifications', 'preferences'] });
+            invalidateAll(qc);
+        },
+    });
+}
+
+export function useSubscriptions() {
+    return useQuery({
+        queryKey: ['notifications', 'subscriptions'],
+        queryFn: () => api.get<{ subscriptions: NotificationSubscription[] }>('/notifications/subscriptions'),
+    });
+}
+
+export function useSetSubscription() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (body: { scope_type: string; scope_id: string; level: string }) =>
+            api.patch<void>('/notifications/subscriptions', body),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['notifications', 'subscriptions'] });
             invalidateAll(qc);
         },
     });
