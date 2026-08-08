@@ -70,6 +70,22 @@ final class SmokeSeeder extends Seeder
             ]);
         $member->forceFill(['admin_level' => 'member', 'is_developer' => true, 'is_agent' => false])->save();
 
+        // Second member test account (distinct display name so it doesn't collide
+        // with the "Smoke Member" e2e locator, which substring-matches).
+        $member2 = User::firstWhere('email', 'member2@example.com')
+            ?? User::forceCreate([
+                'id' => (string) Str::uuid(),
+                'workspace_id' => $workspace->id,
+                'name' => 'Jordan Reeves',
+                'email' => 'member2@example.com',
+                'password_hash' => Hash::make('password123'),
+                'admin_level' => 'member',
+                'is_developer' => true,
+                'is_agent' => false,
+                'email_verified_at' => now(),
+            ]);
+        $member2->forceFill(['admin_level' => 'member', 'is_developer' => true, 'is_agent' => false])->save();
+
         // The team was `forceCreate`d above (bypassing CreateTeam), so ensure
         // membership explicitly: owner as lead, member as member. Idempotent.
         DB::table('team_members')->updateOrInsert(
@@ -78,6 +94,10 @@ final class SmokeSeeder extends Seeder
         );
         DB::table('team_members')->updateOrInsert(
             ['team_id' => $team->id, 'user_id' => $member->id],
+            ['role' => 'member'],
+        );
+        DB::table('team_members')->updateOrInsert(
+            ['team_id' => $team->id, 'user_id' => $member2->id],
             ['role' => 'member'],
         );
 
