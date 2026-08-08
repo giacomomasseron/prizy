@@ -5,9 +5,10 @@ export interface SwitchProps {
     onChange(checked: boolean): void;
     label?: string;
     ariaLabel?: string;
+    disabled?: boolean;
 }
 
-export function Switch({ checked, onChange, label, ariaLabel }: SwitchProps) {
+export function Switch({ checked, onChange, label, ariaLabel, disabled = false }: SwitchProps) {
     const trackStyle: CSSProperties = {
         display: 'inline-flex',
         alignItems: 'center',
@@ -15,7 +16,8 @@ export function Switch({ checked, onChange, label, ariaLabel }: SwitchProps) {
         height: 22,
         borderRadius: 11,
         background: checked ? 'var(--accent)' : 'var(--border2)',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
         padding: 2,
         boxSizing: 'border-box',
         flexShrink: 0,
@@ -34,11 +36,12 @@ export function Switch({ checked, onChange, label, ariaLabel }: SwitchProps) {
     };
 
     return (
-        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer' }}>
             {/* Hidden native checkbox for accessibility */}
             <input
                 type="checkbox"
                 checked={checked}
+                disabled={disabled}
                 onChange={(e) => onChange(e.target.checked)}
                 aria-label={ariaLabel ?? label}
                 style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
@@ -46,7 +49,7 @@ export function Switch({ checked, onChange, label, ariaLabel }: SwitchProps) {
             <span style={trackStyle} aria-hidden="true">
                 <span style={knobStyle} />
             </span>
-            {label && <span style={{ fontSize: 13, color: 'var(--fg)' }}>{label}</span>}
+            {label && <span style={{ fontSize: 13, color: disabled ? 'var(--fg3)' : 'var(--fg)' }}>{label}</span>}
         </label>
     );
 }
