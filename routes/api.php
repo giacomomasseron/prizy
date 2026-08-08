@@ -203,6 +203,9 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
         Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
+        Route::post('/notifications/{notification}/unread', [NotificationController::class, 'unread']);
+        Route::post('/notifications/{notification}/snooze', [NotificationController::class, 'snooze']);
+        Route::post('/notifications/{notification}/archive', [NotificationController::class, 'archive']);
 
         Route::get('/saved-views', [SavedViewController::class, 'index'])->middleware('can:viewAny,App\\Models\\SavedView');
         Route::get('/saved-views/{savedView}', [SavedViewController::class, 'show']);
