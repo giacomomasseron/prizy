@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Kbd } from '../../components/ui/Kbd';
 import { UserMenu } from '../../components/UserMenu';
+import { NotificationBell } from '../notifications/NotificationBell';
 import { useFontScale } from '../../lib/fontScale';
 import { useTheme } from '../../lib/theme';
 
@@ -79,6 +80,9 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
             <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={handleNav} />
 
             <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* Notifications bell + dropdown */}
+                <NotificationBell />
+
                 {/* Text-size control — zooms the main content region (persisted) */}
                 <div
                     style={{
