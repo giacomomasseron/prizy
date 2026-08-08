@@ -86,7 +86,7 @@ final class TransitionIssueStatus
         $events = [];
 
         foreach ($this->recipients->participants($issue, $actor->id) as $userId) {
-            $notification = $this->dispatcher->dispatch($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label);
+            $notification = $this->dispatcher->dispatch($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label, $issue->team_id, $issue->project_id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'issue_status_changed');
             }

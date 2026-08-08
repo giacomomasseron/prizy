@@ -73,7 +73,7 @@ final class ResolveBlockersOnIssueCompleted
                 if ($blocked !== null && $blocked->assignee_id !== null && $blocked->assignee_id !== $actorId) {
                     $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
 
-                    $notification = $this->dispatcher->dispatch($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title);
+                    $notification = $this->dispatcher->dispatch($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title, $blocked->team_id, $blocked->project_id);
                     if ($notification !== null) {
                         $events[] = new NotificationCreated($blocked->assignee_id, $notification->id, 'issue_unblocked');
                     }
