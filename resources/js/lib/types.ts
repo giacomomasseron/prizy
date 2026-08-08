@@ -149,6 +149,11 @@ export interface AppNotification {
     archived_at?: string | null;
 }
 
+export interface NotificationPreferences {
+    email_digest_frequency: string;
+    preferences: { event_type: string; in_app: boolean; email: boolean }[];
+}
+
 export interface SlackIntegration {
     configured: boolean;
     is_active: boolean;

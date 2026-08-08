@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { AppNotification } from '../../lib/types';
+import type { AppNotification, NotificationPreferences } from '../../lib/types';
 
 function invalidateAll(qc: ReturnType<typeof useQueryClient>) {
     qc.invalidateQueries({ queryKey: ['notifications'] });
@@ -67,5 +67,24 @@ export function useToggleArchive() {
     return useMutation({
         mutationFn: (id: string) => api.post<AppNotification>(`/notifications/${id}/archive`),
         onSuccess: () => invalidateAll(qc),
+    });
+}
+
+export function usePreferences() {
+    return useQuery({
+        queryKey: ['notifications', 'preferences'],
+        queryFn: () => api.get<NotificationPreferences>('/notifications/preferences'),
+    });
+}
+
+export function useSetPreference() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (body: { event_type: string; channel: string; enabled: boolean }) =>
+            api.patch<void>('/notifications/preferences', { preferences: [body] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['notifications', 'preferences'] });
+            invalidateAll(qc);
+        },
     });
 }

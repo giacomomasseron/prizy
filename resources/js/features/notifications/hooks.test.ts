@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { createElement } from 'react';
-import { useMarkUnread, useNotifications, useToggleArchive, useToggleSnooze, useUnreadCount } from './hooks';
+import { useMarkUnread, useNotifications, usePreferences, useSetPreference, useToggleArchive, useToggleSnooze, useUnreadCount } from './hooks';
 
 function wrapper() {
     const qc = new QueryClient();
@@ -100,5 +100,50 @@ describe('mutation hooks', () => {
         const [url, init] = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls[0];
         expect(url).toContain('/v1/notifications/n1/archive');
         expect(init?.method).toBe('POST');
+    });
+});
+
+describe('usePreferences', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: { email_digest_frequency: 'daily', preferences: [{ event_type: 'comment', in_app: true, email: false }] } }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('GETs /notifications/preferences', async () => {
+        const { result } = renderHook(() => usePreferences(), { wrapper: wrapper() });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(firstCallUrl()).toContain('/v1/notifications/preferences');
+        expect(result.current.data?.email_digest_frequency).toBe('daily');
+        expect(result.current.data?.preferences).toEqual([{ event_type: 'comment', in_app: true, email: false }]);
+    });
+});
+
+describe('useSetPreference', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: null }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('PATCHes /notifications/preferences with { preferences: [body] } and invalidates', async () => {
+        const qc = new QueryClient();
+        const invalidateSpy = vi.spyOn(qc, 'invalidateQueries');
+        const w = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: qc }, children);
+
+        const { result } = renderHook(() => useSetPreference(), { wrapper: w });
+        result.current.mutate({ event_type: 'comment', channel: 'email', enabled: true });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+        const [url, init] = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls[0];
+        expect(url).toContain('/v1/notifications/preferences');
+        expect(init?.method).toBe('PATCH');
+        expect(JSON.parse(init?.body as string)).toEqual({ preferences: [{ event_type: 'comment', channel: 'email', enabled: true }] });
+
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'preferences'] });
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications'] });
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'unread-count'] });
     });
 });
