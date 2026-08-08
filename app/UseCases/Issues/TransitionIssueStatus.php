@@ -49,7 +49,7 @@ final class TransitionIssueStatus
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {
-                $unblockEvents = $this->resolveBlockers->resolve($issue)['events'];
+                $unblockEvents = $this->resolveBlockers->resolve($issue, $actor->id)['events'];
             }
         });
 

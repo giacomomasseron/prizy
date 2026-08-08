@@ -26,11 +26,12 @@ final class ResolveBlockersOnIssueCompleted
      * Standalone entry point: resolve in its own transaction, then dispatch the
      * unblock broadcasts AFTER commit.
      *
+     * @param  string|null  $actorId  id of the user whose completion of $completed triggered this resolution
      * @return list<string> ids of issues that are now fully unblocked
      */
-    public function handle(Issue $completed): array
+    public function handle(Issue $completed, ?string $actorId = null): array
     {
-        $result = DB::transaction(fn (): array => $this->resolve($completed));
+        $result = DB::transaction(fn (): array => $this->resolve($completed, $actorId));
 
         foreach ($result['events'] as $event) {
             event($event);
@@ -49,9 +50,10 @@ final class ResolveBlockersOnIssueCompleted
      * (e.g. TransitionIssueStatus), so broadcasts fire only after the outer
      * commit.
      *
+     * @param  string|null  $actorId  id of the user whose completion of $completed triggered this resolution
      * @return array{unblocked: list<string>, events: list<IssueUnblocked|NotificationCreated>}
      */
-    public function resolve(Issue $completed): array
+    public function resolve(Issue $completed, ?string $actorId = null): array
     {
         $edges = $this->blockers->blocking($completed->id);
 
@@ -68,7 +70,7 @@ final class ResolveBlockersOnIssueCompleted
 
                 $blocked = $this->issues->findInWorkspace($blockedId);
                 if ($blocked !== null && $blocked->assignee_id !== null) {
-                    $notif = $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id);
+                    $notif = $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title);
                     $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
                     $events[] = new NotificationCreated($blocked->assignee_id, $notif->id, 'issue_unblocked');
                 }
