@@ -10,6 +10,8 @@ export interface CreateIssueInput {
     assignee_id?: string | null;
     project_id?: string | null;
     description?: string | null;
+    /** Applied after creation via the labels endpoint (the create endpoint ignores it). */
+    label_ids?: string[];
 }
 
 export interface IssueFilters {
@@ -46,7 +48,14 @@ export function useIssues(filters: IssueFilters = {}) {
 export function useCreateIssue() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: CreateIssueInput) => api.post<Issue>('/issues', data),
+        mutationFn: async ({ label_ids, ...data }: CreateIssueInput) => {
+            const issue = await api.post<Issue>('/issues', data);
+            // The create endpoint doesn't accept labels; apply them via the labels endpoint.
+            if (label_ids && label_ids.length > 0) {
+                await api.put<Label[]>(`/issues/${issue.id}/labels`, { label_ids });
+            }
+            return issue;
+        },
         onSuccess: () => qc.invalidateQueries({ queryKey: ['issues'] }),
     });
 }

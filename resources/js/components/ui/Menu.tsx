@@ -14,6 +14,9 @@ export interface MenuProps {
     trigger: ReactElement<{ onClick?: React.MouseEventHandler }>;
     items: MenuItem[];
     placement?: 'bottom-start' | 'bottom-end' | 'top-start';
+    /** Show a filter input at the top that narrows items by label (case-insensitive). */
+    searchable?: boolean;
+    searchPlaceholder?: string;
 }
 
 // Where the popover sits relative to the trigger. `*-end` right-aligns the
@@ -24,11 +27,13 @@ const PLACEMENT_STYLE: Record<NonNullable<MenuProps['placement']>, React.CSSProp
     'top-start': { bottom: '100%', left: 0, marginBottom: 4 },
 };
 
-export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) {
+export function Menu({ trigger, items, placement = 'bottom-start', searchable = false, searchPlaceholder = 'Search…' }: MenuProps) {
     const [open, setOpen] = useState(false);
+    const [query, setQuery] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLElement | null>(null);
+    const searchInputRef = useRef<HTMLInputElement>(null);
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
     // Close on outside click
@@ -53,10 +58,18 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
         return () => document.removeEventListener('keydown', onKey);
     }, [open]);
 
-    // Focus the first enabled item when the menu opens
+    // On open, focus the search box (searchable) or the first item; reset the query on close.
     useEffect(() => {
-        if (open) itemRefs.current[0]?.focus();
-    }, [open]);
+        if (open) {
+            if (searchable) searchInputRef.current?.focus();
+            else itemRefs.current[0]?.focus();
+        } else {
+            setQuery('');
+        }
+    }, [open, searchable]);
+
+    const q = query.trim().toLowerCase();
+    const filtered = searchable && q ? items.filter((it) => it.label.toLowerCase().includes(q)) : items;
 
     const popoverStyle: React.CSSProperties = {
         position: 'absolute',
@@ -83,7 +96,17 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
     } as never);
 
     function onMenuKeyDown(e: React.KeyboardEvent) {
-        const enabled = items.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
+        // While typing in the search box, only steer navigation keys — let text keys through.
+        if (searchable && e.target === searchInputRef.current) {
+            if (e.key === 'ArrowDown') { e.preventDefault(); itemRefs.current[0]?.focus(); }
+            else if (e.key === 'Enter') {
+                e.preventDefault();
+                const first = filtered.find((it) => !it.disabled);
+                if (first) { setOpen(false); first.onActivate(); }
+            } else if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); }
+            return;
+        }
+        const enabled = filtered.map((it, i) => (it.disabled ? -1 : i)).filter((i) => i >= 0);
         const activeIdx = itemRefs.current.findIndex((n) => n === document.activeElement);
         const pos = enabled.indexOf(activeIdx);
         const focusAt = (i: number) => itemRefs.current[enabled[i]]?.focus();
@@ -91,7 +114,7 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
         else if (e.key === 'ArrowUp') { e.preventDefault(); focusAt((pos - 1 + enabled.length) % enabled.length); }
         else if (e.key === 'Home') { e.preventDefault(); focusAt(0); }
         else if (e.key === 'End') { e.preventDefault(); focusAt(enabled.length - 1); }
-        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const it = items[activeIdx]; if (it && !it.disabled) { setOpen(false); it.onActivate(); } }
+        else if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); const it = filtered[activeIdx]; if (it && !it.disabled) { setOpen(false); it.onActivate(); } }
         else if (e.key === 'Tab') { setOpen(false); triggerRef.current?.focus(); }
         else if (e.key === 'Escape') { setOpen(false); triggerRef.current?.focus(); }
     }
@@ -101,7 +124,26 @@ export function Menu({ trigger, items, placement = 'bottom-start' }: MenuProps) 
             {triggerWithClick}
             {open && (
                 <div ref={menuRef} role="menu" style={popoverStyle} onKeyDown={onMenuKeyDown}>
-                    {items.map((item, idx) => (
+                    {searchable && (
+                        <input
+                            ref={searchInputRef}
+                            type="text"
+                            role="searchbox"
+                            aria-label="Search options"
+                            placeholder={searchPlaceholder}
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            style={{
+                                width: '100%', boxSizing: 'border-box', margin: '2px 0 4px',
+                                border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 8,
+                                padding: '6px 9px', color: 'var(--fg)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none',
+                            }}
+                        />
+                    )}
+                    {filtered.length === 0 && (
+                        <div style={{ padding: '8px 10px', fontSize: 12.5, color: 'var(--fg3)' }}>No matches</div>
+                    )}
+                    {filtered.map((item, idx) => (
                         <button
                             key={item.key}
                             ref={(n) => { itemRefs.current[idx] = n; }}
