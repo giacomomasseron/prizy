@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Repositories\NotificationPreferenceRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -74,9 +75,18 @@ it('upserts on a repeated setPreference call for the same key without duplicatin
     $repo = app(NotificationPreferenceRepository::class);
 
     $repo->setPreference($user->id, 'assign', 'email', false);
+    $idAfterFirst = DB::table('notification_preferences')
+        ->where(['user_id' => $user->id, 'event_type' => 'assign', 'channel' => 'email'])->value('id');
+
     $repo->setPreference($user->id, 'assign', 'email', true);
 
     expect($repo->wants($user->id, 'assign', 'email'))->toBeTrue();
+
+    // The upsert must UPDATE the same row — the primary key must not be reassigned
+    // (guards against putting `id` in updateOrCreate's values, which rewrites the PK).
+    $idAfterSecond = DB::table('notification_preferences')
+        ->where(['user_id' => $user->id, 'event_type' => 'assign', 'channel' => 'email'])->value('id');
+    expect($idAfterSecond)->toBe($idAfterFirst);
 
     $this->assertDatabaseCount('notification_preferences', 1);
     $this->assertDatabaseHas('notification_preferences', [
