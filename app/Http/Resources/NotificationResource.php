@@ -27,6 +27,8 @@ final class NotificationResource extends JsonResource
                 'path' => "/issues/{$this->subject_id}",
             ]),
             'read_at' => $this->read_at,
+            'snoozed_until' => $this->snoozed_until,
+            'archived_at' => $this->archived_at,
             'created_at' => $this->created_at,
         ];
     }

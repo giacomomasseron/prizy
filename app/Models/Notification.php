@@ -23,6 +23,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string $subject_id
  * @property string|null $body
  * @property Carbon|null $read_at
+ * @property Carbon|null $snoozed_until
+ * @property Carbon|null $archived_at
  * @property Carbon $created_at
  * @property User $user
  * @property User|null $actor
@@ -36,7 +38,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     timestamps: false,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'user_id', 'actor_id', 'type', 'subject_type', 'subject_id', 'body', 'read_at', 'created_at'])]
+#[Fillable(['id', 'user_id', 'actor_id', 'type', 'subject_type', 'subject_id', 'body', 'read_at', 'snoozed_until', 'archived_at', 'created_at'])]
 class Notification extends TenantAwareEntity
 {
     /**
@@ -54,6 +56,8 @@ class Notification extends TenantAwareEntity
             'subject_id' => 'string',
             'body' => 'string',
             'read_at' => 'datetime',
+            'snoozed_until' => 'datetime',
+            'archived_at' => 'datetime',
             'created_at' => 'datetime',
         ];
     }

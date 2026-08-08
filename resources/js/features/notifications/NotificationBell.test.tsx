@@ -13,7 +13,7 @@ let listItems: Array<Record<string, unknown>> = [
 
 vi.mock('./hooks', () => ({
     useUnreadCount: () => ({ data: { count: unreadCount } }),
-    useNotifications: (_unreadOnly: boolean, _enabled: boolean) => ({ data: { items: listItems }, isLoading: false }),
+    useNotifications: (_category: string, _unreadOnly: boolean, _enabled: boolean) => ({ data: { items: listItems }, isLoading: false }),
     useMarkAllRead: () => ({ mutate: markAll }),
     useMarkRead: () => ({ mutate: markRead }),
 }));

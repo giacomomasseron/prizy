@@ -17,9 +17,9 @@ final class ListNotifications
         private readonly IssueRepository $issues,
     ) {}
 
-    public function handle(User $actor, bool $unreadOnly, int $limit): CursorPaginator
+    public function handle(User $actor, bool $unreadOnly, int $limit, string $category = 'all'): CursorPaginator
     {
-        $paginator = $this->notifications->paginateForUser($actor->id, $unreadOnly, $limit);
+        $paginator = $this->notifications->paginateForUser($actor->id, $unreadOnly, $limit, $category);
 
         // Batch-resolve 'issue' subjects for the page in a SINGLE query and cache the result
         // on each model's `subject` relation, so the resource never queries per-row (no N+1).

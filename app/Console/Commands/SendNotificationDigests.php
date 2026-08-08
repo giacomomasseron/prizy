@@ -44,6 +44,10 @@ final class SendNotificationDigests extends Command
         $notifications = Notification::query()
             ->where('user_id', $user->id)
             ->whereNull('read_at')
+            ->whereNull('archived_at')
+            ->where(function ($q) {
+                $q->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now());
+            })
             ->when($user->last_digest_sent_at, fn ($q, $last) => $q->where('created_at', '>', $last))
             ->orderBy('created_at')
             ->get();
@@ -54,7 +58,7 @@ final class SendNotificationDigests extends Command
 
         $items = $notifications->map(fn (Notification $n): array => [
             'text' => NotificationText::label($n->type),
-            'url'  => $this->urlFor($workspace, $n),
+            'url' => $this->urlFor($workspace, $n),
         ])->all();
 
         $user->notify(new NotificationDigest($items, $workspace->name));
@@ -65,7 +69,7 @@ final class SendNotificationDigests extends Command
     private function urlFor(Workspace $workspace, Notification $n): string
     {
         $scheme = str_starts_with((string) config('app.url'), 'https') ? 'https' : 'http';
-        $base = "{$scheme}://{$workspace->slug}." . config('app.base_domain');
+        $base = "{$scheme}://{$workspace->slug}.".config('app.base_domain');
 
         return $n->subject_type === 'issue'
             ? "{$base}/issues/{$n->subject_id}"

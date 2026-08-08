@@ -7,12 +7,15 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\NotificationDigest;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
+
+afterEach(fn () => Carbon::setTestNow());
 
 function seedNotif(Workspace $ws, User $user, array $attrs = []): NotificationRow
 {
@@ -63,6 +66,39 @@ it('does not email when there is nothing new since the last digest', function ()
 
     $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
     Notification::assertNotSentTo($user, NotificationDigest::class);
+
+    Workspace::forgetCurrent();
+});
+
+it('excludes archived and currently-snoozed notifications from the digest, but includes expired-snoozed ones', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-08-08 12:00:00', 'UTC'));
+    Notification::fake();
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $user = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now()]);
+
+    $plainId = 'aaaaaaaa-0000-0000-0000-000000000001';
+    $archivedId = 'aaaaaaaa-0000-0000-0000-000000000002';
+    $snoozedId = 'aaaaaaaa-0000-0000-0000-000000000003';
+    $expiredSnoozeId = 'aaaaaaaa-0000-0000-0000-000000000004';
+
+    seedNotif($ws, $user, ['subject_id' => $plainId]);
+    seedNotif($ws, $user, ['subject_id' => $archivedId, 'archived_at' => now()]);
+    seedNotif($ws, $user, ['subject_id' => $snoozedId, 'snoozed_until' => now()->addHour()]);
+    seedNotif($ws, $user, ['subject_id' => $expiredSnoozeId, 'snoozed_until' => now()->subHour()]);
+    Workspace::forgetCurrent();
+
+    $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
+
+    Notification::assertSentTo($user, NotificationDigest::class, function (NotificationDigest $n) use ($user, $plainId, $archivedId, $snoozedId, $expiredSnoozeId): bool {
+        $mail = $n->toMail($user);
+        $body = implode(' ', $mail->introLines);
+
+        return str_contains($body, $plainId)
+            && str_contains($body, $expiredSnoozeId)
+            && ! str_contains($body, $archivedId)
+            && ! str_contains($body, $snoozedId);
+    });
 
     Workspace::forgetCurrent();
 });

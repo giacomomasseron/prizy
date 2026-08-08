@@ -21,7 +21,7 @@ export function NotificationBell() {
     const ref = useRef<HTMLDivElement>(null);
 
     const unread = useUnreadCount();
-    const list = useNotifications(false, open); // only fetch the list while the dropdown is open
+    const list = useNotifications('all', false, open); // only fetch the list while the dropdown is open
     const markAll = useMarkAllRead();
     const markRead = useMarkRead();
 
