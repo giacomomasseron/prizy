@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { notificationMeta, notificationText, subjectPath } from './text';
+import { notificationMeta, notificationText, reasonFor, subjectPath } from './text';
 
 describe('notification text', () => {
     it('maps known types and falls back for unknown', () => {
@@ -21,5 +21,13 @@ describe('notification text', () => {
         expect(notificationMeta('issue_status_changed')).toEqual({ icon: '◑', category: 'status' });
         expect(notificationMeta('issue_unblocked').category).toBe('other');
         expect(notificationMeta('something_new')).toEqual({ icon: '•', category: 'other' });
+    });
+    it('gives a "why you got this" reason per type, with a default fallback', () => {
+        expect(reasonFor('issue_assigned')).toBe("You're the assignee.");
+        expect(reasonFor('issue_mentioned')).toBe('You were mentioned.');
+        expect(reasonFor('issue_commented')).toBe("You're a participant on this issue.");
+        expect(reasonFor('issue_status_changed')).toBe('You follow this issue.');
+        expect(reasonFor('issue_unblocked')).toBe("An issue you're assigned was unblocked.");
+        expect(reasonFor('something_new')).toBe('You have a notification.');
     });
 });
