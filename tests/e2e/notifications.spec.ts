@@ -25,6 +25,19 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     // "You were assigned an issue" notifications (e.g. the detail test).
     await expect(page.getByText('You were assigned an issue').first()).toBeVisible();
 
+    // 3b. The left rail's category filters are present (e.g. "Archived").
+    await expect(page.getByRole('button', { name: 'Archived' })).toBeVisible();
+
+    // 3c. "Notification settings" swaps the main pane for the preferences
+    // matrix — an event label ("Assignments") appears there. (Not "Mentions":
+    // the left rail's "Mentions" filter button stays mounted behind the
+    // settings view, so that text would match twice.)
+    await page.getByRole('button', { name: 'Notification settings' }).click();
+    await expect(page.getByText('Delivery per event')).toBeVisible();
+    await expect(page.getByText('Assignments')).toBeVisible();
+    await page.getByRole('button', { name: /Back to inbox/ }).click();
+    await expect(page.getByText('You were assigned an issue').first()).toBeVisible();
+
     // 4. Click "Mark all read" on the /notifications page
     const markAllReadResponse = page.waitForResponse(
         (response) => response.url().includes('/notifications/read-all') && response.request().method() === 'POST',

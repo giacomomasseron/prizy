@@ -8,6 +8,9 @@ export function useUpdateNotificationPreferences() {
     return useMutation({
         mutationFn: (email_digest_frequency: DigestFrequency) =>
             api.patch<void>('/notifications/preferences', { email_digest_frequency }),
-        onSuccess: () => qc.invalidateQueries({ queryKey: ['me'] }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['me'] });
+            qc.invalidateQueries({ queryKey: ['notifications', 'preferences'] });
+        },
     });
 }

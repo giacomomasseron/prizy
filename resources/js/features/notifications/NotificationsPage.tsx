@@ -1,36 +1,74 @@
-import { Link } from 'react-router-dom';
-import { useMarkAllRead, useMarkRead, useNotifications } from './hooks';
-import { notificationText, subjectPath } from './text';
+import { useState } from 'react';
+import { NotificationSidebar } from './NotificationSidebar';
+import { NotificationList } from './NotificationList';
+import { NotificationDetail } from './NotificationDetail';
+import { NotificationSettings } from './NotificationSettings';
+import { useNotifications } from './hooks';
 
+type View = 'list' | 'settings';
+
+/**
+ * Notifications page (Prizy Notifications.dc.html): a 3-pane inbox — left
+ * rail (filters + subscriptions + settings entry), a center list, and a right
+ * detail pane — or the settings view in place of list+detail. Owns the
+ * view/category/unreadOnly/selectedId state and the single `useNotifications`
+ * query the list and detail panes share, so the detail always reflects the
+ * same data the list is showing.
+ */
 export default function NotificationsPage() {
-    const list = useNotifications();
-    const markRead = useMarkRead();
-    const markAllRead = useMarkAllRead();
+    const [view, setView] = useState<View>('list');
+    const [category, setCategory] = useState('all');
+    const [unreadOnly, setUnreadOnly] = useState(false);
+    const [selectedId, setSelectedId] = useState<string | null>(null);
+
+    const list = useNotifications(category, unreadOnly);
+    const items = list.data?.items ?? [];
+    const selected = items.find((n) => n.id === selectedId) ?? null;
+
+    function handleCategory(c: string) {
+        setCategory(c);
+        setView('list');
+        setSelectedId(null);
+    }
 
     return (
-        <div className="mx-auto max-w-2xl p-6">
-            <div className="mb-4 flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Notifications</h1>
-                <button type="button" onClick={() => markAllRead.mutate()} className="text-sm text-accent hover:underline">Mark all read</button>
-            </div>
+        <div style={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
+            <aside
+                style={{
+                    width: 232, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)',
+                    display: 'flex', flexDirection: 'column', overflowY: 'auto',
+                }}
+            >
+                <NotificationSidebar
+                    category={category}
+                    onCategory={handleCategory}
+                    settingsActive={view === 'settings'}
+                    onOpenSettings={() => setView('settings')}
+                />
+            </aside>
 
-            {list.isLoading && <p>Loading…</p>}
-            <ul className="divide-y rounded border border-border bg-panel">
-                {list.data?.items.map((n) => {
-                    const path = subjectPath(n.subject_type, n.subject_id);
-                    return (
-                        <li key={n.id} className="flex items-center justify-between px-4 py-3">
-                            <span className="flex items-center gap-2 text-sm">
-                                {!n.read_at && <span className="inline-block h-2 w-2 rounded-full bg-accent" />}
-                                {path ? <Link to={path} className={n.read_at ? 'text-fg2 hover:underline' : 'hover:underline'}>{notificationText(n.type)}</Link> : <span className={n.read_at ? 'text-fg2' : ''}>{notificationText(n.type)}</span>}
-                                <span className="text-xs text-fg3">{n.created_at.slice(0, 10)}</span>
-                            </span>
-                            {!n.read_at && <button type="button" onClick={() => markRead.mutate(n.id)} className="text-xs text-fg2 hover:underline">Mark read</button>}
-                        </li>
-                    );
-                })}
-                {(list.data?.items.length ?? 0) === 0 && !list.isLoading && <li className="px-4 py-3 text-sm text-fg3">No notifications</li>}
-            </ul>
+            {view === 'settings' ? (
+                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                    <NotificationSettings onBack={() => setView('list')} />
+                </div>
+            ) : (
+                <>
+                    <div style={{ flex: 1, minWidth: 0, borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
+                        <NotificationList
+                            items={items}
+                            isLoading={list.isLoading}
+                            category={category}
+                            unreadOnly={unreadOnly}
+                            onToggleUnread={() => setUnreadOnly((v) => !v)}
+                            selectedId={selectedId}
+                            onSelect={(n) => setSelectedId(n.id)}
+                        />
+                    </div>
+                    <div style={{ width: 360, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden' }}>
+                        <NotificationDetail notification={selected} />
+                    </div>
+                </>
+            )}
         </div>
     );
 }
