@@ -124,6 +124,39 @@ it('mentioned: a full-name mention is not also attributed to a member whose firs
     expect($result)->toBe(['u-john-smith']);
 });
 
+it('mentioned: does not match a member name that appears as a substring inside an unrelated email address', function (): void {
+    $members = new Collection([
+        member('u-mac', 'Mac', 'mac@builder.io'),
+    ]);
+
+    $result = app(NotificationRecipients::class)->mentioned('Ping legal@macfoundation.org about it', $members, 'u-someone-else');
+
+    expect($result)->toBe([]);
+});
+
+it('mentioned: a shorter name does not match a longer name that starts with it', function (): void {
+    $members = new Collection([
+        member('u-mac', 'Mac', 'mac@example.com'),
+        member('u-mackenzie', 'Mackenzie', 'mackenzie@example.com'),
+    ]);
+
+    $onlyMac = app(NotificationRecipients::class)->mentioned('cc @Mac for review', $members, 'u-someone-else');
+    expect($onlyMac)->toBe(['u-mac']);
+
+    $onlyMackenzie = app(NotificationRecipients::class)->mentioned('cc @Mackenzie for review', $members, 'u-someone-else');
+    expect($onlyMackenzie)->toBe(['u-mackenzie']);
+});
+
+it('mentioned: a real mention at a token boundary still matches', function (): void {
+    $members = new Collection([
+        member('u-mac', 'Mac', 'mac@example.com'),
+    ]);
+
+    $result = app(NotificationRecipients::class)->mentioned('(@Mac) can you take a look?', $members, 'u-someone-else');
+
+    expect($result)->toBe(['u-mac']);
+});
+
 it('mentioned: returns an empty list when nobody is mentioned', function (): void {
     $members = new Collection([
         member('u-ada', 'Ada Lovelace', 'ada@example.com'),
