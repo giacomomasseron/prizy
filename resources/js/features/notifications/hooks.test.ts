@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { createElement } from 'react';
-import { useMarkUnread, useNotifications, usePreferences, useSetPreference, useToggleArchive, useToggleSnooze, useUnreadCount } from './hooks';
+import { useMarkUnread, useNotifications, usePreferences, useSetPreference, useSetSubscription, useSubscriptions, useToggleArchive, useToggleSnooze, useUnreadCount } from './hooks';
 
 function wrapper() {
     const qc = new QueryClient();
@@ -143,6 +143,50 @@ describe('useSetPreference', () => {
         expect(JSON.parse(init?.body as string)).toEqual({ preferences: [{ event_type: 'comment', channel: 'email', enabled: true }] });
 
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'preferences'] });
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications'] });
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'unread-count'] });
+    });
+});
+
+describe('useSubscriptions', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: { subscriptions: [{ scope_type: 'team', scope_id: 't1', level: 'mentions' }] } }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('GETs /notifications/subscriptions', async () => {
+        const { result } = renderHook(() => useSubscriptions(), { wrapper: wrapper() });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(firstCallUrl()).toContain('/v1/notifications/subscriptions');
+        expect(result.current.data?.subscriptions).toEqual([{ scope_type: 'team', scope_id: 't1', level: 'mentions' }]);
+    });
+});
+
+describe('useSetSubscription', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: null }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('PATCHes /notifications/subscriptions with { scope_type, scope_id, level } and invalidates', async () => {
+        const qc = new QueryClient();
+        const invalidateSpy = vi.spyOn(qc, 'invalidateQueries');
+        const w = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client: qc }, children);
+
+        const { result } = renderHook(() => useSetSubscription(), { wrapper: w });
+        result.current.mutate({ scope_type: 'team', scope_id: 't1', level: 'mentions' });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+        const [url, init] = (fetch as unknown as { mock: { calls: [string, RequestInit?][] } }).mock.calls[0];
+        expect(url).toContain('/v1/notifications/subscriptions');
+        expect(init?.method).toBe('PATCH');
+        expect(JSON.parse(init?.body as string)).toEqual({ scope_type: 'team', scope_id: 't1', level: 'mentions' });
+
+        expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'subscriptions'] });
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications'] });
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'unread-count'] });
     });
