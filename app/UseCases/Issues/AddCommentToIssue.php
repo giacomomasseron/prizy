@@ -5,13 +5,14 @@ declare(strict_types=1);
 namespace App\UseCases\Issues;
 
 use App\Events\IssueCommented;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\IssueComment;
 use App\Models\User;
 use App\Repositories\IssueCommentRepository;
 use App\Repositories\IssueRepository;
-use App\Services\NotificationDispatcher;
 use App\Services\NotificationRecipients;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -35,7 +36,9 @@ final class AddCommentToIssue
 
         $body = (string) $data['body'];
 
-        $comment = DB::transaction(function () use ($issue, $actor, $body, $data): IssueComment {
+        $notificationEvents = [];
+
+        $comment = DB::transaction(function () use ($issue, $actor, $body, $data, &$notificationEvents): IssueComment {
             $comment = $this->comments->create([
                 'issue_id' => $issue->id,
                 'user_id' => $actor->id,
@@ -43,19 +46,25 @@ final class AddCommentToIssue
                 'is_internal' => (bool) ($data['is_internal'] ?? false),
             ]);
 
-            $this->notifyParticipants($issue, $actor, $body);
+            $notificationEvents = $this->notifyParticipants($issue, $actor, $body);
 
             return $comment;
         });
 
         event(new IssueCommented($issue, $comment));
 
+        foreach ($notificationEvents as $event) {
+            event($event);
+        }
+
         return $comment;
     }
 
-    private function notifyParticipants(Issue $issue, User $actor, string $body): void
+    /** @return list<NotificationCreated> */
+    private function notifyParticipants(Issue $issue, User $actor, string $body): array
     {
         $excerpt = $this->excerpt($body);
+        $events = [];
 
         $members = User::where('workspace_id', $actor->workspace_id)
             ->select(['id', 'name', 'email'])
@@ -64,15 +73,23 @@ final class AddCommentToIssue
 
         $mentions = $this->recipients->mentioned($body, $members, $actor->id);
         foreach ($mentions as $userId) {
-            $this->dispatcher->dispatch($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt);
+            $notification = $this->dispatcher->dispatch($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt);
+            if ($notification !== null) {
+                $events[] = new NotificationCreated($userId, $notification->id, 'issue_mentioned');
+            }
         }
 
         // A mentioned participant gets the mention notification only, never
         // also a comment notification.
         $others = array_values(array_diff($this->recipients->participants($issue, $actor->id), $mentions));
         foreach ($others as $userId) {
-            $this->dispatcher->dispatch($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt);
+            $notification = $this->dispatcher->dispatch($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt);
+            if ($notification !== null) {
+                $events[] = new NotificationCreated($userId, $notification->id, 'issue_commented');
+            }
         }
+
+        return $events;
     }
 
     private function excerpt(string $body): string

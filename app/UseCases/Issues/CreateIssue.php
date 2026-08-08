@@ -6,12 +6,13 @@ namespace App\UseCases\Issues;
 
 use App\Events\IssueAssigned;
 use App\Events\IssueCreated;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
-use App\Services\NotificationDispatcher;
 use App\UseCases\Issues\Concerns\ValidatesWorkspaceReferences;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 
 final class CreateIssue
@@ -33,7 +34,9 @@ final class CreateIssue
         $this->assertProjectInWorkspace($data['project_id'] ?? null);
         $this->assertCycleInWorkspace($data['cycle_id'] ?? null);
 
-        $issue = DB::transaction(function () use ($actor, $data): Issue {
+        $notificationEvent = null;
+
+        $issue = DB::transaction(function () use ($actor, $data, &$notificationEvent): Issue {
             $issue = $this->issues->create([
                 'team_id' => $data['team_id'],
                 'title' => $data['title'],
@@ -52,7 +55,10 @@ final class CreateIssue
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
             if ($issue->assignee_id !== null && $issue->assignee_id !== $actor->id) {
-                $this->dispatcher->dispatch($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                $notification = $this->dispatcher->dispatch($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                if ($notification !== null) {
+                    $notificationEvent = new NotificationCreated($issue->assignee_id, $notification->id, 'issue_assigned');
+                }
             }
 
             return $issue;
@@ -62,6 +68,10 @@ final class CreateIssue
 
         if ($issue->assignee_id !== null) {
             event(new IssueAssigned($issue, $issue->assignee_id));
+        }
+
+        if ($notificationEvent !== null) {
+            event($notificationEvent);
         }
 
         return $issue;

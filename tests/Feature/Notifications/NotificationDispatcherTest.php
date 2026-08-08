@@ -2,14 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Repositories\NotificationPreferenceRepository;
-use App\Services\NotificationDispatcher;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -27,8 +25,7 @@ function dispatcherWorld(): array
     return [$recipient, $actor];
 }
 
-it('creates a notification and fires NotificationCreated when the recipient has default (in_app on) prefs', function (): void {
-    Event::fake([NotificationCreated::class]);
+it('creates a notification and returns it when the recipient has default (in_app on) prefs', function (): void {
     [$recipient, $actor] = dispatcherWorld();
     $subjectId = (string) Str::uuid();
 
@@ -44,17 +41,13 @@ it('creates a notification and fires NotificationCreated when the recipient has 
         'subject_id' => $subjectId,
         'body' => 'Ship it',
     ]);
-    Event::assertDispatched(NotificationCreated::class, fn (NotificationCreated $e): bool => $e->userId === $recipient->id
-        && $e->id === $notification->id
-        && $e->type === 'issue_assigned');
 
     Workspace::forgetCurrent();
 });
 
-it('skips creation and fires no event when the recipient has turned the in_app pref off for that event', function (): void {
+it('skips creation and returns null when the recipient has turned the in_app pref off for that event', function (): void {
     [$recipient, $actor] = dispatcherWorld();
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, 'assign', 'in_app', false);
-    Event::fake([NotificationCreated::class]);
 
     $result = app(NotificationDispatcher::class)->dispatch(
         $recipient->id, 'issue_assigned', 'issue', (string) Str::uuid(), $actor->id, 'Ship it',
@@ -62,15 +55,13 @@ it('skips creation and fires no event when the recipient has turned the in_app p
 
     expect($result)->toBeNull();
     $this->assertDatabaseCount('notifications', 0);
-    Event::assertNotDispatched(NotificationCreated::class);
 
     Workspace::forgetCurrent();
 });
 
-it('still dispatches other event types when only one event category is muted', function (): void {
+it('still creates other event types when only one event category is muted', function (): void {
     [$recipient, $actor] = dispatcherWorld();
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, 'assign', 'in_app', false);
-    Event::fake([NotificationCreated::class]);
 
     $notification = app(NotificationDispatcher::class)->dispatch(
         $recipient->id, 'issue_mentioned', 'issue', (string) Str::uuid(), $actor->id, 'hey @you',
@@ -78,7 +69,6 @@ it('still dispatches other event types when only one event category is muted', f
 
     expect($notification)->not->toBeNull();
     $this->assertDatabaseHas('notifications', ['user_id' => $recipient->id, 'type' => 'issue_mentioned']);
-    Event::assertDispatched(NotificationCreated::class);
 
     Workspace::forgetCurrent();
 });
@@ -86,7 +76,6 @@ it('still dispatches other event types when only one event category is muted', f
 it('maps each issue_* type to the correct event category and respects that category\'s pref', function (string $type, string $eventCategory): void {
     [$recipient, $actor] = dispatcherWorld();
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, $eventCategory, 'in_app', false);
-    Event::fake([NotificationCreated::class]);
 
     $result = app(NotificationDispatcher::class)->dispatch(
         $recipient->id, $type, 'issue', (string) Str::uuid(), $actor->id, null,
@@ -105,7 +94,6 @@ it('maps each issue_* type to the correct event category and respects that categ
 ]);
 
 it('defaults to creating when the type has no known event-category mapping', function (): void {
-    Event::fake([NotificationCreated::class]);
     [$recipient, $actor] = dispatcherWorld();
 
     $notification = app(NotificationDispatcher::class)->dispatch(
@@ -114,7 +102,6 @@ it('defaults to creating when the type has no known event-category mapping', fun
 
     expect($notification)->not->toBeNull();
     $this->assertDatabaseHas('notifications', ['user_id' => $recipient->id, 'type' => 'some_unmapped_type']);
-    Event::assertDispatched(NotificationCreated::class);
 
     Workspace::forgetCurrent();
 });

@@ -24,6 +24,6 @@ deptrac:
     Controller: [UseCase]
     UseCase: [Repository, Service, Entity]
     Repository: [Entity, Service]
-    Service: [Entity, Repository]
+    Service: [Entity]
     Entity: []
     Policy: [Entity]

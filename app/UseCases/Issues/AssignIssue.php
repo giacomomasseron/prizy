@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\UseCases\Issues;
 
 use App\Events\IssueAssigned;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
-use App\Services\NotificationDispatcher;
 use App\UseCases\Issues\Concerns\ValidatesWorkspaceReferences;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -42,16 +43,25 @@ final class AssignIssue
             return $issue;
         }
 
-        DB::transaction(function () use ($issue, $actor, $assigneeId, $previous): void {
+        $notificationEvent = null;
+
+        DB::transaction(function () use ($issue, $actor, $assigneeId, $previous, &$notificationEvent): void {
             $this->issues->update($issue, ['assignee_id' => $assigneeId]);
             $this->activities->log($issue->id, $actor->id, 'assigned', $previous, $assigneeId);
 
             if ($assigneeId !== null && $assigneeId !== $actor->id) {
-                $this->dispatcher->dispatch($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                $notification = $this->dispatcher->dispatch($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                if ($notification !== null) {
+                    $notificationEvent = new NotificationCreated($assigneeId, $notification->id, 'issue_assigned');
+                }
             }
         });
 
         event(new IssueAssigned($issue, $assigneeId));
+
+        if ($notificationEvent !== null) {
+            event($notificationEvent);
+        }
 
         return $issue;
     }

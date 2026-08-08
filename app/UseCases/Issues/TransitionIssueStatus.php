@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\UseCases\Issues;
 
 use App\Events\IssueStatusChanged;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
-use App\Services\NotificationDispatcher;
 use App\Services\NotificationRecipients;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -56,35 +57,42 @@ final class TransitionIssueStatus
         $from = $issue->status;
         $this->assertTransitionAllowed($from, $to);
 
-        $unblockEvents = [];
+        $postCommitEvents = [];
 
-        DB::transaction(function () use ($issue, $actor, $from, $to, &$unblockEvents): void {
+        DB::transaction(function () use ($issue, $actor, $from, $to, &$postCommitEvents): void {
             $this->issues->update($issue, ['status' => $to]);
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {
-                $unblockEvents = $this->resolveBlockers->resolve($issue, $actor->id)['events'];
+                $postCommitEvents = $this->resolveBlockers->resolve($issue, $actor->id)['events'];
             }
 
-            $this->notifyParticipants($issue, $actor, $to);
+            $postCommitEvents = [...$postCommitEvents, ...$this->notifyParticipants($issue, $actor, $to)];
         });
 
         event(new IssueStatusChanged($issue, $from, $to));
 
-        foreach ($unblockEvents as $event) {
+        foreach ($postCommitEvents as $event) {
             event($event);
         }
 
         return $issue;
     }
 
-    private function notifyParticipants(Issue $issue, User $actor, string $to): void
+    /** @return list<NotificationCreated> */
+    private function notifyParticipants(Issue $issue, User $actor, string $to): array
     {
         $label = self::STATUS_LABELS[$to] ?? $to;
+        $events = [];
 
         foreach ($this->recipients->participants($issue, $actor->id) as $userId) {
-            $this->dispatcher->dispatch($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label);
+            $notification = $this->dispatcher->dispatch($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label);
+            if ($notification !== null) {
+                $events[] = new NotificationCreated($userId, $notification->id, 'issue_status_changed');
+            }
         }
+
+        return $events;
     }
 
     /**

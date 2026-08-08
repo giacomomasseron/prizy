@@ -2,19 +2,24 @@
 
 declare(strict_types=1);
 
-namespace App\Services;
+namespace App\UseCases\Notifications;
 
-use App\Events\NotificationCreated;
 use App\Models\Notification;
 use App\Repositories\NotificationPreferenceRepository;
 use App\Repositories\NotificationRepository;
 
 /**
- * Single chokepoint for creating a notification + broadcasting it: gates
- * creation on the recipient's `in_app` preference for the event category
- * $type maps to (via NotificationPreferenceRepository::TYPE_TO_EVENT), then
- * persists + fires NotificationCreated. Types with no known event-category
- * mapping default to creating (never silently dropped).
+ * Single chokepoint for creating a notification: gates creation on the
+ * recipient's `in_app` preference for the event category $type maps to (via
+ * NotificationPreferenceRepository::TYPE_TO_EVENT), then persists it. Types
+ * with no known event-category mapping default to creating (never silently
+ * dropped).
+ *
+ * Does NOT fire NotificationCreated itself — the caller runs inside a
+ * DB::transaction() and must collect a NotificationCreated event from the
+ * returned Notification and dispatch it AFTER the transaction commits,
+ * alongside its other domain events. This keeps broadcasts from firing for
+ * rows that get rolled back.
  */
 final class NotificationDispatcher
 {
@@ -37,10 +42,6 @@ final class NotificationDispatcher
             return null;
         }
 
-        $notification = $this->notifications->create($recipientId, $type, $subjectType, $subjectId, $actorId, $body);
-
-        event(new NotificationCreated($recipientId, $notification->id, $type));
-
-        return $notification;
+        return $this->notifications->create($recipientId, $type, $subjectType, $subjectId, $actorId, $body);
     }
 }
