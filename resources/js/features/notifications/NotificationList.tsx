@@ -104,7 +104,7 @@ export function NotificationList({
 
     function selectRow(n: AppNotification) {
         onSelect(n);
-        if (!n.read_at) markRead.mutate(n.id);
+        if (!unreadOnly && !n.read_at) markRead.mutate(n.id);
     }
 
     return (

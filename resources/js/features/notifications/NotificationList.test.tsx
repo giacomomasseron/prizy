@@ -143,6 +143,22 @@ describe('NotificationList', () => {
         expect(markRead).not.toHaveBeenCalled();
     });
 
+    it('in unread-only mode, clicking an unread row selects it but does NOT mark it read (so it does not vanish from the list)', () => {
+        const item = makeItem({ id: 'n10', read_at: null });
+        const { onSelect } = wrap({ items: [item], unreadOnly: true });
+        fireEvent.click(screen.getByText('You were assigned an issue'));
+        expect(onSelect).toHaveBeenCalledWith(item);
+        expect(markRead).not.toHaveBeenCalled();
+    });
+
+    it('outside unread-only mode, clicking an unread row still selects it and marks it read', () => {
+        const item = makeItem({ id: 'n11', read_at: null });
+        const { onSelect } = wrap({ items: [item], unreadOnly: false });
+        fireEvent.click(screen.getByText('You were assigned an issue'));
+        expect(onSelect).toHaveBeenCalledWith(item);
+        expect(markRead).toHaveBeenCalledWith('n11');
+    });
+
     it('the "Unread only" toggle calls onToggleUnread and reflects state via aria-pressed', () => {
         const { onToggleUnread } = wrap({ unreadOnly: true });
         const toggle = screen.getByRole('button', { name: 'Unread only' });
