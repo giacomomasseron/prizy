@@ -57,6 +57,27 @@ final class NotificationPreferenceRepository
         );
     }
 
+    /**
+     * Event-category keys with the `email` channel disabled for this user
+     * (stored override wins; otherwise the code default). One query.
+     *
+     * @return list<string>
+     */
+    public function emailDisabledEventTypes(string $userId): array
+    {
+        $overrides = NotificationPreference::query()
+            ->where('user_id', $userId)
+            ->where('channel', 'email')
+            ->pluck('enabled', 'event_type');
+
+        return array_values(array_filter(
+            self::EVENT_TYPES,
+            fn (string $eventType): bool => $overrides->has($eventType)
+                ? ! (bool) $overrides->get($eventType)
+                : ! (self::DEFAULTS[$eventType]['email'] ?? true),
+        ));
+    }
+
     /** workspace_id is auto-filled from the active tenant by BelongsToWorkspace; id is auto-filled on create by the model. */
     public function setPreference(string $userId, string $eventType, string $channel, bool $enabled): void
     {
