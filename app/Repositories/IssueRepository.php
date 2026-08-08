@@ -7,6 +7,7 @@ namespace App\Repositories;
 use App\Models\Cycle;
 use App\Models\Issue;
 use App\Models\Team;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
 
@@ -37,6 +38,21 @@ final class IssueRepository
     public function findInWorkspace(string $id): ?Issue
     {
         return Issue::find($id);
+    }
+
+    /**
+     * Batch lookup for resource enrichment (e.g. notification subjects) — ONE query, no N+1.
+     *
+     * @param  list<string>  $ids
+     * @return Collection<string, Issue> keyed by id
+     */
+    public function findManyByIds(array $ids): Collection
+    {
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        return Issue::whereIn('id', $ids)->get(['id', 'title'])->keyBy('id');
     }
 
     /**

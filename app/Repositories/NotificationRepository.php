@@ -33,7 +33,7 @@ final class NotificationRepository
 
     public function paginateForUser(string $userId, bool $unreadOnly, int $limit): CursorPaginator
     {
-        $query = Notification::query()->where('user_id', $userId)->orderBy('created_at', 'desc')->orderBy('id');
+        $query = Notification::query()->where('user_id', $userId)->with('actor')->orderBy('created_at', 'desc')->orderBy('id');
         if ($unreadOnly) {
             $query->whereNull('read_at');
         }
