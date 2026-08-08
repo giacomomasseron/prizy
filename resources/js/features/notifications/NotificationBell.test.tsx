@@ -86,4 +86,26 @@ describe('NotificationBell', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
         expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
     });
+
+    it('renders the actor avatar and subject ref chip when the notification is enriched', () => {
+        listItems = [
+            {
+                id: 'n3',
+                type: 'issue_commented',
+                subject_type: 'issue',
+                subject_id: 'i3',
+                read_at: null,
+                created_at: new Date().toISOString(),
+                actor: { id: 'u1', name: 'Ada Lovelace' },
+                body: 'Looks good to me, shipping this now.',
+                subject: { type: 'issue', id: 'i3', ref: 'ENG-42', title: 'Fix the thing', path: '/issues/i3' },
+            },
+        ];
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+        expect(screen.getByTitle('Ada Lovelace')).toBeInTheDocument();
+        expect(screen.getByText('ENG-42')).toBeInTheDocument();
+        expect(screen.getByText('Looks good to me, shipping this now.')).toBeInTheDocument();
+    });
 });

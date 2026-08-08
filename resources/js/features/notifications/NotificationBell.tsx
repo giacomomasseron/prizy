@@ -3,13 +3,16 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useNotifications, useUnreadCount, useMarkAllRead, useMarkRead } from './hooks';
 import { notificationText, subjectPath } from './text';
 import { timeAgo } from '../../lib/timeAgo';
+import { avatarFor } from '../../lib/avatarFor';
+import { Avatar } from '../../components/ui/Avatar';
 import type { AppNotification } from '../../lib/types';
 
 /**
  * Toolbar notifications bell (Prizy.dc.html header): a bordered button with an
  * unread badge that opens a dropdown of recent notifications + an "Open inbox →"
- * link. Wired to the existing endpoints; richer rows (actor avatars, target refs)
- * arrive with the backend enrichment sub-project.
+ * link. Wired to the existing endpoints; rows lightly render the enriched actor
+ * avatar / body excerpt / subject ref when the API provides them (all optional —
+ * the full inbox redesign lands in a later sub-project).
  */
 export function NotificationBell() {
     const navigate = useNavigate();
@@ -37,7 +40,7 @@ export function NotificationBell() {
 
     function openItem(n: AppNotification) {
         markRead.mutate(n.id);
-        const path = subjectPath(n.subject_type, n.subject_id);
+        const path = n.subject?.path ?? subjectPath(n.subject_type, n.subject_id);
         setOpen(false);
         if (path) navigate(path);
     }
@@ -106,20 +109,39 @@ export function NotificationBell() {
                         {!list.isLoading && items.length === 0 && (
                             <div style={{ padding: '20px 13px', fontSize: 12.5, color: 'var(--fg3)', textAlign: 'center' }}>You're all caught up</div>
                         )}
-                        {items.map((n) => (
-                            <div
-                                key={n.id}
-                                onClick={() => openItem(n)}
-                                className="hover:bg-hover"
-                                style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 13px 10px 10px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
-                            >
-                                <span style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 7, flexShrink: 0, background: n.read_at ? 'transparent' : 'var(--accent)' }} />
-                                <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                    <div style={{ fontSize: 12.3, color: 'var(--fg)', lineHeight: 1.45 }}>{notificationText(n.type)}</div>
-                                    <span style={{ fontSize: 10.5, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
+                        {items.map((n) => {
+                            const avatar = n.actor ? avatarFor(n.actor) : null;
+                            return (
+                                <div
+                                    key={n.id}
+                                    onClick={() => openItem(n)}
+                                    className="hover:bg-hover"
+                                    style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 13px 10px 10px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                                >
+                                    <span style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 7, flexShrink: 0, background: n.read_at ? 'transparent' : 'var(--accent)' }} />
+                                    {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={20} title={n.actor?.name} />}
+                                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <div style={{ fontSize: 12.3, color: 'var(--fg)', lineHeight: 1.45 }}>
+                                            {n.actor && <span style={{ fontWeight: 600 }}>{n.actor.name} </span>}
+                                            {notificationText(n.type)}
+                                        </div>
+                                        {n.body && (
+                                            <div style={{ fontSize: 11.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                {n.body}
+                                            </div>
+                                        )}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                            <span style={{ fontSize: 10.5, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
+                                            {n.subject?.ref && (
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 4, padding: '1px 5px' }}>
+                                                    {n.subject.ref}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
 
                     <Link
