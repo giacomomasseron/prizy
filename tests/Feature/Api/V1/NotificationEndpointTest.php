@@ -129,6 +129,32 @@ it('nulls actor and subject when the actor is absent or the subject is unresolva
     Workspace::forgetCurrent();
 });
 
+it('includes snoozed_until and archived_at in the index payload, null by default', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    $notif = makeNotif($ws, $user);
+
+    $this->withToken($token)->getJson('/v1/notifications')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.id', $notif->id)
+        ->assertJsonPath('data.0.snoozed_until', null)
+        ->assertJsonPath('data.0.archived_at', null);
+
+    Workspace::forgetCurrent();
+});
+
+it('serializes snoozed_until and archived_at as ISO strings when set', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    $notif = makeNotif($ws, $user, ['snoozed_until' => now()->addDay(), 'archived_at' => now()]);
+    $fresh = $notif->fresh();
+
+    $this->withToken($token)->getJson('/v1/notifications')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.snoozed_until', $fresh->snoozed_until->toISOString())
+        ->assertJsonPath('data.0.archived_at', $fresh->archived_at->toISOString());
+
+    Workspace::forgetCurrent();
+});
+
 it('resolves issue subjects for a page of notifications with a single batch query (no N+1)', function (): void {
     [$token, $ws, $user] = notifWorld();
     $issues = Issue::factory()->for($ws, 'workspace')->count(4)->create(['created_by' => $user->id]);
