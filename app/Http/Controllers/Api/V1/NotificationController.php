@@ -5,14 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\SetNotificationSubscriptionRequest;
 use App\Http\Requests\Api\V1\UpdateNotificationPreferencesRequest;
 use App\Http\Resources\NotificationResource;
 use App\UseCases\Notifications\CountUnread;
 use App\UseCases\Notifications\GetNotificationPreferences;
+use App\UseCases\Notifications\GetNotificationSubscriptions;
 use App\UseCases\Notifications\ListNotifications;
 use App\UseCases\Notifications\MarkAllNotificationsRead;
 use App\UseCases\Notifications\MarkNotificationRead;
 use App\UseCases\Notifications\MarkNotificationUnread;
+use App\UseCases\Notifications\SetNotificationSubscription;
 use App\UseCases\Notifications\ToggleNotificationArchive;
 use App\UseCases\Notifications\ToggleNotificationSnooze;
 use App\UseCases\Notifications\UpdateNotificationPreferences;
@@ -35,6 +38,8 @@ final class NotificationController extends Controller
         private readonly MarkAllNotificationsRead $markAllRead,
         private readonly UpdateNotificationPreferences $updatePreferencesUseCase,
         private readonly GetNotificationPreferences $getPreferencesUseCase,
+        private readonly GetNotificationSubscriptions $getSubscriptionsUseCase,
+        private readonly SetNotificationSubscription $setSubscriptionUseCase,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -103,6 +108,23 @@ final class NotificationController extends Controller
             $request->user(),
             $request->validated('email_digest_frequency'),
             $request->validated('preferences', []),
+        );
+
+        return response()->noContent();
+    }
+
+    public function subscriptions(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->getSubscriptionsUseCase->handle($request->user())]);
+    }
+
+    public function updateSubscription(SetNotificationSubscriptionRequest $request): Response
+    {
+        $this->setSubscriptionUseCase->handle(
+            $request->user(),
+            $request->validated('scope_type'),
+            $request->validated('scope_id'),
+            $request->validated('level'),
         );
 
         return response()->noContent();

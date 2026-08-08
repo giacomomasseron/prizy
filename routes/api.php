@@ -203,6 +203,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
         Route::get('/notifications/preferences', [NotificationController::class, 'preferences']);
         Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
+        Route::get('/notifications/subscriptions', [NotificationController::class, 'subscriptions']);
+        Route::patch('/notifications/subscriptions', [NotificationController::class, 'updateSubscription']);
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
         Route::post('/notifications/{notification}/unread', [NotificationController::class, 'unread']);
         Route::post('/notifications/{notification}/snooze', [NotificationController::class, 'snooze']);
