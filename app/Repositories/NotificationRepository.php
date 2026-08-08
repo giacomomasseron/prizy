@@ -43,7 +43,14 @@ final class NotificationRepository
 
     public function unreadCountForUser(string $userId): int
     {
-        return Notification::query()->where('user_id', $userId)->whereNull('read_at')->count();
+        return Notification::query()
+            ->where('user_id', $userId)
+            ->whereNull('read_at')
+            ->whereNull('archived_at')
+            ->where(function ($query) {
+                $query->whereNull('snoozed_until')->orWhere('snoozed_until', '<=', now());
+            })
+            ->count();
     }
 
     public function findForUser(string $id, string $userId): ?Notification
@@ -54,6 +61,32 @@ final class NotificationRepository
     public function markRead(Notification $notification): Notification
     {
         $notification->read_at = now();
+        $notification->save();
+
+        return $notification;
+    }
+
+    public function markUnread(Notification $notification): Notification
+    {
+        $notification->read_at = null;
+        $notification->save();
+
+        return $notification;
+    }
+
+    public function toggleSnooze(Notification $notification): Notification
+    {
+        $notification->snoozed_until = ($notification->snoozed_until && $notification->snoozed_until->isFuture())
+            ? null
+            : now()->addDay();
+        $notification->save();
+
+        return $notification;
+    }
+
+    public function toggleArchive(Notification $notification): Notification
+    {
+        $notification->archived_at = $notification->archived_at ? null : now();
         $notification->save();
 
         return $notification;
