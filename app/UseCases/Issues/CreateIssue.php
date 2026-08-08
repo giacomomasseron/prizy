@@ -11,8 +11,8 @@ use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
-use App\Repositories\NotificationRepository;
 use App\UseCases\Issues\Concerns\ValidatesWorkspaceReferences;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 
 final class CreateIssue
@@ -22,7 +22,7 @@ final class CreateIssue
     public function __construct(
         private readonly IssueRepository $issues,
         private readonly IssueActivityRepository $activities,
-        private readonly NotificationRepository $notifications,
+        private readonly NotificationDispatcher $dispatcher,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -34,9 +34,9 @@ final class CreateIssue
         $this->assertProjectInWorkspace($data['project_id'] ?? null);
         $this->assertCycleInWorkspace($data['cycle_id'] ?? null);
 
-        $notif = null;
+        $notificationEvent = null;
 
-        $issue = DB::transaction(function () use ($actor, $data, &$notif): Issue {
+        $issue = DB::transaction(function () use ($actor, $data, &$notificationEvent): Issue {
             $issue = $this->issues->create([
                 'team_id' => $data['team_id'],
                 'title' => $data['title'],
@@ -55,7 +55,10 @@ final class CreateIssue
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
             if ($issue->assignee_id !== null && $issue->assignee_id !== $actor->id) {
-                $notif = $this->notifications->create($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                $notification = $this->dispatcher->dispatch($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                if ($notification !== null) {
+                    $notificationEvent = new NotificationCreated($issue->assignee_id, $notification->id, 'issue_assigned');
+                }
             }
 
             return $issue;
@@ -65,9 +68,10 @@ final class CreateIssue
 
         if ($issue->assignee_id !== null) {
             event(new IssueAssigned($issue, $issue->assignee_id));
-            if ($notif !== null) {
-                event(new NotificationCreated($issue->assignee_id, $notif->id, 'issue_assigned'));
-            }
+        }
+
+        if ($notificationEvent !== null) {
+            event($notificationEvent);
         }
 
         return $issue;

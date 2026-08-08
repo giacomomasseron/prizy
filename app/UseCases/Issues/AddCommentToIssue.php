@@ -11,8 +11,8 @@ use App\Models\IssueComment;
 use App\Models\User;
 use App\Repositories\IssueCommentRepository;
 use App\Repositories\IssueRepository;
-use App\Repositories\NotificationRepository;
 use App\Services\NotificationRecipients;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +21,7 @@ final class AddCommentToIssue
     public function __construct(
         private readonly IssueRepository $issues,
         private readonly IssueCommentRepository $comments,
-        private readonly NotificationRepository $notifications,
+        private readonly NotificationDispatcher $dispatcher,
         private readonly NotificationRecipients $recipients,
     ) {}
 
@@ -36,7 +36,6 @@ final class AddCommentToIssue
 
         $body = (string) $data['body'];
 
-        /** @var list<NotificationCreated> $notificationEvents */
         $notificationEvents = [];
 
         $comment = DB::transaction(function () use ($issue, $actor, $body, $data, &$notificationEvents): IssueComment {
@@ -54,8 +53,8 @@ final class AddCommentToIssue
 
         event(new IssueCommented($issue, $comment));
 
-        foreach ($notificationEvents as $notificationEvent) {
-            event($notificationEvent);
+        foreach ($notificationEvents as $event) {
+            event($event);
         }
 
         return $comment;
@@ -65,26 +64,29 @@ final class AddCommentToIssue
     private function notifyParticipants(Issue $issue, User $actor, string $body): array
     {
         $excerpt = $this->excerpt($body);
+        $events = [];
 
         $members = User::where('workspace_id', $actor->workspace_id)
             ->select(['id', 'name', 'email'])
             ->withoutTrashed()
             ->get();
 
-        $events = [];
-
         $mentions = $this->recipients->mentioned($body, $members, $actor->id);
         foreach ($mentions as $userId) {
-            $notification = $this->notifications->create($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt);
-            $events[] = new NotificationCreated($userId, $notification->id, 'issue_mentioned');
+            $notification = $this->dispatcher->dispatch($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt);
+            if ($notification !== null) {
+                $events[] = new NotificationCreated($userId, $notification->id, 'issue_mentioned');
+            }
         }
 
         // A mentioned participant gets the mention notification only, never
         // also a comment notification.
         $others = array_values(array_diff($this->recipients->participants($issue, $actor->id), $mentions));
         foreach ($others as $userId) {
-            $notification = $this->notifications->create($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt);
-            $events[] = new NotificationCreated($userId, $notification->id, 'issue_commented');
+            $notification = $this->dispatcher->dispatch($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt);
+            if ($notification !== null) {
+                $events[] = new NotificationCreated($userId, $notification->id, 'issue_commented');
+            }
         }
 
         return $events;

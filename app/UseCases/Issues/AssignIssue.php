@@ -10,8 +10,8 @@ use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
-use App\Repositories\NotificationRepository;
 use App\UseCases\Issues\Concerns\ValidatesWorkspaceReferences;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -22,7 +22,7 @@ final class AssignIssue
     public function __construct(
         private readonly IssueRepository $issues,
         private readonly IssueActivityRepository $activities,
-        private readonly NotificationRepository $notifications,
+        private readonly NotificationDispatcher $dispatcher,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -43,21 +43,24 @@ final class AssignIssue
             return $issue;
         }
 
-        $notif = null;
+        $notificationEvent = null;
 
-        DB::transaction(function () use ($issue, $actor, $assigneeId, $previous, &$notif): void {
+        DB::transaction(function () use ($issue, $actor, $assigneeId, $previous, &$notificationEvent): void {
             $this->issues->update($issue, ['assignee_id' => $assigneeId]);
             $this->activities->log($issue->id, $actor->id, 'assigned', $previous, $assigneeId);
 
             if ($assigneeId !== null && $assigneeId !== $actor->id) {
-                $notif = $this->notifications->create($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                $notification = $this->dispatcher->dispatch($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
+                if ($notification !== null) {
+                    $notificationEvent = new NotificationCreated($assigneeId, $notification->id, 'issue_assigned');
+                }
             }
         });
 
         event(new IssueAssigned($issue, $assigneeId));
 
-        if ($assigneeId !== null && $notif !== null) {
-            event(new NotificationCreated($assigneeId, $notif->id, 'issue_assigned'));
+        if ($notificationEvent !== null) {
+            event($notificationEvent);
         }
 
         return $issue;

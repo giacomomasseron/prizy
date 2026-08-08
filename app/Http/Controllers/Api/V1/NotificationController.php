@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\UpdateNotificationPreferencesRequest;
 use App\Http\Resources\NotificationResource;
 use App\UseCases\Notifications\CountUnread;
+use App\UseCases\Notifications\GetNotificationPreferences;
 use App\UseCases\Notifications\ListNotifications;
 use App\UseCases\Notifications\MarkAllNotificationsRead;
 use App\UseCases\Notifications\MarkNotificationRead;
@@ -33,6 +34,7 @@ final class NotificationController extends Controller
         private readonly ToggleNotificationArchive $toggleArchive,
         private readonly MarkAllNotificationsRead $markAllRead,
         private readonly UpdateNotificationPreferences $updatePreferencesUseCase,
+        private readonly GetNotificationPreferences $getPreferencesUseCase,
     ) {}
 
     public function index(Request $request): JsonResponse
@@ -90,9 +92,18 @@ final class NotificationController extends Controller
         return response()->noContent();
     }
 
+    public function preferences(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->getPreferencesUseCase->handle($request->user())]);
+    }
+
     public function updatePreferences(UpdateNotificationPreferencesRequest $request): Response
     {
-        $this->updatePreferencesUseCase->handle($request->user(), $request->validated('email_digest_frequency'));
+        $this->updatePreferencesUseCase->handle(
+            $request->user(),
+            $request->validated('email_digest_frequency'),
+            $request->validated('preferences', []),
+        );
 
         return response()->noContent();
     }

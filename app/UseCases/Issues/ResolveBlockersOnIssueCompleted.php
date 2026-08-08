@@ -10,7 +10,7 @@ use App\Models\Issue;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueBlockerRepository;
 use App\Repositories\IssueRepository;
-use App\Repositories\NotificationRepository;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 
 final class ResolveBlockersOnIssueCompleted
@@ -19,7 +19,7 @@ final class ResolveBlockersOnIssueCompleted
         private readonly IssueRepository $issues,
         private readonly IssueBlockerRepository $blockers,
         private readonly IssueActivityRepository $activities,
-        private readonly NotificationRepository $notifications,
+        private readonly NotificationDispatcher $dispatcher,
     ) {}
 
     /**
@@ -42,13 +42,14 @@ final class ResolveBlockersOnIssueCompleted
 
     /**
      * Perform the blocker-resolution DB writes for a completed issue WITHOUT
-     * opening a transaction and WITHOUT dispatching events. Returns the
-     * newly-unblocked issue ids plus the IssueUnblocked events the caller must
-     * dispatch AFTER commit.
+     * opening a transaction. Creates the (pref-gated) recipient notification
+     * rows synchronously via NotificationDispatcher, but returns the
+     * newly-unblocked issue ids plus the IssueUnblocked + NotificationCreated
+     * events for the caller to dispatch AFTER commit.
      *
      * Call this (not handle()) when composing inside an outer transaction
-     * (e.g. TransitionIssueStatus), so broadcasts fire only after the outer
-     * commit.
+     * (e.g. TransitionIssueStatus), so the IssueUnblocked/NotificationCreated
+     * broadcasts fire only after the outer commit.
      *
      * @param  string|null  $actorId  id of the user whose completion of $completed triggered this resolution
      * @return array{unblocked: list<string>, events: list<IssueUnblocked|NotificationCreated>}
@@ -70,9 +71,12 @@ final class ResolveBlockersOnIssueCompleted
 
                 $blocked = $this->issues->findInWorkspace($blockedId);
                 if ($blocked !== null && $blocked->assignee_id !== null && $blocked->assignee_id !== $actorId) {
-                    $notif = $this->notifications->create($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title);
                     $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
-                    $events[] = new NotificationCreated($blocked->assignee_id, $notif->id, 'issue_unblocked');
+
+                    $notification = $this->dispatcher->dispatch($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title);
+                    if ($notification !== null) {
+                        $events[] = new NotificationCreated($blocked->assignee_id, $notification->id, 'issue_unblocked');
+                    }
                 }
             }
         }

@@ -10,8 +10,8 @@ use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
-use App\Repositories\NotificationRepository;
 use App\Services\NotificationRecipients;
+use App\UseCases\Notifications\NotificationDispatcher;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -35,7 +35,7 @@ final class TransitionIssueStatus
         private readonly IssueRepository $issues,
         private readonly IssueActivityRepository $activities,
         private readonly ResolveBlockersOnIssueCompleted $resolveBlockers,
-        private readonly NotificationRepository $notifications,
+        private readonly NotificationDispatcher $dispatcher,
         private readonly NotificationRecipients $recipients,
     ) {}
 
@@ -57,29 +57,22 @@ final class TransitionIssueStatus
         $from = $issue->status;
         $this->assertTransitionAllowed($from, $to);
 
-        $unblockEvents = [];
+        $postCommitEvents = [];
 
-        /** @var list<NotificationCreated> $notificationEvents */
-        $notificationEvents = [];
-
-        DB::transaction(function () use ($issue, $actor, $from, $to, &$unblockEvents, &$notificationEvents): void {
+        DB::transaction(function () use ($issue, $actor, $from, $to, &$postCommitEvents): void {
             $this->issues->update($issue, ['status' => $to]);
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {
-                $unblockEvents = $this->resolveBlockers->resolve($issue, $actor->id)['events'];
+                $postCommitEvents = $this->resolveBlockers->resolve($issue, $actor->id)['events'];
             }
 
-            $notificationEvents = $this->notifyParticipants($issue, $actor, $to);
+            $postCommitEvents = [...$postCommitEvents, ...$this->notifyParticipants($issue, $actor, $to)];
         });
 
         event(new IssueStatusChanged($issue, $from, $to));
 
-        foreach ($unblockEvents as $event) {
-            event($event);
-        }
-
-        foreach ($notificationEvents as $event) {
+        foreach ($postCommitEvents as $event) {
             event($event);
         }
 
@@ -90,12 +83,13 @@ final class TransitionIssueStatus
     private function notifyParticipants(Issue $issue, User $actor, string $to): array
     {
         $label = self::STATUS_LABELS[$to] ?? $to;
-
         $events = [];
 
         foreach ($this->recipients->participants($issue, $actor->id) as $userId) {
-            $notification = $this->notifications->create($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label);
-            $events[] = new NotificationCreated($userId, $notification->id, 'issue_status_changed');
+            $notification = $this->dispatcher->dispatch($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label);
+            if ($notification !== null) {
+                $events[] = new NotificationCreated($userId, $notification->id, 'issue_status_changed');
+            }
         }
 
         return $events;

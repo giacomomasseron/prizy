@@ -6,6 +6,7 @@ use App\Models\Notification as NotificationRow;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\NotificationDigest;
+use App\Repositories\NotificationPreferenceRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -100,5 +101,37 @@ it('excludes archived and currently-snoozed notifications from the digest, but i
             && ! str_contains($body, $snoozedId);
     });
 
+    Workspace::forgetCurrent();
+});
+
+it('excludes notifications whose event has email disabled, but still includes ones with email on and keeps the excluded row in-app', function (): void {
+    Notification::fake();
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $user = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now()]);
+
+    // Turn OFF email for `comment` (default is already off, but make the override explicit for the test).
+    app(NotificationPreferenceRepository::class)->setPreference($user->id, 'comment', 'email', false);
+
+    $commentId = 'aaaaaaaa-1111-0000-0000-000000000001';
+    $mentionId = 'aaaaaaaa-1111-0000-0000-000000000002';
+
+    $commentNotif = seedNotif($ws, $user, ['subject_id' => $commentId, 'type' => 'issue_commented']);
+    seedNotif($ws, $user, ['subject_id' => $mentionId, 'type' => 'issue_mentioned']);
+    Workspace::forgetCurrent();
+
+    $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
+
+    Notification::assertSentTo($user, NotificationDigest::class, function (NotificationDigest $n) use ($user, $commentId, $mentionId): bool {
+        $mail = $n->toMail($user);
+        $body = implode(' ', $mail->introLines);
+
+        return str_contains($body, $mentionId)
+            && ! str_contains($body, $commentId);
+    });
+
+    // The excluded comment notification is untouched in-app — still present, still unread.
+    $ws->makeCurrent();
+    expect($commentNotif->refresh()->read_at)->toBeNull();
     Workspace::forgetCurrent();
 });
