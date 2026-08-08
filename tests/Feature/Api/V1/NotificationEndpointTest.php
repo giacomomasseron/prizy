@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Models\Issue;
 use App\Models\Notification;
 use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -74,6 +76,74 @@ it('404s when marking another user notification read', function (): void {
     $foreign = makeNotif($ws, $other);
 
     $this->withToken($token)->postJson("/v1/notifications/{$foreign->id}/read")->assertStatus(404);
+
+    Workspace::forgetCurrent();
+});
+
+it('enriches the index payload with actor, body and a resolved issue subject', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    $actor = User::factory()->for($ws, 'workspace')->create(['name' => 'Ada Actor']);
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['title' => 'Fix the login bug', 'created_by' => $user->id]);
+
+    $notif = makeNotif($ws, $user, [
+        'actor_id' => $actor->id,
+        'body' => 'assigned you to an issue',
+        'subject_type' => 'issue',
+        'subject_id' => $issue->id,
+    ]);
+
+    $this->withToken($token)->getJson('/v1/notifications')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.id', $notif->id)
+        ->assertJsonPath('data.0.body', 'assigned you to an issue')
+        ->assertJsonPath('data.0.actor', ['id' => $actor->id, 'name' => 'Ada Actor'])
+        ->assertJsonPath('data.0.subject', [
+            'type' => 'issue',
+            'id' => $issue->id,
+            // `identifier` is not a persisted issue column (yet) — ref always falls back to the
+            // uppercased id prefix, matching the frontend fallback (IssueResource/PeekDrawer).
+            'ref' => strtoupper(substr($issue->id, 0, 6)),
+            'title' => 'Fix the login bug',
+            'path' => "/issues/{$issue->id}",
+        ]);
+
+    Workspace::forgetCurrent();
+});
+
+it('nulls actor and subject when the actor is absent or the subject is unresolvable', function (): void {
+    [$token, $ws, $user] = notifWorld();
+
+    // No actor, no body, and an issue id that does not exist.
+    $orphan = makeNotif($ws, $user, ['subject_id' => (string) Str::uuid()]);
+    // A subject_type the resource does not resolve at all.
+    $other = makeNotif($ws, $user, ['subject_type' => 'ticket', 'subject_id' => (string) Str::uuid()]);
+
+    $response = $this->withToken($token)->getJson('/v1/notifications')->assertStatus(200);
+
+    $byId = collect($response->json('data'))->keyBy('id');
+    expect($byId[$orphan->id]['actor'])->toBeNull();
+    expect($byId[$orphan->id]['body'])->toBeNull();
+    expect($byId[$orphan->id]['subject'])->toBeNull();
+    expect($byId[$other->id]['subject'])->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('resolves issue subjects for a page of notifications with a single batch query (no N+1)', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    $issues = Issue::factory()->for($ws, 'workspace')->count(4)->create(['created_by' => $user->id]);
+    foreach ($issues as $issue) {
+        makeNotif($ws, $user, ['subject_id' => $issue->id]);
+    }
+    // Plus one pointing at a missing issue, to prove it doesn't add a query of its own.
+    makeNotif($ws, $user, ['subject_id' => (string) Str::uuid()]);
+
+    DB::enableQueryLog();
+    $this->withToken($token)->getJson('/v1/notifications')->assertStatus(200)->assertJsonCount(5, 'data');
+    $issuesQueries = collect(DB::getQueryLog())->filter(fn (array $q): bool => str_contains($q['query'], 'from "issues"'));
+    DB::disableQueryLog();
+
+    expect($issuesQueries)->toHaveCount(1);
 
     Workspace::forgetCurrent();
 });

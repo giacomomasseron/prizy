@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Events\IssueCommented;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\IssueComment;
 use App\Models\IssueCommentReaction;
@@ -106,7 +107,7 @@ it('forbids a member from another workspace (403/404)', function (): void {
 });
 
 it('lets a non-developer member add a comment (authz relaxed to view)', function (): void {
-    Event::fake([IssueCommented::class]); // avoid a real broadcast attempt (no Reverb service in tests)
+    Event::fake([IssueCommented::class, NotificationCreated::class]); // avoid a real broadcast attempt (no Reverb service in tests)
     ['issue' => $issue, 'workspace' => $ws] = reactionWorld();
     $viewerDev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => false]);
     $vToken = app(CreatePersonalAccessToken::class)->handle($viewerDev, 't', null)['token'];

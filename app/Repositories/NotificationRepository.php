@@ -12,20 +12,28 @@ use Illuminate\Support\Str;
 final class NotificationRepository
 {
     /** workspace_id is auto-filled from the active tenant by BelongsToWorkspace. */
-    public function create(string $userId, string $type, string $subjectType, string $subjectId): Notification
-    {
+    public function create(
+        string $userId,
+        string $type,
+        string $subjectType,
+        string $subjectId,
+        ?string $actorId = null,
+        ?string $body = null,
+    ): Notification {
         return Notification::create([
-            'id'           => (string) Str::uuid(),
-            'user_id'      => $userId,
-            'type'         => $type,
+            'id' => (string) Str::uuid(),
+            'user_id' => $userId,
+            'actor_id' => $actorId,
+            'type' => $type,
             'subject_type' => $subjectType,
-            'subject_id'   => $subjectId,
+            'subject_id' => $subjectId,
+            'body' => $body,
         ]);
     }
 
     public function paginateForUser(string $userId, bool $unreadOnly, int $limit): CursorPaginator
     {
-        $query = Notification::query()->where('user_id', $userId)->orderBy('created_at', 'desc')->orderBy('id');
+        $query = Notification::query()->where('user_id', $userId)->with('actor')->orderBy('created_at', 'desc')->orderBy('id');
         if ($unreadOnly) {
             $query->whereNull('read_at');
         }

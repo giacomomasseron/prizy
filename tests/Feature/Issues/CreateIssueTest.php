@@ -23,7 +23,7 @@ function makeWorkspaceWithActor(): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $team  = Team::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
 
     return [$ws, $actor, $team];
 }
@@ -62,6 +62,23 @@ it('notifies and broadcasts assignment when created with an assignee', function 
     Workspace::forgetCurrent();
 });
 
+it('does not notify when an issue is created self-assigned to the actor', function (): void {
+    Event::fake([IssueCreated::class, IssueAssigned::class, NotificationCreated::class]);
+    [$ws, $actor, $team] = makeWorkspaceWithActor();
+
+    $issue = app(CreateIssue::class)->handle($actor, [
+        'team_id' => $team->id, 'title' => 'Self-assigned issue', 'assignee_id' => $actor->id,
+    ]);
+
+    $this->assertDatabaseMissing('notifications', [
+        'user_id' => $actor->id, 'type' => 'issue_assigned', 'subject_id' => $issue->id,
+    ]);
+    Event::assertNotDispatched(NotificationCreated::class);
+    Event::assertDispatched(IssueAssigned::class, fn (IssueAssigned $e): bool => $e->assigneeId === $actor->id);
+
+    Workspace::forgetCurrent();
+});
+
 it('rejects a team from another workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
@@ -85,8 +102,8 @@ it('rejects a project_id not in the workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
     expect(fn () => app(CreateIssue::class)->handle($actor, [
-        'team_id'    => $team->id,
-        'title'      => 'x',
+        'team_id' => $team->id,
+        'title' => 'x',
         'project_id' => (string) Str::uuid(),
     ]))->toThrow(ValidationException::class);
 
@@ -97,8 +114,8 @@ it('rejects a cycle_id not in the workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
     expect(fn () => app(CreateIssue::class)->handle($actor, [
-        'team_id'  => $team->id,
-        'title'    => 'x',
+        'team_id' => $team->id,
+        'title' => 'x',
         'cycle_id' => (string) Str::uuid(),
     ]))->toThrow(ValidationException::class);
 

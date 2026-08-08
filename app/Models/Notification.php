@@ -17,12 +17,15 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
  * @property string $id
  * @property string $workspace_id
  * @property string $user_id
+ * @property string|null $actor_id
  * @property string $type
  * @property string $subject_type
  * @property string $subject_id
+ * @property string|null $body
  * @property Carbon|null $read_at
  * @property Carbon $created_at
  * @property User $user
+ * @property User|null $actor
  * @property Workspace $workspace
  */
 #[Table(
@@ -33,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     timestamps: false,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'user_id', 'type', 'subject_type', 'subject_id', 'read_at', 'created_at'])]
+#[Fillable(['id', 'user_id', 'actor_id', 'type', 'subject_type', 'subject_id', 'body', 'read_at', 'created_at'])]
 class Notification extends TenantAwareEntity
 {
     /**
@@ -45,9 +48,11 @@ class Notification extends TenantAwareEntity
             'id' => 'string',
             'workspace_id' => 'string',
             'user_id' => 'string',
+            'actor_id' => 'string',
             'type' => 'string',
             'subject_type' => 'string',
             'subject_id' => 'string',
+            'body' => 'string',
             'read_at' => 'datetime',
             'created_at' => 'datetime',
         ];
@@ -59,6 +64,14 @@ class Notification extends TenantAwareEntity
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_id');
     }
 
     /**

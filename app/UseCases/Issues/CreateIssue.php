@@ -38,24 +38,24 @@ final class CreateIssue
 
         $issue = DB::transaction(function () use ($actor, $data, &$notif): Issue {
             $issue = $this->issues->create([
-                'team_id'         => $data['team_id'],
-                'title'           => $data['title'],
-                'description'     => $data['description'] ?? null,
-                'status'          => $data['status'] ?? 'backlog',
-                'priority'        => $data['priority'] ?? 'no_priority',
-                'estimate'        => $data['estimate'] ?? null,
-                'due_date'        => $data['due_date'] ?? null,
-                'project_id'      => $data['project_id'] ?? null,
-                'cycle_id'        => $data['cycle_id'] ?? null,
+                'team_id' => $data['team_id'],
+                'title' => $data['title'],
+                'description' => $data['description'] ?? null,
+                'status' => $data['status'] ?? 'backlog',
+                'priority' => $data['priority'] ?? 'no_priority',
+                'estimate' => $data['estimate'] ?? null,
+                'due_date' => $data['due_date'] ?? null,
+                'project_id' => $data['project_id'] ?? null,
+                'cycle_id' => $data['cycle_id'] ?? null,
                 'parent_issue_id' => $data['parent_issue_id'] ?? null,
-                'assignee_id'     => $data['assignee_id'] ?? null,
-                'created_by'      => $actor->id,
+                'assignee_id' => $data['assignee_id'] ?? null,
+                'created_by' => $actor->id,
             ]);
 
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
-            if ($issue->assignee_id !== null) {
-                $notif = $this->notifications->create($issue->assignee_id, 'issue_assigned', 'issue', $issue->id);
+            if ($issue->assignee_id !== null && $issue->assignee_id !== $actor->id) {
+                $notif = $this->notifications->create($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title);
             }
 
             return $issue;

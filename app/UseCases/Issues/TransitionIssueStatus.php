@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\UseCases\Issues;
 
 use App\Events\IssueStatusChanged;
+use App\Events\NotificationCreated;
 use App\Models\Issue;
 use App\Models\User;
 use App\Repositories\IssueActivityRepository;
 use App\Repositories\IssueRepository;
+use App\Repositories\NotificationRepository;
+use App\Services\NotificationRecipients;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -18,10 +21,22 @@ final class TransitionIssueStatus
 
     private const CLOSED = ['done', 'cancelled'];
 
+    /** @var array<string, string> */
+    private const STATUS_LABELS = [
+        'backlog' => 'Backlog',
+        'todo' => 'Todo',
+        'in_progress' => 'In Progress',
+        'in_review' => 'In Review',
+        'done' => 'Done',
+        'cancelled' => 'Cancelled',
+    ];
+
     public function __construct(
         private readonly IssueRepository $issues,
         private readonly IssueActivityRepository $activities,
         private readonly ResolveBlockersOnIssueCompleted $resolveBlockers,
+        private readonly NotificationRepository $notifications,
+        private readonly NotificationRecipients $recipients,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -44,13 +59,18 @@ final class TransitionIssueStatus
 
         $unblockEvents = [];
 
-        DB::transaction(function () use ($issue, $actor, $from, $to, &$unblockEvents): void {
+        /** @var list<NotificationCreated> $notificationEvents */
+        $notificationEvents = [];
+
+        DB::transaction(function () use ($issue, $actor, $from, $to, &$unblockEvents, &$notificationEvents): void {
             $this->issues->update($issue, ['status' => $to]);
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {
-                $unblockEvents = $this->resolveBlockers->resolve($issue)['events'];
+                $unblockEvents = $this->resolveBlockers->resolve($issue, $actor->id)['events'];
             }
+
+            $notificationEvents = $this->notifyParticipants($issue, $actor, $to);
         });
 
         event(new IssueStatusChanged($issue, $from, $to));
@@ -59,7 +79,26 @@ final class TransitionIssueStatus
             event($event);
         }
 
+        foreach ($notificationEvents as $event) {
+            event($event);
+        }
+
         return $issue;
+    }
+
+    /** @return list<NotificationCreated> */
+    private function notifyParticipants(Issue $issue, User $actor, string $to): array
+    {
+        $label = self::STATUS_LABELS[$to] ?? $to;
+
+        $events = [];
+
+        foreach ($this->recipients->participants($issue, $actor->id) as $userId) {
+            $notification = $this->notifications->create($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label);
+            $events[] = new NotificationCreated($userId, $notification->id, 'issue_status_changed');
+        }
+
+        return $events;
     }
 
     /**

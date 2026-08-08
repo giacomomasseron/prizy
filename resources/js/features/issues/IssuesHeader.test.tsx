@@ -20,6 +20,11 @@ vi.mock('react-router-dom', async (importOriginal) => {
 vi.mock('../../components/UserMenu', () => ({
     UserMenu: () => <div data-testid="user-menu-stub" />,
 }));
+// NotificationBell pulls in react-query notification hooks; stub it here — its
+// behaviour is covered by NotificationBell.test.tsx.
+vi.mock('../notifications/NotificationBell', () => ({
+    NotificationBell: () => <div data-testid="notif-bell-stub" />,
+}));
 
 function wrap(ui: React.ReactNode, path = '/') {
     return render(
@@ -127,9 +132,10 @@ describe('IssuesHeader', () => {
         expect(resetBtn).toBeDisabled();
     });
 
-    // ── Theme toggle + user avatar (right side of the toolbar) ──
-    it('renders a Toggle theme button and the user avatar menu', () => {
+    // ── Notifications bell + theme toggle + user avatar (right side of the toolbar) ──
+    it('renders the notifications bell, Toggle theme button, and the user avatar menu', () => {
         wrap(<IssuesHeader view="list" />);
+        expect(screen.getByTestId('notif-bell-stub')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
         expect(screen.getByTestId('user-menu-stub')).toBeInTheDocument();
     });

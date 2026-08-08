@@ -142,6 +142,9 @@ export interface AppNotification {
     subject_id: string;
     read_at: string | null;
     created_at: string;
+    actor?: { id: string; name: string } | null;
+    body?: string | null;
+    subject?: { type: string; id: string; ref: string; title: string; path: string } | null;
 }
 
 export interface SlackIntegration {
