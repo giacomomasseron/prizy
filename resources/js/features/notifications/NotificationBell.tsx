@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotifications, useUnreadCount, useMarkAllRead, useMarkRead } from './hooks';
-import { notificationText, subjectPath } from './text';
+import { notificationMeta, notificationText, subjectPath } from './text';
 import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
@@ -111,6 +111,8 @@ export function NotificationBell() {
                         )}
                         {items.map((n) => {
                             const avatar = n.actor ? avatarFor(n.actor) : null;
+                            const meta = notificationMeta(n.type);
+                            const showActorName = n.actor && ['mention', 'comment', 'status'].includes(meta.category);
                             return (
                                 <div
                                     key={n.id}
@@ -122,7 +124,7 @@ export function NotificationBell() {
                                     {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={20} title={n.actor?.name} />}
                                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         <div style={{ fontSize: 12.3, color: 'var(--fg)', lineHeight: 1.45 }}>
-                                            {n.actor && <span style={{ fontWeight: 600 }}>{n.actor.name} </span>}
+                                            {showActorName && <span style={{ fontWeight: 600 }}>{n.actor!.name} </span>}
                                             {notificationText(n.type)}
                                         </div>
                                         {n.body && (

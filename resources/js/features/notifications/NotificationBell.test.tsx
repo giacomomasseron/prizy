@@ -108,4 +108,24 @@ describe('NotificationBell', () => {
         expect(screen.getByText('ENG-42')).toBeInTheDocument();
         expect(screen.getByText('Looks good to me, shipping this now.')).toBeInTheDocument();
     });
+
+    it('does not prefix the actor name for full-sentence notification types like issue_assigned', () => {
+        listItems = [
+            {
+                id: 'n4',
+                type: 'issue_assigned',
+                subject_type: 'issue',
+                subject_id: 'i4',
+                read_at: null,
+                created_at: new Date().toISOString(),
+                actor: { id: 'u2', name: 'Jane Doe' },
+            },
+        ];
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByText('You were assigned an issue')).toBeInTheDocument();
+        expect(screen.queryByText(/Jane Doe You were assigned/)).not.toBeInTheDocument();
+        expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument();
+        expect(screen.getByTitle('Jane Doe')).toBeInTheDocument();
+    });
 });
