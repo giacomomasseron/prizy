@@ -5,7 +5,7 @@
 
 :root {
   --bg:#0b0b0d; --bg2:#111114; --panel:#151519; --border:#232327; --border2:#31313a;
-  --fg:#eeeef1; --fg2:#9a9aa4; --fg3:#61616b; --hover:rgba(255,255,255,.06);
+  --fg:#eeeef1; --fg2:#a8a8b2; --fg3:#8b8b95; --hover:rgba(255,255,255,.06);
   --accent:#6d69f2; --accent2:rgba(109,105,242,.16);
   --red:#eb5757; --amber:#e0a13a; --green:#4bab66; --blue:#5b8def; --teal:#3aa8a0;
 }
