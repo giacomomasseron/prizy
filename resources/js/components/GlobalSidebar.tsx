@@ -28,7 +28,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const showTracker = canUseTracker(me.data);
     const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
     const { openCreate } = useIssueDrawers();
-    const { data: issuesData } = useIssues();
+    const { data: issuesData } = useIssues({}, { enabled: showTracker });
     const unread = useUnreadCount();
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const teams = useTeams({ mine: true });

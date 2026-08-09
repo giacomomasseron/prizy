@@ -64,9 +64,9 @@ function colorDot(color: string) {
 
 export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
     const teams = useTeams();
-    const projects = useProjects();
+    const projects = useProjects(undefined, { enabled: open });
     const members = useMembers();
-    const labels = useLabels();
+    const labels = useLabels({ enabled: open });
     const createIssue = useCreateIssue();
 
     const [teamId, setTeamId] = useState<string | null>(null);

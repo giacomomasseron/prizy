@@ -38,10 +38,11 @@ function issuesPath(filters: IssueFilters): string {
     return `/issues?${params.toString()}`;
 }
 
-export function useIssues(filters: IssueFilters = {}) {
+export function useIssues(filters: IssueFilters = {}, options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ['issues', filters],
         queryFn: () => api.page<Issue>(issuesPath(filters)),
+        enabled: options?.enabled,
     });
 }
 
