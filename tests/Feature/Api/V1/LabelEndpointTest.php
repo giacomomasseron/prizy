@@ -55,11 +55,11 @@ it('rejects a duplicate label name (422) and a bad color', function (): void {
     Workspace::forgetCurrent();
 });
 
-it('forbids a viewer from creating and allows any member to read', function (): void {
+it('forbids a viewer (non-developer) from creating or listing', function (): void {
     [$token] = labelWorld(['admin_level' => 'viewer', 'is_developer' => false]);
 
     $this->withToken($token)->postJson('/v1/labels', ['name' => 'Y', 'color' => '#00ff00'])->assertStatus(403);
-    $this->withToken($token)->getJson('/v1/labels')->assertStatus(200);
+    $this->withToken($token)->getJson('/v1/labels')->assertStatus(403);
 
     Workspace::forgetCurrent();
 });

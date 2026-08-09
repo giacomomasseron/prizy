@@ -52,10 +52,10 @@ it('rejects an invalid definition (bad view_type, unknown filter key, bad sort)'
     Workspace::forgetCurrent();
 });
 
-it('forbids a viewer from creating and allows any member to read', function () use ($validDef): void {
+it('forbids a viewer (non-developer) from creating or listing', function () use ($validDef): void {
     [$token] = savedViewWorld(['admin_level' => 'viewer', 'is_developer' => false]);
     $this->withToken($token)->postJson('/v1/saved-views', ['name' => 'X', 'definition' => $validDef])->assertStatus(403);
-    $this->withToken($token)->getJson('/v1/saved-views')->assertStatus(200);
+    $this->withToken($token)->getJson('/v1/saved-views')->assertStatus(403);
     Workspace::forgetCurrent();
 });
 
@@ -112,7 +112,7 @@ it('accepts source as a valid filter key on create and update', function (): voi
     // POST with source filter → 201
     $response = $this->withToken($token)
         ->postJson('/v1/saved-views', [
-            'name'       => 'Source view',
+            'name' => 'Source view',
             'definition' => ['filter' => ['source' => 'native'], 'sort' => '-created_at', 'view_type' => 'list'],
         ]);
     $response->assertStatus(201);
@@ -135,7 +135,7 @@ it('accepts advanced-search sort values on create and update', function (): void
     foreach (['updated', 'priority', 'status'] as $sort) {
         $response = $this->withToken($token)
             ->postJson('/v1/saved-views', [
-                'name'       => "V {$sort}",
+                'name' => "V {$sort}",
                 'definition' => ['filter' => [], 'sort' => $sort, 'view_type' => 'list'],
             ]);
         $response->assertStatus(201);
