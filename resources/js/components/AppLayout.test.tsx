@@ -12,7 +12,10 @@ function makeMe(adminLevel = 'member') {
         name: 'Alex Rivera',
         email: 'alex@example.com',
         admin_level: adminLevel,
-        is_developer: false,
+        // is_developer: true — this fixture exercises general sidebar/hotkey behaviour, not tracker
+        // authorization (that's covered by GlobalSidebar.test.tsx); a developer keeps the tracker nav
+        // + New-issue/C-hotkey affordances visible so those unrelated assertions keep working.
+        is_developer: true,
         is_agent: false,
         email_digest_frequency: 'off' as const,
     };
@@ -119,6 +122,10 @@ describe('AppLayout C-hotkey', () => {
 
     it('opens the create drawer when C is pressed with nothing focused', async () => {
         renderLayout();
+        // The hotkey is gated on `canDevelop`, derived from the (async-resolved) /me fetch — wait for
+        // it to settle (surfaced by the sidebar's New-issue button) before firing the one-shot keydown,
+        // otherwise the handler bails out on a still-loading `me`.
+        await screen.findByRole('button', { name: /New issue/ });
         // Ensure no input is focused
         (document.activeElement as HTMLElement | null)?.blur();
         fireEvent.keyDown(window, { key: 'c' });
@@ -170,6 +177,9 @@ describe('AppLayout C-hotkey', () => {
 
     it('is suppressed when the create drawer is already open', async () => {
         renderLayout();
+        // Wait for `me` (and thus `canDevelop`) to resolve before the first keydown — see the
+        // "opens the create drawer…" test above for why.
+        await screen.findByRole('button', { name: /New issue/ });
         // First press opens the drawer
         (document.activeElement as HTMLElement | null)?.blur();
         fireEvent.keyDown(window, { key: 'c' });

@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, NavLink } from 'react-router-dom';
+import { canUseTracker } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
@@ -24,6 +25,8 @@ const box = (c: string): CSSProperties => ({ width: 12, height: 12, borderRadius
 
 export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const me = useMe();
+    const showTracker = canUseTracker(me.data);
+    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues();
     const unread = useUnreadCount();
@@ -56,25 +59,31 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
             </div>
 
             {/* New issue */}
-            <div style={{ padding: '0 10px 10px' }}>
-                <button type="button" onClick={() => openCreate()} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }} className="hover:border-border2">
-                    <span style={{ width: 16, height: 16, borderRadius: 5, background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>+</span>
-                    New issue<span style={{ marginLeft: 'auto' }}><Kbd>C</Kbd></span>
-                </button>
-            </div>
+            {canDevelop && (
+                <div style={{ padding: '0 10px 10px' }}>
+                    <button type="button" onClick={() => openCreate()} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }} className="hover:border-border2">
+                        <span style={{ width: 16, height: 16, borderRadius: 5, background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>+</span>
+                        New issue<span style={{ marginLeft: 'auto' }}><Kbd>C</Kbd></span>
+                    </button>
+                </div>
+            )}
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {/* Support bridge — mirrors Prizy.dc.html: My Issues · Escalations · Inbox · Support inbox */}
                 <div style={{ padding: '14px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' }}>Support bridge</div>
                 <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={() => rowStyle(false)} className="hover:bg-hover">
-                        <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
-                        <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
-                    </NavLink>
-                    <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...rowStyle(false), opacity: 0.5, cursor: 'default' }}>
-                        <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
-                        <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Soon</span>
-                    </button>
+                    {showTracker && (
+                        <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={() => rowStyle(false)} className="hover:bg-hover">
+                            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
+                            <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
+                        </NavLink>
+                    )}
+                    {showTracker && (
+                        <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...rowStyle(false), opacity: 0.5, cursor: 'default' }}>
+                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
+                            <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Soon</span>
+                        </button>
+                    )}
                     {/* Inbox → notifications (design folds this into the Support bridge with the ◔ glyph) */}
                     <NavLink to="/notifications" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')} aria-label="Inbox">
                         <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Inbox</span>
@@ -91,54 +100,62 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                 </div>
 
                 {/* Workspace */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
-                    <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} aria-expanded={workspaceOpen} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
-                </div>
-                {workspaceOpen && (
-                    <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        <NavLink to="/" end style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
-                            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
-                            <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
-                        </NavLink>
-                        <NavLink to="/projects" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
-                            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
-                            <span style={{ flex: 1 }}>Projects</span>
-                        </NavLink>
-                        <NavLink to="/roadmap" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
-                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
-                        </NavLink>
-                    </nav>
+                {showTracker && (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
+                            <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} aria-expanded={workspaceOpen} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
+                        </div>
+                        {workspaceOpen && (
+                            <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                <NavLink to="/" end style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                    <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
+                                    <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
+                                </NavLink>
+                                <NavLink to="/projects" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                    <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
+                                    <span style={{ flex: 1 }}>Projects</span>
+                                </NavLink>
+                                <NavLink to="/roadmap" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                    <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
+                                </NavLink>
+                            </nav>
+                        )}
+                    </>
                 )}
 
                 {/* My Teams */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
-                    <button type="button" onClick={() => setTeamsOpen((o) => !o)} aria-expanded={teamsOpen} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
-                    {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 22, height: 22, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
-                </div>
-                {teamsOpen && (
-                    <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                        {myTeams.map((t) => {
-                            const expanded = !!teamExp[t.id];
-                            return (
-                                <div key={t.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                                    <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={expanded} style={rowStyle(false)} className="hover:bg-hover">
-                                        <span aria-hidden="true" style={{ width: 12, ...caret(expanded), justifyContent: 'center', display: 'inline-flex' }}>▶</span>
-                                        <span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: t.color, display: 'inline-block' }} /></span>
-                                        <span style={{ flex: 1, textAlign: 'left' }}>{t.name}</span>
-                                        {t.member_count != null && <span style={countStyle}>{t.member_count}</span>}
-                                    </button>
-                                    {expanded && (
-                                        <div data-testid={`team-links-${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 20 }}>
-                                            <Link to={`/?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
-                                            <Link to={`/teams/${t.id}/cycles`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
-                                            <Link to={`/projects?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
+                {showTracker && (
+                    <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
+                            <button type="button" onClick={() => setTeamsOpen((o) => !o)} aria-expanded={teamsOpen} style={sectionBtn} className="hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
+                            {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 22, height: 22, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
+                        </div>
+                        {teamsOpen && (
+                            <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                {myTeams.map((t) => {
+                                    const expanded = !!teamExp[t.id];
+                                    return (
+                                        <div key={t.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                                            <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={expanded} style={rowStyle(false)} className="hover:bg-hover">
+                                                <span aria-hidden="true" style={{ width: 12, ...caret(expanded), justifyContent: 'center', display: 'inline-flex' }}>▶</span>
+                                                <span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: t.color, display: 'inline-block' }} /></span>
+                                                <span style={{ flex: 1, textAlign: 'left' }}>{t.name}</span>
+                                                {t.member_count != null && <span style={countStyle}>{t.member_count}</span>}
+                                            </button>
+                                            {expanded && (
+                                                <div data-testid={`team-links-${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 20 }}>
+                                                    <Link to={`/?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
+                                                    <Link to={`/teams/${t.id}/cycles`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
+                                                    <Link to={`/projects?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
-                                </div>
-                            );
-                        })}
-                        {myTeams.length === 0 && <div style={{ padding: '4px 9px', fontSize: 12, color: 'var(--fg3)' }}>No teams yet.</div>}
-                    </div>
+                                    );
+                                })}
+                                {myTeams.length === 0 && <div style={{ padding: '4px 9px', fontSize: 12, color: 'var(--fg3)' }}>No teams yet.</div>}
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
 

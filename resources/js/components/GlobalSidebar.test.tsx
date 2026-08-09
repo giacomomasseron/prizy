@@ -26,7 +26,10 @@ describe('GlobalSidebar', () => {
     it('renders the sections + workspace nav links', async () => {
         renderSidebar();
         expect(await screen.findByText('Support bridge')).toBeInTheDocument();
-        expect(screen.getByText('Workspace')).toBeInTheDocument();
+        // Workspace is now gated behind the (async-resolved) tracker capability, so `findByText`
+        // (not `getByText`) is required here — it polls until the /me fetch resolves and the
+        // tracker-gated block commits, instead of racing the still-loading first render.
+        expect(await screen.findByText('Workspace')).toBeInTheDocument();
         expect(screen.getByText('My Teams')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /My Issues/ })).toBeInTheDocument();
         // Scoped to the Workspace <nav> — "Issues" is also a substring of "My Issues" (Support bridge), so an
@@ -79,5 +82,37 @@ describe('GlobalSidebar', () => {
     it('shows the Support inbox link for agents, linking to /support', async () => {
         renderSidebar('member', true);
         expect(await screen.findByRole('link', { name: /Support inbox/ })).toHaveAttribute('href', '/support');
+    });
+    it('hides the tracker nav + New issue for an agent-only non-developer', async () => {
+        // agent-only: admin_level member, is_developer false, is_agent true
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/members')) return j({ data: [] });
+            if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Maya', email: 'm@e.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off' } });
+            if (url.includes('/unread-count')) return j({ data: { count: 0 } });
+            if (url.includes('/teams')) return j({ data: [], links: { next: null } });
+            if (url.includes('/issues')) return j({ data: [], links: { next: null } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><GlobalSidebar onCollapse={() => {}} /></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByText('Support bridge')).toBeInTheDocument();
+        // tracker surfaces gone:
+        expect(screen.queryByText('Workspace')).toBeNull();
+        expect(screen.queryByText('My Teams')).toBeNull();
+        expect(screen.queryByRole('button', { name: /New issue/ })).toBeNull();
+        expect(screen.queryByRole('link', { name: /My Issues/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /Escalations/ })).toBeNull();
+        // support surfaces kept:
+        expect(screen.getByRole('link', { name: 'Inbox' })).toBeInTheDocument();
+        // Support inbox is gated on `me.data?.is_agent` (async-resolved), same reasoning as above —
+        // `findByRole` polls until the /me fetch resolves, matching the pattern the agent-gated test
+        // below already uses for this identical link.
+        expect(await screen.findByRole('link', { name: /Support inbox/ })).toBeInTheDocument();
+    });
+    it('shows the tracker nav + New issue for a developer', async () => {
+        renderSidebar('member', false); // is_developer:true in the stub
+        expect(await screen.findByText('Workspace')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /New issue/ })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /My Issues/ })).toBeInTheDocument();
     });
 });
