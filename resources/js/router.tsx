@@ -32,6 +32,7 @@ import { ConfirmProvider } from './components/ui/ConfirmProvider';
 import SupportLayout from './features/support/SupportLayout';
 import ReportingLayout from './features/reporting/ReportingLayout';
 import { RequireAgent } from './auth/RequireAgent';
+import { RequireDeveloper } from './auth/RequireDeveloper';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -56,21 +57,22 @@ export default function AppRouter() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route element={<AuthedLayout />}>
-                <Route path="/" element={<IssueListPage />} />
-                <Route path="/board" element={<BoardPage />} />
+                <Route path="/" element={<RequireDeveloper><IssueListPage /></RequireDeveloper>} />
+                <Route path="/board" element={<RequireDeveloper><BoardPage /></RequireDeveloper>} />
+                {/* NOT wrapped — ticket→issue bridge */}
                 <Route path="/issues/:id" element={<IssueDetailPage />} />
-                <Route path="/teams" element={<TeamsPage />} />
-                <Route path="/teams/:id" element={<TeamDetailPage />} />
-                <Route path="/teams/:id/cycles" element={<CyclesPage />} />
-                <Route path="/projects" element={<ProjectsPage />} />
-                <Route path="/projects/:id" element={<ProjectWorkspace />}>
+                <Route path="/teams" element={<RequireDeveloper><TeamsPage /></RequireDeveloper>} />
+                <Route path="/teams/:id" element={<RequireDeveloper><TeamDetailPage /></RequireDeveloper>} />
+                <Route path="/teams/:id/cycles" element={<RequireDeveloper><CyclesPage /></RequireDeveloper>} />
+                <Route path="/projects" element={<RequireDeveloper><ProjectsPage /></RequireDeveloper>} />
+                <Route path="/projects/:id" element={<RequireDeveloper><ProjectWorkspace /></RequireDeveloper>}>
                     <Route index element={<ProjectOverview />} />
                     <Route path="issues" element={<ProjectIssues />} />
                     <Route path="cycles" element={<ProjectCycles />} />
                     <Route path="roadmap" element={<ProjectRoadmap />} />
                 </Route>
                 <Route path="/labels" element={<Navigate to="/settings/labels" replace />} />
-                <Route path="/roadmap" element={<RoadmapPage />} />
+                <Route path="/roadmap" element={<RequireDeveloper><RoadmapPage /></RequireDeveloper>} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsLayout />}>
                     <Route index element={<Navigate to="members" replace />} />
@@ -86,7 +88,7 @@ export default function AppRouter() {
                 </Route>
                 <Route path="/search" element={<SearchPage />} />
                 <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
-                <Route path="/create" element={<CreateScreen />} />
+                <Route path="/create" element={<RequireDeveloper><CreateScreen /></RequireDeveloper>} />
                 <Route path="/support" element={<RequireAgent><SupportLayout /></RequireAgent>} />
                 <Route path="/support/tickets/:id" element={<RequireAgent><SupportLayout /></RequireAgent>} />
                 <Route path="/support/reporting" element={<RequireAgent><ReportingLayout /></RequireAgent>} />
