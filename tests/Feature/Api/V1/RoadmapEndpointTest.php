@@ -63,9 +63,9 @@ it('is workspace-scoped', function (): void {
     Workspace::forgetCurrent();
 });
 
-it('is readable by any member (viewer)', function (): void {
+it('is not readable by a non-developer (viewer)', function (): void {
     [$token] = roadmapWorld(['admin_level' => 'viewer', 'is_developer' => false]);
-    $this->withToken($token)->getJson('/v1/roadmap')->assertStatus(200);
+    $this->withToken($token)->getJson('/v1/roadmap')->assertStatus(403);
     Workspace::forgetCurrent();
 });
 
