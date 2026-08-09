@@ -64,35 +64,30 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
             </div>
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {/* Support bridge */}
+                {/* Support bridge — mirrors Prizy.dc.html: My Issues · Escalations · Inbox · Support inbox */}
                 <div style={{ padding: '14px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' }}>Support bridge</div>
                 <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={({ isActive }) => rowStyle(false)} className="hover:bg-hover">
+                    <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={() => rowStyle(false)} className="hover:bg-hover">
                         <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
                         <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
                     </NavLink>
-                    {me.data?.is_agent && (
-                        <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
-                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◫</span>
-                            <span style={{ flex: 1 }}>Support desk</span>
-                        </NavLink>
-                    )}
                     <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...rowStyle(false), opacity: 0.5, cursor: 'default' }}>
                         <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
                         <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Soon</span>
                     </button>
-                    <div style={{ ...rowStyle(false), opacity: 0.55, cursor: 'default' }}>
-                        <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>
-                        <span style={{ flex: 1 }}>Support inbox</span><span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Zendesk</span>
-                    </div>
-                </div>
-
-                {/* Inbox (preserved — mockup omits it, we keep notifications reachable) */}
-                <div style={{ padding: '8px 8px 0' }}>
+                    {/* Inbox → notifications (design folds this into the Support bridge with the ◔ glyph) */}
                     <NavLink to="/notifications" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')} aria-label="Inbox">
-                        <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>✉</span><span style={{ flex: 1 }}>Inbox</span>
+                        <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Inbox</span>
                         {unreadCount > 0 && <span data-testid="inbox-badge" style={{ fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
                     </NavLink>
+                    {/* Support inbox → agent desk (design: outlined-square glyph + "Agent" badge); agent-gated so non-agents get no dead /support link */}
+                    {me.data?.is_agent && (
+                        <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>
+                            <span style={{ flex: 1 }}>Support inbox</span>
+                            <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Agent</span>
+                        </NavLink>
+                    )}
                 </div>
 
                 {/* Workspace */}
