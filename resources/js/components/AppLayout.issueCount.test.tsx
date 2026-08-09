@@ -4,7 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../auth/useAuth', () => ({
-    useMe: () => ({ data: { id: 'u1', name: 'Test User', admin_level: 'member', is_developer: false } }),
+    // is_developer: true — this fixture exercises the issue-count badge rendering, not tracker
+    // authorization (see GlobalSidebar.test.tsx); a non-developer member would now have the Workspace
+    // nav (and its badge) hidden entirely by the tracker gating, which is unrelated to this test's concern.
+    useMe: () => ({ data: { id: 'u1', name: 'Test User', admin_level: 'member', is_developer: true } }),
     useLogout: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('../features/notifications/hooks', () => ({ useUnreadCount: () => ({ data: { count: 0 } }) }));

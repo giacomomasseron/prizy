@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { Label } from '../../lib/types';
 
-export function useLabels() {
-    return useQuery({ queryKey: ['labels'], queryFn: () => api.page<Label>('/labels') });
+export function useLabels(options?: { enabled?: boolean }) {
+    return useQuery({ queryKey: ['labels'], queryFn: () => api.page<Label>('/labels'), enabled: options?.enabled });
 }
 
 export function useCreateLabel() {

@@ -11,7 +11,7 @@ final class MilestonePolicy
 {
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->is_developer;
     }
 
     public function view(User $user, Milestone $milestone): bool

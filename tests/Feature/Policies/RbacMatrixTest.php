@@ -19,9 +19,9 @@ uses(RefreshDatabase::class);
 function mkUser(Workspace $ws, string $level, bool $dev, bool $agent): User
 {
     return User::factory()->for($ws, 'workspace')->create([
-        'admin_level'  => $level,
+        'admin_level' => $level,
         'is_developer' => $dev,
-        'is_agent'     => $agent,
+        'is_agent' => $agent,
     ]);
 }
 
@@ -33,15 +33,15 @@ it('IssuePolicy: sweeps all 16 admin_level × is_developer × is_agent combos', 
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
 
-    $team    = Team::factory()->for($ws, 'workspace')->create();
+    $team = Team::factory()->for($ws, 'workspace')->create();
     $creator = mkUser($ws, 'owner', false, false);
-    $issue   = Issue::create(['team_id' => $team->id, 'title' => 'T', 'created_by' => $creator->id]);
+    $issue = Issue::create(['team_id' => $team->id, 'title' => 'T', 'created_by' => $creator->id]);
 
     // [level, dev, agent, viewAny, view, create, update, delete]
     // Rules:
     //   owner → Gate::before short-circuits (always T)
     //   create/update/delete → is_developer=true AND admin_level != 'viewer'
-    //   viewAny/view → any member (incl. viewer)
+    //   viewAny → is_developer (owner via Gate::before); view (model) → any same-workspace member
     //   view/update/delete (model) → also requires same workspace_id
     $matrix = [
         // --- owner (Gate::before short-circuit) ---
@@ -50,31 +50,31 @@ it('IssuePolicy: sweeps all 16 admin_level × is_developer × is_agent combos', 
         ['owner',  false, true,  true,  true,  true,  true,  true],
         ['owner',  true,  true,  true,  true,  true,  true,  true],
         // --- admin ---
-        ['admin',  false, false, true,  true,  false, false, false],
+        ['admin',  false, false, false, true,  false, false, false],
         ['admin',  true,  false, true,  true,  true,  true,  true],
-        ['admin',  false, true,  true,  true,  false, false, false],
+        ['admin',  false, true,  false, true,  false, false, false],
         ['admin',  true,  true,  true,  true,  true,  true,  true],
         // --- member ---
-        ['member', false, false, true,  true,  false, false, false],
+        ['member', false, false, false, true,  false, false, false],
         ['member', true,  false, true,  true,  true,  true,  true],
-        ['member', false, true,  true,  true,  false, false, false],
+        ['member', false, true,  false, true,  false, false, false],
         ['member', true,  true,  true,  true,  true,  true,  true],
         // --- viewer (can read; NEVER writes even with is_developer) ---
-        ['viewer', false, false, true,  true,  false, false, false],
+        ['viewer', false, false, false, true,  false, false, false],
         ['viewer', true,  false, true,  true,  false, false, false],
-        ['viewer', false, true,  true,  true,  false, false, false],
+        ['viewer', false, true,  false, true,  false, false, false],
         ['viewer', true,  true,  true,  true,  false, false, false],
     ];
 
     foreach ($matrix as [$level, $dev, $agent, $viewAny, $view, $create, $update, $delete]) {
-        $tag  = "$level dev=$dev agent=$agent";
+        $tag = "$level dev=$dev agent=$agent";
         $user = mkUser($ws, $level, $dev, $agent);
 
         expect($user->can('viewAny', Issue::class))->toBe($viewAny, "viewAny @ $tag");
-        expect($user->can('view',    $issue))->toBe($view,    "view @ $tag");
-        expect($user->can('create',  Issue::class))->toBe($create,  "create @ $tag");
-        expect($user->can('update',  $issue))->toBe($update,  "update @ $tag");
-        expect($user->can('delete',  $issue))->toBe($delete,  "delete @ $tag");
+        expect($user->can('view', $issue))->toBe($view, "view @ $tag");
+        expect($user->can('create', Issue::class))->toBe($create, "create @ $tag");
+        expect($user->can('update', $issue))->toBe($update, "update @ $tag");
+        expect($user->can('delete', $issue))->toBe($delete, "delete @ $tag");
     }
 
     Workspace::forgetCurrent();
@@ -85,9 +85,9 @@ it('IssuePolicy: denies an owner of ws-A from instance abilities on models in ws
     $ws2 = Workspace::factory()->create();
 
     $ws1->makeCurrent();
-    $team1    = Team::factory()->for($ws1, 'workspace')->create();
+    $team1 = Team::factory()->for($ws1, 'workspace')->create();
     $creator1 = mkUser($ws1, 'owner', true, true);
-    $issue1   = Issue::create(['team_id' => $team1->id, 'title' => 'WS1 Issue', 'created_by' => $creator1->id]);
+    $issue1 = Issue::create(['team_id' => $team1->id, 'title' => 'WS1 Issue', 'created_by' => $creator1->id]);
     Workspace::forgetCurrent();
 
     // Owner in ws2 must be denied ALL instance-level abilities on ws1 models
@@ -95,14 +95,14 @@ it('IssuePolicy: denies an owner of ws-A from instance abilities on models in ws
     $ws2->makeCurrent();
     $ownerWs2 = mkUser($ws2, 'owner', false, false);
 
-    expect($ownerWs2->can('view',   $issue1))->toBeFalse('owner cross-ws view');
+    expect($ownerWs2->can('view', $issue1))->toBeFalse('owner cross-ws view');
     expect($ownerWs2->can('update', $issue1))->toBeFalse('owner cross-ws update');
     expect($ownerWs2->can('delete', $issue1))->toBeFalse('owner cross-ws delete');
 
     // Class-level abilities (no model argument) are still allowed for an owner
     // within their own workspace (Gate::before returns true when $model is null).
     expect($ownerWs2->can('viewAny', Issue::class))->toBeTrue('owner class-level viewAny still allowed');
-    expect($ownerWs2->can('create',  Issue::class))->toBeTrue('owner class-level create still allowed');
+    expect($ownerWs2->can('create', Issue::class))->toBeTrue('owner class-level create still allowed');
 
     Workspace::forgetCurrent();
 });
@@ -112,16 +112,16 @@ it('IssuePolicy: denies model abilities across workspace boundary', function ():
     $ws2 = Workspace::factory()->create();
 
     $ws1->makeCurrent();
-    $team1    = Team::factory()->for($ws1, 'workspace')->create();
+    $team1 = Team::factory()->for($ws1, 'workspace')->create();
     $creator1 = mkUser($ws1, 'owner', true, true);
-    $issue1   = Issue::create(['team_id' => $team1->id, 'title' => 'A', 'created_by' => $creator1->id]);
+    $issue1 = Issue::create(['team_id' => $team1->id, 'title' => 'A', 'created_by' => $creator1->id]);
     Workspace::forgetCurrent();
 
     // A user in ws2 with full capabilities should not access ws1 models.
     $ws2->makeCurrent();
     $superUser = mkUser($ws2, 'admin', true, true);
 
-    expect($superUser->can('view',   $issue1))->toBeFalse('cross-ws view');
+    expect($superUser->can('view', $issue1))->toBeFalse('cross-ws view');
     expect($superUser->can('update', $issue1))->toBeFalse('cross-ws update');
     expect($superUser->can('delete', $issue1))->toBeFalse('cross-ws delete');
 
@@ -138,7 +138,7 @@ it('TicketPolicy: sweeps all 16 admin_level × is_developer × is_agent combos',
 
     // Explicit UUIDs needed: $incrementing=false means Eloquent won't fetch the DB-generated UUID.
     $contact = Contact::create(['id' => (string) Str::uuid(), 'name' => 'Req', 'email' => 'req@test.com']);
-    $ticket  = Ticket::create(['id' => (string) Str::uuid(), 'requester_id' => $contact->id, 'subject' => 'T', 'channel' => 'email']);
+    $ticket = Ticket::create(['id' => (string) Str::uuid(), 'requester_id' => $contact->id, 'subject' => 'T', 'channel' => 'email']);
 
     // [level, dev, agent, viewAny, view, reply, manage]
     // Rules:
@@ -169,13 +169,13 @@ it('TicketPolicy: sweeps all 16 admin_level × is_developer × is_agent combos',
     ];
 
     foreach ($matrix as [$level, $dev, $agent, $viewAny, $view, $reply, $manage]) {
-        $tag  = "$level dev=$dev agent=$agent";
+        $tag = "$level dev=$dev agent=$agent";
         $user = mkUser($ws, $level, $dev, $agent);
 
         expect($user->can('viewAny', Ticket::class))->toBe($viewAny, "viewAny @ $tag");
-        expect($user->can('view',    $ticket))->toBe($view,   "view @ $tag");
-        expect($user->can('reply',   $ticket))->toBe($reply,  "reply @ $tag");
-        expect($user->can('manage',  $ticket))->toBe($manage, "manage @ $tag");
+        expect($user->can('view', $ticket))->toBe($view, "view @ $tag");
+        expect($user->can('reply', $ticket))->toBe($reply, "reply @ $tag");
+        expect($user->can('manage', $ticket))->toBe($manage, "manage @ $tag");
     }
 
     Workspace::forgetCurrent();
@@ -187,14 +187,14 @@ it('TicketPolicy: denies model abilities across workspace boundary', function ()
 
     $ws1->makeCurrent();
     $contact1 = Contact::create(['id' => (string) Str::uuid(), 'name' => 'R', 'email' => 'r@ws1.com']);
-    $ticket1  = Ticket::create(['id' => (string) Str::uuid(), 'requester_id' => $contact1->id, 'subject' => 'X', 'channel' => 'email']);
+    $ticket1 = Ticket::create(['id' => (string) Str::uuid(), 'requester_id' => $contact1->id, 'subject' => 'X', 'channel' => 'email']);
     Workspace::forgetCurrent();
 
     $ws2->makeCurrent();
     $superUser = mkUser($ws2, 'admin', true, true);
 
-    expect($superUser->can('view',   $ticket1))->toBeFalse('cross-ws view');
-    expect($superUser->can('reply',  $ticket1))->toBeFalse('cross-ws reply');
+    expect($superUser->can('view', $ticket1))->toBeFalse('cross-ws view');
+    expect($superUser->can('reply', $ticket1))->toBeFalse('cross-ws reply');
     expect($superUser->can('manage', $ticket1))->toBeFalse('cross-ws manage');
 
     Workspace::forgetCurrent();
@@ -237,12 +237,12 @@ it('WorkspacePolicy: sweeps all 16 admin_level × is_developer × is_agent combo
     ];
 
     foreach ($matrix as [$level, $dev, $agent, $updateSettings, $manageBilling, $delete]) {
-        $tag  = "$level dev=$dev agent=$agent";
+        $tag = "$level dev=$dev agent=$agent";
         $user = mkUser($ws, $level, $dev, $agent);
 
         expect($user->can('updateSettings', $ws))->toBe($updateSettings, "updateSettings @ $tag");
-        expect($user->can('manageBilling',  $ws))->toBe($manageBilling,  "manageBilling @ $tag");
-        expect($user->can('delete',         $ws))->toBe($delete,         "delete @ $tag");
+        expect($user->can('manageBilling', $ws))->toBe($manageBilling, "manageBilling @ $tag");
+        expect($user->can('delete', $ws))->toBe($delete, "delete @ $tag");
     }
 
     Workspace::forgetCurrent();
@@ -287,10 +287,10 @@ it('MemberPolicy: sweeps all 16 admin_level × is_developer × is_agent combos',
     ];
 
     foreach ($matrix as [$level, $dev, $agent, $invite, $changeRole]) {
-        $tag  = "$level dev=$dev agent=$agent";
+        $tag = "$level dev=$dev agent=$agent";
         $user = mkUser($ws, $level, $dev, $agent);
 
-        expect($user->can('invite',     User::class))->toBe($invite,     "invite @ $tag");
+        expect($user->can('invite', User::class))->toBe($invite, "invite @ $tag");
         expect($user->can('changeRole', $targetMember))->toBe($changeRole, "changeRole @ $tag");
     }
 

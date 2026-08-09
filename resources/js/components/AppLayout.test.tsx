@@ -12,7 +12,10 @@ function makeMe(adminLevel = 'member') {
         name: 'Alex Rivera',
         email: 'alex@example.com',
         admin_level: adminLevel,
-        is_developer: false,
+        // is_developer: true — this fixture exercises general sidebar/hotkey behaviour, not tracker
+        // authorization (that's covered by GlobalSidebar.test.tsx); a developer keeps the tracker nav
+        // + New-issue/C-hotkey affordances visible so those unrelated assertions keep working.
+        is_developer: true,
         is_agent: false,
         email_digest_frequency: 'off' as const,
     };
@@ -119,10 +122,52 @@ describe('AppLayout C-hotkey', () => {
 
     it('opens the create drawer when C is pressed with nothing focused', async () => {
         renderLayout();
+        // The hotkey is gated on `canDevelop`, derived from the (async-resolved) /me fetch — wait for
+        // it to settle (surfaced by the sidebar's New-issue button) before firing the one-shot keydown,
+        // otherwise the handler bails out on a still-loading `me`.
+        await screen.findByRole('button', { name: /New issue/ });
         // Ensure no input is focused
         (document.activeElement as HTMLElement | null)?.blur();
         fireEvent.keyDown(window, { key: 'c' });
         expect(await screen.findByLabelText(/Issue title/i)).toBeInTheDocument();
+    });
+
+    it('does NOT open the create drawer when C is pressed for a non-developer', async () => {
+        // Exercises the disabled branch of the `canDevelop` gate (`if (!canDevelop) return;` in
+        // AppLayout.tsx) — every other hotkey test in this file uses an is_developer:true fixture
+        // (bumped for unrelated reasons; see the tracker-gating task), so none of them would catch a
+        // regression that let a non-developer, non-owner, non-agent member open the create drawer.
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            const j = (b: unknown, s = 200) =>
+                new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if ((url as string).includes('/members')) return j({ data: [] });
+            if ((url as string).includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Maya', email: 'm@e.com', admin_level: 'member', is_developer: false, is_agent: false, email_digest_frequency: 'off' } });
+            if ((url as string).includes('/unread-count')) return j({ data: { count: 0 } });
+            if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });
+            if ((url as string).includes('/teams')) return j({ data: [], links: { next: null } });
+            // CreateIssueDrawer is mounted unconditionally by AppLayout (regardless of `open`) and
+            // fetches the project list itself — matches the shape `renderLayout` above stubs.
+            if ((url as string).includes('/projects')) return j({ items: [], next: null });
+            if ((url as string).includes('/issues')) return j({ data: [], links: { next: null } });
+            return j({ data: {} });
+        }));
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/']}>
+                    <AppLayout />
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        // Wait for `me` to actually resolve (so `canDevelop` has settled to false and the keydown
+        // handler has re-bound) before firing the one-shot keydown. Unlike the developer fixture, no
+        // tracker-gated element (Workspace, New issue, …) ever renders here to use as that signal — but
+        // the sidebar footer/UserMenu shows the resolved user's name only once `me.data` is populated
+        // (it renders "Loading…" beforehand), so that's the readiness signal instead.
+        await screen.findByText('Maya');
+        (document.activeElement as HTMLElement | null)?.blur();
+        fireEvent.keyDown(window, { key: 'c' });
+        expect(drawerIsOpen()).toBe(false);
     });
 
     it('is suppressed when an <input> is focused', () => {
@@ -170,6 +215,9 @@ describe('AppLayout C-hotkey', () => {
 
     it('is suppressed when the create drawer is already open', async () => {
         renderLayout();
+        // Wait for `me` (and thus `canDevelop`) to resolve before the first keydown — see the
+        // "opens the create drawer…" test above for why.
+        await screen.findByRole('button', { name: /New issue/ });
         // First press opens the drawer
         (document.activeElement as HTMLElement | null)?.blur();
         fireEvent.keyDown(window, { key: 'c' });

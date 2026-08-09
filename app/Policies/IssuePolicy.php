@@ -16,10 +16,10 @@ use App\Models\User;
  */
 final class IssuePolicy
 {
-    /** Any authenticated workspace member may list issues. */
+    /** Listing issues requires developer capability. */
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->is_developer;
     }
 
     /** Any same-workspace member may read a specific issue. */

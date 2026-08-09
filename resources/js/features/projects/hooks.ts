@@ -15,11 +15,12 @@ interface ProjectInput {
     priority?: IssuePriority;
 }
 
-export function useProjects(filters?: { team_id?: string }) {
+export function useProjects(filters?: { team_id?: string }, options?: { enabled?: boolean }) {
     const teamId = filters?.team_id;
     return useQuery({
         queryKey: ['projects', filters ?? {}],
         queryFn: () => api.page<Project>(teamId ? `/projects?filter[team_id]=${encodeURIComponent(teamId)}` : '/projects'),
+        enabled: options?.enabled,
     });
 }
 
