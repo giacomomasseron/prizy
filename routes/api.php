@@ -186,12 +186,14 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/projects/{project}', [ProjectController::class, 'update'])->middleware('verified');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->middleware('verified');
 
-        Route::get('/teams/{team}/cycles', [CycleController::class, 'index']);
+        Route::get('/teams/{team}/cycles', [CycleController::class, 'index'])
+            ->middleware('can:viewAny,App\\Models\\Cycle');
         Route::post('/teams/{team}/cycles', [CycleController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Cycle']);
         Route::patch('/cycles/{cycle}', [CycleController::class, 'update'])->middleware('verified');
         Route::delete('/cycles/{cycle}', [CycleController::class, 'destroy'])->middleware('verified');
 
-        Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index']);
+        Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index'])
+            ->middleware('can:viewAny,App\\Models\\Milestone');
         Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Milestone']);
         Route::patch('/milestones/{milestone}', [MilestoneController::class, 'update'])->middleware('verified');
         Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->middleware('verified');

@@ -11,7 +11,7 @@ final class LabelPolicy
 {
     public function viewAny(User $user): bool
     {
-        return true;
+        return $user->is_developer;
     }
 
     public function view(User $user, Label $label): bool
