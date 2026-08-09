@@ -7,7 +7,7 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     await page.goto('/');
 
     // 2. The Inbox nav link is always present in the sidebar regardless of unread count
-    await expect(page.getByRole('link', { name: 'Inbox' })).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();
 
     // 2b. Inbox badge only renders when unread > 0 — gate the check on the API response
     const unreadResp = await page.waitForResponse(
@@ -19,7 +19,7 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     }
 
     // 3. Click Inbox nav link → navigate to /notifications
-    await page.getByRole('link', { name: 'Inbox' }).click();
+    await page.getByRole('link', { name: 'Inbox', exact: true }).click();
     await expect(page).toHaveURL(/\/notifications/);
     // Use .first() to handle the case where prior tests create additional
     // "You were assigned an issue" notifications (e.g. the detail test).

@@ -44,10 +44,9 @@ describe('GlobalSidebar', () => {
         // href itself rather than just the element to avoid asserting on the pre-fetch fallback.
         await waitFor(() => expect(screen.getByRole('link', { name: /My Issues/ })).toHaveAttribute('href', '/?assignee_id=u1'));
     });
-    it('renders disabled Escalations + Support inbox stubs', async () => {
+    it('renders the disabled Escalations stub', async () => {
         renderSidebar();
         expect(await screen.findByRole('button', { name: /Escalations/ })).toBeDisabled();
-        expect(screen.getByText('Zendesk')).toBeInTheDocument();
     });
     it('expands a team to team-scoped destinations', async () => {
         const user = userEvent.setup();
@@ -72,13 +71,13 @@ describe('GlobalSidebar', () => {
         await screen.findByText('My Teams');
         expect(screen.queryByRole('link', { name: 'New team' })).toBeNull();
     });
-    it('hides the Support desk link for non-agents', async () => {
+    it('hides the Support inbox link for non-agents', async () => {
         renderSidebar('owner', false);
         expect(await screen.findByText('Support bridge')).toBeInTheDocument();
-        expect(screen.queryByRole('link', { name: /Support desk/ })).toBeNull();
+        expect(screen.queryByRole('link', { name: /Support inbox/ })).toBeNull();
     });
-    it('shows the Support desk link for agents, linking to /support', async () => {
+    it('shows the Support inbox link for agents, linking to /support', async () => {
         renderSidebar('member', true);
-        expect(await screen.findByRole('link', { name: /Support desk/ })).toHaveAttribute('href', '/support');
+        expect(await screen.findByRole('link', { name: /Support inbox/ })).toHaveAttribute('href', '/support');
     });
 });
