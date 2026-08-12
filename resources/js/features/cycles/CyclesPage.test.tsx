@@ -39,7 +39,7 @@ describe('CyclesPage', () => {
         expect(await screen.findByRole('button', { name: 'New cycle' })).toBeInTheDocument();
     });
     it('hides create/delete for a non-developer', async () => {
-        renderPage(CYCLES, { ...ME, is_developer: false });
+        renderPage(CYCLES, { ...ME, admin_level: 'member', is_developer: false });
         await screen.findByText('Cycle 22');
         expect(screen.queryByRole('button', { name: 'New cycle' })).toBeNull();
         expect(screen.queryByRole('button', { name: /^Delete / })).toBeNull();

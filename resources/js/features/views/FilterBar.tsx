@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { ApiError } from '../../lib/apiClient';
 import type { SavedView } from '../../lib/types';
 import { useLabels } from '../labels/hooks';
@@ -82,7 +83,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const [error, setError] = useState('');
     const [savingView, setSavingView] = useState(false);
     const [newViewName, setNewViewName] = useState('');
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
 
     function applyFilters(next: IssueFilters) {
         setSearchParams(filtersToParams(next), { replace: true });

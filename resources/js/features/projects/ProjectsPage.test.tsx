@@ -166,7 +166,7 @@ describe('ProjectsPage', () => {
     });
 
     it('New project button is hidden for a non-developer', async () => {
-        const meNonDev = { ...meOwnerDev, is_developer: false };
+        const meNonDev = { ...meOwnerDev, admin_level: 'member', is_developer: false };
         renderPage([], meNonDev);
         // Wait for the page to settle (empty-state renders)
         await screen.findByText('No projects yet.');
@@ -180,8 +180,15 @@ describe('ProjectsPage', () => {
         expect(screen.queryByRole('button', { name: /New project/i })).not.toBeInTheDocument();
     });
 
+    it('New project button is shown for an owner without is_developer (owner bypass)', async () => {
+        const meOwnerNoDev = { ...meOwnerDev, admin_level: 'owner', is_developer: false };
+        renderPage([], meOwnerNoDev);
+        await screen.findByText('No projects yet.');
+        expect(screen.getByRole('button', { name: /New project/i })).toBeInTheDocument();
+    });
+
     it('row delete × is hidden for a non-developer', async () => {
-        const meNonDev = { ...meOwnerDev, is_developer: false };
+        const meNonDev = { ...meOwnerDev, admin_level: 'member', is_developer: false };
         renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })], meNonDev);
         await screen.findByText('Alpha Project');
         expect(screen.queryByRole('button', { name: /Delete Alpha Project/i })).not.toBeInTheDocument();

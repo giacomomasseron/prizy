@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { ApiError } from '../../lib/apiClient';
 import { useMe } from '../../auth/useAuth';
-import { canUseTracker } from '../../auth/capabilities';
+import { canUseTracker, canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { LabelChip } from '../../components/ui/LabelChip';
 import type { Label } from '../../lib/types';
 import { useCreateLabel, useDeleteLabel, useLabels, useUpdateLabel } from './hooks';
@@ -17,7 +17,7 @@ const mono: CSSProperties = { fontFamily: 'var(--font-mono)' };
 
 export default function LabelsSettingsPage() {
     const me = useMe();
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
     const labelsQ = useLabels({ enabled: canUseTracker(me.data) });
     const create = useCreateLabel();
     const update = useUpdateLabel();

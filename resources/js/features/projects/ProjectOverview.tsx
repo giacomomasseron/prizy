@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { ApiError } from '../../lib/apiClient';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { useParams } from 'react-router-dom';
 import { useProject, useMilestones, useCreateMilestone, useDeleteMilestone } from './hooks';
 import { useIssues } from '../issues/hooks';
@@ -17,7 +18,7 @@ import { useConfirm } from '../../components/ui/ConfirmProvider';
 export default function ProjectOverview() {
     const { id = '' } = useParams();
     const me = useMe();
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
     const project = useProject(id);
     const milestones = useMilestones(id);
     const issuesQ = useIssues({ project_id: id });

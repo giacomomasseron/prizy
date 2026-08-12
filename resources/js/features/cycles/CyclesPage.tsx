@@ -1,5 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { useCycles, useDeleteCycle, useTeams } from '../teams/hooks';
 import { cycleState, type CycleState } from './cycleState';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
@@ -17,7 +18,7 @@ export default function CyclesPage() {
     const { id = '' } = useParams();
     const navigate = useNavigate();
     const me = useMe();
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
     const teams = useTeams();
     const cycles = useCycles(id);
     const del = useDeleteCycle(id);

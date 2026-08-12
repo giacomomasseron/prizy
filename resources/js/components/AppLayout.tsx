@@ -9,13 +9,14 @@ import { ProjectSidebar } from '../features/projects/ProjectSidebar';
 import { GlobalSidebar } from './GlobalSidebar';
 import { useFontScale } from '../lib/fontScale';
 import { useMe } from '../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../auth/capabilities';
 
 export default function AppLayout() {
     useRealtimeNotifications();
     const { peekId, createOpen, createStatus, openCreate, close } = useIssueDrawers();
     const { scale } = useFontScale();
     const me = useMe();
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
 
     const [navHidden, setNavHidden] = useState<boolean>(() => {
         try { return localStorage.getItem('prizy-nav-hidden') === '1'; } catch { return false; }

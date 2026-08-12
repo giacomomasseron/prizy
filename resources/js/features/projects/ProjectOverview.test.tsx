@@ -67,7 +67,7 @@ describe('ProjectOverview', () => {
         expect(await screen.findByRole('button', { name: 'New milestone' })).toBeInTheDocument();
     });
     it('hides milestone create/delete controls for a non-developer', async () => {
-        renderView({ me: { ...ME, is_developer: false } });
+        renderView({ me: { ...ME, admin_level: 'member', is_developer: false } });
         await screen.findByRole('heading', { name: 'Escalation Engine' });
         expect(screen.queryByRole('button', { name: 'New milestone' })).toBeNull();
         expect(screen.queryByRole('button', { name: /^Delete / })).toBeNull();

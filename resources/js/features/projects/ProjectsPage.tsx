@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, useDeleteProject } from './hooks';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { PROJECT_STATUS } from './projectStatus';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
@@ -22,7 +23,7 @@ export default function ProjectsPage() {
     const [searchParams] = useSearchParams();
     const teamId = searchParams.get('team_id') ?? undefined;
     const me = useMe();
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
     const projects = useProjects(teamId ? { team_id: teamId } : undefined);
     const del = useDeleteProject();
     const confirm = useConfirm();

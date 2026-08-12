@@ -12,6 +12,7 @@ import { CycleEditor } from './CycleEditor';
 import { LabelsEditor } from './LabelsEditor';
 import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubLinks';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { useMembers } from '../members/hooks';
 import { avatarFor } from '../../lib/avatarFor';
 import { timeAgo } from '../../lib/timeAgo';
@@ -53,7 +54,7 @@ export default function IssueDetailPage() {
     const [error, setError]     = useState('');
     const titleRef = useRef<HTMLSpanElement>(null);
 
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
 
     if (issue.isLoading) {
         return <p style={{ padding: 24, color: 'var(--fg3)' }}>Loading…</p>;

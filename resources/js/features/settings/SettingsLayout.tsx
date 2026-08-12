@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react';
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { useTeams } from '../teams/hooks';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
@@ -33,7 +34,7 @@ export default function SettingsLayout() {
     const me = useMe();
     const navigate = useNavigate();
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
     const isAgent = !!me.data?.is_agent;
     const members = useWorkspaceMembers({ enabled: canManage });
     const memberCount = members.data?.length;

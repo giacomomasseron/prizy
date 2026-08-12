@@ -86,7 +86,7 @@ export default function AppRouter() {
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />
                 </Route>
-                <Route path="/search" element={<SearchPage />} />
+                <Route path="/search" element={<RequireDeveloper><SearchPage /></RequireDeveloper>} />
                 <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
                 <Route path="/create" element={<RequireDeveloper><CreateScreen /></RequireDeveloper>} />
                 <Route path="/support" element={<RequireAgent><SupportLayout /></RequireAgent>} />

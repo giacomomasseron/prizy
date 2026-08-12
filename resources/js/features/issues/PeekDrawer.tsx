@@ -41,8 +41,11 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
     const activities  = useActivities(issueId ?? '');
     const comments    = useComments(issueId ?? '');
     const addComment  = useAddComment(issueId ?? '');
-    const projects    = useProjects();
-    const cycles      = useCycles(issue.data?.team_id ?? '');
+    // Only fetch the project/cycle lists while the drawer is actually open (issueId set) —
+    // PeekDrawer is globally mounted, so an unconditional fetch would 403 for non-tracker
+    // users on every authed page and keep the shared ['projects'] query hot for everyone.
+    const projects    = useProjects(undefined, { enabled: !!issueId });
+    const cycles      = useCycles(issue.data?.team_id ?? '', { enabled: !!issueId });
     const members     = useMembers();
     const me          = useMe();
     const [comment, setComment] = useState('');
