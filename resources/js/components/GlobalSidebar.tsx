@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { canUseTracker } from '../auth/capabilities';
+import { canUseTracker, canDevelop as canDevelopFor } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
@@ -26,7 +26,7 @@ const box = (c: string): CSSProperties => ({ width: 12, height: 12, borderRadius
 export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const me = useMe();
     const showTracker = canUseTracker(me.data);
-    const canDevelop = !!me.data?.is_developer && me.data?.admin_level !== 'viewer';
+    const canDevelop = canDevelopFor(me.data);
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues({}, { enabled: showTracker });
     const unread = useUnreadCount();

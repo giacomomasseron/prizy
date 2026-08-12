@@ -105,9 +105,12 @@ describe('ProjectEditor', () => {
         expect(screen.getByText('No project')).toBeInTheDocument();
     });
 
-    it('shows current project name when project_id is set', () => {
-        const issueWithProject: Issue = { ...baseIssue, project_id: 'p1' };
+    it('shows the current project name from embedded issue.project (bridge-safe — no list fetch needed)', () => {
+        // 'Gamma' is NOT in the mocked useProjects list, proving the read-only display resolves
+        // from the embedded issue.project (which an agent on the bridge gets) rather than the
+        // is_developer-gated /v1/projects list.
+        const issueWithProject: Issue = { ...baseIssue, project_id: 'p9', project: { id: 'p9', name: 'Gamma', color: '#abcabc' } };
         render(<ProjectEditor issue={issueWithProject} canDevelop={false} />, { wrapper });
-        expect(screen.getByText('Alpha')).toBeInTheDocument();
+        expect(screen.getByText('Gamma')).toBeInTheDocument();
     });
 });

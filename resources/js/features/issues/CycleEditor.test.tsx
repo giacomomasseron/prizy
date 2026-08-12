@@ -105,9 +105,11 @@ describe('CycleEditor', () => {
         expect(screen.getByText('No cycle')).toBeInTheDocument();
     });
 
-    it('shows current cycle name when cycle_id is set', () => {
-        const issueWithCycle: Issue = { ...baseIssue, cycle_id: 'c1' };
+    it('shows the current cycle name from embedded issue.cycle (bridge-safe — no list fetch needed)', () => {
+        // 'Retro' is NOT in the mocked useCycles list, proving the read-only display resolves
+        // from the embedded issue.cycle (agents on the bridge) rather than the gated cycles list.
+        const issueWithCycle: Issue = { ...baseIssue, cycle_id: 'c9', cycle: { id: 'c9', name: 'Retro' } };
         render(<CycleEditor issue={issueWithCycle} canDevelop={false} />, { wrapper });
-        expect(screen.getByText('Sprint 1')).toBeInTheDocument();
+        expect(screen.getByText('Retro')).toBeInTheDocument();
     });
 });

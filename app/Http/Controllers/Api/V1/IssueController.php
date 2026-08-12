@@ -45,7 +45,7 @@ final class IssueController extends Controller
     {
         $model = $this->findIssue->handle($issue);
         Gate::authorize('view', $model);
-        $model->load(['assignee', 'supportTickets.requester.contactMetadata']);
+        $model->load(['assignee', 'project', 'cycle', 'supportTickets.requester.contactMetadata']);
 
         return IssueResource::make($model)->response();
     }

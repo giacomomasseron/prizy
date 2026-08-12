@@ -22,6 +22,8 @@ export interface Issue {
     identifier?: string;
     labels?: { id: string; name: string; color: string }[];
     assignee?: { id: string; name: string } | null;
+    project?: { id: string; name: string; color: string } | null;
+    cycle?: { id: string; name: string } | null;
     support_ticket?: { id: string; ref: string; subject: string; customer: string | null; plan: string | null } | null;
 }
 

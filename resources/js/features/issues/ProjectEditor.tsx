@@ -26,8 +26,10 @@ interface Props {
 
 export function ProjectEditor({ issue, canDevelop }: Props) {
     const update = useUpdateIssue(issue.id);
-    const projects = useProjects();
-    const currentProject = (projects.data?.items ?? []).find((p) => p.id === issue.project_id);
+    // The current project name comes embedded on the issue (works for agents on the bridge,
+    // who cannot list projects). The full list is only needed for the editable picker below.
+    const projects = useProjects(undefined, { enabled: canDevelop });
+    const currentProject = issue.project ?? null;
 
     const display = currentProject ? (
         <ProjectPill name={currentProject.name} color={currentProject.color} />

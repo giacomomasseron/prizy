@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Cycle;
 use App\Models\Issue;
 use App\Models\Project;
 use App\Models\Team;
@@ -9,6 +10,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -71,6 +73,22 @@ it('still lets an agent read a single issue (ticket→issue bridge preserved)', 
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id]);
     $this->withToken($token)->getJson("/v1/issues/{$issue->id}")->assertStatus(200);
+    Workspace::forgetCurrent();
+});
+
+it('embeds project + cycle names on the single issue so the bridge shows them without the gated lists', function (): void {
+    [$token, $ws] = trackerAuthWorld(['is_developer' => false, 'is_agent' => true, 'admin_level' => 'member']);
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $project = Project::factory()->for($ws, 'workspace')->create(['name' => 'Bridge Project']);
+    $cycle = Cycle::create(['id' => (string) Str::uuid(), 'team_id' => $team->id, 'name' => 'Bridge Cycle', 'starts_at' => '2026-01-01', 'ends_at' => '2026-01-14']);
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'project_id' => $project->id, 'cycle_id' => $cycle->id]);
+
+    // The agent (is_developer=false) cannot list /v1/projects or /v1/cycles, so the detail
+    // page relies on these embedded names to render the Project/Cycle rows correctly.
+    $this->withToken($token)->getJson("/v1/issues/{$issue->id}")
+        ->assertStatus(200)
+        ->assertJsonPath('data.project.name', 'Bridge Project')
+        ->assertJsonPath('data.cycle.name', 'Bridge Cycle');
     Workspace::forgetCurrent();
 });
 

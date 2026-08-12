@@ -26,7 +26,9 @@ interface Props {
 }
 
 export function LabelsEditor({ issue, canDevelop }: Props) {
-    const allLabels = useLabels();
+    // Current labels come from the per-issue endpoint (works for agents on the bridge).
+    // The full label list is only needed for the editable picker, so gate it on canDevelop.
+    const allLabels = useLabels({ enabled: canDevelop });
     const issueLabels = useIssueLabels(issue.id);
     const setLabels = useSetIssueLabels(issue.id);
 

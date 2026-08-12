@@ -37,11 +37,11 @@ export function useDeleteTeam() {
 }
 
 // --- cycles (team-nested); used by TeamDetailPage in Task 3 ---
-export function useCycles(teamId: string) {
+export function useCycles(teamId: string, options?: { enabled?: boolean }) {
     return useQuery({
         queryKey: ['teams', teamId, 'cycles'],
         queryFn: () => api.page<Cycle>(`/teams/${teamId}/cycles`),
-        enabled: !!teamId,
+        enabled: !!teamId && (options?.enabled ?? true),
     });
 }
 

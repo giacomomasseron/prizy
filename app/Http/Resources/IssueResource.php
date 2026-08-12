@@ -39,6 +39,13 @@ final class IssueResource extends JsonResource
             ),
             'assignee' => $this->whenLoaded('assignee', fn () => $this->assignee ? ['id' => $this->assignee->id, 'name' => $this->assignee->name] : null
             ),
+            // Embedded so the issue detail (reachable by agents via the ticket→issue bridge)
+            // can render the current project/cycle name WITHOUT listing all of them — the
+            // /v1/projects and /v1/cycles lists are is_developer-gated.
+            'project' => $this->whenLoaded('project', fn () => $this->project ? ['id' => $this->project->id, 'name' => $this->project->name, 'color' => $this->project->color] : null
+            ),
+            'cycle' => $this->whenLoaded('cycle', fn () => $this->cycle ? ['id' => $this->cycle->id, 'name' => $this->cycle->name] : null
+            ),
             'support_ticket' => $this->whenLoaded('supportTickets', function () {
                 /** @var Ticket|null $ticket */
                 $ticket = $this->supportTickets->first();

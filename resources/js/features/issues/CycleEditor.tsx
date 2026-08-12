@@ -25,8 +25,10 @@ interface Props {
 
 export function CycleEditor({ issue, canDevelop }: Props) {
     const update = useUpdateIssue(issue.id);
-    const cycles = useCycles(issue.team_id);
-    const currentCycle = (cycles.data?.items ?? []).find((c) => c.id === issue.cycle_id);
+    // Current cycle name comes embedded on the issue (agents on the bridge can't list cycles).
+    // The list is only needed for the editable picker below.
+    const cycles = useCycles(issue.team_id, { enabled: canDevelop });
+    const currentCycle = issue.cycle ?? null;
 
     const display = currentCycle ? (
         <span style={{ fontSize: 13, color: 'var(--fg)' }}>{currentCycle.name}</span>
