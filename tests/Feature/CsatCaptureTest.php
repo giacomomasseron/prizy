@@ -260,6 +260,30 @@ it('full loop: emailed link records the rating and the overview CSAT KPI reflect
     Workspace::forgetCurrent();
 });
 
+it('persists the resolution before sending, so a mail failure still leaves the ticket resolved', function (): void {
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['status' => 'open', 'resolved_at' => null]);
+
+    // Notification::route() is a real static method on the facade (constructs
+    // an AnonymousNotifiable directly, see Illuminate\Support\Facades\Notification)
+    // rather than one proxied via __callStatic, so it can't be intercepted by
+    // shouldReceive(). AnonymousNotifiable::notify() calls
+    // app(Dispatcher::class)->send(...), which resolves to the same
+    // ChannelManager singleton the facade proxies to — mock send() instead to
+    // simulate the mail-transport failure.
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('smtp down'));
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertStatus(500);
+
+    $ticket->refresh();
+    expect($ticket->status)->toBe('solved');
+    expect($ticket->resolved_at)->not->toBeNull();
+    expect($ticket->csat_requested_at)->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
 it('exposes csat_rating on the ticket payload', function (): void {
     $ws = csatWorld();
     $token = csatAgent($ws);
