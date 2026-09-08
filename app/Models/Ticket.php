@@ -30,6 +30,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string $channel
  * @property string|null $csat_rating
  * @property Carbon|null $csat_responded_at
+ * @property \Illuminate\Support\Carbon|null $csat_requested_at
  * @property Carbon|null $first_replied_at
  * @property Carbon|null $resolved_at
  * @property Carbon|null $first_reply_due_at
@@ -61,7 +62,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'requester_id', 'assignee_id', 'agent_group_id', 'sla_policy_id', 'subject', 'status', 'priority', 'channel', 'csat_rating', 'csat_responded_at', 'first_replied_at', 'resolved_at', 'first_reply_due_at'])]
+#[Fillable(['id', 'requester_id', 'assignee_id', 'agent_group_id', 'sla_policy_id', 'subject', 'status', 'priority', 'channel', 'csat_rating', 'csat_responded_at', 'csat_requested_at', 'first_replied_at', 'resolved_at', 'first_reply_due_at'])]
 class Ticket extends TenantAwareEntity
 {
     use SoftDeletes;
@@ -84,6 +85,7 @@ class Ticket extends TenantAwareEntity
             'channel' => 'string',
             'csat_rating' => 'string',
             'csat_responded_at' => 'datetime',
+            'csat_requested_at' => 'datetime',
             'first_replied_at' => 'datetime',
             'resolved_at' => 'datetime',
             'first_reply_due_at' => 'datetime',

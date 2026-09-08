@@ -4,9 +4,13 @@ declare(strict_types=1);
 
 use App\Models\Contact;
 use App\Models\Ticket;
+use App\Models\User;
 use App\Models\Workspace;
+use App\Notifications\CsatRequest;
+use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
@@ -141,5 +145,117 @@ it('404s an unknown rating value via the route constraint', function (): void {
 
     $this->get("/csat/{$ticket->id}/sideways")->assertNotFound();
 
+    Workspace::forgetCurrent();
+});
+
+/** Verified agent + API token in the given workspace. */
+function csatAgent(Workspace $ws): string
+{
+    $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true]);
+
+    return app(CreatePersonalAccessToken::class)->handle($user, 't', null)['token'];
+}
+
+it('emails the requester two signed rating links on first resolve and stamps csat_requested_at', function (): void {
+    Notification::fake();
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['status' => 'open', 'resolved_at' => null]);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    Notification::assertSentOnDemand(CsatRequest::class, function (CsatRequest $n, array $channels, object $notifiable) use ($ticket): bool {
+        expect($notifiable->routes['mail'])->toBe('grace@northwind.com');
+        expect($n->ticketSubject)->toBe($ticket->subject);
+        expect($n->upUrl)->toContain("/csat/{$ticket->id}/up")->toContain('signature=');
+        expect($n->downUrl)->toContain("/csat/{$ticket->id}/down")->toContain('signature=');
+
+        return true;
+    });
+    expect($ticket->refresh()->csat_requested_at)->not->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('does not re-send after a reopen and re-resolve', function (): void {
+    Notification::fake();
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['status' => 'open', 'resolved_at' => null]);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'open'])->assertOk();
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    Notification::assertSentOnDemandTimes(CsatRequest::class, 1);
+
+    Workspace::forgetCurrent();
+});
+
+it('does not send for a ticket whose request was already sent', function (): void {
+    Notification::fake();
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['status' => 'open', 'resolved_at' => null, 'csat_requested_at' => now()->subDay()]);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    Notification::assertNothingSent();
+
+    Workspace::forgetCurrent();
+});
+
+it('skips the email but still resolves when the requester has no email', function (): void {
+    Notification::fake();
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['status' => 'open', 'resolved_at' => null], email: '');
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    Notification::assertNothingSent();
+    $ticket->refresh();
+    expect($ticket->resolved_at)->not->toBeNull();
+    expect($ticket->csat_requested_at)->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('full loop: emailed link records the rating and the overview CSAT KPI reflects it', function (): void {
+    // Time is pinned and stepped forward between phases (same idiom as the
+    // re-click test above and OverviewReportTest) rather than left on the
+    // real wall clock: ReportRepository::csatRate() compares csat_responded_at
+    // against a live now(), and Laravel truncates DateTime query bindings to
+    // whole-second precision (Grammar::getDateFormat() = 'Y-m-d H:i:s'), same
+    // as the value already gets on save. A real end-to-end round trip here
+    // (PATCH + signed-link GET + report GET) reliably completes in well under
+    // a second, so an unpinned clock lands the write and the read in the same
+    // truncated second and the strict "<" boundary spuriously excludes the
+    // row — a pre-existing precision quirk of that unrelated, already-shipped
+    // repository, not of the CSAT code under test here.
+    Carbon::setTestNow('2026-09-08 12:00:00');
+    Notification::fake();
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['status' => 'open', 'resolved_at' => null]);
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    $upUrl = null;
+    Notification::assertSentOnDemand(CsatRequest::class, function (CsatRequest $n) use (&$upUrl): bool {
+        $upUrl = $n->upUrl;
+
+        return true;
+    });
+
+    Carbon::setTestNow('2026-09-08 12:05:00');
+    $this->get($upUrl)->assertOk()->assertViewIs('csat.thanks');
+    expect($ticket->refresh()->csat_rating)->toBe('thumbs_up');
+
+    Carbon::setTestNow('2026-09-08 12:10:00');
+    $res = $this->withToken($token)->getJson('/v1/reports/overview?range=7d')->assertOk();
+    expect($res->json('data.kpis.csat.value'))->toBe(100);
+
+    Carbon::setTestNow();
     Workspace::forgetCurrent();
 });
