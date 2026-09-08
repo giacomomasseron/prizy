@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
+use App\Http\Controllers\CsatController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
@@ -77,6 +78,16 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
 // Magic-link request — tenant route so the user lookup is workspace-scoped.
 // "Forgot password" reuses this same endpoint (no separate flow needed).
 Route::post('/magic-link', [MagicLinkController::class, 'request'])->middleware(['throttle:6,1']);
+
+// CSAT rating capture — public (the customer has no login); the temporary
+// signed URL is the entire authorization. NeedsTenant stays so the workspace
+// resolves from the subdomain (WorkspaceScope + RLS); the session middleware
+// is exempted exactly like /login.
+Route::get('/csat/{ticket}/{rating}', [CsatController::class, 'respond'])
+    ->whereIn('rating', ['up', 'down'])
+    ->middleware(['throttle:30,1'])
+    ->withoutMiddleware([EnsureValidTenantSession::class])
+    ->name('csat.respond');
 
 Route::post('/login', [LoginController::class, 'store'])
     ->middleware(['throttle:10,1'])
