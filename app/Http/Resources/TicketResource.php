@@ -40,6 +40,7 @@ final class TicketResource extends JsonResource
                 'remaining_minutes' => $m['remaining_minutes'],
                 'within_business_hours' => $m['within_business_hours'],
             ])->values(),
+            'csat_rating' => $this->csat_rating,
             'first_replied_at' => $this->first_replied_at,
             'resolved_at' => $this->resolved_at,
             'created_at' => $this->created_at,

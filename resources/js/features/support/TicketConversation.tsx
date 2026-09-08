@@ -48,6 +48,11 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
                         <span style={{ fontFamily: 'var(--font-mono)' }}>#{t.id.slice(0, 8)}</span><span>·</span><span>{TICKET_CHANNEL[t.channel].label}</span>
                     </div>
                 </div>
+                {t.csat_rating && (
+                    <span title="Customer satisfaction rating" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--bg2)', fontSize: 11.5, fontWeight: 600, color: 'var(--fg2)', whiteSpace: 'nowrap' }}>
+                        {t.csat_rating === 'thumbs_up' ? '👍 Rated good' : '👎 Rated poor'}
+                    </span>
+                )}
                 {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 11px', borderRadius: 8, border: '1px solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent)', fontSize: 12, fontWeight: 600, textDecoration: 'none' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
                 <TicketStatusMenu ticket={t} />
             </header>

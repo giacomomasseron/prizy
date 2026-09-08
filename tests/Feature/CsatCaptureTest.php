@@ -259,3 +259,14 @@ it('full loop: emailed link records the rating and the overview CSAT KPI reflect
     Carbon::setTestNow();
     Workspace::forgetCurrent();
 });
+
+it('exposes csat_rating on the ticket payload', function (): void {
+    $ws = csatWorld();
+    $token = csatAgent($ws);
+    $ticket = csatTicket($ws, ['csat_rating' => 'thumbs_up', 'csat_responded_at' => now()]);
+
+    $res = $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertOk();
+    expect($res->json('data.csat_rating'))->toBe('thumbs_up');
+
+    Workspace::forgetCurrent();
+});

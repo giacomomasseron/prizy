@@ -237,6 +237,7 @@ export interface TicketListItem {
     created_at: string;
     first_replied_at: string | null;
     resolved_at: string | null;
+    csat_rating?: 'thumbs_up' | 'thumbs_down' | null;
 }
 
 export interface TicketMessage {
