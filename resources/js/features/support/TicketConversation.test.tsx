@@ -24,6 +24,7 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
         created_at: '',
         first_replied_at: null,
         resolved_at: null,
+        csat_rating: null,
         messages: [],
         requester_history: [],
         ...over,
@@ -103,5 +104,23 @@ describe('TicketConversation', () => {
         renderWithRouter('t1');
         const link = screen.getByText('↩ PRJ-42 ↗');
         expect(link).toHaveAttribute('href', '/issues/issue-1');
+    });
+
+    it('shows a "Rated good" chip when csat_rating is thumbs_up', () => {
+        ticketData = ticket({ csat_rating: 'thumbs_up' });
+        renderWithRouter('ticket-12345678');
+        expect(screen.getByText('👍 Rated good')).toBeInTheDocument();
+    });
+
+    it('shows a "Rated poor" chip when csat_rating is thumbs_down', () => {
+        ticketData = ticket({ csat_rating: 'thumbs_down' });
+        renderWithRouter('ticket-12345678');
+        expect(screen.getByText('👎 Rated poor')).toBeInTheDocument();
+    });
+
+    it('shows no rating chip when the ticket is unrated', () => {
+        ticketData = ticket({});
+        renderWithRouter('ticket-12345678');
+        expect(screen.queryByText(/Rated good|Rated poor/)).not.toBeInTheDocument();
     });
 });
