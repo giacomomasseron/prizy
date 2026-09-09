@@ -1,11 +1,12 @@
 import type { CSSProperties } from 'react';
 import type { Kpi } from '../../lib/types';
-import type { KpiMeta } from './reportMeta';
 import { Sparkline } from './Sparkline';
+
+export interface KpiDisplayMeta { label: string; unit: string; positiveIsGood: boolean }
 
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 12, padding: '15px 16px', background: 'var(--panel)', display: 'flex', flexDirection: 'column', gap: 9 };
 
-export function KpiCard({ meta, kpi, series }: { meta: KpiMeta; kpi: Kpi; series?: (number | null)[] }) {
+export function KpiCard<M extends KpiDisplayMeta>({ meta, kpi, series, format }: { meta: M; kpi: Kpi; series?: (number | null)[]; format?: (v: number) => string }) {
     const neutral = kpi.delta_pct === 0;
     const good = !neutral && kpi.delta_pct !== null && (kpi.delta_pct > 0) === meta.positiveIsGood;
     const color = neutral ? 'var(--fg3)' : good ? 'var(--green)' : 'var(--red)';
@@ -23,8 +24,8 @@ export function KpiCard({ meta, kpi, series }: { meta: KpiMeta; kpi: Kpi; series
             </div>
             {series && <Sparkline series={series} color={sparkColor} />}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 29, fontWeight: 600, lineHeight: 1, color: 'var(--fg)' }}>{kpi.value ?? '—'}</span>
-                {kpi.value !== null && meta.unit !== '' && <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{meta.unit}</span>}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 29, fontWeight: 600, lineHeight: 1, color: 'var(--fg)' }}>{kpi.value === null ? '—' : format ? format(kpi.value) : kpi.value}</span>
+                {kpi.value !== null && !format && meta.unit !== '' && <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{meta.unit}</span>}
             </div>
         </div>
     );

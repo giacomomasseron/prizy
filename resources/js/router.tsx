@@ -20,6 +20,7 @@ import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
 import BusinessHoursSettingsPage from './features/business-hours/BusinessHoursSettingsPage';
 import SlaPoliciesSettingsPage from './features/sla-policies/SlaPoliciesSettingsPage';
 import RoadmapPage from './features/roadmap/RoadmapPage';
+import AnalyticsLayout from './features/analytics/AnalyticsLayout';
 import NotificationsPage from './features/notifications/NotificationsPage';
 import SearchPage from './features/search/SearchPage';
 import IntegrationsSettingsPage from './features/integrations/IntegrationsSettingsPage';
@@ -73,6 +74,7 @@ export default function AppRouter() {
                 </Route>
                 <Route path="/labels" element={<Navigate to="/settings/labels" replace />} />
                 <Route path="/roadmap" element={<RequireDeveloper><RoadmapPage /></RequireDeveloper>} />
+                <Route path="/analytics" element={<RequireDeveloper><AnalyticsLayout /></RequireDeveloper>} />
                 <Route path="/notifications" element={<NotificationsPage />} />
                 <Route path="/settings" element={<SettingsLayout />}>
                     <Route index element={<Navigate to="members" replace />} />
