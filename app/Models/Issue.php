@@ -24,6 +24,7 @@ use Laravel\Scout\Searchable;
  * @property string|null $project_id
  * @property string|null $cycle_id
  * @property string|null $parent_issue_id
+ * @property string|null $release_id
  * @property string|null $assignee_id
  * @property string $created_by
  * @property string $title
@@ -44,6 +45,7 @@ use Laravel\Scout\Searchable;
  * @property Cycle $cycle
  * @property Issue $parentIssue
  * @property Project $project
+ * @property Release|null $release
  * @property Team $team
  * @property Workspace $workspace
  * @property Collection|User[] $issueActivitiesUsers
@@ -73,7 +75,7 @@ use Laravel\Scout\Searchable;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'team_id', 'project_id', 'cycle_id', 'parent_issue_id', 'assignee_id', 'created_by', 'title', 'description', 'status', 'priority', 'estimate', 'due_date', 'sort_order', 'archived_at', 'completed_at', 'source'])]
+#[Fillable(['id', 'team_id', 'project_id', 'cycle_id', 'parent_issue_id', 'release_id', 'assignee_id', 'created_by', 'title', 'description', 'status', 'priority', 'estimate', 'due_date', 'sort_order', 'archived_at', 'completed_at', 'source'])]
 class Issue extends TenantAwareEntity
 {
     use Searchable;
@@ -113,6 +115,7 @@ class Issue extends TenantAwareEntity
             'project_id' => 'string',
             'cycle_id' => 'string',
             'parent_issue_id' => 'string',
+            'release_id' => 'string',
             'assignee_id' => 'string',
             'created_by' => 'string',
             'title' => 'string',
@@ -225,6 +228,14 @@ class Issue extends TenantAwareEntity
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class, 'project_id');
+    }
+
+    /**
+     * @return BelongsTo<Release, $this>
+     */
+    public function release(): BelongsTo
+    {
+        return $this->belongsTo(Release::class, 'release_id');
     }
 
     /**

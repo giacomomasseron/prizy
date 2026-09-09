@@ -22,6 +22,10 @@ vi.mock('../members/hooks', () => ({
 vi.mock('../labels/hooks', () => ({
     useLabels: () => ({ data: { items: [{ id: 'l1', name: 'Bug', color: '#eb5757', group: null }], next: null } }),
 }));
+vi.mock('../releases/hooks', () => ({
+    // Non-paginated api.get — the array directly, not `{ items }` (unlike projects/labels).
+    useReleases: () => ({ data: [{ id: 'r1', name: 'Q1 Ship', description: null, target_date: null, shipped_at: null, created_at: '', rollup: { total: 0, done: 0, cancelled: 0, pct: null } }] }),
+}));
 
 function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onClose?: () => void }) {
     const qc = new QueryClient();
@@ -84,6 +88,34 @@ describe('CreateIssueDrawer', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Project Apollo' }));
         fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
         await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ project_id: 'p1', title: 'Task B' })));
+    });
+
+    it('selecting a Release chip passes release_id', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task R' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Release Q1 Ship' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ release_id: 'r1', title: 'Task R' })));
+    });
+
+    it('omits release_id when no release is selected (unset by default)', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task NR' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled());
+        const payload = mockMutateAsync.mock.calls.at(-1)![0];
+        expect(payload).not.toHaveProperty('release_id');
+    });
+
+    it('re-selecting No release after a pick omits release_id again', async () => {
+        mount({});
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Task NR2' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Release Q1 Ship' }));
+        fireEvent.click(screen.getByRole('button', { name: 'No release' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled());
+        const payload = mockMutateAsync.mock.calls.at(-1)![0];
+        expect(payload).not.toHaveProperty('release_id');
     });
 
     it('the assignee picker opens a searchable list and selecting a member passes assignee_id', async () => {

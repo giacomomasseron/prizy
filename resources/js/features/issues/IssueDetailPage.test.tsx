@@ -49,6 +49,7 @@ vi.mock('../../auth/useAuth', () => ({
 vi.mock('../labels/hooks', () => ({ useLabels: () => ({ data: { items: [] } }) }));
 vi.mock('../projects/hooks', () => ({ useProjects: () => ({ data: { items: [] } }) }));
 vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [] } }) }));
+vi.mock('../releases/hooks', () => ({ useReleases: () => ({ data: [] }) }));
 
 function wrapper(ui: React.ReactNode) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });

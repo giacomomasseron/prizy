@@ -13,6 +13,7 @@ export interface Issue {
     team_id: string;
     project_id: string | null;
     cycle_id: string | null;
+    release_id?: string | null;
     parent_issue_id: string | null;
     assignee_id: string | null;
     created_by: string;
@@ -24,6 +25,7 @@ export interface Issue {
     assignee?: { id: string; name: string } | null;
     project?: { id: string; name: string; color: string } | null;
     cycle?: { id: string; name: string } | null;
+    release?: { id: string; name: string; shipped_at: string | null } | null;
     support_ticket?: { id: string; ref: string; subject: string; customer: string | null; plan: string | null } | null;
 }
 
@@ -112,6 +114,36 @@ export interface Milestone {
     target_date: string;
     created_at: string;
     updated_at: string;
+}
+
+export interface ReleaseRollup {
+    total: number;
+    done: number;
+    cancelled: number;
+    pct: number | null;
+}
+
+export interface Release {
+    id: string;
+    name: string;
+    description: string | null;
+    target_date: string | null;
+    shipped_at: string | null;
+    created_at: string;
+    rollup: ReleaseRollup;
+}
+
+export interface ReleaseIssueRow {
+    id: string;
+    ref: string;
+    title: string;
+    status: IssueStatus;
+    assignee: { id: string; name: string } | null;
+}
+
+export interface ReleaseDetail extends Release {
+    by_status: { key: string; count: number }[];
+    issues: ReleaseIssueRow[];
 }
 
 export interface Label {

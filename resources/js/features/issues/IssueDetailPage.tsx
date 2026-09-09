@@ -8,6 +8,7 @@ import { StatusEditor } from './StatusEditor';
 import { PriorityEditor } from './PriorityEditor';
 import { AssigneeEditor } from './AssigneeEditor';
 import { ProjectEditor } from './ProjectEditor';
+import { ReleaseEditor } from './ReleaseEditor';
 import { CycleEditor } from './CycleEditor';
 import { LabelsEditor } from './LabelsEditor';
 import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubLinks';
@@ -317,6 +318,9 @@ export default function IssueDetailPage() {
                         </PropertyRow>
                         <PropertyRow label="Project">
                             <ProjectEditor issue={data} canDevelop={canDevelop} />
+                        </PropertyRow>
+                        <PropertyRow label="Release">
+                            <ReleaseEditor issue={data} canDevelop={canDevelop} />
                         </PropertyRow>
                         <PropertyRow label="Labels">
                             <LabelsEditor issue={data} canDevelop={canDevelop} />

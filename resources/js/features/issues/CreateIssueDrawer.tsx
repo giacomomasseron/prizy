@@ -8,6 +8,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { useTeams } from '../teams/hooks';
 import { useProjects } from '../projects/hooks';
+import { useReleases } from '../releases/hooks';
 import { useMembers } from '../members/hooks';
 import { useLabels } from '../labels/hooks';
 import { useCreateIssue } from './hooks';
@@ -65,12 +66,16 @@ function colorDot(color: string) {
 export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
     const teams = useTeams();
     const projects = useProjects(undefined, { enabled: open });
+    // Non-paginated api.get (an array directly, not `{ items }`) — matches how the Project
+    // chip's list-hook fetch is gated to only while the drawer is open.
+    const releases = useReleases({ enabled: open });
     const members = useMembers();
     const labels = useLabels({ enabled: open });
     const createIssue = useCreateIssue();
 
     const [teamId, setTeamId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState<string | null>(null);
+    const [releaseId, setReleaseId] = useState<string | null>(null);
     const [assigneeId, setAssigneeId] = useState<string | null>(null);
     const [labelIds, setLabelIds] = useState<string[]>([]);
     const [title, setTitle] = useState('');
@@ -91,6 +96,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
         setPriority('no_priority');
         setDescription('');
         setProjectId(null);
+        setReleaseId(null);
         setAssigneeId(null);
         setLabelIds([]);
     }
@@ -105,6 +111,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const selectedTeam = teamList.find((t) => t.id === teamId);
     const singleTeam = teamList.length === 1;
     const projectList = projects.data?.items ?? [];
+    const releaseList = releases.data ?? [];
     const memberList = members.data ?? [];
     const selectedMember = memberList.find((m) => m.id === assigneeId);
     const labelList = labels.data?.items ?? [];
@@ -126,6 +133,9 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                 description: description.trim() || null,
                 project_id: projectId,
                 label_ids: labelIds,
+                // Unlike project_id, release_id is only sent when a release is actually picked
+                // (no "unset" release concept to force onto every create).
+                ...(releaseId ? { release_id: releaseId } : {}),
             });
             if (keepOpen) resetFields();
             else onClose();
@@ -253,6 +263,22 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                             aria-pressed={projectId === null} onClick={() => setProjectId(null)}
                             style={chipStyle(projectId === null)}>
                             No project
+                        </button>
+                    </Row>
+
+                    {/* Release */}
+                    <Row label="Release">
+                        {releaseList.map((r) => (
+                            <button key={r.id} type="button" aria-label={`Release ${r.name}`}
+                                aria-pressed={releaseId === r.id} onClick={() => setReleaseId(r.id)}
+                                style={chipStyle(releaseId === r.id)}>
+                                ⛴ {r.name}
+                            </button>
+                        ))}
+                        <button type="button" aria-label="No release"
+                            aria-pressed={releaseId === null} onClick={() => setReleaseId(null)}
+                            style={chipStyle(releaseId === null)}>
+                            No release
                         </button>
                     </Row>
 

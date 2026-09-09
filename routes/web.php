@@ -29,6 +29,8 @@ Route::view('/projects/{project}/{view}', 'app');
 Route::view('/labels', 'app');
 Route::view('/roadmap', 'app');
 Route::view('/analytics', 'app');
+Route::view('/releases', 'app');
+Route::view('/releases/{release}', 'app');
 Route::view('/notifications', 'app');
 Route::view('/settings', 'app');
 Route::view('/settings/members', 'app');
