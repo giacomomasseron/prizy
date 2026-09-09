@@ -35,6 +35,7 @@ use Laravel\Scout\Searchable;
  * @property Carbon|null $due_date
  * @property float $sort_order
  * @property Carbon|null $archived_at
+ * @property Carbon|null $completed_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
@@ -72,7 +73,7 @@ use Laravel\Scout\Searchable;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'team_id', 'project_id', 'cycle_id', 'parent_issue_id', 'assignee_id', 'created_by', 'title', 'description', 'status', 'priority', 'estimate', 'due_date', 'sort_order', 'archived_at', 'source'])]
+#[Fillable(['id', 'team_id', 'project_id', 'cycle_id', 'parent_issue_id', 'assignee_id', 'created_by', 'title', 'description', 'status', 'priority', 'estimate', 'due_date', 'sort_order', 'archived_at', 'completed_at', 'source'])]
 class Issue extends TenantAwareEntity
 {
     use Searchable;
@@ -122,6 +123,7 @@ class Issue extends TenantAwareEntity
             'due_date' => 'datetime',
             'sort_order' => 'float',
             'archived_at' => 'datetime',
+            'completed_at' => 'datetime',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',

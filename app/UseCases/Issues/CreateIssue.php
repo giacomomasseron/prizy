@@ -43,6 +43,7 @@ final class CreateIssue
                 'description' => $data['description'] ?? null,
                 'status' => $data['status'] ?? 'backlog',
                 'priority' => $data['priority'] ?? 'no_priority',
+                'completed_at' => ($data['status'] ?? 'backlog') === 'done' ? now() : null,
                 'estimate' => $data['estimate'] ?? null,
                 'due_date' => $data['due_date'] ?? null,
                 'project_id' => $data['project_id'] ?? null,

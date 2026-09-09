@@ -424,3 +424,37 @@ export interface HelpdeskSavedReport {
     created_at: string;
     updated_at: string;
 }
+
+export interface TrackerOverviewReport {
+    kpis: { created: Kpi; completed: Kpi; active: Kpi; median_cycle_time_minutes: Kpi };
+    sparklines: { created: (number | null)[]; completed: (number | null)[] };
+    flow: { labels: string[]; created: number[]; completed: number[] };
+    by_status: { key: string; count: number }[];
+    by_priority: { key: string; count: number }[];
+}
+
+export interface VelocityRow {
+    id: string;
+    name: string;
+    starts_at: string;
+    ends_at: string;
+    completed_count: number;
+    total_count: number;
+}
+
+export interface BurndownDay {
+    date: string;
+    remaining: number | null;
+}
+
+export interface CycleReport {
+    cycles: VelocityRow[];
+    burndown: {
+        cycle_id: string;
+        name: string;
+        starts_at: string;
+        ends_at: string;
+        total_scope: number;
+        days: BurndownDay[];
+    } | null;
+}

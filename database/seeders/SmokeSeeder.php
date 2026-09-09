@@ -6,6 +6,7 @@ namespace Database\Seeders;
 
 use App\Models\BusinessHourSchedule;
 use App\Models\Contact;
+use App\Models\Cycle;
 use App\Models\HelpdeskSavedReport;
 use App\Models\HelpdeskSavedView;
 use App\Models\Issue;
@@ -153,6 +154,48 @@ final class SmokeSeeder extends Seeder
                 'status' => 'todo',
                 'priority' => 'no_priority',
             ]);
+        }
+
+        // Analytics needs real completion timestamps: give every seeded done
+        // issue a completed_at (forceCreate bypasses the stamping use cases).
+        Issue::withoutGlobalScopes()
+            ->where('workspace_id', $workspace->id)
+            ->where('status', 'done')
+            ->whereNull('completed_at')
+            ->update(['completed_at' => now()->subDays(2)]);
+
+        // A current cycle with mixed-status issues so /analytics → Cycles demos
+        // velocity + a live burndown on a fresh `composer dev`.
+        $cycle = Cycle::firstWhere([['team_id', $team->id], ['name', 'Smoke Cycle']])
+            ?? Cycle::forceCreate([
+                'id' => (string) Str::uuid(),
+                'team_id' => $team->id,
+                'name' => 'Smoke Cycle',
+                'starts_at' => now()->subDays(7)->toDateString(),
+                'ends_at' => now()->addDays(7)->toDateString(),
+            ]);
+        if (Issue::withoutGlobalScopes()->where('cycle_id', $cycle->id)->count() === 0) {
+            $cycleIssues = [
+                ['title' => 'Cycle issue 1', 'status' => 'done', 'completed_at' => now()->subDays(6)],
+                ['title' => 'Cycle issue 2', 'status' => 'done', 'completed_at' => now()->subDays(4)],
+                ['title' => 'Cycle issue 3', 'status' => 'done', 'completed_at' => now()->subDays(1)],
+                ['title' => 'Cycle issue 4', 'status' => 'in_progress', 'completed_at' => null],
+                ['title' => 'Cycle issue 5', 'status' => 'todo', 'completed_at' => null],
+                ['title' => 'Cycle issue 6', 'status' => 'todo', 'completed_at' => null],
+            ];
+            foreach ($cycleIssues as $ci) {
+                Issue::forceCreate([
+                    'id' => (string) Str::uuid(),
+                    'workspace_id' => $workspace->id,
+                    'team_id' => $team->id,
+                    'cycle_id' => $cycle->id,
+                    'created_by' => $user->id,
+                    'title' => $ci['title'],
+                    'status' => $ci['status'],
+                    'priority' => 'medium',
+                    'completed_at' => $ci['completed_at'],
+                ]);
+            }
         }
 
         $issue = Issue::query()->first();

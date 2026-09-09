@@ -7,6 +7,7 @@ namespace App\Repositories;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
+use App\Services\ReportBuckets;
 use App\Services\SlaCalculator;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\DB;
 final class ReportRepository
 {
     private const RANGE_DAYS = ['7d' => 7, '30d' => 30, '90d' => 90];
+
+    public function __construct(private readonly ReportBuckets $buckets) {}
 
     /** @return array<string, mixed> */
     public function overview(string $workspaceId, string $range): array
@@ -119,8 +122,8 @@ final class ReportRepository
                 'avatar_url' => $u->avatar_url,
                 'assigned' => $assigned[$u->id] ?? 0,
                 'solved' => $solved[$u->id] ?? 0,
-                'median_first_reply_minutes' => $this->median($frtByAgent[$u->id] ?? []),
-                'median_resolution_minutes' => $this->median($resByAgent[$u->id] ?? []),
+                'median_first_reply_minutes' => $this->buckets->median($frtByAgent[$u->id] ?? []),
+                'median_resolution_minutes' => $this->buckets->median($resByAgent[$u->id] ?? []),
                 'csat_pct' => $csat !== null ? (int) round($csat['positive'] / $csat['total'] * 100) : null,
                 'csat_responses' => $csat['total'] ?? 0,
             ];
@@ -290,7 +293,7 @@ final class ReportRepository
     /** @return list<array{label:string,count:int}> */
     private function repliesPerDay(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
     {
-        ['end' => $end, 'anchor' => $anchor, 'labels' => $labels, 'bucketOf' => $bucketOf] = $this->bucketScaffold($now, $bucketDays, $numBuckets);
+        ['end' => $end, 'anchor' => $anchor, 'labels' => $labels, 'bucketOf' => $bucketOf] = $this->buckets->bucketScaffold($now, $bucketDays, $numBuckets);
         $createdAts = TicketMessage::query()
             ->where('sender_type', 'user')
             ->whereIn('ticket_id', Ticket::query()->where('workspace_id', $workspaceId)->select('id'))
@@ -350,19 +353,6 @@ final class ReportRepository
         return (int) round(($cur - $prev) / $prev * 100);
     }
 
-    /** @param  list<int>  $values */
-    private function median(array $values): ?int
-    {
-        if ($values === []) {
-            return null;
-        }
-        sort($values);
-        $n = count($values);
-        $mid = intdiv($n, 2);
-
-        return (int) round($n % 2 === 1 ? $values[$mid] : ($values[$mid - 1] + $values[$mid]) / 2);
-    }
-
     private function medianFrtMinutes(string $workspaceId, CarbonInterface $from, CarbonInterface $to): ?int
     {
         $rows = Ticket::query()->where('workspace_id', $workspaceId)
@@ -370,7 +360,7 @@ final class ReportRepository
             ->where('first_replied_at', '>=', $from)->where('first_replied_at', '<', $to)
             ->get(['created_at', 'first_replied_at']);
 
-        return $this->median($rows->map(fn (Ticket $t) => (int) round($t->created_at->diffInMinutes($t->first_replied_at)))->all());
+        return $this->buckets->median($rows->map(fn (Ticket $t) => (int) round($t->created_at->diffInMinutes($t->first_replied_at)))->all());
     }
 
     private function csatRate(string $workspaceId, CarbonInterface $from, CarbonInterface $to): ?int
@@ -390,7 +380,7 @@ final class ReportRepository
     /** @return list<int|null> */
     private function medianFrtByBucket(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
     {
-        ['anchor' => $anchor, 'end' => $end, 'bucketOf' => $bucketOf] = $this->bucketScaffold($now, $bucketDays, $numBuckets);
+        ['anchor' => $anchor, 'end' => $end, 'bucketOf' => $bucketOf] = $this->buckets->bucketScaffold($now, $bucketDays, $numBuckets);
         $rows = Ticket::query()->where('workspace_id', $workspaceId)
             ->whereNotNull('first_replied_at')
             ->where('first_replied_at', '>=', $anchor)->where('first_replied_at', '<', $end)
@@ -405,13 +395,13 @@ final class ReportRepository
             }
         }
 
-        return array_map(fn (array $vals): ?int => $this->median($vals), $buckets);
+        return array_map(fn (array $vals): ?int => $this->buckets->median($vals), $buckets);
     }
 
     /** @return list<int|null> */
     private function csatRateByBucket(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
     {
-        ['anchor' => $anchor, 'end' => $end, 'bucketOf' => $bucketOf] = $this->bucketScaffold($now, $bucketDays, $numBuckets);
+        ['anchor' => $anchor, 'end' => $end, 'bucketOf' => $bucketOf] = $this->buckets->bucketScaffold($now, $bucketDays, $numBuckets);
         $rows = Ticket::query()->where('workspace_id', $workspaceId)
             ->whereNotNull('csat_responded_at')
             ->where('csat_responded_at', '>=', $anchor)->where('csat_responded_at', '<', $end)
@@ -437,31 +427,10 @@ final class ReportRepository
         return $out;
     }
 
-    /**
-     * Calendar-aligned bucket window: daily buckets start at 00:00, weekly at Monday
-     * (matching Postgres date_trunc('week')). Shared by volume + replies-per-day.
-     *
-     * @return array{anchor: CarbonInterface, end: CarbonInterface, labels: list<string>, bucketOf: callable(CarbonInterface):int}
-     */
-    private function bucketScaffold(CarbonInterface $now, int $bucketDays, int $numBuckets): array
-    {
-        $anchor = $bucketDays === 7
-            ? $now->copy()->startOfWeek(CarbonInterface::MONDAY)->subWeeks($numBuckets - 1)
-            : $now->copy()->startOfDay()->subDays($numBuckets - 1);
-        $end = $anchor->copy()->addDays($bucketDays * $numBuckets);
-        $labels = [];
-        for ($i = 0; $i < $numBuckets; $i++) {
-            $labels[] = $anchor->copy()->addDays($i * $bucketDays)->format('M j');
-        }
-        $bucketOf = fn (CarbonInterface $ts): int => (int) floor($anchor->diffInDays($ts) / $bucketDays);
-
-        return ['anchor' => $anchor, 'end' => $end, 'labels' => $labels, 'bucketOf' => $bucketOf];
-    }
-
     /** @return list<array{label:string,created:int,solved:int}> */
     private function volumeBuckets(string $workspaceId, CarbonInterface $now, int $bucketDays, int $numBuckets): array
     {
-        ['anchor' => $anchor, 'end' => $end, 'labels' => $labels, 'bucketOf' => $bucketOf] = $this->bucketScaffold($now, $bucketDays, $numBuckets);
+        ['anchor' => $anchor, 'end' => $end, 'labels' => $labels, 'bucketOf' => $bucketOf] = $this->buckets->bucketScaffold($now, $bucketDays, $numBuckets);
         $createdAts = Ticket::query()->where('workspace_id', $workspaceId)
             ->where('created_at', '>=', $anchor)->where('created_at', '<', $end)->pluck('created_at');
         $resolvedAts = Ticket::query()->where('workspace_id', $workspaceId)

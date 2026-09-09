@@ -60,7 +60,13 @@ final class TransitionIssueStatus
         $postCommitEvents = [];
 
         DB::transaction(function () use ($issue, $actor, $from, $to, &$postCommitEvents): void {
-            $this->issues->update($issue, ['status' => $to]);
+            // completed_at mirrors done-ness on every transition: entering done
+            // stamps, any other target clears. Uniform (rather than edge-triggered)
+            // so a drifted value self-heals on the next transition.
+            $this->issues->update($issue, [
+                'status' => $to,
+                'completed_at' => $to === 'done' ? now() : null,
+            ]);
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {

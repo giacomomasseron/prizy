@@ -6,7 +6,7 @@
 putenv('APP_ENV=testing');
 putenv('APP_KEY=base64:pmn0c9M0oMUilr6532CVbcKkgGtN0LBTyYDXMzOzuUc=');
 putenv('BCRYPT_ROUNDS=4');
-putenv('BROADCAST_CONNECTION=null');
+putenv('BROADCAST_CONNECTION=log');
 putenv('CACHE_STORE=array');
 putenv('DB_CONNECTION=pgsql');
 putenv('DB_HOST=postgres');
@@ -25,7 +25,7 @@ putenv('NIGHTWATCH_ENABLED=false');
 $_ENV['APP_ENV'] = 'testing';
 $_ENV['APP_KEY'] = 'base64:pmn0c9M0oMUilr6532CVbcKkgGtN0LBTyYDXMzOzuUc=';
 $_ENV['BCRYPT_ROUNDS'] = '4';
-$_ENV['BROADCAST_CONNECTION'] = 'null';
+$_ENV['BROADCAST_CONNECTION'] = 'log';
 $_ENV['CACHE_STORE'] = 'array';
 $_ENV['DB_CONNECTION'] = 'pgsql';
 $_ENV['DB_HOST'] = 'postgres';
@@ -43,6 +43,13 @@ $_ENV['NIGHTWATCH_ENABLED'] = 'false';
 
 $_SERVER['APP_ENV'] = 'testing';
 $_SERVER['APP_KEY'] = 'base64:pmn0c9M0oMUilr6532CVbcKkgGtN0LBTyYDXMzOzuUc=';
+// config('broadcasting.default') resolves from $_SERVER in this environment
+// (the putenv/$_ENV overrides above are not enough), so this entry is the one
+// that actually keeps tests off the real `reverb` connection. `log` (not
+// `null`) mirrors `composer dev`'s queue:listen, which also runs with
+// BROADCAST_CONNECTION=log — so a ShouldBroadcast event still exercises the
+// broadcast pipeline, just without a live socket server.
+$_SERVER['BROADCAST_CONNECTION'] = 'log';
 $_SERVER['SESSION_DRIVER'] = 'array';
 $_SERVER['DB_CONNECTION'] = 'pgsql';
 $_SERVER['DB_HOST'] = 'postgres';
@@ -54,4 +61,4 @@ $_SERVER['DB_URL'] = '';
 $_SERVER['CACHE_STORE'] = 'array';
 $_SERVER['QUEUE_CONNECTION'] = 'sync';
 
-require __DIR__ . '/../vendor/autoload.php';
+require __DIR__.'/../vendor/autoload.php';

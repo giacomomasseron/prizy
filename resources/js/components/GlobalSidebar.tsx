@@ -118,6 +118,9 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                                 <NavLink to="/roadmap" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
                                     <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
                                 </NavLink>
+                                <NavLink to="/analytics" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                    <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◫</span><span style={{ flex: 1 }}>Analytics</span>
+                                </NavLink>
                             </nav>
                         )}
                     </>
