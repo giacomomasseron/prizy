@@ -12,6 +12,7 @@ export function CyclesSection() {
     const effectiveTeam = teamId ?? teams[0]?.id ?? '';
     const q = useCycleReport(effectiveTeam, cycleId);
 
+    if (teamsQ.isLoading) return <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>Loading…</div>;
     if (teams.length === 0) return <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>Join a team to see cycle analytics.</div>;
 
     return (

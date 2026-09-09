@@ -220,6 +220,21 @@ it('computes velocity excluding cancelled and defaults to the current cycle', fu
     Workspace::forgetCurrent();
 });
 
+it('defaults to null burndown (never the furthest-future cycle) when all cycles are future', function (): void {
+    Carbon::setTestNow('2026-09-09 12:00:00');
+    [$token, $ws, $team] = trackerReportWorld();
+    trackerReportCycle($team, 'Soon', 7, 14);
+    trackerReportCycle($team, 'Later', 21, 28);
+
+    $res = $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$team->id}")->assertOk();
+
+    expect($res->json('data.cycles'))->toHaveCount(2);
+    expect($res->json('data.burndown'))->toBeNull();
+
+    Carbon::setTestNow();
+    Workspace::forgetCurrent();
+});
+
 it('computes burndown remaining per day with null future days', function (): void {
     Carbon::setTestNow('2026-09-09 12:00:00');
     [$token, $ws, $team] = trackerReportWorld();

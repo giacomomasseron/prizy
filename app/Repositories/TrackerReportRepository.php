@@ -149,11 +149,12 @@ final class TrackerReportRepository
             'total_count' => ($byCycle[$c->id] ?? collect())->count(),
         ])->values()->all();
 
+        // Spec: the cycle containing today, else the most recently ended, else
+        // null — never fall back to an arbitrary (e.g. furthest-future) cycle.
         $selected = $cycleId !== null
             ? $cycles->firstWhere('id', $cycleId)
             : ($cycles->first(fn (Cycle $c): bool => $c->starts_at->lte(today()) && $c->ends_at->gte(today()))
-                ?? $cycles->first(fn (Cycle $c): bool => $c->ends_at->lt(today()))
-                ?? $cycles->first());
+                ?? $cycles->first(fn (Cycle $c): bool => $c->ends_at->lt(today())));
 
         return ['cycles' => $rows, 'burndown' => $selected === null ? null : $this->burndown($selected, $byCycle[$selected->id] ?? collect())];
     }

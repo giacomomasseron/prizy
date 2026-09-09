@@ -24,8 +24,10 @@ return new class extends Migration
             ) WHERE status = 'done';
         SQL);
 
-        // Best-effort fallback for event-less done issues (seeded/imported rows
-        // that bypassed use-case activity logging).
+        // Best-effort fallback for event-less done issues: seeded/imported rows
+        // that bypassed use-case activity logging, and issues born directly in
+        // `done` via CreateIssue (which log a `created` activity, not
+        // `status_changed`, so the first UPDATE above never matches them).
         DB::statement(<<<'SQL'
             UPDATE issues SET completed_at = updated_at
             WHERE status = 'done' AND completed_at IS NULL;
