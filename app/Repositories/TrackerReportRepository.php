@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Models\Cycle;
 use App\Models\Issue;
 use App\Services\ReportBuckets;
 use Carbon\CarbonInterface;
@@ -119,5 +120,71 @@ final class TrackerReportRepository
         }
 
         return (int) round(($cur - $prev) / $prev * 100);
+    }
+
+    /** @return array<string, mixed> */
+    public function cycles(string $workspaceId, string $teamId, ?string $cycleId): array
+    {
+        $cycles = Cycle::query()->where('team_id', $teamId)
+            ->orderByDesc('starts_at')->orderByDesc('id')->limit(6)->get();
+
+        if ($cycles->isEmpty()) {
+            return ['cycles' => [], 'burndown' => null];
+        }
+
+        // One pass over the issues of all listed cycles.
+        $issues = Issue::query()->where('workspace_id', $workspaceId)
+            ->whereIn('cycle_id', $cycles->pluck('id'))
+            ->where('status', '!=', 'cancelled')
+            ->get(['cycle_id', 'status', 'completed_at']);
+        $byCycle = $issues->groupBy('cycle_id');
+
+        $rows = $cycles->map(fn (Cycle $c): array => [
+            'id' => $c->id,
+            'name' => $c->name,
+            'starts_at' => $c->starts_at->toDateString(),
+            'ends_at' => $c->ends_at->toDateString(),
+            'completed_count' => ($byCycle[$c->id] ?? collect())->where('status', 'done')->count(),
+            'total_count' => ($byCycle[$c->id] ?? collect())->count(),
+        ])->values()->all();
+
+        $selected = $cycleId !== null
+            ? $cycles->firstWhere('id', $cycleId)
+            : ($cycles->first(fn (Cycle $c): bool => $c->starts_at->lte(today()) && $c->ends_at->gte(today()))
+                ?? $cycles->first(fn (Cycle $c): bool => $c->ends_at->lt(today()))
+                ?? $cycles->first());
+
+        return ['cycles' => $rows, 'burndown' => $selected === null ? null : $this->burndown($workspaceId, $selected)];
+    }
+
+    /** @return array<string, mixed> */
+    private function burndown(string $workspaceId, Cycle $cycle): array
+    {
+        $completions = Issue::query()->where('workspace_id', $workspaceId)
+            ->where('cycle_id', $cycle->id)
+            ->where('status', '!=', 'cancelled')
+            ->get(['completed_at']);
+        $total = $completions->count();
+
+        $days = [];
+        $today = today();
+        for ($d = $cycle->starts_at->copy(); $d->lte($cycle->ends_at); $d = $d->copy()->addDay()) {
+            $endOfDay = $d->copy()->endOfDay();
+            $days[] = [
+                'date' => $d->toDateString(),
+                'remaining' => $d->gt($today)
+                    ? null
+                    : $completions->filter(fn (Issue $i): bool => $i->completed_at === null || $i->completed_at->gt($endOfDay))->count(),
+            ];
+        }
+
+        return [
+            'cycle_id' => $cycle->id,
+            'name' => $cycle->name,
+            'starts_at' => $cycle->starts_at->toDateString(),
+            'ends_at' => $cycle->ends_at->toDateString(),
+            'total_scope' => $total,
+            'days' => $days,
+        ];
     }
 }

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\Cycle;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
@@ -137,6 +138,107 @@ it('isolates workspaces', function (): void {
 
     $res = $this->withToken($otherToken)->getJson('/v1/reports/tracker-overview?range=7d')->assertOk();
     expect($res->json('data.kpis.created.value'))->toBe(0);
+
+    Carbon::setTestNow();
+    Workspace::forgetCurrent();
+});
+
+function trackerReportCycle(Team $team, string $name, int $startOffsetDays, int $endOffsetDays): Cycle
+{
+    return Cycle::forceCreate([
+        'id' => (string) Str::uuid(),
+        'team_id' => $team->id,
+        'name' => $name,
+        'starts_at' => now()->addDays($startOffsetDays)->toDateString(),
+        'ends_at' => now()->addDays($endOffsetDays)->toDateString(),
+    ]);
+}
+
+it('403s the cycles report for an agent-only user', function (): void {
+    [$token, $ws, $team] = trackerReportWorld(['is_developer' => false, 'is_agent' => true, 'admin_level' => 'member']);
+    $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$team->id}")->assertStatus(403);
+    Workspace::forgetCurrent();
+});
+
+it('422s a team from another workspace', function (): void {
+    [$token, $ws] = trackerReportWorld();
+    // RLS-context sandwich: create the foreign team under its own tenant, then
+    // restore the acting token's workspace before issuing the request.
+    $foreign = Workspace::factory()->create();
+    $foreign->makeCurrent();
+    $foreignTeam = Team::factory()->for($foreign, 'workspace')->create();
+    test()->actingInWorkspace($ws);
+
+    $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$foreignTeam->id}")->assertStatus(422);
+    Workspace::forgetCurrent();
+});
+
+it('422s a cycle that does not belong to the team', function (): void {
+    [$token, $ws, $team] = trackerReportWorld();
+    $otherTeam = Team::factory()->for($ws, 'workspace')->create();
+    $otherCycle = trackerReportCycle($otherTeam, 'Elsewhere', -7, 7);
+
+    $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$team->id}&cycle_id={$otherCycle->id}")->assertStatus(422);
+    Workspace::forgetCurrent();
+});
+
+it('returns empty cycles and null burndown for a cycle-less team', function (): void {
+    [$token, $ws, $team] = trackerReportWorld();
+    $res = $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$team->id}")->assertOk();
+
+    expect($res->json('data.cycles'))->toBe([]);
+    expect($res->json('data.burndown'))->toBeNull();
+    Workspace::forgetCurrent();
+});
+
+it('computes velocity excluding cancelled and defaults to the current cycle', function (): void {
+    Carbon::setTestNow('2026-09-09 12:00:00');
+    [$token, $ws, $team] = trackerReportWorld();
+    $past = trackerReportCycle($team, 'Past', -30, -16);
+    $current = trackerReportCycle($team, 'Current', -7, 7);
+
+    trackerReportIssue($ws, $team, ['cycle_id' => $current->id, 'status' => 'done', 'completed_at' => now()->subDays(3)]);
+    trackerReportIssue($ws, $team, ['cycle_id' => $current->id, 'status' => 'in_progress']);
+    trackerReportIssue($ws, $team, ['cycle_id' => $current->id, 'status' => 'cancelled']);
+    trackerReportIssue($ws, $team, ['cycle_id' => $past->id, 'status' => 'done', 'completed_at' => now()->subDays(20)]);
+
+    $res = $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$team->id}")->assertOk();
+
+    $rows = collect($res->json('data.cycles'));
+    expect($rows)->toHaveCount(2);
+    // newest-first by starts_at
+    expect($rows->first()['name'])->toBe('Current');
+    expect($rows->first()['completed_count'])->toBe(1);
+    expect($rows->first()['total_count'])->toBe(2); // cancelled excluded
+    expect($rows->last()['completed_count'])->toBe(1);
+
+    // default cycle = the one containing today
+    expect($res->json('data.burndown.name'))->toBe('Current');
+    expect($res->json('data.burndown.total_scope'))->toBe(2);
+
+    Carbon::setTestNow();
+    Workspace::forgetCurrent();
+});
+
+it('computes burndown remaining per day with null future days', function (): void {
+    Carbon::setTestNow('2026-09-09 12:00:00');
+    [$token, $ws, $team] = trackerReportWorld();
+    $cycle = trackerReportCycle($team, 'BD', -4, 3); // 8 calendar days, day 5 (index 4) is today
+
+    trackerReportIssue($ws, $team, ['cycle_id' => $cycle->id, 'status' => 'done', 'completed_at' => now()->subDays(3)->setTime(15, 0)]);
+    trackerReportIssue($ws, $team, ['cycle_id' => $cycle->id, 'status' => 'done', 'completed_at' => now()->subDays(1)->setTime(9, 0)]);
+    trackerReportIssue($ws, $team, ['cycle_id' => $cycle->id, 'status' => 'todo']);
+
+    $res = $this->withToken($token)->getJson("/v1/reports/cycles?team_id={$team->id}&cycle_id={$cycle->id}")->assertOk();
+
+    $days = $res->json('data.burndown.days');
+    expect($days)->toHaveCount(8);
+    expect($days[0]['remaining'])->toBe(3);  // day -4: nothing completed yet
+    expect($days[1]['remaining'])->toBe(2);  // day -3: first completion (15:00 <= endOfDay)
+    expect($days[3]['remaining'])->toBe(1);  // day -1: second completion
+    expect($days[4]['remaining'])->toBe(1);  // today
+    expect($days[5]['remaining'])->toBeNull(); // future
+    expect($days[7]['remaining'])->toBeNull();
 
     Carbon::setTestNow();
     Workspace::forgetCurrent();
