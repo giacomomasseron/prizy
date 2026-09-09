@@ -12,6 +12,7 @@ use App\Models\HelpdeskSavedView;
 use App\Models\Issue;
 use App\Models\Notification;
 use App\Models\Project;
+use App\Models\Release;
 use App\Models\SlaPolicy;
 use App\Models\Tag;
 use App\Models\Team;
@@ -196,6 +197,21 @@ final class SmokeSeeder extends Seeder
                     'completed_at' => $ci['completed_at'],
                 ]);
             }
+        }
+
+        // A release with a couple of issues assigned so /releases → detail
+        // demos the rollup + changelog on a fresh `composer dev`.
+        $release = Release::firstWhere([['workspace_id', $workspace->id], ['name', 'v1.0 — Smoke Release']])
+            ?? Release::forceCreate([
+                'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id,
+                'name' => 'v1.0 — Smoke Release', 'target_date' => now()->addDays(14)->toDateString(),
+            ]);
+        // Guard on the release having no issues yet (mirrors the project-issues
+        // idiom above) — without it, re-seeding would keep grabbing 2 MORE
+        // still-unassigned issues every run instead of being a no-op.
+        if ($release->issues()->count() === 0) {
+            Issue::withoutGlobalScopes()->where('workspace_id', $workspace->id)
+                ->whereNull('release_id')->limit(2)->update(['release_id' => $release->id]);
         }
 
         $issue = Issue::query()->first();
