@@ -18,10 +18,13 @@ vi.mock('./hooks', () => ({
     useActivities: () => ({ data: { items: [{ id: 'a1', user_id: 'u2', type: 'created', to_value: null, created_at: new Date().toISOString() }] } }),
     useComments: () => ({ data: { items: [{ id: 'c1', user_id: 'u2', body: 'Confirmed on staging.', created_at: new Date().toISOString(), reactions: [] }] } }),
     useAddComment: () => ({ mutate: addCommentMutate, isPending: false }),
+    // Pulled in by the (read-only, canDevelop=false) ReleaseEditor mount.
+    useUpdateIssue: () => ({ mutateAsync: vi.fn() }),
 }));
 vi.mock('../members/hooks', () => ({ useMembers: () => ({ data: [{ id: 'u2', name: 'Maya Chen', is_agent: true }] }) }));
 vi.mock('../projects/hooks', () => ({ useProjects: () => ({ data: { items: [] } }) }));
 vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [] } }) }));
+vi.mock('../releases/hooks', () => ({ useReleases: () => ({ data: [] }) }));
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
 
 function wrap(ui: React.ReactNode) { return <MemoryRouter>{ui}</MemoryRouter>; }

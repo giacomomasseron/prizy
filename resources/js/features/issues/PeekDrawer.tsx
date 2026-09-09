@@ -10,6 +10,7 @@ import { IconButton } from '../../components/ui/IconButton';
 import { avatarFor } from '../../lib/avatarFor';
 import { timeAgo } from '../../lib/timeAgo';
 import { useIssue, useIssueLabels, useActivities, useComments, useAddComment } from './hooks';
+import { ReleaseEditor } from './ReleaseEditor';
 import { useProjects } from '../projects/hooks';
 import { useCycles } from '../teams/hooks';
 import { useMembers } from '../members/hooks';
@@ -114,6 +115,11 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                     <div style={propRow}><span style={propLabel}>Priority</span><span style={propVal}><PriorityIcon priority={data.priority} />{PRIORITY_LABELS[data.priority] ?? data.priority}</span></div>
                     <div style={propRow}><span style={propLabel}>Assignee</span><span style={propVal}>{data.assignee ? <Avatar {...avatarFor(data.assignee)} size={20} /> : <Avatar size={20} />}{data.assignee?.name ?? 'Unassigned'}</span></div>
                     <div style={propRow}><span style={propLabel}>Project</span>{project ? <ProjectPill name={project.name} color={project.color} /> : <span style={{ fontSize: 13, color: 'var(--fg3)' }}>No project</span>}</div>
+                    {/* Peek is a read-only quick view (no *Editor components for any other property
+                        either) — ReleaseEditor with canDevelop=false reuses its read-only display
+                        branch (embedded issue.release, no list fetch) instead of duplicating the
+                        ⛴/✓ formatting inline. */}
+                    <div style={propRow}><span style={propLabel}>Release</span><ReleaseEditor issue={data} canDevelop={false} /></div>
                     <div style={propRow}><span style={propLabel}>Labels</span>{labels.length > 0 ? <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>{labels.map((l) => <LabelChip key={l.id} name={l.name} color={l.color} />)}</span> : <span style={{ fontSize: 13, color: 'var(--fg3)' }}>—</span>}</div>
                     <div style={propRow}><span style={propLabel}>Cycle</span><span style={{ fontSize: 13, color: 'var(--fg)' }}>{cycle?.name ?? '—'}</span></div>
                 </div>

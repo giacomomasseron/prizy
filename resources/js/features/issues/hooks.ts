@@ -9,6 +9,7 @@ export interface CreateIssueInput {
     priority?: IssuePriority;
     assignee_id?: string | null;
     project_id?: string | null;
+    release_id?: string | null;
     description?: string | null;
     /** Applied after creation via the labels endpoint (the create endpoint ignores it). */
     label_ids?: string[];
@@ -158,7 +159,7 @@ export function useToggleReaction(id: string) {
 export function useUpdateIssue(id: string) {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (data: Partial<Pick<Issue, 'title' | 'description' | 'priority'>> & { project_id?: string | null; cycle_id?: string | null }) => api.patch<Issue>(`/issues/${id}`, data),
+        mutationFn: (data: Partial<Pick<Issue, 'title' | 'description' | 'priority'>> & { project_id?: string | null; cycle_id?: string | null; release_id?: string | null }) => api.patch<Issue>(`/issues/${id}`, data),
         onSuccess: () => { qc.invalidateQueries({ queryKey: ['issue', id] }); qc.invalidateQueries({ queryKey: ['issues'] }); },
     });
 }

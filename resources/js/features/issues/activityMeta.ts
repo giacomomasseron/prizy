@@ -12,6 +12,7 @@ export function humanizeActivityType(type: string): string {
         case 'label_removed':       return 'removed a label';
         case 'project_changed':     return 'changed project';
         case 'cycle_changed':       return 'changed cycle';
+        case 'release_changed':     return 'changed the release';
         case 'created':             return 'created this issue';
         case 'archived':            return 'archived this issue';
         case 'blocker_added':       return 'added a blocker';
