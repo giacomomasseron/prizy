@@ -8,6 +8,7 @@ use App\Models\Cycle;
 use App\Models\Issue;
 use App\Services\ReportBuckets;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Collection;
 
 final class TrackerReportRepository
 {
@@ -154,17 +155,14 @@ final class TrackerReportRepository
                 ?? $cycles->first(fn (Cycle $c): bool => $c->ends_at->lt(today()))
                 ?? $cycles->first());
 
-        return ['cycles' => $rows, 'burndown' => $selected === null ? null : $this->burndown($workspaceId, $selected)];
+        return ['cycles' => $rows, 'burndown' => $selected === null ? null : $this->burndown($selected, $byCycle[$selected->id] ?? collect())];
     }
 
-    /** @return array<string, mixed> */
-    private function burndown(string $workspaceId, Cycle $cycle): array
+    /** @param  Collection<int, Issue>  $issues
+     * @return array<string, mixed> */
+    private function burndown(Cycle $cycle, Collection $issues): array
     {
-        $completions = Issue::query()->where('workspace_id', $workspaceId)
-            ->where('cycle_id', $cycle->id)
-            ->where('status', '!=', 'cancelled')
-            ->get(['completed_at']);
-        $total = $completions->count();
+        $total = $issues->count();
 
         $days = [];
         $today = today();
@@ -174,7 +172,7 @@ final class TrackerReportRepository
                 'date' => $d->toDateString(),
                 'remaining' => $d->gt($today)
                     ? null
-                    : $completions->filter(fn (Issue $i): bool => $i->completed_at === null || $i->completed_at->gt($endOfDay))->count(),
+                    : $issues->filter(fn (Issue $i): bool => $i->completed_at === null || $i->completed_at->gt($endOfDay))->count(),
             ];
         }
 
