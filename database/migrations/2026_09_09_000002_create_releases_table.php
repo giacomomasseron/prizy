@@ -34,10 +34,12 @@ return new class extends Migration
         );
 
         DB::statement('ALTER TABLE issues ADD COLUMN release_id UUID NULL REFERENCES releases(id) ON DELETE SET NULL;');
+        DB::statement('CREATE INDEX idx_issues_release ON issues (release_id);');
     }
 
     public function down(): void
     {
+        DB::statement('DROP INDEX IF EXISTS idx_issues_release;');
         DB::statement('ALTER TABLE issues DROP COLUMN IF EXISTS release_id;');
         DB::statement('DROP POLICY IF EXISTS releases_workspace_isolation ON releases;');
         Schema::dropIfExists('releases');

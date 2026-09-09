@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
-import { useDeleteRelease, useRelease, useShipRelease } from './hooks';
+import { useDeleteRelease, useRelease, useShipRelease, useUpdateRelease } from './hooks';
 import { buildChangelog } from './changelog';
 import { formatTargetDate } from './formatDate';
 import { STATUS_LABELS } from '../issues/StatusEditor';
@@ -41,8 +41,16 @@ export default function ReleaseDetailPage() {
     const releaseQ = useRelease(id);
     const ship = useShipRelease(id);
     const del = useDeleteRelease();
+    const update = useUpdateRelease(id);
     const [copied, setCopied] = useState(false);
     const copiedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const [editingName, setEditingName] = useState(false);
+    const [nameDraft, setNameDraft] = useState('');
+    const nameCancelledRef = useRef(false);
+
+    const [editingDescription, setEditingDescription] = useState(false);
+    const [descDraft, setDescDraft] = useState('');
 
     useEffect(() => () => { if (copiedTimer.current) clearTimeout(copiedTimer.current); }, []);
 
@@ -59,10 +67,15 @@ export default function ReleaseDetailPage() {
     const total = release.by_status.reduce((sum, s) => sum + s.count, 0);
 
     async function copyChangelog() {
-        await navigator.clipboard.writeText(buildChangelog(release.name, release.issues));
-        setCopied(true);
-        if (copiedTimer.current) clearTimeout(copiedTimer.current);
-        copiedTimer.current = setTimeout(() => setCopied(false), 2000);
+        try {
+            await navigator.clipboard.writeText(buildChangelog(release.name, release.issues));
+            setCopied(true);
+            if (copiedTimer.current) clearTimeout(copiedTimer.current);
+            copiedTimer.current = setTimeout(() => setCopied(false), 2000);
+        } catch {
+            // Clipboard API unavailable (e.g. a non-secure context) — fail silently,
+            // leave the button text unchanged rather than crashing the page.
+        }
     }
 
     function handleDelete() {
@@ -70,21 +83,158 @@ export default function ReleaseDetailPage() {
         del.mutate(release.id, { onSuccess: () => navigate('/releases') });
     }
 
+    function startEditName() {
+        if (!canDevelop) return;
+        nameCancelledRef.current = false;
+        setNameDraft(release.name);
+        setEditingName(true);
+    }
+
+    function commitName() {
+        setEditingName(false);
+        const trimmed = nameDraft.trim();
+        if (trimmed && trimmed !== release.name) {
+            update.mutate({ name: trimmed });
+        }
+    }
+
+    function handleNameKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.currentTarget.blur();
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            nameCancelledRef.current = true;
+            setEditingName(false);
+        }
+    }
+
+    function handleNameBlur() {
+        if (nameCancelledRef.current) {
+            nameCancelledRef.current = false;
+            return;
+        }
+        commitName();
+    }
+
+    function startEditDescription() {
+        if (!canDevelop) return;
+        setDescDraft(release.description ?? '');
+        setEditingDescription(true);
+    }
+
+    function saveDescription() {
+        update.mutate({ description: descDraft.trim() || null });
+        setEditingDescription(false);
+    }
+
+    function handleTargetDateChange(next: string) {
+        update.mutate({ target_date: next || null });
+    }
+
     return (
         <div style={{ padding: '28px 32px', maxWidth: 900 }}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-.02em' }}>{release.name}</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                {editingName ? (
+                    <input
+                        aria-label="Release name"
+                        autoFocus
+                        value={nameDraft}
+                        onChange={(e) => setNameDraft(e.target.value)}
+                        onKeyDown={handleNameKeyDown}
+                        onBlur={handleNameBlur}
+                        style={{
+                            fontSize: 22, fontWeight: 600, letterSpacing: '-.02em',
+                            background: 'var(--panel)', border: '1px solid var(--border)',
+                            borderRadius: 6, padding: '2px 8px', color: 'var(--fg)',
+                            fontFamily: 'inherit', minWidth: 220,
+                        }}
+                    />
+                ) : (
+                    <h1
+                        onClick={canDevelop ? startEditName : undefined}
+                        title={canDevelop ? 'Click to rename' : undefined}
+                        style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-.02em', cursor: canDevelop ? 'pointer' : 'default' }}
+                    >
+                        {release.name}
+                    </h1>
+                )}
+                {canDevelop && !editingName && (
+                    <button
+                        type="button"
+                        aria-label="Edit release name"
+                        onClick={startEditName}
+                        style={{ border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 12.5, padding: 2, fontFamily: 'inherit' }}
+                    >
+                        Edit
+                    </button>
+                )}
                 {isShipped && (
                     <span data-testid="shipped-badge" style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '2px 9px' }}>
                         Shipped {formatShippedAt(release.shipped_at)}
                     </span>
                 )}
             </div>
-            {release.description && (
-                <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--fg2)', lineHeight: 1.6 }}>{release.description}</p>
+
+            {canDevelop ? (
+                editingDescription ? (
+                    <div style={{ marginBottom: 8 }}>
+                        <textarea
+                            aria-label="Description"
+                            autoFocus
+                            value={descDraft}
+                            onChange={(e) => setDescDraft(e.target.value)}
+                            style={{
+                                width: '100%', minHeight: 70, background: 'var(--panel)',
+                                border: '1px solid var(--border)', borderRadius: 8,
+                                padding: '8px 10px', fontSize: 13.5, lineHeight: 1.6,
+                                color: 'var(--fg)', fontFamily: 'inherit', resize: 'vertical',
+                                boxSizing: 'border-box',
+                            }}
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                            <button type="button" style={actionBtn} onClick={saveDescription}>Save</button>
+                            <button type="button" style={{ ...actionBtn, background: 'transparent' }} onClick={() => setEditingDescription(false)}>Cancel</button>
+                        </div>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
+                        <p style={{ margin: 0, fontSize: 13.5, color: release.description ? 'var(--fg2)' : 'var(--fg3)', fontStyle: release.description ? 'normal' : 'italic', lineHeight: 1.6 }}>
+                            {release.description || 'No description.'}
+                        </p>
+                        <button
+                            type="button"
+                            aria-label="Edit description"
+                            onClick={startEditDescription}
+                            style={{ border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 12, padding: 2, flexShrink: 0, fontFamily: 'inherit' }}
+                        >
+                            Edit
+                        </button>
+                    </div>
+                )
+            ) : (
+                release.description && (
+                    <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--fg2)', lineHeight: 1.6 }}>{release.description}</p>
+                )
             )}
-            <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 18 }}>Target date: {formatTargetDate(release.target_date)}</div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--fg3)', marginBottom: 18 }}>
+                <span>Target date: {formatTargetDate(release.target_date)}</span>
+                {canDevelop && (
+                    <input
+                        type="date"
+                        aria-label="Target date"
+                        value={release.target_date ?? ''}
+                        onChange={(e) => handleTargetDateChange(e.target.value)}
+                        style={{
+                            fontSize: 12, color: 'var(--fg)', background: 'var(--panel)',
+                            border: '1px solid var(--border)', borderRadius: 6,
+                            padding: '2px 6px', fontFamily: 'inherit',
+                        }}
+                    />
+                )}
+            </div>
 
             {/* Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>

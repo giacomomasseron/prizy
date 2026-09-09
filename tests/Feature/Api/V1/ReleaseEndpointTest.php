@@ -103,6 +103,19 @@ it('enforces the policy matrix', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('gates GET /v1/releases/{id} to developers only (agent-only cannot enumerate via the id)', function (): void {
+    [$devToken, $ws] = releaseWorld();
+    $release = releaseRow($ws);
+
+    $agent = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true, 'is_developer' => false]);
+    $agentToken = app(CreatePersonalAccessToken::class)->handle($agent, 't', null)['token'];
+
+    $this->withToken($agentToken)->getJson("/v1/releases/{$release->id}")->assertStatus(403);
+    $this->withToken($devToken)->getJson("/v1/releases/{$release->id}")->assertOk();
+
+    Workspace::forgetCurrent();
+});
+
 it('ships and unships with 422 guards', function (): void {
     [$token, $ws] = releaseWorld();
     $release = releaseRow($ws);
@@ -138,15 +151,37 @@ it('computes the rollup excluding cancelled and nulls pct when empty', function 
     Workspace::forgetCurrent();
 });
 
-it('orders the list upcoming-first', function (): void {
+it('orders the list upcoming-first, then shipped newest-first', function (): void {
     [$token, $ws] = releaseWorld();
     releaseRow($ws, ['name' => 'shipped-old', 'shipped_at' => now()->subDays(5)]);
     releaseRow($ws, ['name' => 'upcoming-late', 'target_date' => now()->addDays(30)->toDateString()]);
     releaseRow($ws, ['name' => 'upcoming-soon', 'target_date' => now()->addDays(3)->toDateString()]);
+    releaseRow($ws, ['name' => 'shipped-new', 'shipped_at' => now()->subDay()]);
 
     $names = collect($this->withToken($token)->getJson('/v1/releases')->assertOk()->json('data'))->pluck('name');
     expect($names->take(2)->all())->toBe(['upcoming-soon', 'upcoming-late']);
-    expect($names->last())->toBe('shipped-old');
+    expect($names->slice(2)->values()->all())->toBe(['shipped-new', 'shipped-old']);
+
+    Workspace::forgetCurrent();
+});
+
+it('omits by_status from list rows (only the detail payload carries it)', function (): void {
+    [$token, $ws] = releaseWorld();
+    releaseRow($ws);
+
+    $res = $this->withToken($token)->getJson('/v1/releases')->assertOk();
+    expect(array_keys($res->json('data.0')))->not->toContain('by_status');
+
+    Workspace::forgetCurrent();
+});
+
+it('ignores shipped_at on PATCH (mass-assignment guard — ship/unship are the only way to set it)', function (): void {
+    [$token, $ws] = releaseWorld();
+    $release = releaseRow($ws);
+
+    $this->withToken($token)->patchJson("/v1/releases/{$release->id}", ['shipped_at' => now()->toISOString()])
+        ->assertOk();
+    expect($release->refresh()->shipped_at)->toBeNull();
 
     Workspace::forgetCurrent();
 });

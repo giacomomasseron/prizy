@@ -16,7 +16,7 @@ final class ReleasePolicy
 
     public function view(User $user, Release $release): bool
     {
-        return $user->workspace_id === $release->workspace_id;
+        return $user->is_developer && $user->workspace_id === $release->workspace_id;
     }
 
     public function create(User $user): bool

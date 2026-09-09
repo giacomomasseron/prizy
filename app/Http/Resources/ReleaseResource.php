@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Repositories\ReleaseRepository;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -12,7 +13,10 @@ final class ReleaseResource extends JsonResource
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
-        $rollup = $this->rollup;
+        // The `rollup` attribute is transient (set by ReleaseRepository::forWorkspace()/
+        // FindRelease), so it's absent for resources built outside those paths — fall
+        // back to the empty shape rather than emitting null.
+        $rollup = $this->rollup ?? ReleaseRepository::emptyRollup();
         $byStatus = $rollup['by_status'] ?? [];
         unset($rollup['by_status']);
 

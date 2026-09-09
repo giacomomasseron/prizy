@@ -40,11 +40,13 @@ let detail: ReleaseDetail = DETAIL;
 const meRef: { current: typeof meCanDevelop | typeof meViewer } = { current: meCanDevelop };
 const shipMutate = vi.fn();
 const deleteMutate = vi.fn();
+const updateMutate = vi.fn();
 
 vi.mock('./hooks', () => ({
     useRelease: () => ({ data: detail, isLoading: false }),
     useShipRelease: () => ({ mutate: shipMutate, mutateAsync: shipMutate, isPending: false }),
     useDeleteRelease: () => ({ mutate: deleteMutate, mutateAsync: deleteMutate, isPending: false }),
+    useUpdateRelease: () => ({ mutate: updateMutate, mutateAsync: updateMutate, isPending: false }),
 }));
 vi.mock('../../auth/useAuth', () => ({
     useMe: () => ({ data: meRef.current }),
@@ -65,6 +67,7 @@ describe('ReleaseDetailPage', () => {
         mockNavigate.mockReset();
         shipMutate.mockReset();
         deleteMutate.mockReset();
+        updateMutate.mockReset();
         Object.defineProperty(window.navigator, 'clipboard', {
             value: { writeText: vi.fn().mockResolvedValue(undefined) },
             writable: true,
@@ -139,6 +142,52 @@ describe('ReleaseDetailPage', () => {
         renderPage();
         fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
         expect(deleteMutate).not.toHaveBeenCalled();
+    });
+
+    it('clicking the name switches to an editable input; typing + blur commits the new name via useUpdateRelease', async () => {
+        renderPage();
+        await userEvent.click(screen.getByRole('heading', { name: 'v1.1' }));
+        const input = screen.getByLabelText('Release name');
+        await userEvent.clear(input);
+        await userEvent.type(input, 'v1.2');
+        fireEvent.blur(input);
+        expect(updateMutate).toHaveBeenCalledWith({ name: 'v1.2' });
+    });
+
+    it('Escape cancels the name edit without calling the mutation', async () => {
+        renderPage();
+        await userEvent.click(screen.getByRole('heading', { name: 'v1.1' }));
+        const input = screen.getByLabelText('Release name');
+        await userEvent.type(input, ' extra');
+        fireEvent.keyDown(input, { key: 'Escape' });
+        expect(updateMutate).not.toHaveBeenCalled();
+        expect(screen.getByRole('heading', { name: 'v1.1' })).toBeInTheDocument();
+    });
+
+    it('reveals a description textarea via the Edit affordance and saves it via useUpdateRelease', async () => {
+        renderPage();
+        await userEvent.click(screen.getByRole('button', { name: 'Edit description' }));
+        const textarea = screen.getByLabelText('Description');
+        await userEvent.clear(textarea);
+        await userEvent.type(textarea, 'New description.');
+        await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect(updateMutate).toHaveBeenCalledWith({ description: 'New description.' });
+    });
+
+    it('changing the target date input calls useUpdateRelease with target_date', () => {
+        renderPage();
+        const input = screen.getByLabelText('Target date');
+        fireEvent.change(input, { target: { value: '2026-12-25' } });
+        expect(updateMutate).toHaveBeenCalledWith({ target_date: '2026-12-25' });
+    });
+
+    it('hides all inline-edit affordances for a non-developer', () => {
+        meRef.current = meViewer;
+        renderPage();
+        expect(screen.queryByLabelText('Release name')).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Edit release name' })).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Edit description' })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Target date')).not.toBeInTheDocument();
     });
 
     it('renders issue rows in the order delivered by the API (no re-sorting), linked to /issues/:id', () => {

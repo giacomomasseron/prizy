@@ -44,6 +44,9 @@ export function useUpdateRelease(id: string) {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['releases'] });
             qc.invalidateQueries({ queryKey: ['releases', id] });
+            // Issue payloads embed the release name (e.g. the ticket→issue bridge,
+            // the release picker), so a rename must invalidate those caches too.
+            invalidateIssueKeys(qc);
         },
     });
 }

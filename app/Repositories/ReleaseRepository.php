@@ -45,14 +45,16 @@ final class ReleaseRepository
 
     /**
      * Upcoming first (unshipped by nearest target_date, nulls last), then
-     * shipped (newest first). Each release gets a transient `rollup` attribute.
+     * shipped (newest-shipped first). Each release gets a transient `rollup`
+     * attribute.
      *
      * @return Collection<int, Release>
      */
     public function forWorkspace(string $workspaceId): Collection
     {
         $releases = Release::query()->where('workspace_id', $workspaceId)
-            ->orderByRaw('shipped_at ASC NULLS FIRST')
+            ->orderByRaw('(shipped_at IS NOT NULL)')
+            ->orderByRaw('shipped_at DESC NULLS FIRST')
             ->orderByRaw('target_date ASC NULLS LAST')
             ->orderByDesc('created_at')
             ->get();

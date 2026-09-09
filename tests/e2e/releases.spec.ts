@@ -16,6 +16,6 @@ test.describe('Releases', () => {
 
         await page.goto('/releases');
         await expect(page.getByText('Shipped', { exact: true })).toBeVisible();
-        await expect(page.getByRole('link', { name: new RegExp(name) })).toBeVisible();
+        await expect(page.getByTestId('releases-shipped').getByRole('link', { name: new RegExp(name) })).toBeVisible();
     });
 });
