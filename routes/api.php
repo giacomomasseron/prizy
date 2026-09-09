@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\MilestoneController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\ReleaseController;
 use App\Http\Controllers\Api\V1\ReportingController;
 use App\Http\Controllers\Api\V1\RoadmapController;
 use App\Http\Controllers\Api\V1\SavedViewController;
@@ -187,6 +188,14 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/projects', [ProjectController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Project']);
         Route::patch('/projects/{project}', [ProjectController::class, 'update'])->middleware('verified');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->middleware('verified');
+
+        Route::get('/releases', [ReleaseController::class, 'index'])->middleware('can:viewAny,App\\Models\\Release');
+        Route::get('/releases/{release}', [ReleaseController::class, 'show']);
+        Route::post('/releases', [ReleaseController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Release']);
+        Route::patch('/releases/{release}', [ReleaseController::class, 'update'])->middleware('verified');
+        Route::delete('/releases/{release}', [ReleaseController::class, 'destroy'])->middleware('verified');
+        Route::post('/releases/{release}/ship', [ReleaseController::class, 'ship'])->middleware('verified');
+        Route::post('/releases/{release}/unship', [ReleaseController::class, 'unship'])->middleware('verified');
 
         Route::get('/teams/{team}/cycles', [CycleController::class, 'index'])
             ->middleware('can:viewAny,App\\Models\\Cycle');

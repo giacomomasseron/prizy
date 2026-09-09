@@ -30,7 +30,7 @@ function trackerAuthWorld(array $flags): array
     return [$token, $ws];
 }
 
-/** @return list<string> the six gated tracker list URLs for the given workspace */
+/** @return list<string> the seven gated tracker list URLs for the given workspace */
 function trackerListUrls(Workspace $ws): array
 {
     $team = Team::factory()->for($ws, 'workspace')->create();
@@ -43,6 +43,7 @@ function trackerListUrls(Workspace $ws): array
         '/v1/saved-views',
         "/v1/teams/{$team->id}/cycles",
         "/v1/projects/{$project->id}/milestones",
+        '/v1/releases',
     ];
 }
 
