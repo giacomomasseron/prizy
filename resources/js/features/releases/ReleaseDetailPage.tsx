@@ -4,6 +4,7 @@ import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { useDeleteRelease, useRelease, useShipRelease } from './hooks';
 import { buildChangelog } from './changelog';
+import { formatTargetDate } from './formatDate';
 import { STATUS_LABELS } from '../issues/StatusEditor';
 import type { IssueStatus } from '../../lib/types';
 
@@ -24,7 +25,10 @@ const STATUS_ORDER: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_revie
 const sectionHeader: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--fg3)', marginBottom: 10 };
 const actionBtn: CSSProperties = { border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' };
 
-function formatDate(iso: string | null): string {
+// `shipped_at` is a real timestamp (not a date-only string), so instant→local
+// conversion via `new Date(iso)` is correct here — unlike `target_date`, which
+// uses the timezone-safe `formatTargetDate` (see formatDate.ts).
+function formatShippedAt(iso: string | null): string {
     if (!iso) return '—';
     return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
@@ -73,14 +77,14 @@ export default function ReleaseDetailPage() {
                 <h1 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-.02em' }}>{release.name}</h1>
                 {isShipped && (
                     <span data-testid="shipped-badge" style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '2px 9px' }}>
-                        Shipped {formatDate(release.shipped_at)}
+                        Shipped {formatShippedAt(release.shipped_at)}
                     </span>
                 )}
             </div>
             {release.description && (
                 <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--fg2)', lineHeight: 1.6 }}>{release.description}</p>
             )}
-            <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 18 }}>Target date: {formatDate(release.target_date)}</div>
+            <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 18 }}>Target date: {formatTargetDate(release.target_date)}</div>
 
             {/* Actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
