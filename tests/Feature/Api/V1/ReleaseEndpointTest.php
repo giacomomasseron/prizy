@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -158,6 +159,60 @@ it('isolates workspaces', function (): void {
 
     [$otherToken] = releaseWorld();
     expect($this->withToken($otherToken)->getJson('/v1/releases')->assertOk()->json('data'))->toBe([]);
+
+    Workspace::forgetCurrent();
+});
+
+it('assigns a release via PATCH issue, logs release_changed, validates cross-workspace', function (): void {
+    [$token, $ws, $team, $user] = releaseWorld();
+    $release = releaseRow($ws);
+    $issue = releaseIssue($ws, $team, $user);
+
+    $this->withToken($token)->patchJson("/v1/issues/{$issue->id}", ['release_id' => $release->id])->assertOk();
+    expect($issue->refresh()->release_id)->toBe($release->id);
+    expect(
+        DB::table('issue_activities')->where('issue_id', $issue->id)->where('type', 'release_changed')->exists()
+    )->toBeTrue();
+
+    // foreign-workspace release → 422 (RLS-context sandwich for setup)
+    Workspace::forgetCurrent();
+    $foreign = Workspace::factory()->create();
+    $foreign->makeCurrent();
+    $foreignRelease = releaseRow($foreign);
+    Workspace::forgetCurrent();
+    test()->actingInWorkspace($ws);
+
+    $this->withToken($token)->patchJson("/v1/issues/{$issue->id}", ['release_id' => $foreignRelease->id])->assertStatus(422);
+
+    Workspace::forgetCurrent();
+});
+
+it('accepts release_id at issue creation', function (): void {
+    [$token, $ws, $team] = releaseWorld();
+    $release = releaseRow($ws);
+
+    $res = $this->withToken($token)->postJson('/v1/issues', [
+        'team_id' => $team->id, 'title' => 'Born in a release', 'release_id' => $release->id,
+    ])->assertStatus(201);
+    expect(Issue::withoutGlobalScopes()->find($res->json('data.id'))->release_id)->toBe($release->id);
+
+    Workspace::forgetCurrent();
+});
+
+it('embeds the release on the single-issue payload for an agent (bridge)', function (): void {
+    [$devToken, $ws, $team, $user] = releaseWorld();
+    $release = releaseRow($ws, ['name' => 'Bridge Release', 'shipped_at' => now()]);
+    $issue = releaseIssue($ws, $team, $user, ['release_id' => $release->id]);
+    Workspace::forgetCurrent();
+    test()->flushSession();
+
+    test()->actingInWorkspace($ws);
+    $agent = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true, 'is_developer' => false]);
+    $agentToken = app(CreatePersonalAccessToken::class)->handle($agent, 't', null)['token'];
+
+    $res = $this->withToken($agentToken)->getJson("/v1/issues/{$issue->id}")->assertOk();
+    expect($res->json('data.release.name'))->toBe('Bridge Release');
+    expect($res->json('data.release.shipped_at'))->not->toBeNull();
 
     Workspace::forgetCurrent();
 });

@@ -7,6 +7,7 @@ namespace App\UseCases\Issues\Concerns;
 use App\Models\Cycle;
 use App\Models\Issue;
 use App\Models\Project;
+use App\Models\Release;
 use App\Models\Team;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
@@ -44,6 +45,13 @@ trait ValidatesWorkspaceReferences
     {
         if ($projectId !== null && Project::find($projectId) === null) {
             throw ValidationException::withMessages(['project_id' => ['The selected project is invalid.']]);
+        }
+    }
+
+    private function assertReleaseInWorkspace(?string $releaseId): void
+    {
+        if ($releaseId !== null && Release::find($releaseId) === null) {
+            throw ValidationException::withMessages(['release_id' => ['The selected release is invalid.']]);
         }
     }
 

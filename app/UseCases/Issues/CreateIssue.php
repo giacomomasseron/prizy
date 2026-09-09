@@ -33,6 +33,7 @@ final class CreateIssue
         $this->assertIssueInWorkspace($data['parent_issue_id'] ?? null, 'parent_issue_id');
         $this->assertProjectInWorkspace($data['project_id'] ?? null);
         $this->assertCycleInWorkspace($data['cycle_id'] ?? null);
+        $this->assertReleaseInWorkspace($data['release_id'] ?? null);
 
         $notificationEvent = null;
 
@@ -48,6 +49,7 @@ final class CreateIssue
                 'due_date' => $data['due_date'] ?? null,
                 'project_id' => $data['project_id'] ?? null,
                 'cycle_id' => $data['cycle_id'] ?? null,
+                'release_id' => $data['release_id'] ?? null,
                 'parent_issue_id' => $data['parent_issue_id'] ?? null,
                 'assignee_id' => $data['assignee_id'] ?? null,
                 'created_by' => $actor->id,

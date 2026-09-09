@@ -46,6 +46,7 @@ final class IssueResource extends JsonResource
             ),
             'cycle' => $this->whenLoaded('cycle', fn () => $this->cycle ? ['id' => $this->cycle->id, 'name' => $this->cycle->name] : null
             ),
+            'release' => $this->whenLoaded('release', fn () => $this->release ? ['id' => $this->release->id, 'name' => $this->release->name, 'shipped_at' => $this->release->shipped_at?->toISOString()] : null),
             'support_ticket' => $this->whenLoaded('supportTickets', function () {
                 /** @var Ticket|null $ticket */
                 $ticket = $this->supportTickets->first();

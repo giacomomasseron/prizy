@@ -20,13 +20,14 @@ final class UpdateIssue
 
     /** field => activity type */
     private const TRACKED = [
-        'title'           => 'title_changed',
-        'description'     => 'description_changed',
-        'priority'        => 'priority_changed',
-        'estimate'        => 'estimate_changed',
-        'due_date'        => 'due_date_changed',
-        'project_id'      => 'project_changed',
-        'cycle_id'        => 'cycle_changed',
+        'title' => 'title_changed',
+        'description' => 'description_changed',
+        'priority' => 'priority_changed',
+        'estimate' => 'estimate_changed',
+        'due_date' => 'due_date_changed',
+        'project_id' => 'project_changed',
+        'cycle_id' => 'cycle_changed',
+        'release_id' => 'release_changed',
         'parent_issue_id' => 'parent_changed',
     ];
 
@@ -52,6 +53,7 @@ final class UpdateIssue
         }
         $this->assertProjectInWorkspace($data['project_id'] ?? null);
         $this->assertCycleInWorkspace($data['cycle_id'] ?? null);
+        $this->assertReleaseInWorkspace($data['release_id'] ?? null);
 
         $changes = [];
         foreach (self::TRACKED as $field => $type) {

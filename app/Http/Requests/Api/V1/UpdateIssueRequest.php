@@ -18,13 +18,14 @@ final class UpdateIssueRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title'           => ['sometimes', 'string', 'max:255'],
-            'description'     => ['sometimes', 'nullable', 'string'],
-            'priority'        => ['sometimes', Rule::in(['no_priority', 'urgent', 'high', 'medium', 'low'])],
-            'estimate'        => ['sometimes', 'nullable', 'integer', 'min:0'],
-            'due_date'        => ['sometimes', 'nullable', 'date'],
-            'project_id'      => ['sometimes', 'nullable', 'string'],
-            'cycle_id'        => ['sometimes', 'nullable', 'string'],
+            'title' => ['sometimes', 'string', 'max:255'],
+            'description' => ['sometimes', 'nullable', 'string'],
+            'priority' => ['sometimes', Rule::in(['no_priority', 'urgent', 'high', 'medium', 'low'])],
+            'estimate' => ['sometimes', 'nullable', 'integer', 'min:0'],
+            'due_date' => ['sometimes', 'nullable', 'date'],
+            'project_id' => ['sometimes', 'nullable', 'string'],
+            'release_id' => ['sometimes', 'nullable', 'uuid'],
+            'cycle_id' => ['sometimes', 'nullable', 'string'],
             'parent_issue_id' => ['sometimes', 'nullable', 'string'],
         ];
     }
