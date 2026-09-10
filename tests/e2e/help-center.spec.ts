@@ -12,7 +12,7 @@ test.describe('Help center (public)', () => {
         await expect(page.getByRole('heading', { name: 'Getting started' })).toBeVisible();
 
         await page.getByRole('link', { name: 'Create your first project' }).first().click();
-        await expect(page.getByRole('heading', { name: 'Create your first project' }).first()).toBeVisible();
+        await expect(page.getByRole('heading', { name: 'Create your first project' })).toBeVisible();
         await expect(page.getByText('Was this helpful?')).toBeVisible();
     });
 

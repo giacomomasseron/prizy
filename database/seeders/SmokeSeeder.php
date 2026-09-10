@@ -269,7 +269,7 @@ final class SmokeSeeder extends Seeder
                         ?? KbArticle::forceCreate([
                             'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => $user->id,
                             'title' => $artDef['title'], 'slug' => $artDef['slug'],
-                            'body' => "# {$artDef['title']}\n\n{$kbBody}", 'status' => 'published',
+                            'body' => $kbBody, 'status' => 'published',
                             'position' => $ai, 'views_count' => $artDef['views'], 'published_at' => now()->subDays(7),
                         ]);
                 }
