@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
 use App\Http\Controllers\CsatController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HelpCenterController;
 use App\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
@@ -91,6 +92,36 @@ Route::get('/csat/{ticket}/{rating}', [CsatController::class, 'respond'])
     ->middleware(['throttle:30,1'])
     ->withoutMiddleware([EnsureValidTenantSession::class])
     ->name('csat.respond');
+
+// Help center (HC-1) — public knowledge base on the tenant host.
+// Same session exemption as /login and /csat; NeedsTenant stays (RLS GUC).
+// ORDER MATTERS: fixed segments before the {category} catch-all — 'search',
+// 'articles' and HelpCenterController::RESERVED_HELP_SLUGS' other entries
+// ('requests', 'new', 'login' — reserved for HC-2/3) are reserved category
+// slugs; the negative-lookahead {category} constraint below is belt-and-braces
+// on top of that ordering.
+$reservedHelpSlugs = implode('|', HelpCenterController::RESERVED_HELP_SLUGS);
+$helpCategoryPattern = '^(?!(?:'.$reservedHelpSlugs.')$)[a-z0-9-]+$';
+
+Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () use ($helpCategoryPattern): void {
+    // Reads write a view-counter row (article) or recompute nothing but still
+    // hit the DB per request, and search runs ts_headline over full article
+    // bodies — all unauthenticated, so throttle the GETs same as any other
+    // public surface. The feedback POST keeps its own tighter throttle below.
+    Route::middleware('throttle:60,1')->group(function () use ($helpCategoryPattern): void {
+        Route::get('/help', [HelpCenterController::class, 'home'])->name('help.home');
+        Route::get('/help/search', [HelpCenterController::class, 'search'])->name('help.search');
+        Route::get('/help/{category}', [HelpCenterController::class, 'topic'])
+            ->where('category', $helpCategoryPattern)
+            ->name('help.topic');
+        Route::get('/help/{category}/{section}/{article}', [HelpCenterController::class, 'article'])
+            ->where('category', $helpCategoryPattern)
+            ->name('help.article');
+    });
+
+    Route::post('/help/articles/{article}/feedback', [HelpCenterController::class, 'feedback'])
+        ->middleware('throttle:10,1')->name('help.feedback');
+});
 
 Route::post('/login', [LoginController::class, 'store'])
     ->middleware(['throttle:10,1'])

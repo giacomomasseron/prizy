@@ -33,6 +33,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property Carbon $created_at
  * @property Carbon $updated_at
  * @property Carbon|null $deleted_at
+ * @property string|null $search (generated tsvector — never set manually)
  * @property User $author
  * @property KbSection $section
  * @property Collection|User[] $kbArticleVersionsUsers
