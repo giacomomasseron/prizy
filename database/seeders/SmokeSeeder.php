@@ -365,6 +365,64 @@ final class SmokeSeeder extends Seeder
             DB::table('ticket_tags')->insert(['ticket_id' => $dueTicket->id, 'tag_id' => $billing->id]);
         }
 
+        // HC-2 "My requests" portal demo (idempotent): the exact copy from the
+        // design spec's internal note, plus an issue link, so the escalated
+        // ticket's portal detail page demos both the leak-guard (internal note
+        // never rendered to Grace) and the "Escalated to our engineering team"
+        // event. $issue is the starter issue fetched near the top of this method.
+        if ($ticket->ticketMessages()->where('body', 'INTERNAL: escalation context — do not share')->doesntExist()) {
+            DB::table('ticket_messages')->insert([
+                'id' => (string) Str::uuid(), 'ticket_id' => $ticket->id, 'sender_type' => 'user', 'sender_user_id' => $user->id, 'sender_contact_id' => null,
+                'body' => 'INTERNAL: escalation context — do not share', 'is_internal' => true, 'channel' => 'email',
+                'created_at' => now()->subMinutes(45), 'updated_at' => now()->subMinutes(45),
+            ]);
+        }
+        if ($issue !== null && DB::table('issue_ticket_links')->where(['issue_id' => $issue->id, 'ticket_id' => $ticket->id])->doesntExist()) {
+            DB::table('issue_ticket_links')->insert(['issue_id' => $issue->id, 'ticket_id' => $ticket->id, 'created_by' => $user->id, 'created_at' => now()->subMinutes(50)]);
+        }
+
+        // A fresh, unassigned request — the escalated/seat-limit tickets above
+        // are both already assigned (support-desk e2e relies on that), so this
+        // is the only ticket that demos "Awaiting assignment" in the portal.
+        Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'How do I export my billing history?']])
+            ?? Ticket::forceCreate([
+                'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                'assignee_id' => null, 'subject' => 'How do I export my billing history?',
+                'status' => 'new', 'priority' => 'normal', 'channel' => 'email',
+                'created_at' => now()->subMinutes(15),
+            ]);
+
+        // A ticket awaiting Grace's own reply (portal "Awaiting you" status).
+        $pendingTicket = Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Question about upgrading our seats']])
+            ?? Ticket::forceCreate([
+                'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                'assignee_id' => $user->id, 'subject' => 'Question about upgrading our seats',
+                'status' => 'pending', 'priority' => 'normal', 'channel' => 'chat',
+                'sla_policy_id' => $policy->id, 'created_at' => now()->subDay(), 'first_replied_at' => now()->subHours(20),
+            ]);
+        if ($pendingTicket->ticketMessages()->count() === 0) {
+            DB::table('ticket_messages')->insert([
+                ['id' => (string) Str::uuid(), 'ticket_id' => $pendingTicket->id, 'sender_type' => 'contact', 'sender_user_id' => null, 'sender_contact_id' => $contact->id, 'body' => 'We are about to add 10 more seats — is there a volume discount?', 'is_internal' => false, 'channel' => 'chat', 'created_at' => now()->subDay(), 'updated_at' => now()->subDay()],
+                ['id' => (string) Str::uuid(), 'ticket_id' => $pendingTicket->id, 'sender_type' => 'user', 'sender_user_id' => $user->id, 'sender_contact_id' => null, 'body' => 'Let me check with billing and get back to you shortly.', 'is_internal' => false, 'channel' => 'chat', 'created_at' => now()->subHours(20), 'updated_at' => now()->subHours(20)],
+            ]);
+        }
+
+        // An already-solved ticket, with resolved_at, so the portal's Solved tab is non-empty.
+        $solvedTicket = Ticket::withoutGlobalScopes()->firstWhere([['workspace_id', $workspace->id], ['subject', 'Password reset email never arrived']])
+            ?? Ticket::forceCreate([
+                'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id, 'requester_id' => $contact->id,
+                'assignee_id' => $user->id, 'subject' => 'Password reset email never arrived',
+                'status' => 'solved', 'priority' => 'low', 'channel' => 'email',
+                'created_at' => now()->subDays(3), 'first_replied_at' => now()->subDays(3)->addHours(2),
+                'resolved_at' => now()->subDays(2),
+            ]);
+        if ($solvedTicket->ticketMessages()->count() === 0) {
+            DB::table('ticket_messages')->insert([
+                ['id' => (string) Str::uuid(), 'ticket_id' => $solvedTicket->id, 'sender_type' => 'contact', 'sender_user_id' => null, 'sender_contact_id' => $contact->id, 'body' => 'The password reset link never showed up in my inbox.', 'is_internal' => false, 'channel' => 'email', 'created_at' => now()->subDays(3), 'updated_at' => now()->subDays(3)],
+                ['id' => (string) Str::uuid(), 'ticket_id' => $solvedTicket->id, 'sender_type' => 'user', 'sender_user_id' => $user->id, 'sender_contact_id' => null, 'body' => 'Found it — it was caught by your provider spam filter. Should arrive normally now.', 'is_internal' => false, 'channel' => 'email', 'created_at' => now()->subDays(2), 'updated_at' => now()->subDays(2)],
+            ]);
+        }
+
         // Extra agents so the reporting Agents table has more than one row (idempotent).
         $agentDefs = [
             ['name' => 'Maya Chen', 'email' => 'agent-maya@example.com'],

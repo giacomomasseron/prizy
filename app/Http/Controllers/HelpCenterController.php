@@ -11,6 +11,7 @@ use App\UseCases\HelpCenter\ShowHelpHome;
 use App\UseCases\HelpCenter\ShowHelpTopic;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 final class HelpCenterController extends Controller
@@ -35,7 +36,10 @@ final class HelpCenterController extends Controller
 
     public function home(): View
     {
-        return view('help.home', $this->showHelpHome->handle());
+        // deptrac: Controller must not depend on the Contact Entity directly —
+        // the guard's result is handed straight to the use case, whose own
+        // `?Contact $contact` parameter is where that type belongs.
+        return view('help.home', $this->showHelpHome->handle(Auth::guard('contact')->user()));
     }
 
     public function topic(string $category): View

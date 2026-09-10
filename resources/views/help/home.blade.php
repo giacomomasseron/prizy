@@ -31,6 +31,27 @@
         </div>
     </section>
 
+    @if ($recent !== null)
+        <section class="wrap" style="padding:40px 0 0">
+            <div class="card" style="padding:22px">
+                <h2 style="font-size:16px;font-weight:600;margin:0 0 14px">Your recent requests</h2>
+                @if ($recent->isEmpty())
+                    <p class="muted" style="margin:0;font-size:13px">No requests yet.</p>
+                @else
+                    @foreach ($recent as $t)
+                        <a
+                            href="{{ route('help.request', $t->id) }}"
+                            style="display:flex;justify-content:space-between;gap:16px;padding:10px 0;color:var(--fg);font-size:13.5px;{{ $loop->first ? '' : 'border-top:1px solid var(--border)' }}"
+                        >
+                            <span>{{ $t->subject }}</span>
+                            <span class="faint" style="font-size:12.5px;flex-shrink:0">{{ $t->updated_at->diffForHumans() }}</span>
+                        </a>
+                    @endforeach
+                @endif
+            </div>
+        </section>
+    @endif
+
     <section class="wrap" style="padding:40px 0 64px">
         <h2 style="font-size:19px;font-weight:600;margin:0 0 20px">Browse by topic</h2>
 

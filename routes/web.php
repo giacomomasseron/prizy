@@ -114,6 +114,9 @@ Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () u
 
     Route::middleware('auth:contact')->group(function (): void {
         Route::get('/help/requests', [PortalController::class, 'requests'])->name('help.requests');
+        Route::get('/help/requests/{ticket}', [PortalController::class, 'show'])->name('help.request');
+        Route::post('/help/requests/{ticket}/reply', [PortalController::class, 'reply'])->middleware('throttle:30,1')->name('help.request.reply');
+        Route::post('/help/requests/{ticket}/solve', [PortalController::class, 'solve'])->name('help.request.solve');
     });
 
     // Reads write a view-counter row (article) or recompute nothing but still
