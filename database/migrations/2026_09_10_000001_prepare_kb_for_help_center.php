@@ -91,7 +91,13 @@ return new class extends Migration
 
     public function down(): void
     {
-        foreach (['kb_article_translations', 'kb_article_versions', 'kb_articles', 'kb_sections', 'kb_categories'] as $t) {
+        // kb_categories is deliberately excluded: its RLS + policy predate
+        // this migration (Phase-1's 2026_06_14_000051, refreshed by
+        // 2026_06_27_000001) and up() only re-created the byte-identical
+        // policy there (required because CREATE POLICY has no IF NOT EXISTS
+        // and one already existed) — no net change to tear down. Rolling
+        // back must leave kb_categories' Phase-1 protection untouched.
+        foreach (['kb_article_translations', 'kb_article_versions', 'kb_articles', 'kb_sections'] as $t) {
             DB::statement("DROP POLICY IF EXISTS {$t}_workspace_isolation ON {$t};");
             DB::statement("ALTER TABLE {$t} NO FORCE ROW LEVEL SECURITY;");
             DB::statement("ALTER TABLE {$t} DISABLE ROW LEVEL SECURITY;");
