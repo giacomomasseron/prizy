@@ -19,6 +19,7 @@
         "carthage-software/mago": "^1.40",
         "deptrac/deptrac": "^4.6",
         "fakerphp/faker": "^1.23",
+        "giacomomasseron/filo": "^0.2.0",
         "giacomomasseron/laravel-models-generator": "^3.0",
         "giacomomasseron/php-clean-architecture": "^0.0.2",
         "laravel/pail": "^1.2.5",

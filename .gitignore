@@ -32,3 +32,7 @@ Thumbs.db
 /tests/e2e/.auth/
 /test-results/
 
+
+# filo (call tracer): local enable marker + traces
+.filo-on
+.filo/

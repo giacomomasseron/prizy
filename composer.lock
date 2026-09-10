@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "99b465a2d6fcb0dbe9ce1845130ac606",
+    "content-hash": "efc3dbf8b4045db2317c42956e01da47",
     "packages": [
         {
             "name": "brick/math",
@@ -8354,6 +8354,63 @@
                 }
             ],
             "time": "2025-08-08T12:00:00+00:00"
+        },
+        {
+            "name": "giacomomasseron/filo",
+            "version": "v0.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/giacomomasseron/filo.git",
+                "reference": "808377f20ec6653fe7fdd8dae75af06ecba984b5"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/giacomomasseron/filo/zipball/808377f20ec6653fe7fdd8dae75af06ecba984b5",
+                "reference": "808377f20ec6653fe7fdd8dae75af06ecba984b5",
+                "shasum": ""
+            },
+            "require": {
+                "ext-tokenizer": "*",
+                "nikic/php-parser": "^5.0",
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "pestphp/pest": "^2.0 || ^3.0",
+                "phpunit/phpunit": "^10.5.62 || ^11.0"
+            },
+            "suggest": {
+                "pestphp/pest": "toRunUnder()/toCall() expectations and automatic per-test trace artifacts",
+                "phpunit/phpunit": "Filo\\Testing\\FiloAssertions trait and the TraceExtension"
+            },
+            "bin": [
+                "bin/filo"
+            ],
+            "type": "library",
+            "extra": {
+                "pest": {
+                    "plugins": [
+                        "Filo\\Testing\\Pest\\Plugin"
+                    ]
+                }
+            },
+            "autoload": {
+                "files": [
+                    "bootstrap.php"
+                ],
+                "psr-4": {
+                    "Filo\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "description": "Filo — zero-extension PHP call tracer: userland instrumentation via stream wrapper + AST rewriting",
+            "support": {
+                "issues": "https://github.com/giacomomasseron/filo/issues",
+                "source": "https://github.com/giacomomasseron/filo/tree/v0.2.0"
+            },
+            "time": "2026-09-10T08:28:50+00:00"
         },
         {
             "name": "giacomomasseron/laravel-models-generator",

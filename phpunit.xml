@@ -12,6 +12,13 @@
             <directory>tests/Feature</directory>
         </testsuite>
     </testsuites>
+    <!-- filo: per-test time threshold (ms), enforced only when FILO_ENABLED=1 (CI).
+         A failing test names the slowest function. Per-test override: $this->threshold(ms). -->
+    <extensions>
+        <bootstrap class="Filo\Testing\PHPUnit\TraceExtension">
+            <parameter name="threshold" value="3000"/>
+        </bootstrap>
+    </extensions>
     <source>
         <include>
             <directory>app</directory>
