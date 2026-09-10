@@ -30,7 +30,7 @@
                 </span>
                 <h1 style="font-size:22px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px">{{ $ticket->subject }}</h1>
                 <p class="faint" style="font-size:12.5px;margin:0 0 26px">
-                    #{{ strtoupper(substr($ticket->id, 0, 8)) }} · opened {{ $ticket->created_at->diffForHumans() }} · via {{ ucfirst($ticket->channel) }}
+                    #{{ substr($ticket->id, 0, 8) }} · opened {{ $ticket->created_at->diffForHumans() }} · via {{ ucfirst($ticket->channel) }}
                 </p>
 
                 <div style="display:flex;flex-direction:column;gap:14px;margin-bottom:28px">
@@ -80,7 +80,7 @@
                     <div style="font-size:13.5px">{{ $ticket->assignee?->name ?? 'Awaiting assignment' }}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px" class="muted">
-                    <div style="display:flex;justify-content:space-between"><span>Request ID</span><span>#{{ strtoupper(substr($ticket->id, 0, 8)) }}</span></div>
+                    <div style="display:flex;justify-content:space-between"><span>Request ID</span><span>#{{ substr($ticket->id, 0, 8) }}</span></div>
                     <div style="display:flex;justify-content:space-between"><span>Opened</span><span>{{ $ticket->created_at->diffForHumans() }}</span></div>
                     <div style="display:flex;justify-content:space-between"><span>Channel</span><span>{{ ucfirst($ticket->channel) }}</span></div>
                 </div>

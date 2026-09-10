@@ -42,7 +42,13 @@
             </nav>
             <div style="flex:1"></div>
             @if (auth('contact')->check())
-                <span style="font-size:12.5px" class="muted">{{ auth('contact')->user()->name }}</span>
+                @php $contactOrg = auth('contact')->user()->contactMetadata->firstWhere('key', 'organization')?->value; @endphp
+                <span style="font-size:12.5px" class="muted">
+                    {{ auth('contact')->user()->name }}
+                    @if (filled($contactOrg))
+                        <span class="faint">· {{ $contactOrg }}</span>
+                    @endif
+                </span>
                 <form method="POST" action="{{ route('help.logout') }}">@csrf<button type="submit" class="btn" style="font-weight:500">Sign out</button></form>
             @else
                 <a href="{{ route('help.login') }}" class="btn">Sign in</a>

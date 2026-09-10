@@ -36,7 +36,7 @@ final class ShowHelpHome
         return [
             'categories' => $this->kb->categoriesWithCounts(),
             'suggestions' => $suggestions,
-            'recent' => $contact !== null ? $this->portalTickets->forContact($contact)->take(3) : null,
+            'recent' => $contact !== null ? $this->portalTickets->forContactRecent($contact) : null,
         ];
     }
 }

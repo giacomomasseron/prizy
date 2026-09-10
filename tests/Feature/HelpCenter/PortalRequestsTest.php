@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Contact;
+use App\Models\ContactMetadatum;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\Ticket;
@@ -100,6 +101,27 @@ it('404s another contact\'s ticket by direct id', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('404s a non-uuid ticket id instead of 500ing', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+
+    $this->actingAs($contact, 'contact');
+    $this->get('/help/requests/not-a-uuid')->assertNotFound();
+
+    Workspace::forgetCurrent();
+});
+
+it('treats a non-string filter query param as the default instead of 500ing', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    portalReqTicket($ws, $contact);
+
+    $this->actingAs($contact, 'contact');
+    $this->get('/help/requests?f[]=x')->assertOk()->assertSee('All (1)');
+
+    Workspace::forgetCurrent();
+});
+
 it('shows the conversation without internal notes (LEAK TEST)', function (): void {
     $ws = portalWorld();
     $contact = portalContact($ws);
@@ -163,6 +185,43 @@ it('shows derived events in timestamp order', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('tie-breaks equal-timestamp conversation items with the event before the message', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $at = now();
+    $ticket = portalReqTicket($ws, $contact, ['created_at' => $at, 'updated_at' => $at]);
+    portalReqMessage($ticket, ['from' => 'contact', 'body' => 'Opening message', 'at' => $at]);
+
+    $this->actingAs($contact, 'contact');
+    $res = $this->get("/help/requests/{$ticket->id}")->assertOk();
+    $res->assertSeeInOrder(['Request received', 'Opening message']);
+
+    Workspace::forgetCurrent();
+});
+
+it('shows the contact name and organization in the header when metadata is present', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    ContactMetadatum::forceCreate(['contact_id' => $contact->id, 'key' => 'organization', 'value' => 'Northwind Traders']);
+
+    $this->actingAs($contact, 'contact');
+    $this->get('/help/requests')->assertOk()
+        ->assertSee('Grace Okonkwo')
+        ->assertSee('Northwind Traders');
+
+    Workspace::forgetCurrent();
+});
+
+it('omits the organization from the header when metadata is absent', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+
+    $this->actingAs($contact, 'contact');
+    $this->get('/help/requests')->assertOk()->assertSee('Grace Okonkwo');
+
+    Workspace::forgetCurrent();
+});
+
 it('replies: creates a portal message, reopens solved, never touches first_replied_at', function (): void {
     $ws = portalWorld();
     $contact = portalContact($ws);
@@ -202,6 +261,21 @@ it('rejects an empty reply', function (): void {
 
     $this->actingAs($contact, 'contact');
     $this->post("/help/requests/{$ticket->id}/reply", ['body' => '   '])
+        ->assertSessionHasErrors('body');
+
+    expect(TicketMessage::where('ticket_id', $ticket->id)->count())->toBe(0);
+
+    Workspace::forgetCurrent();
+});
+
+it('rejects array reply body input with a redirect, not a 500', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact);
+
+    $this->actingAs($contact, 'contact');
+    $this->post("/help/requests/{$ticket->id}/reply", ['body' => ['x']])
+        ->assertStatus(302)
         ->assertSessionHasErrors('body');
 
     expect(TicketMessage::where('ticket_id', $ticket->id)->count())->toBe(0);

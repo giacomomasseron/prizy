@@ -34,11 +34,16 @@ final class PortalController extends Controller
 
     public function requests(Request $request): View
     {
-        $filter = (string) $request->query('f', 'all');
+        // Guard against array input (e.g. `f[]=x`) reaching a string
+        // context: a bare (string) cast on an array warns/500s instead of
+        // just falling back to the default.
+        $f = $request->query('f');
+        $filter = is_string($f) ? $f : 'all';
         if (! in_array($filter, self::FILTERS, true)) {
             $filter = 'all';
         }
-        $q = (string) $request->query('q', '');
+        $q = $request->query('q');
+        $q = is_string($q) ? $q : '';
 
         return view('help.requests', $this->listOwnTickets->handle(Auth::guard('contact')->user(), $filter, $q) + [
             'filter' => $filter,
@@ -53,7 +58,13 @@ final class PortalController extends Controller
 
     public function reply(Request $request, string $ticket): RedirectResponse
     {
-        $this->replyToOwnTicket->handle(Auth::guard('contact')->user(), $ticket, (string) $request->input('body'));
+        // Same array-input guard as requests(): a non-string body (e.g.
+        // `body[]=x`) falls back to '', which trips the use case's existing
+        // "empty reply" ValidationException path instead of 500ing.
+        $body = $request->input('body');
+        $body = is_string($body) ? $body : '';
+
+        $this->replyToOwnTicket->handle(Auth::guard('contact')->user(), $ticket, $body);
 
         return redirect()->route('help.request', $ticket);
     }

@@ -106,7 +106,14 @@ $reservedHelpSlugs = implode('|', HelpCenterController::RESERVED_HELP_SLUGS);
 $helpCategoryPattern = '^(?!(?:'.$reservedHelpSlugs.')$)[a-z0-9-]+$';
 
 Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () use ($helpCategoryPattern): void {
-    // Contact portal auth (HC-2) — magic-link only.
+    // Contact portal auth (HC-2) — magic-link only. This group's tenant
+    // isolation does NOT come from its own middleware (EnsureValidTenantSession
+    // is exempted here, same as /login): it rests on (1) the `contact` guard's
+    // provider resolving Contact lookups through WorkspaceScope/RLS against
+    // Workspace::current(), so a link/session tied to one workspace's contact
+    // simply finds nobody under another, and (2) SESSION_DOMAIN host-binding
+    // as a second layer, so a session cookie minted on one workspace host is
+    // never even sent back on another.
     Route::get('/help/login', [PortalAuthController::class, 'showLogin'])->name('help.login');
     Route::post('/help/login', [PortalAuthController::class, 'sendLink'])->middleware('throttle:6,1');
     Route::get('/help/login/consume/{nonce}/{contact}', [PortalAuthController::class, 'consume'])->name('help.login.consume');

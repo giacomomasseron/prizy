@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Models\Ticket;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 final class PortalTicketRepository
 {
@@ -42,7 +43,9 @@ final class PortalTicketRepository
         } elseif ($filter === 'solved') {
             $query->whereIn('status', ['solved', 'closed']);
         }
-        $q = trim($q);
+        // A user searching by the short id often types it as shown ("#a1b2c3d4") —
+        // strip the leading marker before matching against the id column.
+        $q = ltrim(trim($q), '#');
         if ($q !== '') {
             $query->where(fn ($w) => $w
                 ->where('subject', 'ilike', "%{$q}%")
@@ -50,6 +53,23 @@ final class PortalTicketRepository
         }
 
         return $query->get();
+    }
+
+    /**
+     * The contact's N most recently-active tickets (home page teaser). The
+     * LIMIT is pushed into the query itself rather than sliced in PHP after
+     * fetching the whole set.
+     *
+     * @return Collection<int, Ticket>
+     */
+    public function forContactRecent(Contact $contact, int $limit = 3): Collection
+    {
+        return Ticket::query()
+            ->where('requester_id', $contact->id)
+            ->with('assignee')
+            ->orderByDesc('updated_at')
+            ->limit($limit)
+            ->get();
     }
 
     /** @return array{all: int, open: int, solved: int} */
@@ -68,6 +88,13 @@ final class PortalTicketRepository
 
     public function findOwn(Contact $contact, string $ticketId): ?Ticket
     {
+        // A non-uuid path segment (e.g. "not-a-uuid") would otherwise reach
+        // the `id` column's uuid-typed WHERE and 500 at the DB layer instead
+        // of cleanly 404ing (HC-1 feedback-endpoint precedent).
+        if (! Str::isUuid($ticketId)) {
+            return null;
+        }
+
         return Ticket::query()->where('requester_id', $contact->id)
             ->with(['assignee'])->find($ticketId);
     }
@@ -97,7 +124,17 @@ final class PortalTicketRepository
         if ($ticket->resolved_at !== null) {
             $items[] = ['kind' => 'event', 'at' => $ticket->resolved_at, 'icon' => '✓', 'label' => 'Request marked as solved'];
         }
-        usort($items, fn (array $a, array $b): int => $a['at'] <=> $b['at']);
+        // At equal timestamps, an event (e.g. "Request received") must sort
+        // before a message — otherwise the opening message (created in the
+        // very same request/transaction as the ticket) can render above it.
+        usort($items, function (array $a, array $b): int {
+            $byTime = $a['at'] <=> $b['at'];
+            if ($byTime !== 0) {
+                return $byTime;
+            }
+
+            return ($a['kind'] === 'event' ? 0 : 1) <=> ($b['kind'] === 'event' ? 0 : 1);
+        });
 
         return $items;
     }

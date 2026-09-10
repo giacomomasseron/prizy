@@ -10,8 +10,17 @@
             @php $tabs = ['all' => 'All', 'open' => 'Open', 'solved' => 'Solved']; @endphp
             <div style="display:flex;gap:6px">
                 @foreach ($tabs as $key => $label)
+                    @php
+                        // Explicit null-safe build (not array_filter): array_filter
+                        // treats a literal q="0" as falsy and drops it, losing the
+                        // search term from the tab links.
+                        $tabParams = ['f' => $key];
+                        if ($q !== '') {
+                            $tabParams['q'] = $q;
+                        }
+                    @endphp
                     <a
-                        href="{{ route('help.requests', array_filter(['f' => $key, 'q' => $q])) }}"
+                        href="{{ route('help.requests', $tabParams) }}"
                         style="padding:6px 13px;border-radius:999px;font-size:12.5px;font-weight:600;{{ $filter === $key ? 'background:var(--hover);color:var(--fg)' : 'color:var(--fg2)' }}"
                     >{{ $label }} ({{ $counts[$key] }})</a>
                 @endforeach
@@ -51,7 +60,7 @@
                         <span style="flex:1;min-width:0">
                             <div style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
                                 {{ $t->subject }}
-                                <span class="faint" style="font-weight:500;font-size:12px">#{{ strtoupper(substr($t->id, 0, 8)) }}</span>
+                                <span class="faint" style="font-weight:500;font-size:12px">#{{ substr($t->id, 0, 8) }}</span>
                             </div>
                             <div class="faint" style="font-size:12.5px;margin-top:2px">{{ $t->assignee?->name ?? 'Awaiting assignment' }}</div>
                         </span>

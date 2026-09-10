@@ -30,10 +30,11 @@ final class PortalAuthController extends Controller
 
     public function sendLink(Request $request): View
     {
-        $email = (string) $request->string('email');
-        if ($email !== '') {
-            $this->requestLink->handle($email);
-        }
+        // Array input (e.g. `email[]=a`) must fail validation (→ redirect
+        // back) rather than reach the (string) cast, which would 500 and
+        // puncture the anti-enumeration guarantee below.
+        $data = $request->validate(['email' => ['required', 'string', 'email']]);
+        $this->requestLink->handle($data['email']);
 
         // Identical response whether or not the contact exists (anti-enumeration).
         return view('help.login', ['sent' => true]);
