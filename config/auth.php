@@ -1,5 +1,8 @@
 <?php
 
+use App\Models\Contact;
+use App\Models\User;
+
 return [
 
     /*
@@ -37,7 +40,7 @@ return [
 
     'guards' => [
         'web' => [
-            'driver'   => 'session',
+            'driver' => 'session',
             'provider' => 'users',
         ],
 
@@ -45,6 +48,13 @@ return [
         // Registered via Auth::extend('token-bearer', ...) in AppServiceProvider.
         'token' => [
             'driver' => 'token-bearer',
+        ],
+
+        // Customer portal (HC-2) — contacts authenticate via emailed magic
+        // links only; sessions are otherwise ordinary web sessions.
+        'contact' => [
+            'driver' => 'session',
+            'provider' => 'contacts',
         ],
     ],
 
@@ -68,13 +78,18 @@ return [
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
-            'model' => \App\Models\User::class,
+            'model' => User::class,
         ],
 
         // 'users' => [
         //     'driver' => 'database',
         //     'table' => 'users',
         // ],
+
+        'contacts' => [
+            'driver' => 'eloquent',
+            'model' => Contact::class,
+        ],
     ],
 
     /*

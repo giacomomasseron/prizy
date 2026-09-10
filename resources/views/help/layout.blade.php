@@ -34,7 +34,25 @@
                 <span style="width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#6d69f2,#3aa76d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff">P</span>
                 <span style="font-size:15px;font-weight:600;letter-spacing:-.03em">{{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</span>
             </a>
-            <nav style="margin-left:8px"><a href="/help" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hover);color:var(--fg)">Help center</a></nav>
+            <nav style="margin-left:8px;display:flex;gap:4px">
+                <a href="/help" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hover);color:var(--fg)">Help center</a>
+                @if (auth('contact')->check())
+                    <a href="{{ route('help.requests') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">My requests</a>
+                @endif
+            </nav>
+            <div style="flex:1"></div>
+            @if (auth('contact')->check())
+                @php $contactOrg = auth('contact')->user()->contactMetadata->firstWhere('key', 'organization')?->value; @endphp
+                <span style="font-size:12.5px" class="muted">
+                    {{ auth('contact')->user()->name }}
+                    @if (filled($contactOrg))
+                        <span class="faint">· {{ $contactOrg }}</span>
+                    @endif
+                </span>
+                <form method="POST" action="{{ route('help.logout') }}">@csrf<button type="submit" class="btn" style="font-weight:500">Sign out</button></form>
+            @else
+                <a href="{{ route('help.login') }}" class="btn">Sign in</a>
+            @endif
         </div>
     </header>
     <main style="flex:1">@yield('content')</main>

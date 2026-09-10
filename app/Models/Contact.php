@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Models;
 
 use Carbon\Carbon;
+use Illuminate\Auth\Authenticatable as AuthenticatableTrait;
+use Illuminate\Contracts\Auth\Authenticatable as AuthenticatableContract;
 use Illuminate\Database\Eloquent\Attributes\Connection;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Table;
@@ -48,9 +50,36 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 )]
 #[Connection('pgsql')]
 #[Fillable(['id', 'name', 'email', 'phone', 'external_id'])]
-class Contact extends TenantAwareEntity
+class Contact extends TenantAwareEntity implements AuthenticatableContract
 {
+    use AuthenticatableTrait;
     use SoftDeletes;
+
+    /**
+     * Contacts authenticate ONLY via emailed magic links — there is no
+     * password column and no password path; the guard is entered exclusively
+     * through Auth::guard('contact')->login().
+     */
+    public function getAuthPassword(): string
+    {
+        return '';
+    }
+
+    /**
+     * The contacts table has no remember_token column — no-op the
+     * remember-me machinery the Authenticatable trait otherwise assumes.
+     */
+    public function getRememberToken(): ?string
+    {
+        return null;
+    }
+
+    public function setRememberToken($value): void {}
+
+    public function getRememberTokenName(): string
+    {
+        return '';
+    }
 
     /**
      * @return array<string, string>
