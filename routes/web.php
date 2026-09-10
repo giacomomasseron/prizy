@@ -9,6 +9,8 @@ use App\Http\Controllers\CsatController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HelpCenterController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\PortalAuthController;
+use App\Http\Controllers\PortalController;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
@@ -104,6 +106,16 @@ $reservedHelpSlugs = implode('|', HelpCenterController::RESERVED_HELP_SLUGS);
 $helpCategoryPattern = '^(?!(?:'.$reservedHelpSlugs.')$)[a-z0-9-]+$';
 
 Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () use ($helpCategoryPattern): void {
+    // Contact portal auth (HC-2) — magic-link only.
+    Route::get('/help/login', [PortalAuthController::class, 'showLogin'])->name('help.login');
+    Route::post('/help/login', [PortalAuthController::class, 'sendLink'])->middleware('throttle:6,1');
+    Route::get('/help/login/consume/{nonce}/{contact}', [PortalAuthController::class, 'consume'])->name('help.login.consume');
+    Route::post('/help/logout', [PortalAuthController::class, 'logout'])->name('help.logout');
+
+    Route::middleware('auth:contact')->group(function (): void {
+        Route::get('/help/requests', [PortalController::class, 'requests'])->name('help.requests');
+    });
+
     // Reads write a view-counter row (article) or recompute nothing but still
     // hit the DB per request, and search runs ts_headline over full article
     // bodies — all unauthenticated, so throttle the GETs same as any other
