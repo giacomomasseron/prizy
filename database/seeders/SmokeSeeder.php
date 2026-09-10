@@ -275,8 +275,24 @@ final class SmokeSeeder extends Seeder
                 }
             }
         }
+
+        // Repair pre-fix seeded rows: earlier versions of this seeder wrote
+        // "# {title}\n\n" as the article body's first line, duplicating the
+        // page template's own <h1>. That was fixed above (no more "# " prefix
+        // for newly-seeded bodies), but a dev DB seeded before the fix still
+        // has the stale prefix on existing rows — repair it here, in-repo,
+        // instead of the one-off out-of-band SQL used during the fix round.
+        // Idempotent (the LIKE only matches stale rows) and workspace-bounded
+        // (scoped to this seeder's own categories, never touches another
+        // workspace's KB content).
+        DB::statement(
+            "UPDATE kb_articles SET body = regexp_replace(body, '^# [^\n]*\n\n', '') ".
+            "WHERE body LIKE '# %' AND section_id IN (SELECT id FROM kb_sections WHERE category_id IN (SELECT id FROM kb_categories WHERE workspace_id = ?))",
+            [$workspace->id]
+        );
+
         // One draft article — must never appear publicly.
-        $gsBasics = KbSection::query()->whereIn('category_id', KbCategory::query()->select('id'))->where('slug', 'basics')->first();
+        $gsBasics = KbSection::query()->where('category_id', KbCategory::firstWhere('slug', 'getting-started')?->id)->where('slug', 'basics')->first();
         if ($gsBasics !== null) {
             KbArticle::query()->where('section_id', $gsBasics->id)->where('slug', 'unfinished-draft')->first()
                 ?? KbArticle::forceCreate([

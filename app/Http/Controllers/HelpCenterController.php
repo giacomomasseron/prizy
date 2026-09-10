@@ -15,6 +15,16 @@ use Illuminate\View\View;
 
 final class HelpCenterController extends Controller
 {
+    /**
+     * Category slugs that must never be shadowed by a real KB category — the
+     * {category} catch-all route excludes these (see routes/web.php) so a
+     * future HC-2/3 endpoint under one of these names can't collide with a
+     * customer-authored topic.
+     *
+     * @var list<string>
+     */
+    public const RESERVED_HELP_SLUGS = ['search', 'articles', 'requests', 'new', 'login'];
+
     public function __construct(
         private readonly ShowHelpHome $showHelpHome,
         private readonly ShowHelpTopic $showHelpTopic,
@@ -50,11 +60,23 @@ final class HelpCenterController extends Controller
 
     public function feedback(Request $request, string $article): RedirectResponse
     {
-        $this->recordArticleFeedback->handle($article, (string) $request->input('vote'));
+        $recorded = $this->recordArticleFeedback->handle($article, $request->input('vote'));
 
         // Referer, not back(): back() re-derives from the session's "previous URL"
         // which these public/unauthenticated requests don't reliably carry.
-        $ref = $request->headers->get('referer') ?: '/help';
+        // Only ever honor a referer on the SAME host as this request — echoing
+        // an attacker-supplied Referer straight into Location is a reflected
+        // open-redirect (e.g. Referer: https://evil.example/phish?voted=1).
+        // Any cross-host or missing referer falls back to the help home route.
+        $referer = $request->headers->get('referer');
+        $ref = ($referer !== null && parse_url($referer, PHP_URL_HOST) === $request->getHost())
+            ? $referer
+            : route('help.home');
+
+        if (! $recorded) {
+            return redirect($ref);
+        }
+
         $sep = str_contains($ref, '?') ? '&' : '?';
 
         return redirect($ref.$sep.'voted=1');

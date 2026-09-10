@@ -22,7 +22,12 @@ final class KbRepository
      */
     private function published(Builder $q): Builder
     {
-        return $q->where('status', 'published')->whereNotNull('published_at');
+        // Columns qualified with the table name: several callers join
+        // kb_sections/kb_categories onto this query, and an unqualified
+        // `status`/`published_at` would become ambiguous (or silently bind to
+        // the wrong table) the day either of those tables grows a same-named
+        // column.
+        return $q->where('kb_articles.status', 'published')->whereNotNull('kb_articles.published_at');
         // deleted_at handled by SoftDeletes' default scope on the model.
     }
 
@@ -145,11 +150,21 @@ final class KbRepository
 
     public function recordView(KbArticle $article): void
     {
+        // increment() calls save(), and save() unconditionally re-stamps
+        // updated_at via updateTimestamps() — including here, where it would
+        // rewrite the "Updated {date}" the article page renders on every
+        // anonymous pageview. Disabling timestamps for this one write is the
+        // reliable fix: passing the old value back through the `$extra` array
+        // does NOT work, because Eloquent only re-stamps a column when it is
+        // NOT already dirty, so an unchanged value gets stamped fresh anyway.
+        $article->timestamps = false;
         $article->increment('views_count');
     }
 
     public function recordFeedback(KbArticle $article, bool $helpful): void
     {
+        // Same updated_at-preservation concern as recordView() above.
+        $article->timestamps = false;
         $article->increment($helpful ? 'helpful_count' : 'unhelpful_count');
     }
 }

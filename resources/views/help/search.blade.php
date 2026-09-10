@@ -1,6 +1,7 @@
 @extends('help.layout')
 
 @section('title', 'Search — “' . $q . '”')
+@section('robots', 'noindex')
 
 @section('content')
     <div class="wrap" style="max-width:760px;padding:32px 0 72px">

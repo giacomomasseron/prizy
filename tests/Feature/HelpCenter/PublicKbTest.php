@@ -97,6 +97,32 @@ it('renders the article with safe markdown and increments views', function (): v
     Workspace::forgetCurrent();
 });
 
+it('does not bump updated_at when an anonymous view increments the counter', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $sec = helpKbSection(helpKbCategory($ws));
+    $article = helpKbArticle($sec, $user, ['updated_at' => now()->subWeek()]);
+    $before = $article->refresh()->updated_at;
+
+    $this->get('/help/getting-started/basics/create-your-first-project')->assertOk();
+
+    expect($article->refresh()->updated_at)->toEqual($before);
+
+    Workspace::forgetCurrent();
+});
+
+it('does not bump updated_at when feedback is recorded', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $sec = helpKbSection(helpKbCategory($ws));
+    $article = helpKbArticle($sec, $user, ['updated_at' => now()->subWeek()]);
+    $before = $article->refresh()->updated_at;
+
+    $this->post("/help/articles/{$article->id}/feedback", ['vote' => 'up'])->assertRedirect();
+
+    expect($article->refresh()->updated_at)->toEqual($before);
+
+    Workspace::forgetCurrent();
+});
+
 it('404s drafts and wrong slug chains', function (): void {
     [$ws, $user] = helpKbWorld();
     $sec = helpKbSection(helpKbCategory($ws));
@@ -165,8 +191,30 @@ it('records helpful and unhelpful feedback', function (): void {
     expect($article->helpful_count)->toBe(1);
     expect($article->unhelpful_count)->toBe(1);
 
-    $this->post("/help/articles/{$article->id}/feedback", ['vote' => 'sideways'])->assertStatus(302); // invalid → redirect back, no increment
+    $invalid = $this->post("/help/articles/{$article->id}/feedback", ['vote' => 'sideways']);
+    $invalid->assertStatus(302); // invalid → redirect back, no increment
+    expect($invalid->headers->get('Location'))->not->toContain('voted=1');
     expect($article->refresh()->helpful_count)->toBe(1);
+
+    // Array input (e.g. vote[]=up) must never 500 — just an invalid vote.
+    $arrayVote = $this->post("/help/articles/{$article->id}/feedback", ['vote' => ['up']]);
+    $arrayVote->assertRedirect();
+    expect($arrayVote->headers->get('Location'))->not->toContain('voted=1');
+    expect($article->refresh()->helpful_count)->toBe(1);
+
+    Workspace::forgetCurrent();
+});
+
+it('never reflects a cross-host referer into the feedback redirect', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $sec = helpKbSection(helpKbCategory($ws));
+    $article = helpKbArticle($sec, $user);
+
+    $res = $this->withHeaders(['Referer' => 'https://evil.example/x'])
+        ->post("/help/articles/{$article->id}/feedback", ['vote' => 'up']);
+
+    $res->assertRedirect();
+    expect($res->headers->get('Location'))->not->toContain('evil.example');
 
     Workspace::forgetCurrent();
 });
@@ -195,7 +243,20 @@ it('isolates workspaces on pages and search', function (): void {
 
     $this->get('/help')->assertOk()->assertDontSee('Foreign topic');
     $this->get('/help/foreign-topic')->assertNotFound();
+    $this->get('/help/foreign-topic/basics/foreign-secret')->assertNotFound();
     $this->get('/help/search?q=foreign+secret')->assertOk()->assertDontSee('Foreign secret article');
+
+    Workspace::forgetCurrent();
+});
+
+it('routes /help/search to the search action, not the {category} catch-all', function (): void {
+    [$ws] = helpKbWorld();
+
+    // If the reserved-slug route constraint regressed and 'search' fell
+    // through to the {category} topic route instead, this would 404 (no
+    // category named "search") rather than redirect — the search action
+    // redirects to /help on an empty query.
+    $this->get('/help/search')->assertRedirect('/help');
 
     Workspace::forgetCurrent();
 });

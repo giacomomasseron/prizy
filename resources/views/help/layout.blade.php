@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('title', 'Help Center') — {{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</title>
+    @hasSection('robots')
+        <meta name="robots" content="@yield('robots')">
+    @endif
     <style>
         :root{--bg:#0b0b0d;--bg2:#111114;--panel:#151519;--border:#232327;--border2:#31313a;--fg:#eeeef1;--fg2:#a8a8b2;--fg3:#8b8b95;--hover:rgba(255,255,255,.06);--accent:#6d69f2;--sup:#3aa76d;--sup2:rgba(58,167,109,.15);--red:#eb5757;--amber:#e0a13a;--green:#4bab66;--blue:#5b8def;--purple:#b06ae0}
         *{box-sizing:border-box}
