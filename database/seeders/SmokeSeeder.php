@@ -10,6 +10,9 @@ use App\Models\Cycle;
 use App\Models\HelpdeskSavedReport;
 use App\Models\HelpdeskSavedView;
 use App\Models\Issue;
+use App\Models\KbArticle;
+use App\Models\KbCategory;
+use App\Models\KbSection;
 use App\Models\Notification;
 use App\Models\Project;
 use App\Models\Release;
@@ -212,6 +215,75 @@ final class SmokeSeeder extends Seeder
         if ($release->issues()->count() === 0) {
             Issue::withoutGlobalScopes()->where('workspace_id', $workspace->id)
                 ->whereNull('release_id')->limit(2)->update(['release_id' => $release->id]);
+        }
+
+        // Help-center KB content (HC-1): 3 topics with sections + published
+        // articles so /help is browsable on a fresh `composer dev`, plus one
+        // draft proving the published-only gate. Idempotent via slug lookups.
+        $kbSeed = [
+            ['slug' => 'getting-started', 'name' => 'Getting started', 'icon' => '◇', 'color' => 'var(--sup)',
+                'description' => 'Set up your workspace, invite your team, and connect your first project.',
+                'sections' => [
+                    ['slug' => 'basics', 'name' => 'Basics', 'articles' => [
+                        ['slug' => 'create-your-first-project', 'title' => 'Create your first project', 'views' => 120],
+                        ['slug' => 'invite-your-team', 'title' => 'Invite your team', 'views' => 80],
+                    ]],
+                    ['slug' => 'workspace-setup', 'name' => 'Workspace setup', 'articles' => [
+                        ['slug' => 'roles-and-permissions', 'title' => 'Roles and permissions explained', 'views' => 60],
+                    ]],
+                ]],
+            ['slug' => 'tickets-escalations', 'name' => 'Tickets & escalations', 'icon' => '◷', 'color' => 'var(--blue)',
+                'description' => 'How requests move through support and reach our engineering team.',
+                'sections' => [
+                    ['slug' => 'lifecycle', 'name' => 'Ticket lifecycle', 'articles' => [
+                        ['slug' => 'understanding-escalations', 'title' => 'Understanding escalations to engineering', 'views' => 200],
+                        ['slug' => 'ticket-statuses', 'title' => 'What each ticket status means', 'views' => 45],
+                    ]],
+                ]],
+            ['slug' => 'billing-plans', 'name' => 'Billing & plans', 'icon' => '◫', 'color' => 'var(--purple)',
+                'description' => 'Seats, invoices, upgrades, and what each plan includes.',
+                'sections' => [
+                    ['slug' => 'invoices', 'name' => 'Invoices', 'articles' => [
+                        ['slug' => 'download-invoices', 'title' => 'Downloading your invoices', 'views' => 30],
+                    ]],
+                ]],
+        ];
+        $kbBody = "Welcome to Prizy. This guide walks you through the essentials.\n\n"
+            ."## Steps\n\n1. Open your workspace\n2. Create a **project**\n3. Add your first issues\n\n"
+            ."- Tip: use keyboard shortcut `C` to create an issue\n- Tip: link tickets to issues from the desk\n";
+        foreach ($kbSeed as $catDef) {
+            $cat = KbCategory::firstWhere('slug', $catDef['slug'])
+                ?? KbCategory::forceCreate([
+                    'id' => (string) Str::uuid(), 'workspace_id' => $workspace->id,
+                    'name' => $catDef['name'], 'slug' => $catDef['slug'],
+                    'description' => $catDef['description'], 'icon' => $catDef['icon'], 'color' => $catDef['color'],
+                ]);
+            foreach ($catDef['sections'] as $si => $secDef) {
+                $sec = KbSection::query()->where('category_id', $cat->id)->where('slug', $secDef['slug'])->first()
+                    ?? KbSection::forceCreate([
+                        'id' => (string) Str::uuid(), 'category_id' => $cat->id,
+                        'name' => $secDef['name'], 'slug' => $secDef['slug'], 'position' => $si,
+                    ]);
+                foreach ($secDef['articles'] as $ai => $artDef) {
+                    KbArticle::query()->where('section_id', $sec->id)->where('slug', $artDef['slug'])->first()
+                        ?? KbArticle::forceCreate([
+                            'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => $user->id,
+                            'title' => $artDef['title'], 'slug' => $artDef['slug'],
+                            'body' => "# {$artDef['title']}\n\n{$kbBody}", 'status' => 'published',
+                            'position' => $ai, 'views_count' => $artDef['views'], 'published_at' => now()->subDays(7),
+                        ]);
+                }
+            }
+        }
+        // One draft article — must never appear publicly.
+        $gsBasics = KbSection::query()->whereIn('category_id', KbCategory::query()->select('id'))->where('slug', 'basics')->first();
+        if ($gsBasics !== null) {
+            KbArticle::query()->where('section_id', $gsBasics->id)->where('slug', 'unfinished-draft')->first()
+                ?? KbArticle::forceCreate([
+                    'id' => (string) Str::uuid(), 'section_id' => $gsBasics->id, 'author_id' => $user->id,
+                    'title' => 'Unfinished draft article', 'slug' => 'unfinished-draft',
+                    'body' => 'Not ready.', 'status' => 'draft', 'position' => 99,
+                ]);
         }
 
         $issue = Issue::query()->first();

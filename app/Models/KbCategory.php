@@ -19,6 +19,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property string $workspace_id
  * @property string $name
  * @property string $slug
+ * @property string|null $description
+ * @property string|null $icon
+ * @property string|null $color
  * @property int $position
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -33,7 +36,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'name', 'slug', 'position'])]
+#[Fillable(['id', 'name', 'slug', 'position', 'description', 'icon', 'color'])]
 class KbCategory extends TenantAwareEntity
 {
     /**
@@ -47,6 +50,9 @@ class KbCategory extends TenantAwareEntity
             'name' => 'string',
             'slug' => 'string',
             'position' => 'integer',
+            'description' => 'string',
+            'icon' => 'string',
+            'color' => 'string',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
