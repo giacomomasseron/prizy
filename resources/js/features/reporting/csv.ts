@@ -1,5 +1,6 @@
 import type { ReportRange, ReportSectionKey } from './reportMeta';
 import type { OverviewReport, AgentsReport, SlaReport } from '../../lib/types';
+import { downloadBlob } from '../../lib/downloadBlob';
 
 function field(value: string | number | null | undefined): string {
     if (value === null || value === undefined) return '';
@@ -13,15 +14,7 @@ export function toCsv(headers: string[], rows: (string | number | null)[][]): st
 }
 
 export function downloadCsv(filename: string, csv: string): void {
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 0);
+    downloadBlob(filename, new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
 }
 
 export interface SectionCsv {

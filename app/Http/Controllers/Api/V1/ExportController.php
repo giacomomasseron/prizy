@@ -17,8 +17,15 @@ final class ExportController extends Controller
     {
         $export = $this->exportWorkspace->handle($request->user());
 
-        return response()->download($export['path'], $export['filename'], [
+        $response = response()->download($export['path'], $export['filename'], [
             'Content-Type' => 'application/zip',
         ])->deleteFileAfterSend(true);
+
+        // Must be set AFTER construction: response()->download()'s factory calls
+        // setPublic() internally, which would override an array Cache-Control
+        // header passed alongside the other headers above.
+        $response->headers->set('Cache-Control', 'no-store, private');
+
+        return $response;
     }
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiError } from '../../lib/apiClient';
+import { downloadBlob } from '../../lib/downloadBlob';
 import { useMe } from '../../auth/useAuth';
 import type { DigestFrequency } from './hooks';
 import { useUpdateNotificationPreferences } from './hooks';
@@ -27,18 +28,16 @@ export default function GeneralPage() {
         setExporting(true);
         setExportError('');
         try {
-            const res = await fetch('/v1/workspace-export', { credentials: 'same-origin' });
+            const res = await fetch('/v1/workspace-export', {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            });
             if (!res.ok) throw new Error(String(res.status));
             const blob = await res.blob();
             const disposition = res.headers.get('Content-Disposition') ?? '';
             const match = /filename=([^;]+)/.exec(disposition);
             const filename = match ? match[1].trim().replace(/^"|"$/g, '') : 'prizy-export.zip';
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
+            downloadBlob(filename, blob);
         } catch {
             setExportError('Export failed. Try again.');
         } finally {

@@ -50,7 +50,15 @@ use ZipArchive;
  *
  * Tenancy: workspace-scoped models are queried normally (WorkspaceScope + RLS
  * bound to the request's tenant). Tables without workspace_id are resolved
- * through their workspace-scoped parents via whereIn on parent ids.
+ * through their workspace-scoped parents via a whereIn(...,
+ * ParentModel::query()->select('id')) SUBQUERY — never a materialized id
+ * list — so WorkspaceScope/RLS applies to the subquery itself and we never
+ * build a 65k+ bound-parameter IN-list.
+ *
+ * Memory: each entity's JSON array is streamed row-by-row directly to its own
+ * disk-backed temp file (never buffered in a PHP string), then registered
+ * into the zip via addFile(). libzip only reads part files at close() time,
+ * so part paths must survive until after a successful (or failed) close().
  */
 final class WorkspaceExportBuilder
 {
@@ -68,14 +76,28 @@ final class WorkspaceExportBuilder
             throw new RuntimeException('Unable to open the export archive.');
         }
 
+        $partPaths = [];
+
         try {
             $entities = $this->entities($workspace);
 
-            // Manifest first (cheap count queries; entity bodies stream after).
             $counts = [];
-            foreach ($entities as $name => $entity) {
-                $counts[$name] = $entity['count']();
+            foreach ($entities as $name => $rows) {
+                $partPath = tempnam(sys_get_temp_dir(), 'prizy-export-part');
+                if ($partPath === false) {
+                    throw new RuntimeException('Unable to allocate a temp file for an export entity.');
+                }
+                $partPaths[] = $partPath;
+
+                $counts[$name] = $this->writeEntityPart($partPath, $rows());
+
+                if (! $zip->addFile($partPath, "{$name}.json")) {
+                    throw new RuntimeException(sprintf('Unable to add %s.json to the export archive.', $name));
+                }
             }
+
+            // Manifest last: counts are only known once every entity has streamed.
+            // Archive entry order doesn't matter for a zip reader.
             $zip->addFromString('manifest.json', (string) json_encode([
                 'workspace' => ['id' => $workspace->id, 'name' => $workspace->name, 'slug' => $workspace->slug],
                 'exported_at' => now()->toISOString(),
@@ -83,16 +105,30 @@ final class WorkspaceExportBuilder
                 'counts' => $counts,
             ], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
-            foreach ($entities as $name => $entity) {
-                $this->addEntity($zip, $name, $entity['rows']());
+            if (! $zip->close()) {
+                throw new RuntimeException('Unable to finalize the export archive.');
             }
-
-            $zip->close();
         } catch (\Throwable $e) {
-            $zip->close();
+            try {
+                $zip->unchangeAll();
+                $zip->close();
+            } catch (\Throwable) {
+                // A close warning here must never skip the part-file cleanup below.
+            }
+            foreach ($partPaths as $partPath) {
+                @unlink($partPath);
+            }
             @unlink($path);
             throw $e;
         }
+
+        // Part files are only safe to remove after a SUCCESSFUL close() — libzip
+        // defers reading addFile()'d paths until close() time.
+        foreach ($partPaths as $partPath) {
+            @unlink($partPath);
+        }
+
+        chmod($path, 0600);
 
         return [
             'path' => $path,
@@ -101,27 +137,29 @@ final class WorkspaceExportBuilder
     }
 
     /**
-     * Streams one entity into the zip as a JSON array without holding all rows
-     * in memory: rows are encoded one at a time into a temp stream.
+     * Streams one entity's rows into its own disk-backed temp file as a JSON
+     * array, one row at a time, without ever holding the whole payload in a
+     * PHP string. Returns the row count (folded into the manifest counts).
      *
      * @param  iterable<int, array<string, mixed>>  $rows
      */
-    private function addEntity(ZipArchive $zip, string $name, iterable $rows): void
+    private function writeEntityPart(string $path, iterable $rows): int
     {
-        $stream = fopen('php://temp/maxmemory:2097152', 'r+b');
+        $stream = fopen($path, 'wb');
         if ($stream === false) {
-            throw new RuntimeException('Unable to open an export buffer.');
+            throw new RuntimeException('Unable to open an export part file.');
         }
+
         fwrite($stream, '[');
-        $first = true;
+        $count = 0;
         foreach ($rows as $row) {
-            fwrite($stream, ($first ? '' : ',')."\n  ".json_encode($row, JSON_UNESCAPED_SLASHES));
-            $first = false;
+            fwrite($stream, ($count === 0 ? '' : ',')."\n  ".json_encode($row, JSON_UNESCAPED_SLASHES));
+            $count++;
         }
         fwrite($stream, "\n]");
-        rewind($stream);
-        $zip->addFromString("{$name}.json", (string) stream_get_contents($stream));
         fclose($stream);
+
+        return $count;
     }
 
     private function iso(mixed $value): mixed
@@ -130,189 +168,133 @@ final class WorkspaceExportBuilder
     }
 
     /**
-     * The allowlist: entity name → ['count' => fn(): int, 'rows' => fn(): iterable].
-     * Column lists are explicit; verify each against the model before changing.
+     * The allowlist: entity name → fn(): iterable<array<string,mixed>>.
+     * Column lists are explicit; verify each against the model AND the
+     * migration before changing — the $pick guard below throws loudly if a
+     * listed column doesn't exist on the loaded row, but only for entities
+     * that actually have at least one row in a given export.
      *
-     * @return array<string, array{count: callable, rows: callable}>
+     * @return array<string, callable(): iterable<int, array<string, mixed>>>
      */
     private function entities(Workspace $workspace): array
     {
+        // getAttributes() returns the raw loaded-column map; every entity here
+        // loads full rows (no ->select() narrowing), so a missing key means the
+        // column name in the list below is wrong — fail loudly instead of
+        // silently exporting null/omitting the field.
         $pick = fn (array $columns) => function (object $m) use ($columns): array {
+            $attributes = $m->getAttributes();
             $row = [];
             foreach ($columns as $c) {
+                if (! array_key_exists($c, $attributes)) {
+                    throw new RuntimeException(sprintf('Export column %s missing on %s', $c, $m::class));
+                }
                 $row[$c] = $this->iso($m->{$c});
             }
 
             return $row;
         };
 
-        // Parent-id closures are lazy (called at iteration time, after manifest counts).
-        $teamIds = fn () => Team::query()->pluck('id');
-        $issueIds = fn () => Issue::query()->pluck('id');
-        $commentIds = fn () => IssueComment::query()->whereIn('issue_id', $issueIds())->pluck('id');
-        $ticketIds = fn () => Ticket::query()->pluck('id');
-        $projectIds = fn () => Project::query()->pluck('id');
-        $contactIds = fn () => Contact::query()->pluck('id');
-        $scheduleIds = fn () => BusinessHourSchedule::query()->pluck('id');
-        $groupIds = fn () => AgentGroup::query()->pluck('id');
-
         return [
-            'workspace' => [
-                'count' => fn (): int => 1,
-                'rows' => fn (): iterable => [
-                    ['id' => $workspace->id, 'name' => $workspace->name, 'slug' => $workspace->slug, 'created_at' => $this->iso($workspace->created_at)],
-                ],
+            'workspace' => fn (): iterable => [
+                ['id' => $workspace->id, 'name' => $workspace->name, 'slug' => $workspace->slug, 'created_at' => $this->iso($workspace->created_at), 'updated_at' => $this->iso($workspace->updated_at)],
             ],
-            'teams' => [
-                'count' => fn (): int => Team::query()->count(),
-                'rows' => fn (): iterable => Team::query()->lazy(500)->map($pick(['id', 'name', 'identifier', 'created_at'])),
-            ],
-            'team_members' => [
-                'count' => fn (): int => TeamMember::query()->whereIn('team_id', $teamIds())->count(),
-                'rows' => fn (): iterable => TeamMember::query()->whereIn('team_id', $teamIds())->lazy(500)->map($pick(['team_id', 'user_id', 'role', 'created_at'])),
-            ],
-            'members' => [
-                'count' => fn (): int => User::query()->count(),
-                'rows' => fn (): iterable => User::query()->lazy(500)->map(fn (User $u): array => [
-                    'id' => $u->id, 'name' => $u->name, 'email' => $u->email,
-                    'admin_level' => $u->admin_level, 'is_developer' => (bool) $u->is_developer,
-                    'is_agent' => (bool) $u->is_agent, 'verified' => $u->email_verified_at !== null,
-                    'created_at' => $this->iso($u->created_at),
-                ]),
-            ],
-            'issues' => [
-                'count' => fn (): int => Issue::query()->count(),
-                'rows' => fn (): iterable => Issue::query()->lazy(500)->map($pick([
-                    'id', 'team_id', 'project_id', 'cycle_id', 'release_id', 'parent_issue_id',
-                    'assignee_id', 'created_by', 'title', 'description', 'status', 'priority',
-                    'estimate', 'due_date', 'sort_order', 'completed_at', 'archived_at',
-                    'created_at', 'updated_at',
-                ])),
-            ],
-            'issue_comments' => [
-                'count' => fn (): int => IssueComment::query()->whereIn('issue_id', $issueIds())->count(),
-                'rows' => fn (): iterable => IssueComment::query()->whereIn('issue_id', $issueIds())->lazy(500)->map($pick(['id', 'issue_id', 'user_id', 'body', 'created_at', 'updated_at'])),
-            ],
+            'teams' => fn (): iterable => Team::query()->lazyById(500)->map($pick(['id', 'name', 'identifier', 'color', 'created_at', 'updated_at'])),
+            'team_members' => fn (): iterable => TeamMember::query()
+                ->whereIn('team_id', Team::query()->select('id'))
+                ->orderBy('team_id')->orderBy('user_id')
+                ->lazy(500)->map($pick(['team_id', 'user_id', 'role', 'created_at'])),
+            'members' => fn (): iterable => User::query()->lazyById(500)->map(fn (User $u): array => [
+                'id' => $u->id, 'name' => $u->name, 'email' => $u->email,
+                'admin_level' => $u->admin_level, 'is_developer' => (bool) $u->is_developer,
+                'is_agent' => (bool) $u->is_agent, 'verified' => $u->email_verified_at !== null,
+                'created_at' => $this->iso($u->created_at),
+            ]),
+            'issues' => fn (): iterable => Issue::query()->lazyById(500)->map($pick([
+                'id', 'team_id', 'project_id', 'cycle_id', 'release_id', 'parent_issue_id',
+                'assignee_id', 'created_by', 'title', 'description', 'status', 'priority',
+                'estimate', 'due_date', 'sort_order', 'source', 'completed_at', 'archived_at',
+                'created_at', 'updated_at',
+            ])),
+            'issue_comments' => fn (): iterable => IssueComment::query()
+                ->whereIn('issue_id', Issue::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'issue_id', 'user_id', 'body', 'is_internal', 'edited_at', 'created_at', 'updated_at'])),
             // NOTE: issue_comment_reactions has NO issue_id column — only issue_comment_id.
-            // Scope through the comment ids of in-workspace issues.
-            'issue_comment_reactions' => [
-                'count' => fn (): int => IssueCommentReaction::query()->whereIn('issue_comment_id', $commentIds())->count(),
-                'rows' => fn (): iterable => IssueCommentReaction::query()->whereIn('issue_comment_id', $commentIds())->lazy(500)->map($pick(['id', 'issue_comment_id', 'user_id', 'emoji', 'created_at'])),
-            ],
-            'issue_activities' => [
-                'count' => fn (): int => IssueActivity::query()->whereIn('issue_id', $issueIds())->count(),
-                'rows' => fn (): iterable => IssueActivity::query()->whereIn('issue_id', $issueIds())->lazy(500)->map($pick(['id', 'issue_id', 'user_id', 'type', 'from_value', 'to_value', 'created_at'])),
-            ],
-            'issue_labels' => [
-                'count' => fn (): int => IssueLabel::query()->whereIn('issue_id', $issueIds())->count(),
-                'rows' => fn (): iterable => IssueLabel::query()->whereIn('issue_id', $issueIds())->lazy(500)->map($pick(['issue_id', 'label_id'])),
-            ],
+            // Scope through the comment ids of in-workspace issues (nested subquery).
+            'issue_comment_reactions' => fn (): iterable => IssueCommentReaction::query()
+                ->whereIn('issue_comment_id', IssueComment::query()->whereIn('issue_id', Issue::query()->select('id'))->select('id'))
+                ->lazyById(500)->map($pick(['id', 'issue_comment_id', 'user_id', 'emoji', 'created_at', 'updated_at'])),
+            'issue_activities' => fn (): iterable => IssueActivity::query()
+                ->whereIn('issue_id', Issue::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'issue_id', 'user_id', 'type', 'from_value', 'to_value', 'created_at'])),
+            'issue_labels' => fn (): iterable => IssueLabel::query()
+                ->whereIn('issue_id', Issue::query()->select('id'))
+                ->orderBy('issue_id')->orderBy('label_id')
+                ->lazy(500)->map($pick(['issue_id', 'label_id'])),
             // NOTE: columns are blocking_issue_id/blocked_issue_id/created_by (not issue_id/blocked_by_issue_id).
-            'issue_blockers' => [
-                'count' => fn (): int => IssueBlocker::query()->whereIn('blocking_issue_id', $issueIds())->count(),
-                'rows' => fn (): iterable => IssueBlocker::query()->whereIn('blocking_issue_id', $issueIds())->lazy(500)->map($pick(['blocking_issue_id', 'blocked_issue_id', 'created_by', 'created_at'])),
-            ],
+            'issue_blockers' => fn (): iterable => IssueBlocker::query()
+                ->whereIn('blocking_issue_id', Issue::query()->select('id'))
+                ->orderBy('blocking_issue_id')->orderBy('blocked_issue_id')
+                ->lazy(500)->map($pick(['blocking_issue_id', 'blocked_issue_id', 'created_by', 'created_at'])),
             // NOTE: real columns are repo/number/source/created_by (not kind/external_id).
-            'issue_github_links' => [
-                'count' => fn (): int => IssueGithubLink::query()->whereIn('issue_id', $issueIds())->count(),
-                'rows' => fn (): iterable => IssueGithubLink::query()->whereIn('issue_id', $issueIds())->lazy(500)->map($pick(['id', 'issue_id', 'repo', 'number', 'url', 'title', 'state', 'source', 'created_by', 'created_at'])),
-            ],
-            'issue_ticket_links' => [
-                'count' => fn (): int => IssueTicketLink::query()->whereIn('issue_id', $issueIds())->count(),
-                'rows' => fn (): iterable => IssueTicketLink::query()->whereIn('issue_id', $issueIds())->lazy(500)->map($pick(['issue_id', 'ticket_id', 'created_at'])),
-            ],
-            'projects' => [
-                'count' => fn (): int => Project::query()->count(),
-                'rows' => fn (): iterable => Project::query()->lazy(500)->map($pick(['id', 'team_id', 'lead_id', 'name', 'description', 'icon', 'color', 'status', 'priority', 'start_date', 'target_date', 'created_by', 'created_at', 'updated_at'])),
-            ],
-            'project_members' => [
-                'count' => fn (): int => ProjectMember::query()->whereIn('project_id', $projectIds())->count(),
-                'rows' => fn (): iterable => ProjectMember::query()->whereIn('project_id', $projectIds())->lazy(500)->map($pick(['project_id', 'user_id', 'created_at'])),
-            ],
+            'issue_github_links' => fn (): iterable => IssueGithubLink::query()
+                ->whereIn('issue_id', Issue::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'issue_id', 'repo', 'number', 'url', 'title', 'state', 'source', 'created_by', 'created_at', 'updated_at'])),
+            'issue_ticket_links' => fn (): iterable => IssueTicketLink::query()
+                ->whereIn('issue_id', Issue::query()->select('id'))
+                ->orderBy('issue_id')->orderBy('ticket_id')
+                ->lazy(500)->map($pick(['issue_id', 'ticket_id', 'created_by', 'created_at'])),
+            'projects' => fn (): iterable => Project::query()->lazyById(500)->map($pick(['id', 'team_id', 'lead_id', 'name', 'description', 'icon', 'color', 'status', 'priority', 'start_date', 'target_date', 'created_by', 'created_at', 'updated_at'])),
+            'project_members' => fn (): iterable => ProjectMember::query()
+                ->whereIn('project_id', Project::query()->select('id'))
+                ->orderBy('project_id')->orderBy('user_id')
+                ->lazy(500)->map($pick(['project_id', 'user_id', 'created_at'])),
             // NOTE: milestones has target_date only — no due_date/completed_at/sort_order columns.
-            'milestones' => [
-                'count' => fn (): int => Milestone::query()->whereIn('project_id', $projectIds())->count(),
-                'rows' => fn (): iterable => Milestone::query()->whereIn('project_id', $projectIds())->lazy(500)->map($pick(['id', 'project_id', 'name', 'target_date', 'created_at'])),
-            ],
-            'cycles' => [
-                'count' => fn (): int => Cycle::query()->whereIn('team_id', $teamIds())->count(),
-                'rows' => fn (): iterable => Cycle::query()->whereIn('team_id', $teamIds())->lazy(500)->map($pick(['id', 'team_id', 'name', 'starts_at', 'ends_at', 'created_at'])),
-            ],
-            'releases' => [
-                'count' => fn (): int => Release::query()->count(),
-                'rows' => fn (): iterable => Release::query()->lazy(500)->map($pick(['id', 'name', 'description', 'target_date', 'shipped_at', 'created_at', 'updated_at'])),
-            ],
-            'labels' => [
-                'count' => fn (): int => Label::query()->count(),
-                'rows' => fn (): iterable => Label::query()->lazy(500)->map($pick(['id', 'name', 'color', 'created_at'])),
-            ],
+            'milestones' => fn (): iterable => Milestone::query()
+                ->whereIn('project_id', Project::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'project_id', 'name', 'target_date', 'created_at', 'updated_at'])),
+            'cycles' => fn (): iterable => Cycle::query()
+                ->whereIn('team_id', Team::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'team_id', 'name', 'starts_at', 'ends_at', 'cooldown_days', 'description', 'created_at', 'updated_at'])),
+            'releases' => fn (): iterable => Release::query()->lazyById(500)->map($pick(['id', 'name', 'description', 'target_date', 'shipped_at', 'created_at', 'updated_at'])),
+            'labels' => fn (): iterable => Label::query()->lazyById(500)->map($pick(['id', 'name', 'color', 'group', 'created_at', 'updated_at'])),
             // NOTE: the JSONB column is `definition`, not `filters`.
-            'saved_views' => [
-                'count' => fn (): int => SavedView::query()->count(),
-                'rows' => fn (): iterable => SavedView::query()->lazy(500)->map($pick(['id', 'name', 'definition', 'created_by', 'created_at'])),
-            ],
-            'tickets' => [
-                'count' => fn (): int => Ticket::query()->count(),
-                'rows' => fn (): iterable => Ticket::query()->lazy(500)->map($pick([
-                    'id', 'requester_id', 'assignee_id', 'agent_group_id', 'sla_policy_id',
-                    'subject', 'status', 'priority', 'channel', 'csat_rating', 'csat_responded_at',
-                    'csat_requested_at', 'first_replied_at', 'first_reply_due_at', 'resolved_at',
-                    'created_at', 'updated_at',
-                ])),
-            ],
-            'ticket_messages' => [
-                'count' => fn (): int => TicketMessage::query()->whereIn('ticket_id', $ticketIds())->count(),
-                'rows' => fn (): iterable => TicketMessage::query()->whereIn('ticket_id', $ticketIds())->lazy(500)->map($pick(['id', 'ticket_id', 'sender_type', 'sender_user_id', 'sender_contact_id', 'body', 'is_internal', 'created_at'])),
-            ],
-            'tags' => [
-                'count' => fn (): int => Tag::query()->count(),
-                'rows' => fn (): iterable => Tag::query()->lazy(500)->map($pick(['id', 'name', 'created_at'])),
-            ],
-            'ticket_tags' => [
-                'count' => fn (): int => TicketTag::query()->whereIn('ticket_id', $ticketIds())->count(),
-                'rows' => fn (): iterable => TicketTag::query()->whereIn('ticket_id', $ticketIds())->lazy(500)->map($pick(['ticket_id', 'tag_id'])),
-            ],
-            'contacts' => [
-                'count' => fn (): int => Contact::query()->count(),
-                'rows' => fn (): iterable => Contact::query()->lazy(500)->map($pick(['id', 'name', 'email', 'phone', 'external_id', 'created_at'])),
-            ],
-            'contact_metadata' => [
-                'count' => fn (): int => ContactMetadatum::query()->whereIn('contact_id', $contactIds())->count(),
-                'rows' => fn (): iterable => ContactMetadatum::query()->whereIn('contact_id', $contactIds())->lazy(500)->map($pick(['contact_id', 'key', 'value'])),
-            ],
-            'agent_groups' => [
-                'count' => fn (): int => AgentGroup::query()->count(),
-                'rows' => fn (): iterable => AgentGroup::query()->lazy(500)->map($pick(['id', 'name', 'created_at'])),
-            ],
-            'agent_group_members' => [
-                'count' => fn (): int => AgentGroupMember::query()->whereIn('agent_group_id', $groupIds())->count(),
-                'rows' => fn (): iterable => AgentGroupMember::query()->whereIn('agent_group_id', $groupIds())->lazy(500)->map($pick(['agent_group_id', 'user_id'])),
-            ],
-            'sla_policies' => [
-                'count' => fn (): int => SlaPolicy::query()->count(),
-                'rows' => fn (): iterable => SlaPolicy::query()->lazy(500)->map($pick(['id', 'name', 'schedule_id', 'first_reply_minutes', 'next_reply_minutes', 'resolution_minutes', 'created_at'])),
-            ],
-            'business_hour_schedules' => [
-                'count' => fn (): int => BusinessHourSchedule::query()->count(),
-                'rows' => fn (): iterable => BusinessHourSchedule::query()->lazy(500)->map($pick(['id', 'name', 'timezone', 'created_at'])),
-            ],
+            'saved_views' => fn (): iterable => SavedView::query()->lazyById(500)->map($pick(['id', 'name', 'definition', 'created_by', 'created_at', 'updated_at'])),
+            'tickets' => fn (): iterable => Ticket::query()->lazyById(500)->map($pick([
+                'id', 'requester_id', 'assignee_id', 'agent_group_id', 'sla_policy_id',
+                'subject', 'status', 'priority', 'channel', 'csat_rating', 'csat_responded_at',
+                'csat_requested_at', 'first_replied_at', 'first_reply_due_at', 'resolved_at',
+                'created_at', 'updated_at',
+            ])),
+            'ticket_messages' => fn (): iterable => TicketMessage::query()
+                ->whereIn('ticket_id', Ticket::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'ticket_id', 'sender_type', 'sender_user_id', 'sender_contact_id', 'body', 'is_internal', 'channel', 'created_at', 'updated_at'])),
+            'tags' => fn (): iterable => Tag::query()->lazyById(500)->map($pick(['id', 'name', 'color', 'created_at'])),
+            'ticket_tags' => fn (): iterable => TicketTag::query()
+                ->whereIn('ticket_id', Ticket::query()->select('id'))
+                ->orderBy('ticket_id')->orderBy('tag_id')
+                ->lazy(500)->map($pick(['ticket_id', 'tag_id'])),
+            'contacts' => fn (): iterable => Contact::query()->lazyById(500)->map($pick(['id', 'name', 'email', 'phone', 'external_id', 'created_at', 'updated_at'])),
+            'contact_metadata' => fn (): iterable => ContactMetadatum::query()
+                ->whereIn('contact_id', Contact::query()->select('id'))
+                ->orderBy('contact_id')->orderBy('key')
+                ->lazy(500)->map($pick(['contact_id', 'key', 'value'])),
+            'agent_groups' => fn (): iterable => AgentGroup::query()->lazyById(500)->map($pick(['id', 'name', 'created_at', 'updated_at'])),
+            'agent_group_members' => fn (): iterable => AgentGroupMember::query()
+                ->whereIn('agent_group_id', AgentGroup::query()->select('id'))
+                ->orderBy('agent_group_id')->orderBy('user_id')
+                ->lazy(500)->map($pick(['agent_group_id', 'user_id'])),
+            'sla_policies' => fn (): iterable => SlaPolicy::query()->lazyById(500)->map($pick(['id', 'name', 'schedule_id', 'first_reply_minutes', 'next_reply_minutes', 'resolution_minutes', 'created_at', 'updated_at'])),
+            'business_hour_schedules' => fn (): iterable => BusinessHourSchedule::query()->lazyById(500)->map($pick(['id', 'name', 'timezone', 'created_at', 'updated_at'])),
             // NOTE: real columns are id/opens_at/closes_at (not starts_at/ends_at); id was missing.
-            'business_hour_intervals' => [
-                'count' => fn (): int => BusinessHourInterval::query()->whereIn('schedule_id', $scheduleIds())->count(),
-                'rows' => fn (): iterable => BusinessHourInterval::query()->whereIn('schedule_id', $scheduleIds())->lazy(500)->map($pick(['id', 'schedule_id', 'day_of_week', 'opens_at', 'closes_at'])),
-            ],
-            'sla_breaches' => [
-                'count' => fn (): int => SlaBreach::query()->whereIn('ticket_id', $ticketIds())->count(),
-                'rows' => fn (): iterable => SlaBreach::query()->whereIn('ticket_id', $ticketIds())->lazy(500)->map($pick(['id', 'ticket_id', 'metric', 'breached_at'])),
-            ],
-            'helpdesk_saved_views' => [
-                'count' => fn (): int => HelpdeskSavedView::query()->count(),
-                'rows' => fn (): iterable => HelpdeskSavedView::query()->lazy(500)->map($pick(['id', 'name', 'created_by', 'definition', 'created_at'])),
-            ],
-            'helpdesk_saved_reports' => [
-                'count' => fn (): int => HelpdeskSavedReport::query()->count(),
-                'rows' => fn (): iterable => HelpdeskSavedReport::query()->lazy(500)->map($pick(['id', 'name', 'created_by', 'definition', 'created_at'])),
-            ],
+            'business_hour_intervals' => fn (): iterable => BusinessHourInterval::query()
+                ->whereIn('schedule_id', BusinessHourSchedule::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'schedule_id', 'day_of_week', 'opens_at', 'closes_at'])),
+            'sla_breaches' => fn (): iterable => SlaBreach::query()
+                ->whereIn('ticket_id', Ticket::query()->select('id'))
+                ->lazyById(500)->map($pick(['id', 'ticket_id', 'metric', 'breached_at'])),
+            'helpdesk_saved_views' => fn (): iterable => HelpdeskSavedView::query()->lazyById(500)->map($pick(['id', 'name', 'created_by', 'definition', 'created_at', 'updated_at'])),
+            'helpdesk_saved_reports' => fn (): iterable => HelpdeskSavedReport::query()->lazyById(500)->map($pick(['id', 'name', 'created_by', 'definition', 'created_at', 'updated_at'])),
         ];
     }
 }

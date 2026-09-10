@@ -110,7 +110,7 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/invitations/{invitation}', [WorkspaceMemberController::class, 'destroyInvitation'])
             ->middleware(['verified', 'can:viewWorkspaceMembers,App\\Models\\User']);
 
-        Route::get('/workspace-export', [ExportController::class, 'download'])->middleware('verified');
+        Route::get('/workspace-export', [ExportController::class, 'download'])->middleware(['verified', 'throttle:3,60']);
 
         Route::get('/reports/overview', [ReportingController::class, 'overview']);
         Route::get('/reports/agents', [ReportingController::class, 'agents']);

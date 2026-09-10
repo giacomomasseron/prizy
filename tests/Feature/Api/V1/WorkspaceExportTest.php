@@ -100,6 +100,7 @@ it('exports a valid zip for the owner with manifest, content, and no secrets', f
     $response = test()->withToken($token)->getJson('/v1/workspace-export');
     $response->assertOk();
     expect($response->headers->get('content-disposition'))->toContain("prizy-export-{$ws->slug}-");
+    expect($response->headers->get('cache-control'))->toBe('no-store, private');
 
     $zip = exportOpenZip(exportZipBytes($token));
 
@@ -118,6 +119,10 @@ it('exports a valid zip for the owner with manifest, content, and no secrets', f
     $members = json_decode((string) $zip->getFromName('members.json'), true);
     expect($members)->not->toBeEmpty();
     foreach ($members as $m) {
+        // The real column is `password_hash` (and `remember_token` doesn't exist
+        // on this schema at all) — assert the REAL secret column is absent; the
+        // other two are kept only as documentation of what's deliberately excluded.
+        expect($m)->not->toHaveKey('password_hash');
         expect($m)->not->toHaveKey('password');
         expect($m)->not->toHaveKey('remember_token');
         expect($m)->toHaveKeys(['id', 'name', 'email', 'admin_level', 'is_developer', 'is_agent', 'verified']);
@@ -135,23 +140,52 @@ it('isolates workspaces', function (): void {
     [$token, $ws, $owner] = exportWorld();
     exportFixtures($ws, $owner);
 
-    // Foreign workspace with its own issue (RLS-context sandwich).
+    // Foreign workspace with its own issue + comment + ticket + message (RLS-context
+    // sandwich). This must fail loudly if any entity's whereIn(...) scoping is removed.
     Workspace::forgetCurrent();
     $foreign = Workspace::factory()->create();
     $foreign->makeCurrent();
     $fTeam = Team::factory()->for($foreign, 'workspace')->create();
-    $fUser = User::factory()->for($foreign, 'workspace')->create();
-    Issue::forceCreate([
+    // The foreign user already exists via User::factory() below; its email is the
+    // members.json leak probe.
+    $fUser = User::factory()->for($foreign, 'workspace')->create(['email' => 'foreign-secret@northwind.test']);
+    $fIssue = Issue::forceCreate([
         'id' => (string) Str::uuid(), 'workspace_id' => $foreign->id, 'team_id' => $fTeam->id,
         'created_by' => $fUser->id, 'title' => 'Foreign secret issue', 'status' => 'todo', 'priority' => 'low',
+    ]);
+    IssueComment::forceCreate([
+        'id' => (string) Str::uuid(), 'issue_id' => $fIssue->id, 'user_id' => $fUser->id,
+        'body' => 'Foreign secret comment',
+    ]);
+    $fContact = Contact::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $foreign->id, 'name' => 'Fiona', 'email' => 'fiona@northwind.test']);
+    $fTicket = Ticket::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $foreign->id, 'requester_id' => $fContact->id,
+        'subject' => 'Foreign secret ticket', 'status' => 'open', 'priority' => 'normal', 'channel' => 'email',
+    ]);
+    TicketMessage::forceCreate([
+        'id' => (string) Str::uuid(), 'ticket_id' => $fTicket->id,
+        'sender_type' => 'contact', 'sender_contact_id' => $fContact->id, 'body' => 'Foreign secret message',
+        'channel' => 'email',
     ]);
     Workspace::forgetCurrent();
     test()->actingInWorkspace($ws);
 
     $zip = exportOpenZip(exportZipBytes($token));
+
     $issuesJson = (string) $zip->getFromName('issues.json');
     expect($issuesJson)->toContain('Exported issue');
     expect($issuesJson)->not->toContain('Foreign secret issue');
+
+    $commentsJson = (string) $zip->getFromName('issue_comments.json');
+    expect($commentsJson)->toContain('Exported comment');
+    expect($commentsJson)->not->toContain('Foreign secret comment');
+
+    $messagesJson = (string) $zip->getFromName('ticket_messages.json');
+    expect($messagesJson)->toContain('Exported message');
+    expect($messagesJson)->not->toContain('Foreign secret message');
+
+    $membersJson = (string) $zip->getFromName('members.json');
+    expect($membersJson)->not->toContain($fUser->email);
 
     $zip->close();
     Workspace::forgetCurrent();

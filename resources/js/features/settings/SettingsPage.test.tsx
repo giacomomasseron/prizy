@@ -70,6 +70,51 @@ describe('GeneralPage data export', () => {
         });
     });
 
+    it('shows the busy label while the export request is in flight', async () => {
+        let resolveExport: (value: Response) => void = () => {};
+        const deferred = new Promise<Response>((resolve) => {
+            resolveExport = resolve;
+        });
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return j({ data: { ...me, admin_level: 'owner' } });
+            if (url.includes('/workspace-export')) return deferred;
+            return j({ data: {} });
+        }));
+
+        renderPage();
+        const button = await screen.findByRole('button', { name: 'Download export' });
+        await userEvent.click(button);
+
+        expect(await screen.findByText('Preparing export…')).toBeInTheDocument();
+        expect(button).toBeDisabled();
+
+        resolveExport(new Response(new Blob(['zip'], { type: 'application/zip' }), {
+            status: 200,
+            headers: { 'Content-Disposition': 'attachment; filename=prizy-export-smoke-2026-09-10.zip' },
+        }));
+
+        await vi.waitFor(() => {
+            expect(screen.getByRole('button', { name: 'Download export' })).not.toBeDisabled();
+        });
+        expect(screen.queryByText('Preparing export…')).not.toBeInTheDocument();
+    });
+
+    it('shows an error after a failed export request', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return j({ data: { ...me, admin_level: 'owner' } });
+            if (url.includes('/workspace-export')) return new Response(null, { status: 500 });
+            return j({ data: {} });
+        }));
+
+        renderPage();
+        const button = await screen.findByRole('button', { name: 'Download export' });
+        await userEvent.click(button);
+
+        expect(await screen.findByText('Export failed. Try again.')).toBeInTheDocument();
+    });
+
     it('hides the export card from non-owners', async () => {
         const memberMe = { ...me, admin_level: 'member' };
         vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
