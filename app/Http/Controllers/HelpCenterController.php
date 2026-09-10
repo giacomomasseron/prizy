@@ -54,6 +54,9 @@ final class HelpCenterController extends Controller
 
         // Referer, not back(): back() re-derives from the session's "previous URL"
         // which these public/unauthenticated requests don't reliably carry.
-        return redirect(($request->headers->get('referer') ?: '/help').'?voted=1');
+        $ref = $request->headers->get('referer') ?: '/help';
+        $sep = str_contains($ref, '?') ? '&' : '?';
+
+        return redirect($ref.$sep.'voted=1');
     }
 }

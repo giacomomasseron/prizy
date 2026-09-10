@@ -10,6 +10,7 @@ use App\Models\KbSection;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as BaseCollection;
+use Illuminate\Support\Str;
 
 final class KbRepository
 {
@@ -97,6 +98,14 @@ final class KbRepository
 
     public function findPublishedById(string $id): ?KbArticle
     {
+        // `id` is a uuid column: a malformed (non-uuid) string reaching whereKey()
+        // would make Postgres throw a type-cast error (500) before the query even
+        // runs its WHERE clause — guard here so garbage input is just "not found"
+        // (404 via the use case's ModelNotFoundException), same as any other id.
+        if (! Str::isUuid($id)) {
+            return null;
+        }
+
         return $this->published($this->workspaceArticles())->whereKey($id)->first();
     }
 

@@ -171,6 +171,14 @@ it('records helpful and unhelpful feedback', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('404s a malformed article id on the feedback route instead of erroring', function (): void {
+    [$ws] = helpKbWorld();
+
+    $this->post('/help/articles/not-a-uuid/feedback', ['vote' => 'up'])->assertNotFound();
+
+    Workspace::forgetCurrent();
+});
+
 it('isolates workspaces on pages and search', function (): void {
     [$ws, $user] = helpKbWorld();
     $sec = helpKbSection(helpKbCategory($ws));
