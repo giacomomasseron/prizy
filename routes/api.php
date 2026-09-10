@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\TokenController;
 use App\Http\Controllers\Api\V1\BusinessHourScheduleController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CycleController;
+use App\Http\Controllers\Api\V1\ExportController;
 use App\Http\Controllers\Api\V1\GithubIntegrationController;
 use App\Http\Controllers\Api\V1\HelpdeskSavedReportController;
 use App\Http\Controllers\Api\V1\HelpdeskSavedViewController;
@@ -108,6 +109,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/members/{user}', [WorkspaceMemberController::class, 'destroy'])->middleware('verified');
         Route::delete('/invitations/{invitation}', [WorkspaceMemberController::class, 'destroyInvitation'])
             ->middleware(['verified', 'can:viewWorkspaceMembers,App\\Models\\User']);
+
+        Route::get('/workspace-export', [ExportController::class, 'download'])->middleware(['verified', 'throttle:3,60']);
 
         Route::get('/reports/overview', [ReportingController::class, 'overview']);
         Route::get('/reports/agents', [ReportingController::class, 'agents']);

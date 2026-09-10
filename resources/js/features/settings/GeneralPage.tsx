@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ApiError } from '../../lib/apiClient';
+import { downloadBlob } from '../../lib/downloadBlob';
 import { useMe } from '../../auth/useAuth';
 import type { DigestFrequency } from './hooks';
 import { useUpdateNotificationPreferences } from './hooks';
@@ -9,6 +10,8 @@ export default function GeneralPage() {
     const update = useUpdateNotificationPreferences();
     const [error, setError] = useState('');
     const [saved, setSaved] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const [exportError, setExportError] = useState('');
 
     async function change(value: DigestFrequency) {
         setError('');
@@ -18,6 +21,27 @@ export default function GeneralPage() {
             setSaved(true);
         } catch (err) {
             setError(err instanceof ApiError ? err.detail : 'Failed to save.');
+        }
+    }
+
+    async function downloadExport() {
+        setExporting(true);
+        setExportError('');
+        try {
+            const res = await fetch('/v1/workspace-export', {
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json' },
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            const blob = await res.blob();
+            const disposition = res.headers.get('Content-Disposition') ?? '';
+            const match = /filename=([^;]+)/.exec(disposition);
+            const filename = match ? match[1].trim().replace(/^"|"$/g, '') : 'prizy-export.zip';
+            downloadBlob(filename, blob);
+        } catch {
+            setExportError('Export failed. Try again.');
+        } finally {
+            setExporting(false);
         }
     }
 
@@ -44,6 +68,21 @@ export default function GeneralPage() {
                 {saved && <span className="ml-2 text-sm text-green">Saved</span>}
                 {error && <p className="mt-2 text-sm text-red">{error}</p>}
             </section>
+            {me.data?.admin_level === 'owner' && (
+                <section className="mt-4 rounded border border-border bg-panel p-4">
+                    <h2 className="mb-2 font-semibold">Data export</h2>
+                    <p className="mb-3 text-sm text-fg2">Everything your team has put into Prizy — yours to take, any time.</p>
+                    <button
+                        type="button"
+                        onClick={downloadExport}
+                        disabled={exporting}
+                        className="rounded border border-border2 bg-panel px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
+                    >
+                        {exporting ? 'Preparing export…' : 'Download export'}
+                    </button>
+                    {exportError && <p className="mt-2 text-sm text-red">{exportError}</p>}
+                </section>
+            )}
         </div>
     );
 }
