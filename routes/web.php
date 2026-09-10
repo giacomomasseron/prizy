@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
 use App\Http\Controllers\CsatController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HelpCenterController;
 use App\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
@@ -91,6 +92,20 @@ Route::get('/csat/{ticket}/{rating}', [CsatController::class, 'respond'])
     ->middleware(['throttle:30,1'])
     ->withoutMiddleware([EnsureValidTenantSession::class])
     ->name('csat.respond');
+
+// Help center (HC-1) — public knowledge base on the tenant host.
+// Same session exemption as /login and /csat; NeedsTenant stays (RLS GUC).
+// ORDER MATTERS: fixed segments before the {category} catch-all —
+// 'search', 'articles' (and HC-2/3's 'requests', 'new', 'login') are
+// reserved category slugs.
+Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function (): void {
+    Route::get('/help', [HelpCenterController::class, 'home'])->name('help.home');
+    Route::get('/help/search', [HelpCenterController::class, 'search'])->name('help.search');
+    Route::post('/help/articles/{article}/feedback', [HelpCenterController::class, 'feedback'])
+        ->middleware('throttle:10,1')->name('help.feedback');
+    Route::get('/help/{category}', [HelpCenterController::class, 'topic'])->name('help.topic');
+    Route::get('/help/{category}/{section}/{article}', [HelpCenterController::class, 'article'])->name('help.article');
+});
 
 Route::post('/login', [LoginController::class, 'store'])
     ->middleware(['throttle:10,1'])
