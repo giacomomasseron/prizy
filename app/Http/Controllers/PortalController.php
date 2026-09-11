@@ -4,10 +4,14 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Portal\SubmitPortalRequestRequest;
+use App\UseCases\HelpCenter\ListTopArticles;
 use App\UseCases\Portal\ListOwnTickets;
+use App\UseCases\Portal\RatePortalTicket;
 use App\UseCases\Portal\ReplyToOwnTicket;
 use App\UseCases\Portal\ShowOwnTicket;
 use App\UseCases\Portal\SolveOwnTicket;
+use App\UseCases\Portal\SubmitPortalRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -30,6 +34,9 @@ final class PortalController extends Controller
         private readonly ShowOwnTicket $showOwnTicket,
         private readonly ReplyToOwnTicket $replyToOwnTicket,
         private readonly SolveOwnTicket $solveOwnTicket,
+        private readonly SubmitPortalRequest $submitPortalRequest,
+        private readonly ListTopArticles $topArticles,
+        private readonly RatePortalTicket $ratePortalTicket,
     ) {}
 
     public function requests(Request $request): View
@@ -72,6 +79,31 @@ final class PortalController extends Controller
     public function solve(string $ticket): RedirectResponse
     {
         $this->solveOwnTicket->handle(Auth::guard('contact')->user(), $ticket);
+
+        return redirect()->route('help.request', $ticket);
+    }
+
+    public function rate(Request $request, string $ticket): RedirectResponse
+    {
+        $vote = $request->input('vote');
+        $vote = is_string($vote) ? $vote : '';
+
+        $this->ratePortalTicket->handle(Auth::guard('contact')->user(), $ticket, $vote);
+
+        return redirect()->route('help.request', $ticket);
+    }
+
+    public function new(): View
+    {
+        return view('help.new', ['selfHelp' => $this->topArticles->handle()]);
+    }
+
+    public function store(SubmitPortalRequestRequest $request): RedirectResponse
+    {
+        $ticket = $this->submitPortalRequest->handle(
+            Auth::guard('contact')->user(),
+            $request->validated(),
+        );
 
         return redirect()->route('help.request', $ticket);
     }

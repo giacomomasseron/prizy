@@ -3,6 +3,10 @@
 declare(strict_types=1);
 
 use App\Models\Contact;
+use App\Models\KbArticle;
+use App\Models\KbCategory;
+use App\Models\KbSection;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\PortalLoginLink;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +33,18 @@ function portalContact(Workspace $ws, string $email = 'grace@northwind.com'): Co
     return Contact::forceCreate([
         'id' => (string) Str::uuid(), 'workspace_id' => $ws->id,
         'name' => 'Grace Okonkwo', 'email' => $email,
+    ]);
+}
+
+function portalPublishedArticle(Workspace $ws, string $catSlug, string $secSlug, string $artSlug, string $title, int $views = 0): void
+{
+    $cat = KbCategory::firstWhere('slug', $catSlug)
+        ?? KbCategory::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Getting started', 'slug' => $catSlug]);
+    $sec = KbSection::query()->where('category_id', $cat->id)->where('slug', $secSlug)->first()
+        ?? KbSection::forceCreate(['id' => (string) Str::uuid(), 'category_id' => $cat->id, 'name' => ucfirst($secSlug), 'slug' => $secSlug]);
+    KbArticle::forceCreate([
+        'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => User::factory()->for($ws, 'workspace')->create()->id,
+        'title' => $title, 'slug' => $artSlug, 'body' => 'Body.', 'status' => 'published', 'published_at' => now()->subDay(), 'views_count' => $views,
     ]);
 }
 
