@@ -54,6 +54,21 @@
                     @endforeach
                 </div>
 
+                @if (in_array($ticket->status, ['solved', 'closed'], true) && $ticket->csat_rating === null)
+                    <div class="card" style="padding:18px;margin-top:16px">
+                        <div style="font-weight:600;margin-bottom:4px">How did we do?</div>
+                        <div class="faint" style="font-size:12.5px;margin-bottom:12px">Rate the support you got on this request.</div>
+                        <div style="display:flex;gap:8px">
+                            <form method="POST" action="{{ route('help.request.rate', $ticket) }}">@csrf<input type="hidden" name="vote" value="up"><button type="submit" class="btn">👍 Good</button></form>
+                            <form method="POST" action="{{ route('help.request.rate', $ticket) }}">@csrf<input type="hidden" name="vote" value="down"><button type="submit" class="btn">👎 Bad</button></form>
+                        </div>
+                    </div>
+                @elseif ($ticket->csat_rating !== null)
+                    <div class="card faint" style="padding:14px 18px;margin-top:16px;font-size:12.5px">
+                        You rated this {{ $ticket->csat_rating === 'thumbs_up' ? '👍' : '👎' }} — thanks for the feedback.
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('help.request.reply', $ticket->id) }}" class="card" style="padding:16px;display:flex;flex-direction:column;gap:12px">
                     @csrf
                     <textarea
@@ -79,6 +94,22 @@
                     <div class="faint" style="font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Handled by</div>
                     <div style="font-size:13.5px">{{ $ticket->assignee?->name ?? 'Awaiting assignment' }}</div>
                 </div>
+                @if ($hasEscalation)
+                    <div>
+                        <div class="faint" style="font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Engineering</div>
+                        <div class="faint" style="font-size:12.5px;line-height:1.5">This request is being worked on by our engineering team. We'll post here as soon as the fix ships — no action needed from you.</div>
+                    </div>
+                @endif
+                @if ($relatedArticles->isNotEmpty())
+                    <div>
+                        <div class="faint" style="font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Related articles</div>
+                        <div style="display:flex;flex-direction:column;gap:6px">
+                            @foreach ($relatedArticles as $a)
+                                <a href="{{ route('help.article', [$a->category_slug, $a->section_slug, $a->slug]) }}" style="font-size:12.5px">{{ $a->title }}</a>
+                            @endforeach
+                        </div>
+                    </div>
+                @endif
                 <div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px" class="muted">
                     <div style="display:flex;justify-content:space-between"><span>Request ID</span><span>#{{ substr($ticket->id, 0, 8) }}</span></div>
                     <div style="display:flex;justify-content:space-between"><span>Opened</span><span>{{ $ticket->created_at->diffForHumans() }}</span></div>

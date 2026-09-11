@@ -16,4 +16,10 @@ test.describe('Help portal (guest)', () => {
         await expect(page.getByRole('link', { name: 'Sign in' })).toBeVisible();
         await expect(page.getByText('Your recent requests')).not.toBeVisible();
     });
+
+    test('redirects guests from the submit form to sign-in', async ({ page }) => {
+        await page.goto('/help/new');
+        await expect(page).toHaveURL(/\/help\/login$/);
+        await expect(page.getByRole('heading', { name: 'Sign in to view your requests' })).toBeVisible();
+    });
 });

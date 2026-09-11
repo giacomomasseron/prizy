@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Models\Contact;
 use App\Models\ContactMetadatum;
 use App\Models\Issue;
+use App\Models\KbArticle;
+use App\Models\KbCategory;
+use App\Models\KbSection;
 use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -47,6 +50,40 @@ function portalReqMessage(Ticket $ticket, array $opts = []): TicketMessage
         'channel' => $ticket->channel,
         'created_at' => $at,
         'updated_at' => $at,
+    ]);
+}
+
+function portalPublishedArticle(Workspace $ws, string $catSlug, string $secSlug, string $artSlug, string $title, int $views = 0): void
+{
+    $cat = KbCategory::firstWhere('slug', $catSlug)
+        ?? KbCategory::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Getting started', 'slug' => $catSlug]);
+    $sec = KbSection::query()->where('category_id', $cat->id)->where('slug', $secSlug)->first()
+        ?? KbSection::forceCreate(['id' => (string) Str::uuid(), 'category_id' => $cat->id, 'name' => ucfirst($secSlug), 'slug' => $secSlug]);
+    KbArticle::forceCreate([
+        'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => User::factory()->for($ws, 'workspace')->create()->id,
+        'title' => $title, 'slug' => $artSlug, 'body' => 'Body.', 'status' => 'published', 'published_at' => now()->subDay(), 'views_count' => $views,
+    ]);
+}
+
+function portalDraftArticle(Workspace $ws, string $catSlug, string $secSlug, string $artSlug, string $title): void
+{
+    $cat = KbCategory::firstWhere('slug', $catSlug)
+        ?? KbCategory::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Getting started', 'slug' => $catSlug]);
+    $sec = KbSection::query()->where('category_id', $cat->id)->where('slug', $secSlug)->first()
+        ?? KbSection::forceCreate(['id' => (string) Str::uuid(), 'category_id' => $cat->id, 'name' => ucfirst($secSlug), 'slug' => $secSlug]);
+    KbArticle::forceCreate([
+        'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => User::factory()->for($ws, 'workspace')->create()->id,
+        'title' => $title, 'slug' => $artSlug, 'body' => 'Body.', 'status' => 'draft', 'published_at' => null,
+    ]);
+}
+
+function portalEscalate(Workspace $ws, Ticket $ticket): void
+{
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $agent = User::factory()->for($ws, 'workspace')->create();
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $agent->id]);
+    DB::table('issue_ticket_links')->insert([
+        'issue_id' => $issue->id, 'ticket_id' => $ticket->id, 'created_by' => $agent->id,
     ]);
 }
 
@@ -336,6 +373,117 @@ it('home shows recent requests only when signed in', function (): void {
     $res->assertSee('Recent two');
     $res->assertSee('Recent three');
     $res->assertDontSee('Recent four oldest not shown');
+
+    Workspace::forgetCurrent();
+});
+
+it('rates a solved own-ticket and back-fills csat_requested_at', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    // self-solved-style fixture: solved, resolved_at set, csat_requested_at NULL (the HC-2 gap).
+    $ticket = portalReqTicket($ws, $contact, ['status' => 'solved', 'resolved_at' => now(), 'csat_requested_at' => null, 'csat_rating' => null]);
+
+    $this->actingAs($contact, 'contact')->post("/help/requests/{$ticket->id}/rate", ['vote' => 'up'])
+        ->assertRedirect(route('help.request', $ticket));
+
+    $ticket->refresh();
+    expect($ticket->csat_rating)->toBe('thumbs_up');
+    expect($ticket->csat_responded_at)->not->toBeNull();
+    expect($ticket->csat_requested_at)->not->toBeNull(); // back-filled
+
+    Workspace::forgetCurrent();
+});
+
+it('re-rating flips the value but keeps the first csat_responded_at', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact, ['status' => 'solved', 'resolved_at' => now(), 'csat_rating' => null]);
+
+    $this->actingAs($contact, 'contact')->post("/help/requests/{$ticket->id}/rate", ['vote' => 'up'])->assertRedirect();
+    $first = $ticket->refresh()->csat_responded_at;
+
+    $this->travel(1)->minutes();
+    $this->actingAs($contact, 'contact')->post("/help/requests/{$ticket->id}/rate", ['vote' => 'down'])->assertRedirect();
+    $ticket->refresh();
+    expect($ticket->csat_rating)->toBe('thumbs_down');
+    expect($ticket->csat_responded_at->equalTo($first))->toBeTrue();
+
+    $this->travelBack();
+    Workspace::forgetCurrent();
+});
+
+it('403s rating a non-solved ticket', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact, ['status' => 'open']);
+
+    $this->actingAs($contact, 'contact')->post("/help/requests/{$ticket->id}/rate", ['vote' => 'up'])->assertStatus(403);
+    expect($ticket->refresh()->csat_rating)->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('404s rating another contact\'s ticket', function (): void {
+    $ws = portalWorld();
+    $me = portalContact($ws, 'me@x.com');
+    $other = portalContact($ws, 'other@x.com');
+    $ticket = portalReqTicket($ws, $other, ['status' => 'solved', 'resolved_at' => now()]);
+
+    $this->actingAs($me, 'contact')->post("/help/requests/{$ticket->id}/rate", ['vote' => 'up'])->assertNotFound();
+
+    Workspace::forgetCurrent();
+});
+
+it('rejects a bad vote', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact, ['status' => 'solved', 'resolved_at' => now(), 'csat_rating' => null]);
+
+    $this->actingAs($contact, 'contact')->from(route('help.request', $ticket))
+        ->post("/help/requests/{$ticket->id}/rate", ['vote' => 'sideways'])->assertSessionHasErrors('vote');
+    expect($ticket->refresh()->csat_rating)->toBeNull();
+
+    Workspace::forgetCurrent();
+});
+
+it('shows the CSAT prompt only when solved+unrated, and the confirmation once rated', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $open = portalReqTicket($ws, $contact, ['status' => 'open']);
+    $solved = portalReqTicket($ws, $contact, ['status' => 'solved', 'resolved_at' => now(), 'csat_rating' => null]);
+    $rated = portalReqTicket($ws, $contact, ['status' => 'solved', 'resolved_at' => now(), 'csat_rating' => 'thumbs_up', 'csat_responded_at' => now()]);
+
+    $this->actingAs($contact, 'contact')->get(route('help.request', $open))->assertDontSee('How did we do?');
+    $this->actingAs($contact, 'contact')->get(route('help.request', $solved))->assertSee('How did we do?');
+    $this->actingAs($contact, 'contact')->get(route('help.request', $rated))->assertDontSee('How did we do?')->assertSee('thanks');
+
+    Workspace::forgetCurrent();
+});
+
+it('shows related articles matching the subject, published-only', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact, ['subject' => 'CSV export timing out', 'status' => 'open']);
+    portalPublishedArticle($ws, 'getting-started', 'basics', 'exporting-csv', 'Exporting to CSV', views: 10);
+    // a draft that also matches must NOT appear
+    portalDraftArticle($ws, 'getting-started', 'basics', 'draft-csv', 'Draft CSV export tips');
+
+    $res = $this->actingAs($contact, 'contact')->get(route('help.request', $ticket))->assertOk();
+    $res->assertSee('Exporting to CSV');
+    $res->assertDontSee('Draft CSV export tips');
+
+    Workspace::forgetCurrent();
+});
+
+it('shows the engineering escalation card when the ticket is linked to an issue', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $linked = portalReqTicket($ws, $contact, ['status' => 'open']);
+    $plain = portalReqTicket($ws, $contact, ['status' => 'open']);
+    portalEscalate($ws, $linked); // creates an issue + issue_ticket_links row
+
+    $this->actingAs($contact, 'contact')->get(route('help.request', $linked))->assertSee('engineering team');
+    $this->actingAs($contact, 'contact')->get(route('help.request', $plain))->assertDontSee('engineering team');
 
     Workspace::forgetCurrent();
 });

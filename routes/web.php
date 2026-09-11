@@ -124,6 +124,7 @@ Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () u
         Route::get('/help/requests/{ticket}', [PortalController::class, 'show'])->name('help.request');
         Route::post('/help/requests/{ticket}/reply', [PortalController::class, 'reply'])->middleware('throttle:30,1')->name('help.request.reply');
         Route::post('/help/requests/{ticket}/solve', [PortalController::class, 'solve'])->name('help.request.solve');
+        Route::post('/help/requests/{ticket}/rate', [PortalController::class, 'rate'])->middleware('throttle:20,1')->name('help.request.rate');
         Route::get('/help/new', [PortalController::class, 'new'])->name('help.new');
         Route::post('/help/new', [PortalController::class, 'store'])->middleware('throttle:10,1')->name('help.new.store');
     });

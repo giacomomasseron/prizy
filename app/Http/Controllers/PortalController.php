@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Portal\SubmitPortalRequestRequest;
 use App\UseCases\HelpCenter\ListTopArticles;
 use App\UseCases\Portal\ListOwnTickets;
+use App\UseCases\Portal\RatePortalTicket;
 use App\UseCases\Portal\ReplyToOwnTicket;
 use App\UseCases\Portal\ShowOwnTicket;
 use App\UseCases\Portal\SolveOwnTicket;
@@ -35,6 +36,7 @@ final class PortalController extends Controller
         private readonly SolveOwnTicket $solveOwnTicket,
         private readonly SubmitPortalRequest $submitPortalRequest,
         private readonly ListTopArticles $topArticles,
+        private readonly RatePortalTicket $ratePortalTicket,
     ) {}
 
     public function requests(Request $request): View
@@ -77,6 +79,16 @@ final class PortalController extends Controller
     public function solve(string $ticket): RedirectResponse
     {
         $this->solveOwnTicket->handle(Auth::guard('contact')->user(), $ticket);
+
+        return redirect()->route('help.request', $ticket);
+    }
+
+    public function rate(Request $request, string $ticket): RedirectResponse
+    {
+        $vote = $request->input('vote');
+        $vote = is_string($vote) ? $vote : '';
+
+        $this->ratePortalTicket->handle(Auth::guard('contact')->user(), $ticket, $vote);
 
         return redirect()->route('help.request', $ticket);
     }
