@@ -15,9 +15,13 @@ use Illuminate\Validation\ValidationException;
  * own-only sibling of the actor-less signed-email RecordCsatResponse — the two
  * never collide (portal = auth:contact + own-only; email = signed URL +
  * actor-less). Back-fills csat_requested_at so a self-solved ticket (HC-2 sets
- * resolved_at without it) stays consistent with the email path's invariant;
- * this does NOT change the reporting denominator (csatRate divides by
- * csat_responded_at).
+ * resolved_at without it) stays consistent with the email path's invariant.
+ * This has a live consequence: ChangeTicketStatus::sendCsatRequest()
+ * (app/UseCases/Tickets/ChangeTicketStatus.php:68) uses csat_requested_at as
+ * its send-once guard, so a ticket rated in-portal is never re-solicited by
+ * email later, even across a reply-reopen + agent re-resolve — intended "at
+ * most one CSAT ask per ticket" semantics, not a bug. This does NOT change
+ * the reporting denominator (csatRate divides by csat_responded_at).
  */
 final class RatePortalTicket
 {

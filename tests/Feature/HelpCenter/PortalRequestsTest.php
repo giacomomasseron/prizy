@@ -13,6 +13,8 @@ use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Notifications\CsatRequest;
+use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -53,17 +55,9 @@ function portalReqMessage(Ticket $ticket, array $opts = []): TicketMessage
     ]);
 }
 
-function portalPublishedArticle(Workspace $ws, string $catSlug, string $secSlug, string $artSlug, string $title, int $views = 0): void
-{
-    $cat = KbCategory::firstWhere('slug', $catSlug)
-        ?? KbCategory::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Getting started', 'slug' => $catSlug]);
-    $sec = KbSection::query()->where('category_id', $cat->id)->where('slug', $secSlug)->first()
-        ?? KbSection::forceCreate(['id' => (string) Str::uuid(), 'category_id' => $cat->id, 'name' => ucfirst($secSlug), 'slug' => $secSlug]);
-    KbArticle::forceCreate([
-        'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => User::factory()->for($ws, 'workspace')->create()->id,
-        'title' => $title, 'slug' => $artSlug, 'body' => 'Body.', 'status' => 'published', 'published_at' => now()->subDay(), 'views_count' => $views,
-    ]);
-}
+// portalPublishedArticle() is a global helper from PortalAuthTest.php (hoisted from
+// this file and PortalSubmitTest.php's verbatim duplicate to avoid Pest's
+// global-function redeclare fatal).
 
 function portalDraftArticle(Workspace $ws, string $catSlug, string $secSlug, string $artSlug, string $title): void
 {
@@ -85,6 +79,14 @@ function portalEscalate(Workspace $ws, Ticket $ticket): void
     DB::table('issue_ticket_links')->insert([
         'issue_id' => $issue->id, 'ticket_id' => $ticket->id, 'created_by' => $agent->id,
     ]);
+}
+
+/** Verified agent + API token in the given workspace, for driving the agent-path /v1/tickets PATCH. */
+function portalAgentToken(Workspace $ws): string
+{
+    $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true]);
+
+    return app(CreatePersonalAccessToken::class)->handle($user, 't', null)['token'];
 }
 
 it('lists only the contact\'s own tickets with filters, counts, and search', function (): void {
@@ -488,6 +490,74 @@ it('shows the engineering escalation card when the ticket is linked to an issue'
     // even if this card were removed, so it does not prove the card renders.
     $this->actingAs($contact, 'contact')->get(route('help.request', $linked))->assertSee('no action needed from you');
     $this->actingAs($contact, 'contact')->get(route('help.request', $plain))->assertDontSee('no action needed from you');
+
+    Workspace::forgetCurrent();
+});
+
+it('403s before validating the vote on a non-solved own ticket, ordering the status gate before validation', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact, ['status' => 'open']);
+
+    $this->actingAs($contact, 'contact')->post("/help/requests/{$ticket->id}/rate", ['vote' => 'sideways'])->assertStatus(403);
+
+    Workspace::forgetCurrent();
+});
+
+it('suppresses the later agent-path CSAT email after an inline rating, reopen, and re-resolve', function (): void {
+    // Mirrors the final-review's P11 probe: the csat_requested_at back-fill in
+    // RatePortalTicket is ChangeTicketStatus's send-once guard, so a rating
+    // recorded in-portal must survive a reply-reopen and suppress the agent
+    // path's email on the next resolve.
+    Notification::fake();
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $token = portalAgentToken($ws);
+    $ticket = portalReqTicket($ws, $contact, [
+        'status' => 'solved', 'resolved_at' => now(), 'csat_requested_at' => null, 'csat_rating' => null,
+    ]);
+
+    $this->actingAs($contact, 'contact')
+        ->post("/help/requests/{$ticket->id}/rate", ['vote' => 'up'])
+        ->assertRedirect();
+    expect($ticket->refresh()->csat_requested_at)->not->toBeNull();
+
+    $this->actingAs($contact, 'contact')
+        ->post("/help/requests/{$ticket->id}/reply", ['body' => 'Actually this broke again.'])
+        ->assertRedirect();
+    expect($ticket->refresh()->status)->toBe('open');
+    expect($ticket->resolved_at)->toBeNull();
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    Notification::assertNothingSent();
+
+    Workspace::forgetCurrent();
+});
+
+it('sends the agent-path CSAT email after reopen and re-resolve when there was no inline rating', function (): void {
+    // The counterfactual half of P11/P12: identical flow minus the inline
+    // rating step. Proves the observation itself works (the email IS sendable
+    // through this exact reopen/re-resolve path) so the suppression test above
+    // is evidence of the back-fill's effect, not of a broken assertion.
+    Notification::fake();
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $token = portalAgentToken($ws);
+    $ticket = portalReqTicket($ws, $contact, [
+        'status' => 'solved', 'resolved_at' => now(), 'csat_requested_at' => null, 'csat_rating' => null,
+    ]);
+
+    $this->actingAs($contact, 'contact')
+        ->post("/help/requests/{$ticket->id}/reply", ['body' => 'Actually this broke again.'])
+        ->assertRedirect();
+    expect($ticket->refresh()->status)->toBe('open');
+    expect($ticket->resolved_at)->toBeNull();
+
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])->assertOk();
+
+    Notification::assertSentOnDemand(CsatRequest::class);
+    expect($ticket->refresh()->csat_requested_at)->not->toBeNull();
 
     Workspace::forgetCurrent();
 });

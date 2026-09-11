@@ -3,33 +3,17 @@
 declare(strict_types=1);
 
 use App\Models\Contact;
-use App\Models\KbArticle;
-use App\Models\KbCategory;
-use App\Models\KbSection;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
-use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
-// portalWorld() / portalContact() are global helpers from PortalAuthTest.php (HC-2).
-
-function portalSubmitArticle(Workspace $ws, string $catSlug, string $secSlug, string $artSlug, string $title, int $views = 0): void
-{
-    $cat = KbCategory::firstWhere('slug', $catSlug)
-        ?? KbCategory::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Getting started', 'slug' => $catSlug]);
-    $sec = KbSection::query()->where('category_id', $cat->id)->where('slug', $secSlug)->first()
-        ?? KbSection::forceCreate(['id' => (string) Str::uuid(), 'category_id' => $cat->id, 'name' => ucfirst($secSlug), 'slug' => $secSlug]);
-    KbArticle::forceCreate([
-        'id' => (string) Str::uuid(), 'section_id' => $sec->id, 'author_id' => User::factory()->for($ws, 'workspace')->create()->id,
-        'title' => $title, 'slug' => $artSlug, 'body' => 'Body.', 'status' => 'published', 'published_at' => now()->subDay(), 'views_count' => $views,
-    ]);
-}
+// portalWorld() / portalContact() / portalPublishedArticle() are global
+// helpers from PortalAuthTest.php (HC-2 + HC-3).
 
 it('renders the submit form for a signed-in contact', function (): void {
     $ws = portalWorld();
@@ -112,7 +96,7 @@ it('redirects guests from the submit form to sign-in', function (): void {
 it('shows self-help articles on the form', function (): void {
     $ws = portalWorld();
     $contact = portalContact($ws);
-    portalSubmitArticle($ws, 'getting-started', 'basics', 'export-guide', 'Exporting your data', views: 500);
+    portalPublishedArticle($ws, 'getting-started', 'basics', 'export-guide', 'Exporting your data', views: 500);
 
     $this->actingAs($contact, 'contact')->get('/help/new')->assertOk()
         ->assertSee('Exporting your data');
