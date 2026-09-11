@@ -38,6 +38,7 @@
                 <a href="/help" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hover);color:var(--fg)">Help center</a>
                 @if (auth('contact')->check())
                     <a href="{{ route('help.requests') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">My requests</a>
+                    <a href="{{ route('help.new') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">Submit a request</a>
                 @endif
             </nav>
             <div style="flex:1"></div>

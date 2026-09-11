@@ -124,6 +124,8 @@ Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () u
         Route::get('/help/requests/{ticket}', [PortalController::class, 'show'])->name('help.request');
         Route::post('/help/requests/{ticket}/reply', [PortalController::class, 'reply'])->middleware('throttle:30,1')->name('help.request.reply');
         Route::post('/help/requests/{ticket}/solve', [PortalController::class, 'solve'])->name('help.request.solve');
+        Route::get('/help/new', [PortalController::class, 'new'])->name('help.new');
+        Route::post('/help/new', [PortalController::class, 'store'])->middleware('throttle:10,1')->name('help.new.store');
     });
 
     // Reads write a view-counter row (article) or recompute nothing but still
