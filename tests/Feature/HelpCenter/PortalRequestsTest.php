@@ -482,8 +482,12 @@ it('shows the engineering escalation card when the ticket is linked to an issue'
     $plain = portalReqTicket($ws, $contact, ['status' => 'open']);
     portalEscalate($ws, $linked); // creates an issue + issue_ticket_links row
 
-    $this->actingAs($contact, 'contact')->get(route('help.request', $linked))->assertSee('engineering team');
-    $this->actingAs($contact, 'contact')->get(route('help.request', $plain))->assertDontSee('engineering team');
+    // "no action needed from you" is unique to the new sidebar card's copy — the
+    // pre-existing (HC-2) derived timeline event text is "Escalated to our
+    // engineering team", which would satisfy a plain 'engineering team' assertion
+    // even if this card were removed, so it does not prove the card renders.
+    $this->actingAs($contact, 'contact')->get(route('help.request', $linked))->assertSee('no action needed from you');
+    $this->actingAs($contact, 'contact')->get(route('help.request', $plain))->assertDontSee('no action needed from you');
 
     Workspace::forgetCurrent();
 });
