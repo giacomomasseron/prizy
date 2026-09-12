@@ -11,6 +11,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
 import { KbVersionCard } from './KbVersionCard';
+import { KbVersionDrawer } from './KbVersionDrawer';
 import {
     useChangeKbArticleStatus,
     useCreateKbArticle,
@@ -116,8 +117,8 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const [saveError, setSaveError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
-    // Task 6 renders the version-history drawer from this state; for now the setter only needs to
-    // exist so KbVersionCard's onOpen callback has somewhere to write.
+    // Drives the version-history drawer below: KbVersionCard's onOpen callback writes here, and
+    // KbVersionDrawer reads it.
     const [versionDrawer, setVersionDrawer] = useState<{ open: boolean; versionId: string | null }>({ open: false, versionId: null });
 
     // A brand-new article opened with no ?section= falls back to the first section anywhere in the
@@ -190,6 +191,18 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const noSections = allSections.length === 0;
     const canSave = dirty && title.trim() !== '' && slug !== '' && !taken && !noSections;
 
+    // Extracted so KbVersionDrawer's restore flow can save the live draft (title/body/section)
+    // before restoring an older version — reused as-is by onSave() below for the existing-article
+    // path, so both callers persist identically. Unlike onSave(), this does NOT swallow a
+    // rejection: the drawer's own try/catch needs to see the failure to abort the restore and
+    // show it inline, rather than treating a failed save as though it had succeeded.
+    async function persist(): Promise<void> {
+        if (!id) return;
+        await updateArticle.mutateAsync({ id, title, slug, body, section_id: sectionId });
+        setDirty(false);
+        setSavedMsg('Saved just now');
+    }
+
     async function onSave() {
         setSaveError(null);
         try {
@@ -205,9 +218,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                 onCreated(res.id);
                 navigate(`/support/kb/articles/${res.id}`, { replace: true });
             } else if (id) {
-                await updateArticle.mutateAsync({ id, title, slug, body, section_id: sectionId });
-                setDirty(false);
-                setSavedMsg('Saved just now');
+                await persist();
             }
         } catch (err) {
             if (err instanceof ApiError) {
@@ -411,6 +422,18 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                     )}
                 </aside>
             </div>
+
+            {!isNew && id && (
+                <KbVersionDrawer
+                    articleId={id}
+                    open={versionDrawer.open}
+                    initialVersionId={versionDrawer.versionId}
+                    dirty={dirty}
+                    onClose={() => setVersionDrawer({ open: false, versionId: null })}
+                    onRestored={(msg) => { setSavedMsg(msg); setDirty(false); }}
+                    onSaveFirst={persist}
+                />
+            )}
 
             <div style={{ position: 'sticky', bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', borderTop: '1px solid var(--border)', background: 'var(--panel)', flexShrink: 0 }}>
                 <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>{savedMsg}</span>
