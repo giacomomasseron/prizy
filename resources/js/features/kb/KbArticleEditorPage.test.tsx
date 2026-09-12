@@ -25,10 +25,11 @@ const articles: Record<string, unknown> = {
 
 function j(b: unknown, status = 200) { return new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } }); }
 
-function renderEditor(id = 'a1') {
+function renderEditor(id = 'a1', previewHtml?: string) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/kb/library')) return j({ data: library });
         if (url.includes(`/kb/articles/${id}`)) return j({ data: articles[id] });
+        if (url.includes('/kb/preview')) return j({ data: { html: previewHtml ?? '' } });
         return j({ data: {} });
     }));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -70,5 +71,25 @@ describe('KbArticleEditorPage', () => {
         renderEditor('a2');
         expect(await screen.findByText('Only agents can see this. Publishing puts it on the customer help center.')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument();
+    });
+
+    it('renders exactly the HTML returned by POST /kb/preview when the Preview tab is selected — never the raw markdown body', async () => {
+        const stubHtml = '<p data-testid="preview-stub">PREVIEW_STUB_MARKER</p>';
+        renderEditor('a1', stubHtml); // a1's body is '# Hi\n\ntext' — a non-empty, distinctly different string from the stub
+        await screen.findByPlaceholderText('Article title');
+        await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+        expect(await screen.findByTestId('preview-stub')).toHaveTextContent('PREVIEW_STUB_MARKER');
+        // If the injected HTML ever regressed to the raw textarea contents (in violation of the addendum),
+        // the literal markdown source would leak into the DOM as text — assert it never does.
+        expect(screen.queryByText(/# Hi/)).not.toBeInTheDocument();
+    });
+
+    it('shows the empty-body copy — never any preview HTML — when the article body is empty', async () => {
+        const stubHtml = '<p data-testid="preview-stub">PREVIEW_STUB_MARKER</p>';
+        renderEditor('a2', stubHtml); // a2's body is ''
+        await screen.findByPlaceholderText('Article title');
+        await userEvent.click(screen.getByRole('button', { name: 'Preview' }));
+        expect(await screen.findByText('Nothing written yet — switch to Write and start the article.')).toBeInTheDocument();
+        expect(screen.queryByTestId('preview-stub')).not.toBeInTheDocument();
     });
 });

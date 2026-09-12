@@ -87,7 +87,7 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
     const [title, setTitle] = useState(article?.title ?? '');
     const [slug, setSlug] = useState(article?.slug ?? '');
     const [slugTouched, setSlugTouched] = useState(false);
-    const [sectionId, setSectionId] = useState(article?.section_id ?? initialSection ?? categories[0]?.sections[0]?.id ?? '');
+    const [sectionId, setSectionId] = useState(article?.section_id ?? initialSection ?? categories.flatMap((c) => c.sections)[0]?.id ?? '');
     const [body, setBody] = useState(article?.body ?? '');
     const [tab, setTab] = useState<Tab>('write');
     const [dirty, setDirty] = useState(false);
@@ -96,11 +96,14 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
     const [statusError, setStatusError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
 
-    // A brand-new article opened with no ?section= falls back to the library's first section once it
-    // loads. Guarded on sectionId still being empty so it never clobbers a selection already in place.
+    // A brand-new article opened with no ?section= falls back to the first section anywhere in the
+    // library (flattened across all categories, in library order) once it loads — not just the first
+    // category's first section, since a leading category can have zero sections (as this feature's own
+    // fixtures already model). Guarded on sectionId still being empty so it never clobbers a selection
+    // already in place.
     useEffect(() => {
         if (isNew && !sectionId && categories.length > 0) {
-            setSectionId(categories[0]?.sections[0]?.id ?? '');
+            setSectionId(categories.flatMap((c) => c.sections)[0]?.id ?? '');
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isNew, categories.length]);
@@ -160,7 +163,8 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
     const stats = wordStats(body);
     const status: KbStatus = article?.status ?? 'draft';
     const pending = createArticle.isPending || updateArticle.isPending || changeStatus.isPending;
-    const canSave = dirty && title.trim() !== '' && slug !== '' && !taken;
+    const noSections = allSections.length === 0;
+    const canSave = dirty && title.trim() !== '' && slug !== '' && !taken && !noSections;
 
     async function onSave() {
         setSaveError(null);
@@ -186,19 +190,30 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
 
     async function runStatus(next: KbStatus) {
         setStatusError(null);
-        try {
-            let targetId = id;
-            if (isNew) {
+        let targetId = id;
+        if (isNew) {
+            try {
                 const res = await createArticle.mutateAsync({ section_id: sectionId, title, slug, body });
                 targetId = res.id;
-                setDirty(false);
-                setSavedMsg('Saved just now');
-                navigate(`/support/kb/articles/${res.id}`, { replace: true });
+            } catch (err) {
+                setStatusError(err instanceof ApiError ? err.detail : 'Failed to create the article.');
+                return;
             }
-            if (!targetId) return;
+        }
+        if (!targetId) return;
+        try {
             await changeStatus.mutateAsync({ id: targetId, status: next });
         } catch (err) {
             setStatusError(err instanceof ApiError ? err.detail : 'Failed to update the article status.');
+            return;
+        }
+        // Navigate only after BOTH the create and the status change have succeeded — navigating any
+        // earlier would unmount this component while a still-pending mutation's rejection is in
+        // flight, silently dropping the error it would otherwise have surfaced above.
+        if (isNew) {
+            setDirty(false);
+            setSavedMsg('Saved just now');
+            navigate(`/support/kb/articles/${targetId}`, { replace: true });
         }
     }
 
@@ -253,11 +268,17 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
 
                     <div style={{ marginTop: 16 }}>
                         <label htmlFor="kb-article-section" style={fieldLabel}>Section</label>
-                        <select id="kb-article-section" aria-label="Section" value={sectionId} onChange={(e) => onSectionChange(e.target.value)}>
-                            {allSections.map((s) => (
-                                <option key={s.id} value={s.id}>{s.categoryName} › {s.name}</option>
-                            ))}
-                        </select>
+                        {noSections ? (
+                            <div role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>
+                                No sections exist yet — create one in the library before writing this article.
+                            </div>
+                        ) : (
+                            <select id="kb-article-section" aria-label="Section" value={sectionId} onChange={(e) => onSectionChange(e.target.value)}>
+                                {allSections.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.categoryName} › {s.name}</option>
+                                ))}
+                            </select>
+                        )}
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
@@ -311,11 +332,11 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
                             <Button
                                 onClick={() => runStatus(status === 'published' ? 'draft' : 'published')}
-                                disabled={!title.trim() || !body.trim() || pending}
+                                disabled={!title.trim() || !body.trim() || noSections || pending}
                             >
                                 {status === 'published' ? 'Unpublish' : 'Publish'}
                             </Button>
-                            <Button variant="secondary" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={pending}>
+                            <Button variant="secondary" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={(isNew && noSections) || pending}>
                                 {status === 'archived' ? 'Restore' : 'Archive'}
                             </Button>
                             {status === 'published' && article?.public_url && (
@@ -339,9 +360,9 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
 
                     <div style={card}>
                         <div style={cardTitle}>Performance</div>
-                        <DetailRow label="Views" value={formatViews(article?.views_count ?? 0)} />
-                        <DetailRow label="👍 Helpful" value={formatViews(article?.helpful_count ?? 0)} />
-                        <DetailRow label="👎 Not helpful" value={formatViews(article?.unhelpful_count ?? 0)} />
+                        <DetailRow label="views" value={formatViews(article?.views_count ?? 0)} />
+                        <DetailRow label="👍 helpful" value={formatViews(article?.helpful_count ?? 0)} />
+                        <DetailRow label="👎 not helpful" value={formatViews(article?.unhelpful_count ?? 0)} />
                     </div>
 
                     {!isNew && (
