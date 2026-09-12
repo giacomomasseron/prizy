@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import KbArticleEditorPage from './KbArticleEditorPage';
 
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Alex', is_agent: true } }) }));
@@ -135,5 +136,61 @@ describe('KbArticleEditorPage', () => {
         // Not vacuous: this is the freshly-mounted instance at the new URL, not a residual
         // render of the "new" page — the title field now carries the persisted article's value.
         expect(screen.getByPlaceholderText('Article title')).toHaveValue('Fresh title');
+    });
+
+    // Review round 1, Finding 1 (Critical): restoring a version used to leave the title/body
+    // inputs showing the pre-restore text — the keyed remount (`key={article?.id ?? 'new'}`) only
+    // fires on an id change, which a restore never causes, so nothing re-seeded EditorForm's local
+    // state. This exercises the full round trip through KbVersionCard -> KbVersionDrawer ->
+    // EditorForm's onRestored, rather than testing any one file in isolation.
+    it('applies the restored title and body to the editor inputs after a successful restore', async () => {
+        const versions = [
+            { id: 'v2', author: { id: 'u1', name: 'Alex' }, created_at: '2026-09-10T00:00:00Z', summary: 'Title and body', is_current: true },
+            { id: 'v1', author: { id: 'u1', name: 'Alex' }, created_at: '2026-09-01T00:00:00Z', summary: 'Created', is_current: false },
+        ];
+        const versionDetail = {
+            id: 'v1', author: { id: 'u1', name: 'Alex' }, created_at: '2026-09-01T00:00:00Z', summary: 'Created', is_current: false,
+            title: 'Original title', body: 'Original body', html: '<p>Original body</p>',
+            diff: { title: { from: 'Published one', to: 'Original title' }, lines: [{ sign: '-', text: '# Hi' }, { sign: '+', text: 'Original body' }], added: 1, removed: 1 },
+        };
+        const restored = {
+            ...art({ id: 'a1', title: 'Original title', slug: 'published-one' }),
+            body: 'Original body', section_id: 's1', section: { id: 's1', name: 'Basics', slug: 'b' }, category: { id: 'c1', name: 'Getting started', slug: 'g' },
+        };
+
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (init?.method === 'POST' && url.includes('/restore')) return j({ data: restored });
+            if (url.includes('/kb/library')) return j({ data: library });
+            if (/\/versions\/v1$/.test(url)) return j({ data: versionDetail });
+            if (url.includes('/versions')) return j({ data: versions });
+            if (url.includes('/kb/articles/a1')) return j({ data: articles.a1 });
+            return j({ data: {} });
+        }));
+
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <ConfirmProvider>
+                    <MemoryRouter initialEntries={['/support/kb/articles/a1']}>
+                        <Routes>
+                            <Route path="/support/kb/articles/:id" element={<KbArticleEditorPage />} />
+                        </Routes>
+                    </MemoryRouter>
+                </ConfirmProvider>
+            </QueryClientProvider>,
+        );
+
+        const title = await screen.findByPlaceholderText('Article title');
+        expect(title).toHaveValue('Published one');
+        const body = screen.getByPlaceholderText(/# Heading/);
+
+        await userEvent.click(await screen.findByRole('button', { name: /Created/ }));
+        await screen.findByText('Original body'); // the diff has loaded, so Restore is now enabled
+        await userEvent.click(screen.getByRole('button', { name: 'Restore this version' }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+        expect(await screen.findByText(/Restored the version from/)).toBeInTheDocument();
+        expect(title).toHaveValue('Original title');
+        expect(body).toHaveValue('Original body');
     });
 });

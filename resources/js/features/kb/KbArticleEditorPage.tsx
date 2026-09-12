@@ -430,7 +430,17 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                     initialVersionId={versionDrawer.versionId}
                     dirty={dirty}
                     onClose={() => setVersionDrawer({ open: false, versionId: null })}
-                    onRestored={(msg) => { setSavedMsg(msg); setDirty(false); }}
+                    onRestored={(msg, restoredArticle) => {
+                        setSavedMsg(msg);
+                        setDirty(false);
+                        // Review round 1, Finding 1 (Critical): the keyed remount (`key={article?.id
+                        // ?? 'new'}` above) only fires when the article's id changes, which a restore
+                        // never does — so without this, the title/body inputs kept showing the
+                        // pre-restore text even though the confirmation said otherwise. Apply the
+                        // restored values to the state that's already here instead.
+                        setTitle(restoredArticle.title);
+                        setBody(restoredArticle.body);
+                    }}
                     onSaveFirst={persist}
                 />
             )}

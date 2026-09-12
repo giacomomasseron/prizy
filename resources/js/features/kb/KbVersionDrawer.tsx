@@ -9,7 +9,7 @@ import { ApiError } from '../../lib/apiClient';
 import { avatarFor } from '../../lib/avatarFor';
 import { useKbArticle, useKbArticleVersion, useKbArticleVersions, useRestoreKbArticleVersion } from './hooks';
 import { formatDate, formatDateTime } from './kbUtils';
-import type { KbVersionDetail, KbVersionSummary } from './types';
+import type { KbArticleEdit, KbVersionDetail, KbVersionSummary } from './types';
 
 type Tab = 'changes' | 'fulltext';
 
@@ -19,7 +19,11 @@ export interface KbVersionDrawerProps {
     initialVersionId: string | null;
     dirty: boolean;
     onClose(): void;
-    onRestored(msg: string): void;
+    // Carries the restored KbArticleEdit alongside the message — Review round 1, Finding 1
+    // (Critical): a message string alone left EditorForm's displayed title/body stale after a
+    // successful restore (the keyed remount only fires on an id change, which a restore never
+    // causes). EditorForm applies this payload to its own title/body state on success.
+    onRestored(msg: string, article: KbArticleEdit): void;
     // Not part of Task 5's contract: KbVersionDrawer can only see `dirty`, never the editor's live
     // title/body — those are EditorForm's own local state. For "your current text is saved to
     // history first" (the confirm dialog's promise) to be literally true, the *actual* unsaved
@@ -82,9 +86,9 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
             if (dirty) {
                 await onSaveFirst();
             }
-            await restoreVersion.mutateAsync({ articleId, versionId: selected });
+            const restoredArticle = await restoreVersion.mutateAsync({ articleId, versionId: selected });
             onClose();
-            onRestored(`Restored the version from ${formatDateTime(detail.created_at)}`);
+            onRestored(`Restored the version from ${formatDateTime(detail.created_at)}`, restoredArticle);
         } catch (err) {
             setRestoreError(err instanceof ApiError ? err.detail : 'Failed to restore this version.');
         }
@@ -102,6 +106,13 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
 
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
                 <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: 8 }}>
+                    {/* Review round 1, Finding 2: a failed fetch used to leave this pane silently
+                        empty. Surface it inline instead, following KbVersionCard.tsx's convention. */}
+                    {versionsQuery.isError && (
+                        <div role="alert" style={{ color: 'var(--red)', fontSize: 12, padding: 8 }}>
+                            {versionsQuery.error instanceof ApiError ? versionsQuery.error.detail : 'Failed to load version history.'}
+                        </div>
+                    )}
                     {versions.map((v) => (
                         <VersionRow key={v.id} version={v} selected={v.id === selected} onSelect={() => setSelected(v.id)} />
                     ))}
@@ -124,7 +135,17 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
                         </span>
                     </div>
 
-                    {tab === 'changes' ? <ChangesTab detail={detail} /> : <FullTextTab detail={detail} />}
+                    {/* Review round 1, Finding 2: same convention for the per-version fetch — an
+                        error left both tabs silently blank forever (a query error never resolves
+                        `detail`, so ChangesTab/FullTextTab had nothing to render and nothing to
+                        say). The non-error branches below are otherwise unchanged. */}
+                    {detailQuery.isError ? (
+                        <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>
+                            {detailQuery.error instanceof ApiError ? detailQuery.error.detail : 'Failed to load this version.'}
+                        </div>
+                    ) : (
+                        tab === 'changes' ? <ChangesTab detail={detail} /> : <FullTextTab detail={detail} />
+                    )}
                 </div>
             </div>
 

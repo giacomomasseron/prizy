@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
+import { ApiError } from '../../lib/apiClient';
 import { KbVersionDrawer } from './KbVersionDrawer';
 
 const versions = [
@@ -30,20 +31,42 @@ const detailFor: Record<string, unknown> = {
 
 function j(b: unknown, status = 200) { return new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } }); }
 
-function renderDrawer(overrides: { initialVersionId?: string | null; dirty?: boolean; restoreFails?: boolean } = {}) {
-    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+interface DrawerOverrides {
+    initialVersionId?: string | null;
+    dirty?: boolean;
+    restoreFails?: boolean;
+    saveFirstFails?: boolean;
+    versionsFail?: boolean;
+    detailFail?: boolean;
+}
+
+function renderDrawer(overrides: DrawerOverrides = {}) {
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
         if (init?.method === 'POST' && url.includes('/restore')) {
-            return overrides.restoreFails ? j({ title: 'Error', detail: 'Cannot restore this version.' }, 422) : j({ data: {} });
+            return overrides.restoreFails
+                ? j({ title: 'Error', detail: 'Cannot restore this version.' }, 422)
+                // A distinguishable payload (not {}) so tests can prove the drawer forwards the
+                // mutation's resolved article to onRestored rather than discarding it.
+                : j({ data: { id: 'a1', title: 'RESTORED_TITLE', body: 'RESTORED_BODY' } });
         }
         const detailMatch = url.match(/\/versions\/([^/]+)$/);
-        if (detailMatch) return j({ data: detailFor[detailMatch[1]] });
-        if (url.includes('/versions')) return j({ data: versions });
+        if (detailMatch) {
+            if (overrides.detailFail) return j({ title: 'Error', detail: 'Failed to load this version.' }, 500);
+            return j({ data: detailFor[detailMatch[1]] });
+        }
+        if (url.includes('/versions')) {
+            if (overrides.versionsFail) return j({ title: 'Error', detail: 'Failed to load version history.' }, 500);
+            return j({ data: versions });
+        }
         return j({ data: {} });
-    }));
+    });
+    vi.stubGlobal('fetch', fetchMock);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const onClose = vi.fn();
     const onRestored = vi.fn();
-    const onSaveFirst = vi.fn(async () => {});
+    const onSaveFirst = vi.fn(overrides.saveFirstFails
+        ? async () => { throw new ApiError(422, 'Error', 'Failed to save your changes.'); }
+        : async () => {});
     render(
         <QueryClientProvider client={qc}>
             <ConfirmProvider>
@@ -59,7 +82,7 @@ function renderDrawer(overrides: { initialVersionId?: string | null; dirty?: boo
             </ConfirmProvider>
         </QueryClientProvider>,
     );
-    return { onClose, onRestored, onSaveFirst };
+    return { onClose, onRestored, onSaveFirst, fetchMock };
 }
 
 describe('KbVersionDrawer', () => {
@@ -98,15 +121,20 @@ describe('KbVersionDrawer', () => {
         expect(screen.getByRole('button', { name: 'Restore this version' })).toBeEnabled();
     });
 
-    it('saves the editor first when dirty, then restores, closes, and reports success', async () => {
+    it('saves the editor first when dirty, then restores, closes, and reports success with the restored article', async () => {
         const { onClose, onRestored, onSaveFirst } = renderDrawer({ dirty: true });
         await screen.findByText('gone');
         await userEvent.click(screen.getByRole('button', { name: 'Restore this version' }));
         await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
         // Exact date/time rendering is locale- and timezone-dependent (see kbUtils.test.ts's own
         // formatDateTime test) — match the fixed literal prefix plus the general SHAPE rather than
-        // pinning an exact locale string or hour.
-        await waitFor(() => expect(onRestored).toHaveBeenCalledWith(expect.stringMatching(/^Restored the version from .+ 2026, \d{2}:\d{2}$/)));
+        // pinning an exact locale string or hour. The second argument proves the drawer forwards the
+        // restore mutation's resolved article (not just the message) — EditorForm needs it to apply
+        // the restored title/body to what's on screen.
+        await waitFor(() => expect(onRestored).toHaveBeenCalledWith(
+            expect.stringMatching(/^Restored the version from .+ 2026, \d{2}:\d{2}$/),
+            expect.objectContaining({ title: 'RESTORED_TITLE', body: 'RESTORED_BODY' }),
+        ));
         expect(onSaveFirst).toHaveBeenCalledTimes(1);
         expect(onClose).toHaveBeenCalledTimes(1);
     });
@@ -128,5 +156,29 @@ describe('KbVersionDrawer', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent('Cannot restore this version.');
         expect(onClose).not.toHaveBeenCalled();
         expect(onRestored).not.toHaveBeenCalled();
+    });
+
+    it('aborts the restore when saving first fails, keeping the drawer open with the failure visible', async () => {
+        const { onClose, onRestored, fetchMock } = renderDrawer({ dirty: true, saveFirstFails: true });
+        await screen.findByText('gone');
+        await userEvent.click(screen.getByRole('button', { name: 'Restore this version' }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Failed to save your changes.');
+        expect(onClose).not.toHaveBeenCalled();
+        expect(onRestored).not.toHaveBeenCalled();
+        // The restore mutation must never even have been attempted once the save-first step failed —
+        // otherwise a failed save (meant to protect the user's unsaved work) wouldn't actually have
+        // stopped the restore from overwriting it.
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/restore'))).toBe(false);
+    });
+
+    it('shows an inline alert instead of a blank pane when the version list fails to load', async () => {
+        renderDrawer({ versionsFail: true });
+        expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load version history.');
+    });
+
+    it('shows an inline alert instead of a blank pane when the selected version fails to load', async () => {
+        renderDrawer({ initialVersionId: 'vPrev', detailFail: true });
+        expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load this version.');
     });
 });
