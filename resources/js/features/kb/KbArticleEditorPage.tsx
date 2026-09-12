@@ -10,6 +10,8 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
+import { KbVersionCard } from './KbVersionCard';
+import { KbVersionDrawer } from './KbVersionDrawer';
 import {
     useChangeKbArticleStatus,
     useCreateKbArticle,
@@ -115,6 +117,9 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const [saveError, setSaveError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    // Drives the version-history drawer below: KbVersionCard's onOpen callback writes here, and
+    // KbVersionDrawer reads it.
+    const [versionDrawer, setVersionDrawer] = useState<{ open: boolean; versionId: string | null }>({ open: false, versionId: null });
 
     // A brand-new article opened with no ?section= falls back to the first section anywhere in the
     // library (flattened across all categories, in library order) once it loads — not just the first
@@ -186,6 +191,18 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const noSections = allSections.length === 0;
     const canSave = dirty && title.trim() !== '' && slug !== '' && !taken && !noSections;
 
+    // Extracted so KbVersionDrawer's restore flow can save the live draft (title/body/section)
+    // before restoring an older version — reused as-is by onSave() below for the existing-article
+    // path, so both callers persist identically. Unlike onSave(), this does NOT swallow a
+    // rejection: the drawer's own try/catch needs to see the failure to abort the restore and
+    // show it inline, rather than treating a failed save as though it had succeeded.
+    async function persist(): Promise<void> {
+        if (!id) return;
+        await updateArticle.mutateAsync({ id, title, slug, body, section_id: sectionId });
+        setDirty(false);
+        setSavedMsg('Saved just now');
+    }
+
     async function onSave() {
         setSaveError(null);
         try {
@@ -201,9 +218,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                 onCreated(res.id);
                 navigate(`/support/kb/articles/${res.id}`, { replace: true });
             } else if (id) {
-                await updateArticle.mutateAsync({ id, title, slug, body, section_id: sectionId });
-                setDirty(false);
-                setSavedMsg('Saved just now');
+                await persist();
             }
         } catch (err) {
             if (err instanceof ApiError) {
@@ -386,6 +401,10 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         <DetailRow label="Category" value={selectedCategory?.slug ?? '—'} />
                     </div>
 
+                    {!isNew && id && (
+                        <KbVersionCard articleId={id} onOpen={(versionId) => setVersionDrawer({ open: true, versionId: versionId ?? null })} />
+                    )}
+
                     <div style={card}>
                         <div style={cardTitle}>Performance</div>
                         <DetailRow label="views" value={formatViews(article?.views_count ?? 0)} />
@@ -403,6 +422,28 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                     )}
                 </aside>
             </div>
+
+            {!isNew && id && (
+                <KbVersionDrawer
+                    articleId={id}
+                    open={versionDrawer.open}
+                    initialVersionId={versionDrawer.versionId}
+                    dirty={dirty}
+                    onClose={() => setVersionDrawer({ open: false, versionId: null })}
+                    onRestored={(msg, restoredArticle) => {
+                        setSavedMsg(msg);
+                        setDirty(false);
+                        // Review round 1, Finding 1 (Critical): the keyed remount (`key={article?.id
+                        // ?? 'new'}` above) only fires when the article's id changes, which a restore
+                        // never does — so without this, the title/body inputs kept showing the
+                        // pre-restore text even though the confirmation said otherwise. Apply the
+                        // restored values to the state that's already here instead.
+                        setTitle(restoredArticle.title);
+                        setBody(restoredArticle.body);
+                    }}
+                    onSaveFirst={persist}
+                />
+            )}
 
             <div style={{ position: 'sticky', bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', borderTop: '1px solid var(--border)', background: 'var(--panel)', flexShrink: 0 }}>
                 <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>{savedMsg}</span>

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { KbArticleEdit, KbCategoryNode, KbLibrary, KbSectionNode, KbStatus } from './types';
+import type { KbArticleEdit, KbCategoryNode, KbLibrary, KbSectionNode, KbStatus, KbVersionDetail, KbVersionSummary } from './types';
 
 export const KB_KEY = ['kb'] as const;
 export function useKbLibrary() { return useQuery({ queryKey: [...KB_KEY, 'library'], queryFn: () => api.get<KbLibrary>('/kb/library') }); }
@@ -30,3 +30,21 @@ export const useDeleteKbArticle = () => useKbMutation((id: string) => api.del(`/
 export const useMoveKbArticle = () => useKbMutation(({ id, direction }: { id: string; direction: 'up' | 'down' }) => api.post(`/kb/articles/${id}/move`, { direction }));
 export const useChangeKbArticleStatus = () => useKbMutation(({ id, status }: { id: string; status: KbStatus }) => api.post<KbArticleEdit>(`/kb/articles/${id}/status`, { status }));
 export function usePreviewKbMarkdown() { return useMutation({ mutationFn: (body: string) => api.post<{ html: string }>('/kb/preview', { body }) }); }
+export function useKbArticleVersions(articleId: string | undefined) {
+    return useQuery({
+        queryKey: [...KB_KEY, 'versions', articleId],
+        queryFn: () => api.get<KbVersionSummary[]>(`/kb/articles/${articleId}/versions`),
+        enabled: !!articleId,
+    });
+}
+export function useKbArticleVersion(articleId: string | undefined, versionId: string | null) {
+    return useQuery({
+        queryKey: [...KB_KEY, 'versions', articleId, versionId],
+        queryFn: () => api.get<KbVersionDetail>(`/kb/articles/${articleId}/versions/${versionId}`),
+        enabled: !!articleId && !!versionId,
+    });
+}
+export const useRestoreKbArticleVersion = () => useKbMutation(
+    ({ articleId, versionId }: { articleId: string; versionId: string }) =>
+        api.post<KbArticleEdit>(`/kb/articles/${articleId}/versions/${versionId}/restore`),
+);

@@ -78,4 +78,35 @@ test.describe('Knowledge base authoring (agent) → public help center', () => {
         await expect(page.getByRole('link', { name: /Knowledge base/ })).toHaveCount(0);
         await ctx.close();
     });
+
+    test('records a version on edit, diffs it, and restores it', async ({ page }) => {
+        test.setTimeout(90_000);
+        await page.goto('/support/kb');
+        await page.getByRole('button', { name: /Getting started/ }).click();
+        await page.getByRole('button', { name: /Create your first project/ }).first().click();
+        await expect(page).toHaveURL(/\/support\/kb\/articles\//);
+
+        const marker = `e2e-${Date.now().toString(36)}`;
+        const textarea = page.getByPlaceholder('# Heading');
+        const original = await textarea.inputValue();
+        await textarea.fill(`${original}\n\n${marker}`);
+        await page.getByRole('button', { name: 'Save changes' }).click();
+        await expect(page.getByText('Saved just now')).toBeVisible();
+
+        await expect(page.getByText('Version history')).toBeVisible();
+        await page.getByRole('button', { name: /View all \d+ versions/ }).click();
+        await expect(page.getByRole('button', { name: 'Changes' })).toBeVisible();
+        // The line we just added shows as an addition against the previous version.
+        await expect(page.getByText(marker).first()).toBeVisible();
+
+        await page.getByRole('button', { name: 'Restore this version' }).click();
+        // exact: true — the confirm dialog's "Restore" button and the drawer's own "Restore
+        // this version" button are both in the DOM at once (the Modal/dialog layer doesn't
+        // aria-hide what's behind it, same as the 'Create' collision documented above), and a
+        // bare "Restore" locator substring-matches both. Confirmed via Playwright's strict-mode
+        // error before adding `exact`.
+        await page.getByRole('button', { name: 'Restore', exact: true }).click();
+        await expect(page.getByText(/Restored the version from/)).toBeVisible();
+        await expect(textarea).not.toHaveValue(new RegExp(marker));
+    });
 });

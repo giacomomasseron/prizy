@@ -13,6 +13,27 @@ export interface KbArticleEdit extends KbArticleSummary {
     section: { id: string; name: string; slug: string };
     category: { id: string; name: string; slug: string };
 }
+export type KbVersionSummaryLabel = 'Created' | 'Title and body' | 'Body only' | 'Title only';
+export interface KbVersionSummary {
+    id: string;
+    author: KbAuthor;
+    created_at: string;
+    summary: KbVersionSummaryLabel;
+    is_current: boolean;
+}
+export interface KbDiffLine { sign: '+' | '-' | ' '; text: string }
+export interface KbDiff {
+    title: { from: string; to: string } | null;
+    lines: KbDiffLine[];
+    added: number;
+    removed: number;
+}
+export interface KbVersionDetail extends KbVersionSummary {
+    title: string;
+    body: string;
+    html: string;
+    diff: KbDiff | null;
+}
 export const KB_COLORS = ['#3aa76d', '#6d69f2', '#5b8def', '#b06ae0', '#e0a13a', '#eb5757', '#4bab66', '#8b8b95'] as const;
 export const KB_ICONS = ['◇', '◷', '◫', '⚿', '⌗', '{ }', '☺', '◔', '▤', '✦', '☂', '⎈'] as const;
 export const KB_RESERVED = ['search', 'articles', 'requests', 'new', 'login'] as const;

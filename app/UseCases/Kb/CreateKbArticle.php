@@ -7,11 +7,16 @@ namespace App\UseCases\Kb;
 use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Repositories\KbVersionRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class CreateKbArticle
 {
-    public function __construct(private readonly KbAuthoringRepository $kb) {}
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbVersionRepository $versions,
+    ) {}
 
     /** @param array{section_id:string,title:string,slug:string,body:string} $data */
     public function handle(User $actor, array $data): KbArticle
@@ -25,6 +30,11 @@ final class CreateKbArticle
             throw ValidationException::withMessages(['slug' => ['Already used in this section.']]);
         }
 
-        return $this->kb->createArticle($section, $actor, ['title' => $data['title'], 'slug' => $data['slug'], 'body' => $data['body']]);
+        return DB::transaction(function () use ($section, $actor, $data): KbArticle {
+            $article = $this->kb->createArticle($section, $actor, ['title' => $data['title'], 'slug' => $data['slug'], 'body' => $data['body']]);
+            $this->versions->recordVersion($article, $actor);
+
+            return $article;
+        });
     }
 }

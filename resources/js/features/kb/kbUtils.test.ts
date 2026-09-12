@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatViews, shortRef, slugify, wordStats } from './kbUtils';
+import { formatDateTime, formatViews, shortRef, slugify, wordStats } from './kbUtils';
 
 describe('kbUtils', () => {
     it('slugifies like the server pattern', () => {
@@ -15,5 +15,14 @@ describe('kbUtils', () => {
     it('counts words and read time', () => {
         expect(wordStats('')).toEqual({ words: 0, minutes: 0 });
         expect(wordStats('one two three')).toEqual({ words: 3, minutes: 1 });
+    });
+});
+
+describe('formatDateTime', () => {
+    it('renders a date with a 24-hour time, and an em dash for null', () => {
+        const out = formatDateTime('2026-09-09T14:22:00Z');
+        expect(out).toMatch(/2026/);
+        expect(out).toMatch(/\d{2}:\d{2}/);
+        expect(formatDateTime(null)).toBe('—');
     });
 });
