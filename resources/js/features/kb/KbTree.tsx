@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { IconButton } from '../../components/ui/IconButton';
 import { Menu } from '../../components/ui/Menu';
+import { ApiError } from '../../lib/apiClient';
 import {
     useArchiveKbCategoryArticles,
     useArchiveKbSectionArticles,
@@ -36,6 +37,7 @@ const pillStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 2
 export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal }: KbTreeProps) {
     const confirm = useConfirm();
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+    const [error, setError] = useState<string | null>(null);
     const moveCategory = useMoveKbCategory();
     const moveSection = useMoveKbSection();
     const archiveCategoryArticles = useArchiveKbCategoryArticles();
@@ -47,22 +49,35 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
         setCollapsed((m) => ({ ...m, [id]: !(m[id] ?? false) }));
     }
 
-    async function archiveArticles(name: string, count: number, run: () => void) {
-        const ok = await confirm({ title: 'Archive articles', message: `Archive all ${count} articles in “${name}”? They disappear from the help center.`, confirmLabel: 'Archive articles' });
-        if (ok) run();
+    function onMutationError(err: unknown, fallback: string) {
+        setError(err instanceof ApiError ? err.detail : fallback);
     }
 
-    async function deleteNode(kind: 'category' | 'section', name: string, count: number, run: () => void) {
+    function move(mutate: (opts: { onError: (e: unknown) => void }) => void, fallback: string) {
+        setError(null);
+        mutate({ onError: (err) => onMutationError(err, fallback) });
+    }
+
+    async function archiveArticles(name: string, count: number, run: (opts: { onError: (e: unknown) => void }) => void) {
+        const ok = await confirm({ title: 'Archive articles', message: `Archive all ${count} articles in “${name}”? They disappear from the help center.`, confirmLabel: 'Archive articles' });
+        if (!ok) return;
+        setError(null);
+        run({ onError: (err) => onMutationError(err, 'Failed to archive the articles.') });
+    }
+
+    async function deleteNode(kind: 'category' | 'section', name: string, count: number, run: (opts: { onSuccess: () => void; onError: (e: unknown) => void }) => void) {
         const ok = await confirm({
             title: kind === 'category' ? 'Delete category' : 'Delete section',
             message: count > 0 ? `This also deletes ${count} articles inside it. Archive them instead if you want to keep them.` : `Delete “${name}”?`,
             confirmLabel: kind === 'category' ? 'Delete category' : 'Delete section',
             danger: true,
         });
-        if (ok) {
-            run();
-            onSelect({ kind: 'all' });
-        }
+        if (!ok) return;
+        setError(null);
+        run({
+            onSuccess: () => onSelect({ kind: 'all' }),
+            onError: (err) => onMutationError(err, `Failed to delete the ${kind}.`),
+        });
     }
 
     return (
@@ -94,15 +109,15 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                     <span style={countStyle}>{articleCount}</span>
                                 </button>
                                 <span className="opacity-0 group-hover:opacity-100" style={pillStyle}>
-                                    <IconButton title="Move up" onClick={() => moveCategory.mutate({ id: c.id, direction: 'up' })}>▲</IconButton>
-                                    <IconButton title="Move down" onClick={() => moveCategory.mutate({ id: c.id, direction: 'down' })}>▼</IconButton>
+                                    <IconButton title="Move up" onClick={() => move((opts) => moveCategory.mutate({ id: c.id, direction: 'up' }, opts), 'Failed to reorder the category.')}>▲</IconButton>
+                                    <IconButton title="Move down" onClick={() => move((opts) => moveCategory.mutate({ id: c.id, direction: 'down' }, opts), 'Failed to reorder the category.')}>▼</IconButton>
                                     <Menu
                                         placement="bottom-end"
                                         trigger={<IconButton title="More actions">⋯</IconButton>}
                                         items={[
                                             { key: 'edit', label: 'Edit…', onActivate: () => onOpenModal({ kind: 'category', category: c }) },
-                                            { key: 'archive', label: 'Archive articles', onActivate: () => archiveArticles(c.name, articleCount, () => archiveCategoryArticles.mutate(c.id)) },
-                                            { key: 'delete', label: 'Delete…', danger: true, onActivate: () => deleteNode('category', c.name, articleCount, () => deleteCategory.mutate(c.id)) },
+                                            { key: 'archive', label: 'Archive articles', onActivate: () => archiveArticles(c.name, articleCount, (opts) => archiveCategoryArticles.mutate(c.id, opts)) },
+                                            { key: 'delete', label: 'Delete…', danger: true, onActivate: () => deleteNode('category', c.name, articleCount, (opts) => deleteCategory.mutate(c.id, opts)) },
                                         ]}
                                     />
                                 </span>
@@ -120,15 +135,15 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                                     <span style={countStyle}>{s.articles.length}</span>
                                                 </button>
                                                 <span className="opacity-0 group-hover:opacity-100" style={pillStyle}>
-                                                    <IconButton title="Move up" onClick={() => moveSection.mutate({ id: s.id, direction: 'up' })}>▲</IconButton>
-                                                    <IconButton title="Move down" onClick={() => moveSection.mutate({ id: s.id, direction: 'down' })}>▼</IconButton>
+                                                    <IconButton title="Move up" onClick={() => move((opts) => moveSection.mutate({ id: s.id, direction: 'up' }, opts), 'Failed to reorder the section.')}>▲</IconButton>
+                                                    <IconButton title="Move down" onClick={() => move((opts) => moveSection.mutate({ id: s.id, direction: 'down' }, opts), 'Failed to reorder the section.')}>▼</IconButton>
                                                     <Menu
                                                         placement="bottom-end"
                                                         trigger={<IconButton title="More actions">⋯</IconButton>}
                                                         items={[
                                                             { key: 'edit', label: 'Edit…', onActivate: () => onOpenModal({ kind: 'section', categoryId: c.id, section: s }) },
-                                                            { key: 'archive', label: 'Archive articles', onActivate: () => archiveArticles(s.name, s.articles.length, () => archiveSectionArticles.mutate(s.id)) },
-                                                            { key: 'delete', label: 'Delete…', danger: true, onActivate: () => deleteNode('section', s.name, s.articles.length, () => deleteSection.mutate(s.id)) },
+                                                            { key: 'archive', label: 'Archive articles', onActivate: () => archiveArticles(s.name, s.articles.length, (opts) => archiveSectionArticles.mutate(s.id, opts)) },
+                                                            { key: 'delete', label: 'Delete…', danger: true, onActivate: () => deleteNode('section', s.name, s.articles.length, (opts) => deleteSection.mutate(s.id, opts)) },
                                                         ]}
                                                     />
                                                 </span>
@@ -144,6 +159,8 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                     );
                 })}
             </div>
+
+            {error && <div role="alert" style={{ margin: '0 10px 10px', fontSize: 12, color: 'var(--red)' }}>{error}</div>}
 
             <div style={{ padding: 10 }}>
                 <button type="button" onClick={() => onOpenModal({ kind: 'category' })} style={{ width: '100%', padding: '8px 10px', borderRadius: 9, border: '1px dashed var(--border2)', background: 'none', color: 'var(--fg3)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>

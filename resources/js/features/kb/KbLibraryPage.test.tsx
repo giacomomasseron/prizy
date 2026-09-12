@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import KbLibraryPage from './KbLibraryPage';
 
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Alex', is_agent: true } }) }));
@@ -18,7 +19,7 @@ const library = { categories: [
     { id: 'c2', name: 'Empty topic', slug: 'e', icon: '◫', color: '#b06ae0', description: null, position: 1, sections: [] },
 ] };
 
-function j(b: unknown) { return new Response(JSON.stringify(b), { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+function j(b: unknown, status = 200) { return new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } }); }
 function renderPage() {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: library }) : j({ data: {} }))));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -53,5 +54,49 @@ describe('KbLibraryPage', () => {
         await userEvent.click(await screen.findByRole('button', { name: /Empty topic/ }));
         expect(await screen.findByText('No articles in here yet')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: '＋ New article here' })).toBeInTheDocument();
+    });
+
+    it('surfaces an inline error in the tree pane when a tree mutation is rejected', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/kb/library')) return j({ data: library });
+            if (url.includes('/move')) return j({ title: 'Error', detail: 'You cannot reorder this category right now.' }, 422);
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><KbLibraryPage /></MemoryRouter></QueryClientProvider>);
+
+        await screen.findByRole('button', { name: /Getting started/ });
+        await userEvent.click(screen.getAllByRole('button', { name: 'Move up' })[0]);
+
+        expect(await screen.findByText('You cannot reorder this category right now.')).toBeInTheDocument();
+    });
+
+    it('keeps the selected node when deleting it is rejected by the server', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (url.includes('/kb/library')) return j({ data: library });
+            if (init?.method === 'DELETE' && url.includes('/kb/categories/')) return j({ title: 'Error', detail: 'Cannot delete a category with sections.' }, 422);
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter>
+                    <ConfirmProvider>
+                        <KbLibraryPage />
+                    </ConfirmProvider>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        await userEvent.click(await screen.findByRole('button', { name: /Getting started/ }));
+        expect(await screen.findByRole('heading', { name: 'Getting started' })).toBeInTheDocument();
+
+        await userEvent.click(screen.getAllByRole('button', { name: 'More actions' })[0]);
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'Delete…' }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+
+        expect(await screen.findByText('Cannot delete a category with sections.')).toBeInTheDocument();
+        // Selection must stay on the category — a rejected delete must not act as though it succeeded.
+        expect(screen.getByRole('heading', { name: 'Getting started' })).toBeInTheDocument();
     });
 });
