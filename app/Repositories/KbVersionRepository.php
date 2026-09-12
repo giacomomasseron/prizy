@@ -22,7 +22,13 @@ final class KbVersionRepository
     public function recordVersion(KbArticle $article, User $author): void
     {
         KbArticleVersion::create([
-            'id' => (string) Str::uuid(),
+            // orderedUuid(), not uuid(): two saves inside the same DB transaction
+            // (every test, and any bulk/scripted edit) can share the exact same
+            // `created_at` — Postgres freezes now() for the transaction's
+            // lifetime. listForArticle()'s tie-break is orderByDesc('id'), which
+            // only breaks ties correctly if id itself is chronologically
+            // ordered; a random uuid() is not, silently reversing history.
+            'id' => (string) Str::orderedUuid(),
             'article_id' => $article->id,
             'author_id' => $author->id,
             'title' => $article->title,
