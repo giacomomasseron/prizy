@@ -7,7 +7,7 @@
         <a href="{{ route('help.home') }}" class="faint" style="font-size:13px">‹ Help center</a>
 
         <div style="display:flex;align-items:center;gap:14px;margin:20px 0 8px">
-            <div style="width:44px;height:44px;border-radius:12px;background:{{ $category->color ?? 'var(--sup2)' }};display:flex;align-items:center;justify-content:center;font-size:20px">{{ $category->icon ?? '◇' }}</div>
+            <div style="width:44px;height:44px;border-radius:12px;background:{{ $category->color ?? '#8b8b95' }}26;color:{{ $category->color ?? '#8b8b95' }};display:flex;align-items:center;justify-content:center;font-size:20px">{{ $category->icon ?? '◇' }}</div>
             <h1 style="font-size:24px;font-weight:700;margin:0">{{ $category->name }}</h1>
         </div>
         @if ($category->description)

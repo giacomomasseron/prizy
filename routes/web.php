@@ -11,6 +11,7 @@ use App\Http\Controllers\HelpCenterController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalController;
+use App\Services\KbSlug;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
@@ -98,11 +99,10 @@ Route::get('/csat/{ticket}/{rating}', [CsatController::class, 'respond'])
 // Help center (HC-1) — public knowledge base on the tenant host.
 // Same session exemption as /login and /csat; NeedsTenant stays (RLS GUC).
 // ORDER MATTERS: fixed segments before the {category} catch-all — 'search',
-// 'articles' and HelpCenterController::RESERVED_HELP_SLUGS' other entries
-// ('requests', 'new', 'login' — reserved for HC-2/3) are reserved category
-// slugs; the negative-lookahead {category} constraint below is belt-and-braces
-// on top of that ordering.
-$reservedHelpSlugs = implode('|', HelpCenterController::RESERVED_HELP_SLUGS);
+// 'articles' and KbSlug::RESERVED's other entries ('requests', 'new', 'login'
+// — reserved for HC-2/3) are reserved category slugs; the negative-lookahead
+// {category} constraint below is belt-and-braces on top of that ordering.
+$reservedHelpSlugs = implode('|', KbSlug::RESERVED);
 $helpCategoryPattern = '^(?!(?:'.$reservedHelpSlugs.')$)[a-z0-9-]+$';
 
 Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () use ($helpCategoryPattern): void {

@@ -16,16 +16,6 @@ use Illuminate\View\View;
 
 final class HelpCenterController extends Controller
 {
-    /**
-     * Category slugs that must never be shadowed by a real KB category — the
-     * {category} catch-all route excludes these (see routes/web.php) so a
-     * future HC-2/3 endpoint under one of these names can't collide with a
-     * customer-authored topic.
-     *
-     * @var list<string>
-     */
-    public const RESERVED_HELP_SLUGS = ['search', 'articles', 'requests', 'new', 'login'];
-
     public function __construct(
         private readonly ShowHelpHome $showHelpHome,
         private readonly ShowHelpTopic $showHelpTopic,
@@ -47,9 +37,14 @@ final class HelpCenterController extends Controller
         return view('help.topic', $this->showHelpTopic->handle($category));
     }
 
-    public function article(string $category, string $section, string $article): View
+    public function article(string $category, string $section, string $article): View|RedirectResponse
     {
-        return view('help.article', $this->showHelpArticle->handle($category, $section, $article));
+        $data = $this->showHelpArticle->handle($category, $section, $article);
+        if (isset($data['redirect'])) {
+            return redirect($data['redirect']);
+        }
+
+        return view('help.article', $data);
     }
 
     public function search(Request $request): View|RedirectResponse

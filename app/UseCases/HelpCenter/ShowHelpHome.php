@@ -27,15 +27,9 @@ final class ShowHelpHome
     /** @return array{categories: Collection<int, KbCategory>, suggestions: Collection<int, KbArticle>, recent: ?Collection<int, Ticket>} */
     public function handle(?Contact $contact = null): array
     {
-        $suggestions = $this->kb->topArticles();
-        // Each chip links to the article's full slug chain, which needs its
-        // parent section+category — eager-load here (2 queries total) so the
-        // view isn't tempted into an N+1 over $article->section->category.
-        $suggestions->load('section.category');
-
         return [
             'categories' => $this->kb->categoriesWithCounts(),
-            'suggestions' => $suggestions,
+            'suggestions' => $this->kb->topArticles(),
             'recent' => $contact !== null ? $this->portalTickets->forContactRecent($contact) : null,
         ];
     }

@@ -32,31 +32,8 @@ final class ShowOwnTicket
             'ticket' => $ticket,
             'conversation' => $this->tickets->conversation($ticket),
             'statusLabel' => PortalTicketRepository::STATUS_LABELS[$ticket->status] ?? $ticket->status,
-            'relatedArticles' => $this->relatedArticlesFor($ticket->subject),
+            'relatedArticles' => $this->kb->relatedByText($ticket->subject, 3),
             'hasEscalation' => $ticket->issueTicketLinks()->exists(),
         ];
-    }
-
-    /**
-     * KbRepository::search() feeds websearch_to_tsquery() directly, whose
-     * default (unquoted, no "OR") semantics AND every term together — right
-     * for a user-typed search-box query, wrong for "related articles": a
-     * ticket subject is a whole sentence, and requiring EVERY one of its
-     * words (including incidental ones the article body would never contain)
-     * to appear in a candidate article would make matches vanishingly rare.
-     * OR-joining the subject's words instead finds anything sharing at least
-     * one topic word with the subject; websearch_to_tsquery understands the
-     * literal " OR " keyword between terms.
-     *
-     * @return Collection<int, object>
-     */
-    private function relatedArticlesFor(string $subject): Collection
-    {
-        $words = preg_split('/[^\p{L}\p{N}]+/u', $subject, -1, PREG_SPLIT_NO_EMPTY) ?: [];
-        if ($words === []) {
-            return new Collection;
-        }
-
-        return $this->kb->search(implode(' OR ', $words), 3);
     }
 }

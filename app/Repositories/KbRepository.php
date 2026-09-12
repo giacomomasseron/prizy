@@ -133,11 +133,53 @@ final class KbRepository
             ->map(fn ($r) => (object) $r->getAttributes());
     }
 
-    /** @return Collection<int, KbArticle> most-viewed published (suggestion chips) */
+    /**
+     * Free-text relevance for a sentence (ticket subjects): websearch_to_tsquery
+     * ANDs bare terms, so a multi-word subject would have to match every word.
+     * Splitting on non-letter/digit runs strips the whole tsquery operator
+     * alphabet (quotes, -, OR, <->, :*) — safer than escaping it — and joining
+     * with " OR " matches any shared topic word.
+     *
+     * @return BaseCollection<int, object{id:string,title:string,slug:string,section_slug:string,category_slug:string,category_name:string,snippet:string}>
+     */
+    public function relatedByText(string $text, int $limit = 3): BaseCollection
+    {
+        $words = preg_split('/[^\p{L}\p{N}]+/u', $text, -1, PREG_SPLIT_NO_EMPTY) ?: [];
+        if ($words === []) {
+            return new BaseCollection;
+        }
+
+        return $this->search(implode(' OR ', $words), $limit);
+    }
+
+    /**
+     * The category of an ARCHIVED article at this slug chain, or null. Drafts
+     * were never public, so they stay 404 — only archived articles earn the
+     * "moved" redirect to their topic.
+     */
+    public function findArchivedByChain(string $categorySlug, string $sectionSlug, string $articleSlug): ?KbCategory
+    {
+        $article = KbArticle::query()
+            ->where('status', 'archived')
+            ->where('slug', $articleSlug)
+            ->whereHas('section', function (Builder $q) use ($categorySlug, $sectionSlug): void {
+                $q->where('slug', $sectionSlug)->whereHas('category', function (Builder $q) use ($categorySlug): void {
+                    $q->where('slug', $categorySlug);
+                });
+            })
+            ->with('section.category')
+            ->first();
+
+        return $article?->section->category;
+    }
+
+    /** @return Collection<int, KbArticle> most-viewed published, with section.category loaded for URL building */
     public function topArticles(int $limit = 4): Collection
     {
         return $this->published($this->workspaceArticles())
-            ->orderByDesc('views_count')->limit($limit)->get(['id', 'title', 'slug', 'section_id']);
+            ->orderByDesc('views_count')->limit($limit)
+            ->with('section.category')
+            ->get(['id', 'title', 'slug', 'section_id']);
     }
 
     /** @return Collection<int, KbArticle> same-section, most-viewed, excluding the article */
