@@ -8,6 +8,7 @@ use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbVersionRepository;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateKbArticle
@@ -43,15 +44,18 @@ final class UpdateKbArticle
         }
 
         $before = ['title' => $article->title, 'body' => $article->body];
-        $updated = $this->kb->updateArticle($article, array_intersect_key($data, array_flip(['title', 'slug', 'body', 'section_id'])));
 
-        // Only CONTENT changes earn a version: a slug edit or a section move
-        // leaves the article's text untouched, and a no-op save must not
-        // inflate history.
-        if ($updated->title !== $before['title'] || $updated->body !== $before['body']) {
-            $this->versions->recordVersion($updated, $actor);
-        }
+        return DB::transaction(function () use ($article, $data, $actor, $before): KbArticle {
+            $updated = $this->kb->updateArticle($article, array_intersect_key($data, array_flip(['title', 'slug', 'body', 'section_id'])));
 
-        return $updated;
+            // Only CONTENT changes earn a version: a slug edit or a section
+            // move leaves the article's text untouched, and a no-op save
+            // must not inflate history.
+            if ($updated->title !== $before['title'] || $updated->body !== $before['body']) {
+                $this->versions->recordVersion($updated, $actor);
+            }
+
+            return $updated;
+        });
     }
 }

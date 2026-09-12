@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\KbArticleVersion;
 use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
@@ -108,4 +109,32 @@ it('backfills one version per pre-existing article, idempotently', function (): 
     expect($v->title)->toBe('Legacy');
     expect($v->body)->toBe('Legacy body.');
     expect($v->author_id)->toBe($user->id);
+});
+
+it('keeps the article write and its version write atomic: a failed version write leaves the article unchanged', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $sec = kbAuthSection(kbAuthCategory($ws));
+    $art = kbAuthArticle($sec, $user, ['title' => 'Original', 'body' => 'Body one.']);
+
+    // Force the version write to fail via a model event — KbVersionRepository
+    // is final, so it cannot be subclassed into a Mockery double, and by the
+    // time this test runs the class is already autoloaded elsewhere in the
+    // suite, so Mockery's overload/alias mocking (which only works before a
+    // class is first loaded) is not reliable either. Hooking KbArticleVersion's
+    // `creating` event forces the exact same failure point — inside
+    // recordVersion()'s KbArticleVersion::create() call — without needing to
+    // fake the repository at all.
+    KbArticleVersion::creating(function (): void {
+        throw new RuntimeException('forced failure for atomicity test');
+    });
+
+    try {
+        $this->withToken($token)->patchJson("/v1/kb/articles/{$art->id}", ['body' => 'Body two.'])
+            ->assertStatus(500);
+    } finally {
+        KbArticleVersion::flushEventListeners();
+    }
+
+    expect($art->refresh()->body)->toBe('Body one.');
+    expect(kbVersionCount($art->id))->toBe(0);
 });
