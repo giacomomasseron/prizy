@@ -22,10 +22,13 @@ describe('KbVersionCard', () => {
             v({ id: 'v4', is_current: true, summary: 'Title and body' }),
             v({ id: 'v3' }), v({ id: 'v2' }), v({ id: 'v1', summary: 'Created' }),
         ]);
-        expect(await screen.findByText('Version history')).toBeInTheDocument();
+        // Awaiting the footer button (data-dependent — only the success branch renders it) rather
+        // than the heading (rendered unconditionally, present before the fetch resolves) is what
+        // actually waits for the versions to have loaded.
+        expect(await screen.findByRole('button', { name: 'View all 4 versions' })).toBeInTheDocument();
+        expect(screen.getByText('Version history')).toBeInTheDocument();
         expect(screen.getAllByText('Alex Rivera')).toHaveLength(3);
         expect(screen.getAllByText('Current')).toHaveLength(1);
-        expect(screen.getByRole('button', { name: 'View all 4 versions' })).toBeInTheDocument();
     });
 
     it('shows the empty state and no button when the article has only its original', async () => {

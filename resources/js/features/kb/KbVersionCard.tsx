@@ -11,10 +11,6 @@ const cardTitle: CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--
 
 export function KbVersionCard({ articleId, onOpen }: { articleId: string; onOpen(versionId?: string): void }) {
     const versionsQuery = useKbArticleVersions(articleId);
-    // Nothing renders — not even the title — until the query settles: the card's whole point is
-    // to show real version data, so a bare "Version history" heading sitting above a blank gap
-    // while the fetch is in flight would just be noise.
-    if (versionsQuery.isPending) return null;
 
     // Defensive: the endpoint's contract is an array, but a malformed/unexpected payload should
     // never crash this card — it should just fall back to the empty state.
@@ -24,13 +20,22 @@ export function KbVersionCard({ articleId, onOpen }: { articleId: string; onOpen
         <div style={card}>
             <div style={cardTitle}>Version history</div>
 
+            {/* Muted "Loading…" text, matching the established placeholder pattern in
+                TicketConversation.tsx's Empty component — this card's siblings (Details,
+                Performance) render immediately since their data is already loaded, so this
+                placeholder — not an empty gap, and not withholding the heading — is what keeps
+                this card visually consistent with them while its own fetch is in flight. */}
+            {versionsQuery.isPending && (
+                <p style={{ fontSize: 11.5, color: 'var(--fg3)', lineHeight: 1.55, marginTop: 8 }}>Loading…</p>
+            )}
+
             {versionsQuery.isError && (
                 <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>
                     {versionsQuery.error instanceof ApiError ? versionsQuery.error.detail : 'Failed to load version history.'}
                 </div>
             )}
 
-            {!versionsQuery.isError && (
+            {versionsQuery.isSuccess && (
                 versions.length <= 1 ? (
                     <p style={{ fontSize: 11.5, color: 'var(--fg3)', lineHeight: 1.55, marginTop: 8 }}>No edits yet — this is the original.</p>
                 ) : (
