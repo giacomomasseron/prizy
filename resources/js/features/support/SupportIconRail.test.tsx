@@ -27,4 +27,9 @@ describe('SupportIconRail', () => {
         );
         expect(screen.getByRole('link', { name: 'Reporting' })).toHaveAttribute('href', '/support/reporting');
     });
+
+    it('links to the knowledge base', () => {
+        render(<MemoryRouter><SupportIconRail viewsOpen onToggleViews={vi.fn()} onNewTicket={vi.fn()} /></MemoryRouter>);
+        expect(screen.getByRole('link', { name: 'Knowledge base' })).toHaveAttribute('href', '/support/kb');
+    });
 });

@@ -41,6 +41,7 @@ export default function ReportingLayout() {
                 <Link to="/support" style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,var(--sup),#5cc78c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 8, textDecoration: 'none' }}>P</Link>
                 <Link to="/support" title="Desk" aria-label="Desk" style={railIcon}>⌂</Link>
                 <Link to="/support/reporting" title="Reporting" aria-label="Reporting" style={{ ...railIcon, background: 'var(--sup2)', color: 'var(--sup)' }}>📊</Link>
+                <Link to="/support/kb" title="Knowledge base" aria-label="Knowledge base" style={railIcon}>📚</Link>
                 <div style={{ flex: 1 }} />
                 <Link to="/" title="Switch to Engineering" aria-label="Switch to Engineering" style={{ ...railIcon, border: '1px solid var(--border2)' }}>⌗</Link>
                 {me.data && <span style={{ marginTop: 6 }}><Avatar {...avatarFor({ id: me.data.id, name: me.data.name })} size={30} /></span>}

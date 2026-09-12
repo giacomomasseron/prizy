@@ -34,6 +34,7 @@ import GeneralPage from './features/settings/GeneralPage';
 import { ConfirmProvider } from './components/ui/ConfirmProvider';
 import SupportLayout from './features/support/SupportLayout';
 import ReportingLayout from './features/reporting/ReportingLayout';
+import KbLibraryPage from './features/kb/KbLibraryPage';
 import { RequireAgent } from './auth/RequireAgent';
 import { RequireDeveloper } from './auth/RequireDeveloper';
 
@@ -98,6 +99,7 @@ export default function AppRouter() {
                 <Route path="/support" element={<RequireAgent><SupportLayout /></RequireAgent>} />
                 <Route path="/support/tickets/:id" element={<RequireAgent><SupportLayout /></RequireAgent>} />
                 <Route path="/support/reporting" element={<RequireAgent><ReportingLayout /></RequireAgent>} />
+                <Route path="/support/kb" element={<RequireAgent><KbLibraryPage /></RequireAgent>} />
             </Route>
         </Routes>
     );
