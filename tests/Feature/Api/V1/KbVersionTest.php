@@ -242,3 +242,85 @@ it('still lists versions when their author has been soft-deleted', function (): 
     expect($rows[0]['author']['name'])->toBe($user->name);
     $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/versions/{$version}")->assertStatus(200);
 });
+
+it('restores a past version by appending it, leaving history intact', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user, ['title' => 'V1', 'body' => 'Body one.']);
+    // Seeded directly (forceCreate), so give it the baseline version create() would have written.
+    app(KbVersionRepository::class)->recordVersion($art, $user);
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$art->id}", ['title' => 'V2', 'body' => 'Body two.'])->assertStatus(200);
+    $rows = $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/versions")->json('data');
+    $oldest = end($rows);
+    $before = kbVersionCount($art->id);
+
+    $res = $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/versions/{$oldest['id']}/restore")->assertStatus(200)->json('data');
+    expect($res['title'])->toBe('V1');
+    expect($res['body'])->toBe('Body one.');
+
+    // Append, never rewrite: the old rows survive and a new one tops the list.
+    expect(kbVersionCount($art->id))->toBe($before + 1);
+    expect(DB::table('kb_article_versions')->where('id', $oldest['id'])->value('title'))->toBe('V1');
+    $newest = kbNewestVersion($art->id);
+    expect($newest->title)->toBe('V1');
+    expect($newest->id)->not->toBe($oldest['id']);
+});
+
+it('leaves status, published_at, slug and section untouched when restoring', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user, ['title' => 'V1', 'body' => 'One.', 'slug' => 'keep-slug']);
+    // Seeded directly (forceCreate), so give it the baseline version create() would have written.
+    app(KbVersionRepository::class)->recordVersion($art, $user);
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/status", ['status' => 'published'])->assertStatus(200);
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$art->id}", ['body' => 'Two.'])->assertStatus(200);
+    $art->refresh();
+    $publishedAt = $art->published_at;
+    $oldest = collect($this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/versions")->json('data'))->last();
+
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/versions/{$oldest['id']}/restore")->assertStatus(200);
+    $art->refresh();
+    expect($art->status)->toBe('published');
+    expect($art->published_at->equalTo($publishedAt))->toBeTrue();
+    expect($art->slug)->toBe('keep-slug');
+    expect($art->author_id)->toBe($user->id);
+});
+
+it('refuses to restore the current version', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user, ['body' => 'One.']);
+    // Baseline seeded for uniformity — this test only needs the newest entry, so it works either way.
+    app(KbVersionRepository::class)->recordVersion($art, $user);
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$art->id}", ['body' => 'Two.'])->assertStatus(200);
+    $newest = $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/versions")->json('data.0');
+
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/versions/{$newest['id']}/restore")
+        ->assertStatus(422)->assertJsonPath('errors.version_id.0', 'That version is already the current one.');
+});
+
+it('refuses to restore an empty body onto a published article', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user, ['status' => 'draft', 'published_at' => null, 'body' => '']);
+    // Seeded directly (forceCreate), so give it the baseline version create() would have written.
+    app(KbVersionRepository::class)->recordVersion($art, $user);
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$art->id}", ['body' => 'Real content.'])->assertStatus(200);
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/status", ['status' => 'published'])->assertStatus(200);
+    $empty = collect($this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/versions")->json('data'))->last();
+
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/versions/{$empty['id']}/restore")
+        ->assertStatus(422)->assertJsonPath('errors.body.0', 'A published article cannot be left empty.');
+});
+
+it('gates restore on is_agent and 404s foreign or mismatched ids', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user, ['body' => 'One.']);
+    // Seeded directly (forceCreate), so give it the baseline version create() would have written.
+    app(KbVersionRepository::class)->recordVersion($art, $user);
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$art->id}", ['body' => 'Two.'])->assertStatus(200);
+    $oldest = collect($this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/versions")->json('data'))->last();
+
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/versions/not-a-uuid/restore")->assertStatus(404);
+    // session driver leaks the previous tenant pin across same-test
+    // cross-tenant calls (see TrackerReportTest). Flush before switching.
+    test()->flushSession();
+    [$nonAgent] = kbAuthWorld(['is_agent' => false, 'admin_level' => 'owner']);
+    $this->withToken($nonAgent)->postJson("/v1/kb/articles/{$art->id}/versions/{$oldest['id']}/restore")->assertStatus(403);
+});
