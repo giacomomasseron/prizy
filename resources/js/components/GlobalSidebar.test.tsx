@@ -115,4 +115,14 @@ describe('GlobalSidebar', () => {
         expect(screen.getByRole('button', { name: /New issue/ })).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /My Issues/ })).toBeInTheDocument();
     });
+    it('shows Knowledge base + Help center rows to agents only', async () => {
+        renderSidebar('member', true);
+        expect(await screen.findByRole('link', { name: /Knowledge base/ })).toHaveAttribute('href', '/support/kb');
+        expect(screen.getByRole('link', { name: /Help center/ })).toHaveAttribute('href', '/help');
+    });
+    it('hides the Knowledge base row from non-agents', async () => {
+        renderSidebar('owner', false);
+        await screen.findByText('Support bridge');
+        expect(screen.queryByRole('link', { name: /Knowledge base/ })).toBeNull();
+    });
 });

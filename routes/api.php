@@ -19,6 +19,10 @@ use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueGithubLinkController;
 use App\Http\Controllers\Api\V1\IssueLabelController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
+use App\Http\Controllers\Api\V1\KbArticleController;
+use App\Http\Controllers\Api\V1\KbCategoryController;
+use App\Http\Controllers\Api\V1\KbLibraryController;
+use App\Http\Controllers\Api\V1\KbSectionController;
 use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\MilestoneController;
@@ -175,6 +179,26 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/sla-policies', [SlaPolicyController::class, 'store'])->middleware('verified');
         Route::patch('/sla-policies/{id}', [SlaPolicyController::class, 'update'])->middleware('verified');
         Route::delete('/sla-policies/{id}', [SlaPolicyController::class, 'destroy'])->middleware('verified');
+
+        // Knowledge-base authoring (HC-4) — is_agent gate lives in each use case.
+        Route::post('/kb/categories', [KbCategoryController::class, 'store'])->middleware('verified');
+        Route::patch('/kb/categories/{id}', [KbCategoryController::class, 'update'])->middleware('verified');
+        Route::delete('/kb/categories/{id}', [KbCategoryController::class, 'destroy'])->middleware('verified');
+        Route::post('/kb/categories/{id}/move', [KbCategoryController::class, 'move'])->middleware('verified');
+        Route::post('/kb/categories/{id}/archive-articles', [KbCategoryController::class, 'archiveArticles'])->middleware('verified');
+        Route::post('/kb/sections', [KbSectionController::class, 'store'])->middleware('verified');
+        Route::patch('/kb/sections/{id}', [KbSectionController::class, 'update'])->middleware('verified');
+        Route::delete('/kb/sections/{id}', [KbSectionController::class, 'destroy'])->middleware('verified');
+        Route::post('/kb/sections/{id}/move', [KbSectionController::class, 'move'])->middleware('verified');
+        Route::post('/kb/sections/{id}/archive-articles', [KbSectionController::class, 'archiveArticles'])->middleware('verified');
+        Route::get('/kb/library', [KbLibraryController::class, 'library']);
+        Route::post('/kb/preview', [KbLibraryController::class, 'preview'])->middleware(['verified', 'throttle:60,1']);
+        Route::get('/kb/articles/{id}', [KbArticleController::class, 'show']);
+        Route::post('/kb/articles', [KbArticleController::class, 'store'])->middleware('verified');
+        Route::patch('/kb/articles/{id}', [KbArticleController::class, 'update'])->middleware('verified');
+        Route::delete('/kb/articles/{id}', [KbArticleController::class, 'destroy'])->middleware('verified');
+        Route::post('/kb/articles/{id}/move', [KbArticleController::class, 'move'])->middleware('verified');
+        Route::post('/kb/articles/{id}/status', [KbArticleController::class, 'status'])->middleware('verified');
 
         Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
         Route::get('/teams/{team}', [TeamController::class, 'show']);

@@ -61,7 +61,7 @@
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
                 @foreach ($categories as $category)
                     <a href="{{ route('help.topic', $category->slug) }}" class="card" style="display:block;padding:20px;color:var(--fg)">
-                        <div style="width:38px;height:38px;border-radius:10px;background:{{ $category->color ?? 'var(--sup2)' }};display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px">{{ $category->icon ?? '◇' }}</div>
+                        <div style="width:38px;height:38px;border-radius:10px;background:{{ $category->color ?? '#8b8b95' }}26;color:{{ $category->color ?? '#8b8b95' }};display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px">{{ $category->icon ?? '◇' }}</div>
                         <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ $category->name }}</div>
                         @if ($category->description)
                             <div class="muted" style="font-size:13px;margin-bottom:10px">{{ $category->description }}</div>

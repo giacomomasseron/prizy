@@ -7,6 +7,7 @@ use App\Models\KbCategory;
 use App\Models\KbSection;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Repositories\KbRepository;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
@@ -29,7 +30,7 @@ function helpKbCategory(Workspace $ws, string $slug = 'getting-started', array $
     return KbCategory::forceCreate(array_merge([
         'id' => (string) Str::uuid(), 'workspace_id' => $ws->id,
         'name' => 'Getting started', 'slug' => $slug,
-        'description' => 'Set up your workspace.', 'icon' => '◇', 'color' => 'var(--sup)',
+        'description' => 'Set up your workspace.', 'icon' => '◇', 'color' => '#3aa76d',
     ], $attrs));
 }
 
@@ -257,6 +258,50 @@ it('routes /help/search to the search action, not the {category} catch-all', fun
     // category named "search") rather than redirect — the search action
     // redirects to /help on an empty query.
     $this->get('/help/search')->assertRedirect('/help');
+
+    Workspace::forgetCurrent();
+});
+
+it('redirects an archived article chain to its category, but 404s drafts', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $cat = helpKbCategory($ws);
+    $sec = helpKbSection($cat);
+    helpKbArticle($sec, $user, ['slug' => 'old-guide', 'title' => 'Old guide', 'status' => 'archived', 'published_at' => now()->subYear()]);
+    helpKbArticle($sec, $user, ['slug' => 'a-draft', 'title' => 'Draft', 'status' => 'draft', 'published_at' => null]);
+
+    $this->get('/help/getting-started/basics/old-guide')->assertRedirect('/help/getting-started');
+    $this->get('/help/getting-started/basics/a-draft')->assertNotFound();
+    $this->get('/help/getting-started/basics/never-existed')->assertNotFound();
+
+    Workspace::forgetCurrent();
+});
+
+it('relatedByText ORs the words of a sentence and returns nothing for an empty one', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $cat = helpKbCategory($ws);
+    $sec = helpKbSection($cat);
+    helpKbArticle($sec, $user, ['slug' => 'exporting-csv', 'title' => 'Exporting to CSV', 'body' => 'How to export a CSV file.']);
+    $repo = app(KbRepository::class);
+
+    expect($repo->relatedByText('CSV export timing out')->pluck('slug')->all())->toBe(['exporting-csv']);
+    expect($repo->relatedByText('   ')->isEmpty())->toBeTrue();
+    expect($repo->relatedByText('"quoted" -minus OR <-> x:*')->count())->toBeLessThanOrEqual(3);
+
+    Workspace::forgetCurrent();
+});
+
+it('normalizes legacy var(--x) category colours to the hex allowlist (migration replay)', function (): void {
+    [$ws] = helpKbWorld();
+    $sup = helpKbCategory($ws, 'sup', ['color' => 'var(--sup)']);
+    $weird = helpKbCategory($ws, 'weird', ['color' => 'rgb(1,2,3)']);
+    $hex = helpKbCategory($ws, 'hex', ['color' => '#5b8def']);
+
+    $migration = require base_path('database/migrations/2026_09_11_000001_normalize_kb_category_colors.php');
+    $migration->up();
+
+    expect($sup->refresh()->color)->toBe('#3aa76d');
+    expect($weird->refresh()->color)->toBe('#8b8b95');
+    expect($hex->refresh()->color)->toBe('#5b8def');
 
     Workspace::forgetCurrent();
 });

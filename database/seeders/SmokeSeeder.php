@@ -221,7 +221,7 @@ final class SmokeSeeder extends Seeder
         // articles so /help is browsable on a fresh `composer dev`, plus one
         // draft proving the published-only gate. Idempotent via slug lookups.
         $kbSeed = [
-            ['slug' => 'getting-started', 'name' => 'Getting started', 'icon' => '◇', 'color' => 'var(--sup)',
+            ['slug' => 'getting-started', 'name' => 'Getting started', 'icon' => '◇', 'color' => '#3aa76d',
                 'description' => 'Set up your workspace, invite your team, and connect your first project.',
                 'sections' => [
                     ['slug' => 'basics', 'name' => 'Basics', 'articles' => [
@@ -232,7 +232,7 @@ final class SmokeSeeder extends Seeder
                         ['slug' => 'roles-and-permissions', 'title' => 'Roles and permissions explained', 'views' => 60],
                     ]],
                 ]],
-            ['slug' => 'tickets-escalations', 'name' => 'Tickets & escalations', 'icon' => '◷', 'color' => 'var(--blue)',
+            ['slug' => 'tickets-escalations', 'name' => 'Tickets & escalations', 'icon' => '◷', 'color' => '#5b8def',
                 'description' => 'How requests move through support and reach our engineering team.',
                 'sections' => [
                     ['slug' => 'lifecycle', 'name' => 'Ticket lifecycle', 'articles' => [
@@ -240,7 +240,7 @@ final class SmokeSeeder extends Seeder
                         ['slug' => 'ticket-statuses', 'title' => 'What each ticket status means', 'views' => 45],
                     ]],
                 ]],
-            ['slug' => 'billing-plans', 'name' => 'Billing & plans', 'icon' => '◫', 'color' => 'var(--purple)',
+            ['slug' => 'billing-plans', 'name' => 'Billing & plans', 'icon' => '◫', 'color' => '#b06ae0',
                 'description' => 'Seats, invoices, upgrades, and what each plan includes.',
                 'sections' => [
                     ['slug' => 'invoices', 'name' => 'Invoices', 'articles' => [
@@ -299,6 +299,18 @@ final class SmokeSeeder extends Seeder
                     'id' => (string) Str::uuid(), 'section_id' => $gsBasics->id, 'author_id' => $user->id,
                     'title' => 'Unfinished draft article', 'slug' => 'unfinished-draft',
                     'body' => 'Not ready.', 'status' => 'draft', 'position' => 99,
+                ]);
+        }
+
+        // One archived article — hidden publicly, its old URL redirects to the topic (HC-4).
+        $invoices = KbSection::query()->where('category_id', KbCategory::firstWhere('slug', 'billing-plans')?->id)->where('slug', 'invoices')->first();
+        if ($invoices !== null) {
+            KbArticle::query()->where('section_id', $invoices->id)->where('slug', 'legacy-plan-migration-2024')->first()
+                ?? KbArticle::forceCreate([
+                    'id' => (string) Str::uuid(), 'section_id' => $invoices->id, 'author_id' => $user->id,
+                    'title' => 'Legacy plan migration (2024)', 'slug' => 'legacy-plan-migration-2024',
+                    'body' => 'Migration steps for the retired 2024 plans.', 'status' => 'archived', 'position' => 98,
+                    'views_count' => 612, 'helpful_count' => 19, 'unhelpful_count' => 6, 'published_at' => '2024-11-11 00:00:00',
                 ]);
         }
 

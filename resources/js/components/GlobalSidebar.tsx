@@ -91,11 +91,22 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                     </NavLink>
                     {/* Support inbox → agent desk (design: outlined-square glyph + "Agent" badge); agent-gated so non-agents get no dead /support link */}
                     {me.data?.is_agent && (
-                        <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
-                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>
-                            <span style={{ flex: 1 }}>Support inbox</span>
-                            <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Agent</span>
-                        </NavLink>
+                        <>
+                            <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>
+                                <span style={{ flex: 1 }}>Support inbox</span>
+                                <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Agent</span>
+                            </NavLink>
+                            <NavLink to="/support/kb" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>📚</span>
+                                <span style={{ flex: 1 }}>Knowledge base</span>
+                            </NavLink>
+                            <a href="/help" target="_blank" rel="noreferrer" style={rowStyle(false)} className="hover:bg-hover">
+                                <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◎</span>
+                                <span style={{ flex: 1 }}>Help center</span>
+                                <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Public</span>
+                            </a>
+                        </>
                     )}
                 </div>
 

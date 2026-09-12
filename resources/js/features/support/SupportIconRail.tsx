@@ -15,6 +15,7 @@ export function SupportIconRail({ viewsOpen, onToggleViews, onNewTicket }: { vie
             <button type="button" title="Views" aria-label="Views" onClick={onToggleViews} style={railBtn(viewsOpen)}>▤</button>
             <button type="button" title="New ticket" aria-label="New ticket" onClick={onNewTicket} style={railBtn(false)}>＋</button>
             <Link to="/support/reporting" title="Reporting" aria-label="Reporting" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: 'var(--fg3)', textDecoration: 'none' }}>📊</Link>
+            <Link to="/support/kb" title="Knowledge base" aria-label="Knowledge base" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: 'var(--fg3)', textDecoration: 'none' }}>📚</Link>
             <div style={{ flex: 1 }} />
             <Link to="/" title="Switch to Engineering" aria-label="Switch to Engineering" style={{ width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: 'var(--fg3)', border: '1px solid var(--border2)', textDecoration: 'none' }}>⌗</Link>
             {me.data && <span style={{ marginTop: 6 }}><Avatar {...avatarFor({ id: me.data.id, name: me.data.name })} size={30} /></span>}

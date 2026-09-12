@@ -16,6 +16,6 @@ final class ListTopArticles
     /** @return Collection<int, KbArticle> */
     public function handle(int $limit = 4): Collection
     {
-        return $this->kb->topArticles($limit)->load('section.category');
+        return $this->kb->topArticles($limit);
     }
 }

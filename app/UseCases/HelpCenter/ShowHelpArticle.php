@@ -8,22 +8,26 @@ use App\Models\KbArticle;
 use App\Models\KbCategory;
 use App\Models\KbSection;
 use App\Repositories\KbRepository;
+use App\Services\MarkdownRenderer;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Str;
 
 /**
  * Public help-center read — no actor: the pages are unauthenticated (CSAT precedent).
  */
 final class ShowHelpArticle
 {
-    public function __construct(private readonly KbRepository $kb) {}
+    public function __construct(private readonly KbRepository $kb, private readonly MarkdownRenderer $markdown) {}
 
-    /** @return array{article: KbArticle, category: KbCategory, section: KbSection, related: Collection<int, KbArticle>, html: string} */
+    /** @return array{article: KbArticle, category: KbCategory, section: KbSection, related: Collection<int, KbArticle>, html: string}|array{redirect: string} */
     public function handle(string $categorySlug, string $sectionSlug, string $articleSlug): array
     {
         $chain = $this->kb->findArticleByChain($categorySlug, $sectionSlug, $articleSlug);
         if ($chain === null) {
+            $archivedIn = $this->kb->findArchivedByChain($categorySlug, $sectionSlug, $articleSlug);
+            if ($archivedIn !== null) {
+                return ['redirect' => route('help.topic', $archivedIn->slug)];
+            }
             throw (new ModelNotFoundException)->setModel(KbArticle::class, [$articleSlug]);
         }
 
@@ -35,9 +39,8 @@ final class ShowHelpArticle
             'category' => $chain['category'],
             'section' => $chain['section'],
             'related' => $this->kb->relatedArticles($article),
-            // Safe-mode markdown: raw HTML in the body is escaped, not rendered —
-            // this is the ONLY trusted producer of the article's `{!! !!}` output.
-            'html' => Str::markdown($article->body, ['html_input' => 'escape', 'allow_unsafe_links' => false]),
+            // MarkdownRenderer is the ONLY trusted producer of the article's `{!! !!}` output.
+            'html' => $this->markdown->render($article->body),
         ];
     }
 }
