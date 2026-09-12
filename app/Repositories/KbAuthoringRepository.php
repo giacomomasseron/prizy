@@ -7,6 +7,7 @@ namespace App\Repositories;
 use App\Models\KbArticle;
 use App\Models\KbCategory;
 use App\Models\KbSection;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
@@ -152,5 +153,75 @@ final class KbAuthoringRepository
         });
 
         return true;
+    }
+
+    public function findArticle(string $id): ?KbArticle
+    {
+        return Str::isUuid($id)
+            ? KbArticle::query()->whereKey($id)->whereHas('section.category')->with(['section.category', 'author'])->first()
+            : null;
+    }
+
+    public function articleSlugTaken(string $sectionId, string $slug, ?string $exceptId = null): bool
+    {
+        return KbArticle::query()->where('section_id', $sectionId)->where('slug', $slug)
+            ->when($exceptId !== null, fn (Builder $q) => $q->whereKeyNot($exceptId))
+            ->exists();
+    }
+
+    /** @param array{title:string,slug:string,body:string} $attrs */
+    public function createArticle(KbSection $section, User $author, array $attrs): KbArticle
+    {
+        $article = KbArticle::create($attrs + [
+            'id' => (string) Str::uuid(),
+            'section_id' => $section->id,
+            'author_id' => $author->id,
+            'status' => 'draft',
+            'position' => $this->nextArticlePosition($section->id),
+        ]);
+
+        return $this->findArticle($article->id);
+    }
+
+    /** @param array<string,mixed> $attrs (section_id present only when moving sections) */
+    public function updateArticle(KbArticle $article, array $attrs): KbArticle
+    {
+        if (isset($attrs['section_id']) && $attrs['section_id'] !== $article->section_id) {
+            $attrs['position'] = $this->nextArticlePosition($attrs['section_id']);
+        }
+        $article->fill($attrs)->save();
+
+        return $this->findArticle($article->id);
+    }
+
+    public function deleteArticle(KbArticle $article): void
+    {
+        $article->forceDelete(); // a soft-deleted row would hold its slug under UNIQUE(section_id, slug)
+    }
+
+    public function moveArticle(KbArticle $article, string $direction): bool
+    {
+        $siblings = KbArticle::query()->where('section_id', $article->section_id)
+            ->orderBy('position')->orderBy('title')->get(['id', 'position', 'title']);
+
+        return $this->swapWithin('kb_articles', $siblings, $article->id, $direction);
+    }
+
+    /** @return Collection<int, KbCategory> full tree, every status, position order, authors loaded */
+    public function libraryTree(): Collection
+    {
+        return KbCategory::query()->orderBy('position')->orderBy('name')
+            ->with(['kbSections' => function ($q): void {
+                $q->orderBy('position')->orderBy('name')
+                    ->with(['kbArticles' => function ($q): void {
+                        $q->orderBy('position')->orderBy('title')->with('author:id,name');
+                    }]);
+            }])
+            ->get();
+    }
+
+    private function nextArticlePosition(string $sectionId): int
+    {
+        return (int) (KbArticle::query()->where('section_id', $sectionId)->max('position') ?? -1) + 1;
     }
 }
