@@ -39,16 +39,10 @@ test.describe('Knowledge base authoring (agent) → public help center', () => {
         await page.getByPlaceholder('# Heading').fill('## Hello\n\nThis was written by an end-to-end test.');
         await page.getByRole('button', { name: 'Save changes' }).click();
         await expect(page).toHaveURL(/\/support\/kb\/articles\//);
-        // Not "Saved just now": creating a brand-new article navigates (replace) from
-        // /support/kb/new to /support/kb/articles/:id, which changes the useParams() id and
-        // remounts EditorForm (key={article?.id}) once useKbArticle(id) resolves — the create
-        // mutation doesn't seed that query's cache, so the form re-mounts with fresh state
-        // instead of carrying over the transient "Saved just now" message. Confirmed empirically
-        // (polled the footer every 50ms across the save): it goes straight from "Unsaved
-        // changes" to "All changes saved", "Saved just now" is never painted for a new article.
-        // KbArticleEditorPage.test.tsx never asserts "Saved just now" either — this path was
-        // untested. Not fixing the app for this: it's a UX-polish gap, not a functional break.
-        await expect(page.getByText('All changes saved')).toBeVisible();
+        // Fix round 1: KbArticleEditorPage now hands the just-created id up to the outer
+        // component (which survives the /new → /articles/:id navigation) so the freshly
+        // remounted EditorForm seeds "Saved just now" instead of losing it to the remount.
+        await expect(page.getByText('Saved just now')).toBeVisible();
         await page.getByRole('button', { name: 'Publish' }).click();
         await expect(page.getByText('Live on the help center and returned by customer search.')).toBeVisible();
 

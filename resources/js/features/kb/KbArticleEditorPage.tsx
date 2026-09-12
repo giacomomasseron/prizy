@@ -44,6 +44,15 @@ export default function KbArticleEditorPage() {
     const lib = useKbLibrary();
     const categories = lib.data?.categories ?? [];
 
+    // Set by EditorForm right before it creates a brand-new article and navigates to its
+    // permanent URL. That navigation changes the `id` route param, which makes useKbArticle(id)
+    // a cache miss — the loading gate below then remounts EditorForm (fresh local state, see its
+    // `key`) once the article has loaded. This id lives on THIS outer component specifically
+    // because it survives that remount (only the keyed EditorForm below is torn down), so the
+    // freshly-mounted form can seed its "Saved just now" message instead of losing it — without
+    // restructuring the loading-gate/remount pattern itself.
+    const [justSavedId, setJustSavedId] = useState<string | null>(null);
+
     // Existing article: hold off on mounting the form until it has actually loaded, so the form's
     // local state (see EditorForm) can seed itself synchronously from real data on its first render
     // instead of racing an effect (a naive effect-based reseed leaves one render where inputs are
@@ -61,7 +70,16 @@ export default function KbArticleEditorPage() {
     return (
         <KbShell>
             {/* key remounts the form (fresh local state) whenever the underlying article identity changes */}
-            <EditorForm key={article?.id ?? 'new'} id={id} isNew={isNew} article={article} categories={categories} initialSection={searchParams.get('section') ?? ''} />
+            <EditorForm
+                key={article?.id ?? 'new'}
+                id={id}
+                isNew={isNew}
+                article={article}
+                categories={categories}
+                initialSection={searchParams.get('section') ?? ''}
+                justCreated={!!article && article.id === justSavedId}
+                onCreated={setJustSavedId}
+            />
         </KbShell>
     );
 }
@@ -72,9 +90,11 @@ interface EditorFormProps {
     article: KbArticleEdit | undefined;
     categories: KbCategoryNode[];
     initialSection: string;
+    justCreated: boolean;
+    onCreated(id: string): void;
 }
 
-function EditorForm({ id, isNew, article, categories, initialSection }: EditorFormProps) {
+function EditorForm({ id, isNew, article, categories, initialSection, justCreated, onCreated }: EditorFormProps) {
     const navigate = useNavigate();
     const confirm = useConfirm();
 
@@ -91,7 +111,7 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
     const [body, setBody] = useState(article?.body ?? '');
     const [tab, setTab] = useState<Tab>('write');
     const [dirty, setDirty] = useState(false);
-    const [savedMsg, setSavedMsg] = useState(isNew ? 'Not saved yet' : 'All changes saved');
+    const [savedMsg, setSavedMsg] = useState(isNew ? 'Not saved yet' : justCreated ? 'Saved just now' : 'All changes saved');
     const [saveError, setSaveError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -172,7 +192,13 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
             if (isNew) {
                 const res = await createArticle.mutateAsync({ section_id: sectionId, title, slug, body });
                 setDirty(false);
-                setSavedMsg('Saved just now');
+                // Not setSavedMsg here: this EditorForm instance is about to unmount (the
+                // navigate below changes the route param, and the loading gate in the parent
+                // remounts EditorForm once the article loads under its new key) — a local
+                // setSavedMsg would just be discarded. onCreated hands the id to the parent,
+                // which survives the remount and re-seeds the fresh instance's initial state
+                // with "Saved just now" instead.
+                onCreated(res.id);
                 navigate(`/support/kb/articles/${res.id}`, { replace: true });
             } else if (id) {
                 await updateArticle.mutateAsync({ id, title, slug, body, section_id: sectionId });
@@ -212,7 +238,9 @@ function EditorForm({ id, isNew, article, categories, initialSection }: EditorFo
         // flight, silently dropping the error it would otherwise have surfaced above.
         if (isNew) {
             setDirty(false);
-            setSavedMsg('Saved just now');
+            // Same reasoning as onSave(): this instance unmounts on navigate, so hand the id
+            // to the parent instead of setting local state that would just be discarded.
+            onCreated(targetId);
             navigate(`/support/kb/articles/${targetId}`, { replace: true });
         }
     }

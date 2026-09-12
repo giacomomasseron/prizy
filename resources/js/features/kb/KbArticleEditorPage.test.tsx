@@ -92,4 +92,48 @@ describe('KbArticleEditorPage', () => {
         expect(await screen.findByText('Nothing written yet — switch to Write and start the article.')).toBeInTheDocument();
         expect(screen.queryByTestId('preview-stub')).not.toBeInTheDocument();
     });
+
+    // A brand-new article's first "Save changes" creates it, then navigates (replace) from
+    // /support/kb/new to /support/kb/articles/:id. That id change makes useKbArticle(id) a
+    // cache miss, so KbArticleEditorPage's loading gate remounts EditorForm (fresh local state,
+    // via its `key`) once the article has loaded — the exact remount that used to swallow the
+    // "Saved just now" message before it ever painted. Exercises that full round trip against
+    // two routes (mirroring router.tsx) rather than mounting straight onto :id like the other
+    // tests here, since the bug only exists across that navigation.
+    it('shows "Saved just now" after creating a brand-new article, surviving the id-navigation remount', async () => {
+        const created = {
+            ...art({ id: 'new1', title: 'Fresh title', slug: 'fresh-title', status: 'draft', published_at: null, public_url: null }),
+            body: 'Some body text', section_id: 's1',
+            section: { id: 's1', name: 'Basics', slug: 'b' }, category: { id: 'c1', name: 'Getting started', slug: 'g' },
+        };
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (url.includes('/kb/library')) return j({ data: library });
+            if (url.endsWith('/kb/articles') && init?.method === 'POST') return j({ data: created });
+            if (url.includes('/kb/articles/new1')) return j({ data: created });
+            if (url.includes('/kb/preview')) return j({ data: { html: '' } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/support/kb/new']}>
+                    <Routes>
+                        <Route path="/support/kb/new" element={<KbArticleEditorPage />} />
+                        <Route path="/support/kb/articles/:id" element={<KbArticleEditorPage />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        const title = await screen.findByPlaceholderText('Article title');
+        expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+        await userEvent.type(title, 'Fresh title');
+        await userEvent.type(screen.getByPlaceholderText(/# Heading/), 'Some body text');
+        await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+
+        expect(await screen.findByText('Saved just now')).toBeInTheDocument();
+        // Not vacuous: this is the freshly-mounted instance at the new URL, not a residual
+        // render of the "new" page — the title field now carries the persisted article's value.
+        expect(screen.getByPlaceholderText('Article title')).toHaveValue('Fresh title');
+    });
 });
