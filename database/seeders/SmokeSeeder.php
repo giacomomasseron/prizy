@@ -314,6 +314,43 @@ final class SmokeSeeder extends Seeder
                 ]);
         }
 
+        // Version history (HC-5) for "create-your-first-project": three versions in
+        // chronological order — an original, a body-only edit, then a title-and-body
+        // edit that equals the article's CURRENT title/body. That last row is what
+        // keeps The Invariant true (the newest version always equals the article) —
+        // these rows are inserted directly with the query builder, bypassing the
+        // authoring use case that normally maintains it, so getting it right is on
+        // us here. Idempotent via a versions-exist guard, matching this seeder's
+        // established idiom (see the draft/archived articles above).
+        $firstProjectArticle = $gsBasics !== null
+            ? KbArticle::query()->where('section_id', $gsBasics->id)->where('slug', 'create-your-first-project')->first()
+            : null;
+        if ($firstProjectArticle !== null && DB::table('kb_article_versions')->where('article_id', $firstProjectArticle->id)->doesntExist()) {
+            $originalTitle = 'Creating your first project';
+            $originalBody = "Welcome to Prizy. This guide walks you through the essentials.\n\n"
+                ."## Steps\n\n1. Open your workspace\n2. Create a project\n";
+            $expandedBody = "Welcome to Prizy. This guide walks you through the essentials.\n\n"
+                ."## Steps\n\n1. Open your workspace\n2. Create a project\n3. Add your first issues\n";
+            DB::table('kb_article_versions')->insert([
+                [
+                    'id' => (string) Str::uuid(), 'article_id' => $firstProjectArticle->id, 'author_id' => $user->id,
+                    'title' => $originalTitle, 'body' => $originalBody, 'created_at' => now()->subDays(10),
+                ],
+                [
+                    // Body-only edit: title unchanged from the original row above.
+                    'id' => (string) Str::uuid(), 'article_id' => $firstProjectArticle->id, 'author_id' => $user->id,
+                    'title' => $originalTitle, 'body' => $expandedBody, 'created_at' => now()->subDays(5),
+                ],
+                [
+                    // Title-and-body edit: matches the article's actual current values
+                    // (read off the model, not re-typed) so the newest seeded version
+                    // never drifts from what the article really holds.
+                    'id' => (string) Str::uuid(), 'article_id' => $firstProjectArticle->id, 'author_id' => $user->id,
+                    'title' => $firstProjectArticle->title, 'body' => $firstProjectArticle->body, 'created_at' => now()->subDays(2),
+                ],
+            ]);
+        }
+
         $issue = Issue::query()->first();
         if ($issue !== null && Notification::query()->where('user_id', $user->id)->doesntExist()) {
             Notification::forceCreate([
