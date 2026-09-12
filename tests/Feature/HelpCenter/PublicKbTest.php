@@ -272,6 +272,8 @@ it('redirects an archived article chain to its category, but 404s drafts', funct
     $this->get('/help/getting-started/basics/old-guide')->assertRedirect('/help/getting-started');
     $this->get('/help/getting-started/basics/a-draft')->assertNotFound();
     $this->get('/help/getting-started/basics/never-existed')->assertNotFound();
+
+    Workspace::forgetCurrent();
 });
 
 it('relatedByText ORs the words of a sentence and returns nothing for an empty one', function (): void {
@@ -284,6 +286,8 @@ it('relatedByText ORs the words of a sentence and returns nothing for an empty o
     expect($repo->relatedByText('CSV export timing out')->pluck('slug')->all())->toBe(['exporting-csv']);
     expect($repo->relatedByText('   ')->isEmpty())->toBeTrue();
     expect($repo->relatedByText('"quoted" -minus OR <-> x:*')->count())->toBeLessThanOrEqual(3);
+
+    Workspace::forgetCurrent();
 });
 
 it('normalizes legacy var(--x) category colours to the hex allowlist (migration replay)', function (): void {
@@ -298,4 +302,6 @@ it('normalizes legacy var(--x) category colours to the hex allowlist (migration 
     expect($sup->refresh()->color)->toBe('#3aa76d');
     expect($weird->refresh()->color)->toBe('#8b8b95');
     expect($hex->refresh()->color)->toBe('#5b8def');
+
+    Workspace::forgetCurrent();
 });
