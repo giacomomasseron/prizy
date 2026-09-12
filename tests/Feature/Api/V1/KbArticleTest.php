@@ -96,6 +96,26 @@ it('publish stamps published_at once; unpublish/republish keep it; empty body ca
     $status($art, 'sideways')->assertStatus(422);
 });
 
+it('blocks blanking a published article body, allows it for drafts, and keeps status idempotency 200 even when the body is already empty', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $sec = kbAuthSection(kbAuthCategory($ws));
+    $published = kbAuthArticle($sec, $user, ['slug' => 'pub-guard']);
+    $draft = kbAuthArticle($sec, $user, ['slug' => 'draft-guard', 'status' => 'draft', 'published_at' => null]);
+    $emptyPublished = kbAuthArticle($sec, $user, ['slug' => 'empty-pub', 'body' => '   ']);
+
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$published->id}", ['body' => '   '])
+        ->assertStatus(422)->assertJsonPath('errors.body.0', 'A published article cannot be left empty.');
+    expect($published->refresh()->body)->not->toBe('   ');
+
+    $this->withToken($token)->patchJson("/v1/kb/articles/{$draft->id}", ['body' => ''])->assertStatus(200);
+    expect($draft->refresh()->body)->toBe('');
+
+    // $emptyPublished is already published with a blank body — re-sending the SAME status must
+    // be a 200 no-op, not trip the empty-body guard (that guard only exists to stop a
+    // draft→published TRANSITION with no content; it must never fire on a status that isn't changing).
+    $this->withToken($token)->postJson("/v1/kb/articles/{$emptyPublished->id}/status", ['status' => 'published'])->assertStatus(200);
+});
+
 it('moves within its section only, and hard-deletes freeing the slug', function (): void {
     [$token, $ws, $user] = kbAuthWorld();
     $cat = kbAuthCategory($ws);
@@ -130,6 +150,17 @@ it('404s foreign article ids on every route', function (): void {
     $this->withToken($token)->deleteJson("/v1/kb/articles/{$foreign->id}")->assertStatus(404);
     $other->makeCurrent();
     expect($foreign->refresh()->status)->toBe('published');
+});
+
+it('still reports the author and returns 200 when the author was soft-deleted (removed member)', function (): void {
+    [$token, $ws] = kbAuthWorld();
+    $author = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
+    $sec = kbAuthSection(kbAuthCategory($ws));
+    $art = kbAuthArticle($sec, $author, ['slug' => 'orphaned']);
+    $author->delete(); // soft-delete, as RemoveMember does — a DIFFERENT user than the acting agent above
+
+    $res = $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}")->assertStatus(200);
+    expect($res->json('data.author.name'))->toBe($author->name);
 });
 
 it('previews markdown through the safe renderer', function (): void {

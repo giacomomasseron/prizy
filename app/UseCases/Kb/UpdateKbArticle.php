@@ -33,6 +33,11 @@ final class UpdateKbArticle
             throw ValidationException::withMessages(['slug' => ['Already used in this section.']]);
         }
 
+        $body = $data['body'] ?? $article->body;
+        if ($article->status === 'published' && trim($body) === '') {
+            throw ValidationException::withMessages(['body' => ['A published article cannot be left empty.']]);
+        }
+
         return $this->kb->updateArticle($article, array_intersect_key($data, array_flip(['title', 'slug', 'body', 'section_id'])));
     }
 }

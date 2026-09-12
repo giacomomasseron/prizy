@@ -56,3 +56,14 @@ html, body { background: var(--bg); color: var(--fg); }
 :root {
   --sup:#3aa76d; --sup2:rgba(58,167,109,.15); --note:#e0a13a; --note2:rgba(224,161,58,.12);
 }
+
+/* KB article editor preview ("As customers see it") — mirrors the public
+   help-center article body styling (resources/views/help/layout.blade.php's
+   `article.kb` rules) so the preview honours its promise. Typography/spacing
+   only: no display, visibility or layout changes here. */
+.kb-preview { font-size: 14px; line-height: 1.5; color: var(--fg); }
+.kb-preview h2 { font-size: 19px; margin: 28px 0 10px; }
+.kb-preview ul, .kb-preview ol { padding-left: 22px; }
+.kb-preview li { margin: 4px 0; }
+.kb-preview code { background: var(--bg2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; font-size: 12.5px; }
+.kb-preview p { margin: 12px 0; line-height: 1.65; }

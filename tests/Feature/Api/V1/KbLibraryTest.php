@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Concerns\InteractsWithTenant;
@@ -33,6 +34,18 @@ it('returns the ordered tree with all statuses, author, counts and public_url on
     expect($arts[1]['views_count'])->toBe(7);
     expect($cats[0]['sections'][1]['articles'][0]['status'])->toBe('archived');
     expect($cats[1]['sections'])->toBe([]);
+});
+
+it('still reports the author and returns 200 when the author was soft-deleted (removed member)', function (): void {
+    [$token, $ws] = kbAuthWorld();
+    $author = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
+    $sec = kbAuthSection(kbAuthCategory($ws));
+    kbAuthArticle($sec, $author, ['slug' => 'orphaned']);
+    $author->delete(); // soft-delete, as RemoveMember does — a DIFFERENT user than the acting agent above
+
+    $res = $this->withToken($token)->getJson('/v1/kb/library')->assertStatus(200);
+    $arts = $res->json('data.categories.0.sections.0.articles');
+    expect($arts[0]['author']['name'])->toBe($author->name);
 });
 
 it('is workspace-scoped and agent-gated', function (): void {

@@ -20,10 +20,10 @@ final class ChangeKbArticleStatus
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
 
-        if ($status === 'published' && trim($article->body) === '') {
-            throw ValidationException::withMessages(['status' => ['Add some content before publishing.']]);
-        }
         if ($article->status !== $status) {
+            if ($status === 'published' && trim($article->body) === '') {
+                throw ValidationException::withMessages(['status' => ['Add some content before publishing.']]);
+            }
             $article->status = $status;
             // First publish only — an unpublish → republish keeps the original date.
             if ($status === 'published' && $article->published_at === null) {

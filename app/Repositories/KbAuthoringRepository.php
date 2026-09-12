@@ -158,7 +158,8 @@ final class KbAuthoringRepository
     public function findArticle(string $id): ?KbArticle
     {
         return Str::isUuid($id)
-            ? KbArticle::query()->whereKey($id)->whereHas('section.category')->with(['section.category', 'author'])->first()
+            ? KbArticle::query()->whereKey($id)->whereHas('section.category')
+                ->with(['section.category', 'author' => fn ($q) => $q->withTrashed()])->first()
             : null;
     }
 
@@ -214,7 +215,8 @@ final class KbAuthoringRepository
             ->with(['kbSections' => function ($q): void {
                 $q->orderBy('position')->orderBy('name')
                     ->with(['kbArticles' => function ($q): void {
-                        $q->orderBy('position')->orderBy('title')->with('author:id,name');
+                        $q->orderBy('position')->orderBy('title')
+                            ->with(['author' => fn ($q) => $q->withTrashed()->select(['id', 'name'])]);
                     }]);
             }])
             ->get();
