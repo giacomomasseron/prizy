@@ -7,11 +7,15 @@ namespace App\UseCases\Kb;
 use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Repositories\KbVersionRepository;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateKbArticle
 {
-    public function __construct(private readonly KbAuthoringRepository $kb) {}
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbVersionRepository $versions,
+    ) {}
 
     /** @param array<string,mixed> $data any of title, slug, body, section_id */
     public function handle(User $actor, string $id, array $data): KbArticle
@@ -38,6 +42,16 @@ final class UpdateKbArticle
             throw ValidationException::withMessages(['body' => ['A published article cannot be left empty.']]);
         }
 
-        return $this->kb->updateArticle($article, array_intersect_key($data, array_flip(['title', 'slug', 'body', 'section_id'])));
+        $before = ['title' => $article->title, 'body' => $article->body];
+        $updated = $this->kb->updateArticle($article, array_intersect_key($data, array_flip(['title', 'slug', 'body', 'section_id'])));
+
+        // Only CONTENT changes earn a version: a slug edit or a section move
+        // leaves the article's text untouched, and a no-op save must not
+        // inflate history.
+        if ($updated->title !== $before['title'] || $updated->body !== $before['body']) {
+            $this->versions->recordVersion($updated, $actor);
+        }
+
+        return $updated;
     }
 }
