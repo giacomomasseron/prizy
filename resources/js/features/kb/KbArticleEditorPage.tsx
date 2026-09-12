@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
+import { KbVersionCard } from './KbVersionCard';
 import {
     useChangeKbArticleStatus,
     useCreateKbArticle,
@@ -115,6 +116,9 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const [saveError, setSaveError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    // Task 6 renders the version-history drawer from this state; for now the setter only needs to
+    // exist so KbVersionCard's onOpen callback has somewhere to write.
+    const [versionDrawer, setVersionDrawer] = useState<{ open: boolean; versionId: string | null }>({ open: false, versionId: null });
 
     // A brand-new article opened with no ?section= falls back to the first section anywhere in the
     // library (flattened across all categories, in library order) once it loads — not just the first
@@ -385,6 +389,10 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         <DetailRow label="Updated" value={formatDate(article?.updated_at ?? null)} />
                         <DetailRow label="Category" value={selectedCategory?.slug ?? '—'} />
                     </div>
+
+                    {!isNew && id && (
+                        <KbVersionCard articleId={id} onOpen={(versionId) => setVersionDrawer({ open: true, versionId: versionId ?? null })} />
+                    )}
 
                     <div style={card}>
                         <div style={cardTitle}>Performance</div>
