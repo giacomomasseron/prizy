@@ -116,6 +116,15 @@ it('shows the language switcher with every supported language', function (): voi
     }
 });
 
+it('renders the switcher on knowledge-base pages but not on the portal', function (): void {
+    helpKbWorld();
+
+    // The gate gets it in both directions: shown where helpRoute is set,
+    // hidden where the portal controller passes no locale at all.
+    $this->get('/help')->assertOk()->assertSee('Read this help center in');
+    $this->get('/help/login')->assertOk()->assertDontSee('Read this help center in');
+});
+
 it('marks which languages this article is actually available in', function (): void {
     [$ws, $user] = helpKbWorld();
     $art = helpKbArticle(helpKbSection(helpKbCategory($ws)), $user);
@@ -135,11 +144,20 @@ it('uses translated titles in topic and home listings, and English where none ex
     helpKbArticle($sec, $user, ['title' => 'Untranslated one', 'slug' => 'untranslated-one']);
     helpSeedTranslation($translated->id, 'fr', ['title' => 'Traduit']);
 
-    $res = $this->get('/help/getting-started?lang=fr')->assertOk();
-    $res->assertSee('Traduit');
-    $res->assertDontSee('Translated one');
+    $topic = $this->get('/help/getting-started?lang=fr')->assertOk();
+    $topic->assertSee('Traduit');
+    $topic->assertDontSee('Translated one');
     // No translation for the second article — its English title still shows.
-    $res->assertSee('Untranslated one');
+    $topic->assertSee('Untranslated one');
+
+    // The same two articles also drive the home page's suggestion chips —
+    // topArticles() pulls every published article in the workspace (ordered
+    // by views_count, limit 4), not just this category, so with only these
+    // two published articles both land well inside that limit.
+    $home = $this->get('/help?lang=fr')->assertOk();
+    $home->assertSee('Traduit');
+    $home->assertDontSee('Translated one');
+    $home->assertSee('Untranslated one');
 });
 
 it('keeps category names in English even when a language is selected', function (): void {
