@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
+import { KbTranslationCard } from './KbTranslationCard';
 import { KbVersionCard } from './KbVersionCard';
 import { KbVersionDrawer } from './KbVersionDrawer';
 import {
@@ -120,6 +121,8 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     // Drives the version-history drawer below: KbVersionCard's onOpen callback writes here, and
     // KbVersionDrawer reads it.
     const [versionDrawer, setVersionDrawer] = useState<{ open: boolean; versionId: string | null }>({ open: false, versionId: null });
+    // Drives the translations drawer (Task 8): KbTranslationCard's onOpen callback writes here.
+    const [translationDrawer, setTranslationDrawer] = useState<{ open: boolean; locale: string | null }>({ open: false, locale: null });
 
     // A brand-new article opened with no ?section= falls back to the first section anywhere in the
     // library (flattened across all categories, in library order) once it loads — not just the first
@@ -400,6 +403,10 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         <DetailRow label="Updated" value={formatDate(article?.updated_at ?? null)} />
                         <DetailRow label="Category" value={selectedCategory?.slug ?? '—'} />
                     </div>
+
+                    {!isNew && id && (
+                        <KbTranslationCard articleId={id} onOpen={(locale) => setTranslationDrawer({ open: true, locale: locale ?? null })} />
+                    )}
 
                     {!isNew && id && (
                         <KbVersionCard articleId={id} onOpen={(versionId) => setVersionDrawer({ open: true, versionId: versionId ?? null })} />

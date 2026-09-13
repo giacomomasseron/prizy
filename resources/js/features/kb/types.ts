@@ -34,6 +34,23 @@ export interface KbVersionDetail extends KbVersionSummary {
     html: string;
     diff: KbDiff | null;
 }
+export interface KbTranslationSummary {
+    locale: string;
+    name: string;
+    is_source: boolean;
+    status: KbStatus | null;
+    updated_at: string | null;
+    stale: boolean;
+}
+export interface KbTranslationDetail {
+    locale: string;
+    name: string;
+    is_source: boolean;
+    title: string;
+    body: string;
+    status: KbStatus;
+    updated_at: string | null;
+}
 export const KB_COLORS = ['#3aa76d', '#6d69f2', '#5b8def', '#b06ae0', '#e0a13a', '#eb5757', '#4bab66', '#8b8b95'] as const;
 export const KB_ICONS = ['◇', '◷', '◫', '⚿', '⌗', '{ }', '☺', '◔', '▤', '✦', '☂', '⎈'] as const;
 export const KB_RESERVED = ['search', 'articles', 'requests', 'new', 'login'] as const;
