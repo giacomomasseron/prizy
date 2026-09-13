@@ -90,6 +90,15 @@ final class KbTranslationRepository
                 'status' => 'draft',
             ]);
         }
+        if (! array_key_exists('title', $attrs) && ! array_key_exists('body', $attrs)) {
+            // A status-only change (ChangeKbTranslationStatus) must not bump
+            // updated_at: staleness is derived from translation.updated_at vs
+            // the article's, and publishing a translation is not reviewing its
+            // content. Same reasoning as KbRepository::recordView() disabling
+            // timestamps so an anonymous pageview doesn't rewrite the article's
+            // "Updated" date — a metadata-only write shouldn't restamp content.
+            $row->timestamps = false;
+        }
         $row->fill($attrs)->save();
 
         return $row->refresh();

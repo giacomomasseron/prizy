@@ -55,6 +55,21 @@ it('marks a translation stale once the source article changes after it', functio
     expect($rows['de']['stale'])->toBeFalse();
 });
 
+it('does not clear staleness when only the status changes', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
+    kbSeedTranslation($art->id, 'fr', ['updated_at' => now()->subDays(5)]);
+
+    // Publishing is the status change agents perform most, and the one the
+    // staleness apparatus most needs to survive: it must not read as "just
+    // reviewed" when not one word of the translation changed.
+    $this->withToken($token)->postJson("/v1/kb/articles/{$art->id}/translations/fr/status", ['status' => 'published'])
+        ->assertStatus(200);
+
+    $rows = collect($this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/translations")->json('data'))->keyBy('locale');
+    expect($rows['fr']['stale'])->toBeTrue();
+});
+
 it('gates the list on is_agent, including an owner without the capability', function (): void {
     [, $ws, $user] = kbAuthWorld();
     $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
