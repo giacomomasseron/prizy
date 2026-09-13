@@ -17,10 +17,14 @@
             </div>
         @endif
 
-        <h1 style="font-size:26px;font-weight:700;margin:0 0 8px">{{ $title }}</h1>
+        {{-- WCAG 2.1 AA 3.1.2 (Language of Parts): mark the translated passage
+             only when it actually IS the translation. On a fallback the body is
+             genuinely English (the page chrome's own language), so lang here
+             would mislabel it — $is_fallback is the definitive signal. --}}
+        <h1 @if (! $is_fallback)lang="{{ $lang }}" @endif style="font-size:26px;font-weight:700;margin:0 0 8px">{{ $title }}</h1>
         <div class="faint" style="font-size:12.5px;margin-bottom:28px">Updated {{ $updated_at->format('M j, Y') }}</div>
 
-        <article class="kb">{!! $html !!}</article>
+        <article class="kb" @if (! $is_fallback)lang="{{ $lang }}"@endif>{!! $html !!}</article>
 
         <div class="card" style="padding:22px;margin-top:40px;text-align:center">
             @if (request()->query('voted'))

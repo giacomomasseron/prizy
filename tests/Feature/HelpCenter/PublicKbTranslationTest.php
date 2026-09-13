@@ -37,6 +37,24 @@ it('renders the published translation and its own updated date', function (): vo
     $res->assertDontSee('showing the English version', false);
 });
 
+it('marks the translated heading and article with the page language (WCAG 3.1.2), but not on a fallback', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $art = helpKbArticle(helpKbSection(helpKbCategory($ws)), $user, ['title' => 'What happens next']);
+    helpSeedTranslation($art->id, 'fr');
+
+    // A genuine translation: the passage differs from the page chrome's
+    // English, so the heading and body are marked with the target locale.
+    $translated = $this->get('/help/getting-started/basics/create-your-first-project?lang=fr')->assertOk();
+    $translated->assertSee('<h1 lang="fr"', false);
+    $translated->assertSee('<article class="kb" lang="fr">', false);
+
+    // A fallback: the content actually IS English, so marking it otherwise
+    // would mislabel it. No translation exists for `de`, so this renders the
+    // English body — no lang="de" anywhere in the heading or article.
+    $fallback = $this->get('/help/getting-started/basics/create-your-first-project?lang=de')->assertOk();
+    $fallback->assertDontSee('lang="de"', false);
+});
+
 it('falls back to English with a notice when no translation exists', function (): void {
     [$ws, $user] = helpKbWorld();
     helpKbArticle(helpKbSection(helpKbCategory($ws)), $user, ['title' => 'What happens next']);
