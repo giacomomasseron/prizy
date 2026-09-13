@@ -205,6 +205,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kb/articles/{id}/versions/{versionId}', [KbVersionController::class, 'show']);
         Route::post('/kb/articles/{id}/versions/{versionId}/restore', [KbVersionController::class, 'restore'])->middleware('verified');
         Route::get('/kb/articles/{id}/translations', [KbTranslationController::class, 'index']);
+        Route::put('/kb/articles/{id}/translations/{locale}', [KbTranslationController::class, 'upsert'])->middleware('verified');
+        Route::post('/kb/articles/{id}/translations/{locale}/status', [KbTranslationController::class, 'status'])->middleware('verified');
+        Route::delete('/kb/articles/{id}/translations/{locale}', [KbTranslationController::class, 'destroy'])->middleware('verified');
 
         Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
         Route::get('/teams/{team}', [TeamController::class, 'show']);
