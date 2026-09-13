@@ -75,7 +75,17 @@ final class HelpCenterController extends Controller
             return redirect('/help');
         }
 
-        return view('help.search', ['q' => $q, 'results' => $this->searchHelpArticles->handle($q)]);
+        $lang = $this->lang($request);
+
+        // helpRoute/helpRouteParams let the shared layout's switcher rebuild THIS
+        // page's URL in another language, carrying the query along.
+        return view('help.search', [
+            'q' => $q,
+            'results' => $this->searchHelpArticles->handle($q, $lang),
+            'lang' => $lang,
+            'helpRoute' => 'help.search',
+            'helpRouteParams' => ['q' => $q],
+        ]);
     }
 
     public function feedback(Request $request, string $article): RedirectResponse

@@ -6,6 +6,8 @@ namespace App\Repositories;
 
 use App\Models\KbArticle;
 use App\Models\KbArticleTranslation;
+use App\Models\KbCategory;
+use App\Models\KbSection;
 use App\Services\KbLocales;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as BaseCollection;
@@ -122,5 +124,50 @@ final class KbTranslationRepository
 
         $byArticle = $this->publishedForArticles($articles->pluck('id')->all(), $lang);
         $articles->each(fn (KbArticle $a) => $a->setAttribute('display_title', $byArticle[$a->id]->title ?? $a->title));
+    }
+
+    /**
+     * Published translations in one locale, ranked, shaped exactly like
+     * KbRepository::search() rows so the two merge in the use case.
+     *
+     * $config is interpolated rather than bound because a regconfig cannot be a
+     * bind parameter. It is safe precisely because KbLocales::regconfig() only
+     * ever returns one of six literals — never user input.
+     *
+     * @return BaseCollection<int, object>
+     */
+    public function searchPublished(string $q, string $lang, int $limit = 20): BaseCollection
+    {
+        $config = KbLocales::regconfig($lang);
+
+        return KbArticleTranslation::query()
+            ->join('kb_articles', 'kb_articles.id', '=', 'kb_article_translations.article_id')
+            ->join('kb_sections', 'kb_sections.id', '=', 'kb_articles.section_id')
+            ->join('kb_categories', 'kb_categories.id', '=', 'kb_sections.category_id')
+            // Mirrors KbRepository::workspaceArticles(): these subqueries carry
+            // KbSection's and KbCategory's global scopes, so another workspace's
+            // rows can never join in. RLS is the backstop beneath it.
+            ->whereIn('kb_articles.section_id',
+                KbSection::query()->select('id')->whereIn('category_id', KbCategory::query()->select('id'))
+            )
+            ->where('kb_article_translations.locale', $lang)
+            ->where('kb_article_translations.status', 'published')
+            ->where('kb_articles.status', 'published')
+            ->whereNotNull('kb_articles.published_at')
+            // This query starts from the translations model, so kb_articles'
+            // SoftDeletes scope does NOT apply — without this a deleted article
+            // would keep answering searches through its translations.
+            ->whereNull('kb_articles.deleted_at')
+            ->whereRaw("kb_article_translations.search @@ websearch_to_tsquery('{$config}', ?)", [$q])
+            ->orderByRaw("ts_rank(kb_article_translations.search, websearch_to_tsquery('{$config}', ?)) DESC", [$q])
+            ->limit($limit)
+            ->selectRaw(
+                'kb_articles.id, kb_article_translations.title, kb_articles.slug, '
+                .'kb_sections.slug as section_slug, kb_categories.slug as category_slug, kb_categories.name as category_name, '
+                ."ts_headline('{$config}', kb_article_translations.body, websearch_to_tsquery('{$config}', ?), 'MaxWords=25, MinWords=15, StartSel=[[[, StopSel=]]]') as snippet",
+                [$q]
+            )
+            ->get()
+            ->map(fn ($r) => (object) $r->getAttributes());
     }
 }
