@@ -351,6 +351,30 @@ final class SmokeSeeder extends Seeder
             ]);
         }
 
+        // Translations (HC-6) for the same article: a published French row so /help
+        // has a real translated read on a fresh `composer dev`, and a draft German
+        // row proving customers never see it (ShowHelpArticle only resolves a
+        // PUBLISHED translation — the draft falls back to English, same rule as
+        // the draft/archived articles above). Idempotent via a rows-exist guard,
+        // matching this seeder's established idiom.
+        if ($firstProjectArticle !== null && DB::table('kb_article_translations')->where('article_id', $firstProjectArticle->id)->doesntExist()) {
+            DB::table('kb_article_translations')->insert([
+                [
+                    'id' => (string) Str::uuid(), 'article_id' => $firstProjectArticle->id, 'locale' => 'fr',
+                    'title' => 'Créer votre premier projet',
+                    'body' => "Bienvenue dans Prizy. Ce guide couvre l'essentiel.\n\n## Étapes\n\n1. Ouvrez votre espace de travail\n2. Créez un projet\n3. Ajoutez vos premiers tickets\n",
+                    'status' => 'published', 'created_at' => now()->subDays(3), 'updated_at' => now()->subDays(3),
+                ],
+                [
+                    // Draft on purpose: proves a customer never sees it.
+                    'id' => (string) Str::uuid(), 'article_id' => $firstProjectArticle->id, 'locale' => 'de',
+                    'title' => 'Ihr erstes Projekt erstellen',
+                    'body' => "Willkommen bei Prizy. Diese Anleitung deckt die Grundlagen ab.\n",
+                    'status' => 'draft', 'created_at' => now()->subDay(), 'updated_at' => now()->subDay(),
+                ],
+            ]);
+        }
+
         $issue = Issue::query()->first();
         if ($issue !== null && Notification::query()->where('user_id', $user->id)->doesntExist()) {
             Notification::forceCreate([
