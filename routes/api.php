@@ -23,6 +23,7 @@ use App\Http\Controllers\Api\V1\KbArticleController;
 use App\Http\Controllers\Api\V1\KbCategoryController;
 use App\Http\Controllers\Api\V1\KbLibraryController;
 use App\Http\Controllers\Api\V1\KbSectionController;
+use App\Http\Controllers\Api\V1\KbTranslationController;
 use App\Http\Controllers\Api\V1\KbVersionController;
 use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\MemberController;
@@ -203,6 +204,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/kb/articles/{id}/versions', [KbVersionController::class, 'index']);
         Route::get('/kb/articles/{id}/versions/{versionId}', [KbVersionController::class, 'show']);
         Route::post('/kb/articles/{id}/versions/{versionId}/restore', [KbVersionController::class, 'restore'])->middleware('verified');
+        Route::get('/kb/articles/{id}/translations', [KbTranslationController::class, 'index']);
 
         Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
         Route::get('/teams/{team}', [TeamController::class, 'show']);
