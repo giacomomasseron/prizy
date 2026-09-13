@@ -179,6 +179,29 @@ describe('KbTranslationDrawer', () => {
         expect(await screen.findByText('Not translated yet')).toBeInTheDocument();
     });
 
+    // Guards against real data loss: clicking a different language while the current one has
+    // unsaved text must not silently discard it. Proves both directions of the confirm.
+    it('confirms before discarding unsaved text when switching languages, and cancelling keeps it', async () => {
+        renderDrawer({ initialLocale: 'fr' });
+        const titleInput = await screen.findByPlaceholderText('Translated title');
+        await userEvent.type(titleInput, ' v2');
+        expect(titleInput).toHaveValue('Créer votre premier projet v2');
+
+        await userEvent.click(screen.getByRole('button', { name: /Italian/ }));
+        expect(await screen.findByText('Discard unsaved changes?')).toBeInTheDocument();
+        expect(screen.getByText(/unsaved edits to the French translation/)).toBeInTheDocument();
+
+        // Cancel: stays on French, the typed text survives.
+        await userEvent.click(await screen.findByTestId('confirm-dialog-cancel'));
+        expect(screen.getByPlaceholderText('Translated title')).toHaveValue('Créer votre premier projet v2');
+        expect(screen.queryByText('Not translated yet')).toBeNull();
+
+        // Confirm this time: switches to Italian, discarding the French draft.
+        await userEvent.click(screen.getByRole('button', { name: /Italian/ }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        expect(await screen.findByText('Not translated yet')).toBeInTheDocument();
+    });
+
     it('surfaces a translations-list failure instead of a blank drawer', async () => {
         renderDrawer({ translationsFail: true });
         expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load translations.');

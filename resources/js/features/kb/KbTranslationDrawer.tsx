@@ -72,6 +72,30 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
 
     const row = rows.find((r) => r.locale === locale) ?? null;
 
+    // Reported up by TranslationEditor (mirroring how KbVersionDrawer threads `dirty` the other
+    // way, into a destructive action's own confirmation). Gates the locale switch below so
+    // clicking a different language can't silently discard an unsaved draft — the article editor
+    // has no such guard, but this codebase does add one wherever it's actually been considered
+    // (KbVersionDrawer.tsx's restore flow), and losing typed translation work is real data loss.
+    const [editorDirty, setEditorDirty] = useState(false);
+    const confirm = useConfirm();
+
+    async function selectLocale(next: string) {
+        if (next === locale) return;
+        if (editorDirty) {
+            const ok = await confirm({
+                title: 'Discard unsaved changes?',
+                message: `Your unsaved edits to the ${row?.name ?? 'current'} translation will be discarded. This can't be undone.`,
+                confirmLabel: 'Discard changes',
+                cancelLabel: 'Keep editing',
+                danger: true,
+            });
+            if (!ok) return;
+        }
+        setEditorDirty(false);
+        setLocale(next);
+    }
+
     return (
         <Drawer open={open} onClose={onClose} side="right" width={820} label="Translations">
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
@@ -90,7 +114,7 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
                         </div>
                     )}
                     {rows.map((r) => (
-                        <LocaleRow key={r.locale} row={r} selected={r.locale === locale} onSelect={() => setLocale(r.locale)} />
+                        <LocaleRow key={r.locale} row={r} selected={r.locale === locale} onSelect={() => selectLocale(r.locale)} />
                     ))}
                 </div>
 
@@ -115,6 +139,7 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
                             articleStatus={articleStatus}
                             onViewChanges={onViewChanges}
                             onClose={onClose}
+                            onDirtyChange={setEditorDirty}
                         />
                     ) : null}
                 </div>
@@ -178,12 +203,16 @@ interface TranslationEditorProps {
     articleStatus: KbStatus;
     onViewChanges(): void;
     onClose(): void;
+    // Reports this pane's dirty state up to the drawer, which gates the locale-switch guard on it
+    // — this component has no way to know it's about to be unmounted for a different language, so
+    // the parent has to ask before that happens, not after.
+    onDirtyChange(dirty: boolean): void;
 }
 
 // Keyed by locale in the parent, so switching languages — or closing and reopening the drawer,
 // which unmounts everything under Drawer — always starts this component fresh rather than
 // carrying one language's unsaved draft into another's fields.
-function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus, onViewChanges, onClose }: TranslationEditorProps) {
+function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus, onViewChanges, onClose, onDirtyChange }: TranslationEditorProps) {
     const confirm = useConfirm();
     // Owned locally rather than read straight from `row.status`: a successful delete must flip
     // this pane back to the empty state immediately, and the parent's `rows` list is only as
@@ -231,6 +260,10 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
     }, [tab, debouncedBody]);
 
     const dirty = original !== null && (title !== original.title || body !== original.body);
+    useEffect(() => {
+        onDirtyChange(dirty);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [dirty]);
 
     function startFromEnglish() {
         setOriginal({ title: '', body: '' });
@@ -412,7 +445,11 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                         <Button onClick={handleSave} disabled={!dirty}>Save translation</Button>
                     </div>
                 </div>
-                {articleStatus !== 'published' && (
+                {/* Only shown when the publish rule is actually why Published is disabled — not
+                    when the real reason every option is disabled is that nothing has been saved
+                    yet (a brand-new draft under a draft English article would otherwise show this
+                    note next to a control that's disabled for an unrelated reason). */}
+                {status !== null && articleStatus !== 'published' && (
                     <p style={{ fontSize: 11.5, color: 'var(--fg3)', margin: '8px 0 0', textAlign: 'right' }}>Publish the English article first</p>
                 )}
             </div>
