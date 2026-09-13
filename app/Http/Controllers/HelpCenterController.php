@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\UseCases\HelpCenter\RecordArticleFeedback;
+use App\UseCases\HelpCenter\ResolveHelpLocale;
 use App\UseCases\HelpCenter\SearchHelpArticles;
 use App\UseCases\HelpCenter\ShowHelpArticle;
 use App\UseCases\HelpCenter\ShowHelpHome;
@@ -22,7 +23,20 @@ final class HelpCenterController extends Controller
         private readonly ShowHelpArticle $showHelpArticle,
         private readonly SearchHelpArticles $searchHelpArticles,
         private readonly RecordArticleFeedback $recordArticleFeedback,
+        private readonly ResolveHelpLocale $resolveHelpLocale,
     ) {}
+
+    /**
+     * ?lang wins; Accept-Language only seeds the choice when no parameter is
+     * present. A non-string value (?lang[]=fr) is treated as absent — casting an
+     * array to string is a 500, which HC-2 shipped once already.
+     */
+    private function lang(Request $request): string
+    {
+        $raw = $request->query('lang');
+
+        return $this->resolveHelpLocale->handle(is_string($raw) ? $raw : null, $request->headers->get('accept-language'));
+    }
 
     public function home(): View
     {
@@ -37,14 +51,17 @@ final class HelpCenterController extends Controller
         return view('help.topic', $this->showHelpTopic->handle($category));
     }
 
-    public function article(string $category, string $section, string $article): View|RedirectResponse
+    public function article(Request $request, string $category, string $section, string $article): View|RedirectResponse
     {
-        $data = $this->showHelpArticle->handle($category, $section, $article);
+        $lang = $this->lang($request);
+        $data = $this->showHelpArticle->handle($category, $section, $article, $lang);
         if (isset($data['redirect'])) {
             return redirect($data['redirect']);
         }
 
-        return view('help.article', $data);
+        // helpRoute/helpRouteParams let the shared layout's switcher rebuild THIS
+        // page's URL in another language instead of bouncing to the home page.
+        return view('help.article', $data + ['helpRoute' => 'help.article', 'helpRouteParams' => [$category, $section, $article]]);
     }
 
     public function search(Request $request): View|RedirectResponse
