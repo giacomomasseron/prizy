@@ -30,18 +30,59 @@
 <body>
     <header style="position:sticky;top:0;z-index:20;background:rgba(11,11,13,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)">
         <div class="wrap" style="height:62px;display:flex;align-items:center;gap:14px">
-            <a href="/help" style="display:flex;align-items:center;gap:10px;color:var(--fg)">
+            @php
+                // The layout is shared with the portal views, whose controllers pass
+                // none of these — hence defaults rather than required variables.
+                $helpLang = $lang ?? \App\Services\KbLocales::SOURCE;
+                $helpAvailable = $available ?? null;
+            @endphp
+            <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" style="display:flex;align-items:center;gap:10px;color:var(--fg)">
                 <span style="width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#6d69f2,#3aa76d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff">P</span>
                 <span style="font-size:15px;font-weight:600;letter-spacing:-.03em">{{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</span>
             </a>
             <nav style="margin-left:8px;display:flex;gap:4px">
-                <a href="/help" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hover);color:var(--fg)">Help center</a>
+                <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hover);color:var(--fg)">Help center</a>
                 @if (auth('contact')->check())
                     <a href="{{ route('help.requests') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">My requests</a>
                     <a href="{{ route('help.new') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">Submit a request</a>
                 @endif
             </nav>
             <div style="flex:1"></div>
+            {{-- The switcher is scoped to the four knowledge-base pages, which pass
+                 helpRoute. The portal views (sign-in, requests, submit-a-request,
+                 link-expired) never set it: they have no locale to switch (this
+                 slice does not translate the interface), and without a real
+                 helpRoute a language link would bounce a reader off their own
+                 ticket page to the help home. --}}
+            @if (isset($helpRoute))
+                <details style="position:relative">
+                    <summary class="btn" style="list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500">
+                        <span aria-hidden="true">🌐</span>{{ \App\Services\KbLocales::name($helpLang) }}
+                    </summary>
+                    <div class="card" style="position:absolute;top:44px;right:0;width:268px;padding:8px;z-index:30">
+                        <div class="faint" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px">Read this help center in</div>
+                        @foreach (\App\Services\KbLocales::NAMES as $code => $name)
+                            <a href="{{ \App\Services\HelpLocale::url($helpRoute, $helpRouteParams ?? [], $code) }}"
+                               style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;font-size:13px;color:{{ $code === $helpLang ? 'var(--sup)' : 'var(--fg)' }}">
+                                @if ($code === $helpLang)
+                                    <span aria-hidden="true" style="width:5px;height:5px;border-radius:50%;background:var(--sup)"></span>
+                                @else
+                                    <span aria-hidden="true" style="width:5px"></span>
+                                @endif
+                                <span style="flex:1">{{ $name }}</span>
+                                {{-- Only an article page can say whether THIS article exists in a language. --}}
+                                @if ($helpAvailable !== null && $code !== \App\Services\KbLocales::SOURCE)
+                                    @if (in_array($code, $helpAvailable, true))
+                                        <span aria-hidden="true" style="color:var(--sup);font-size:12px">✓</span>
+                                    @else
+                                        <span class="faint" style="font-size:10.5px">English only</span>
+                                    @endif
+                                @endif
+                            </a>
+                        @endforeach
+                    </div>
+                </details>
+            @endif
             @if (auth('contact')->check())
                 @php $contactOrg = auth('contact')->user()->contactMetadata->firstWhere('key', 'organization')?->value; @endphp
                 <span style="font-size:12.5px" class="muted">

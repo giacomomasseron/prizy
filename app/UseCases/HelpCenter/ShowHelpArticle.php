@@ -51,11 +51,17 @@ final class ShowHelpArticle
             ? null
             : $this->translations->findPublished($article->id, $lang);
 
+        // The "Related articles" list is the other place titles show up on this
+        // page — leaving it in English while the body is translated would be a
+        // visible inconsistency on the page most likely to be read translated.
+        $related = $this->kb->relatedArticles($article);
+        $this->translations->applyDisplayTitles($related, $lang);
+
         return [
             'article' => $article,
             'category' => $chain['category'],
             'section' => $chain['section'],
-            'related' => $this->kb->relatedArticles($article),
+            'related' => $related,
             'lang' => $lang,
             'title' => $translation?->title ?? $article->title,
             // MarkdownRenderer is the ONLY trusted producer of the `{!! !!}` output,

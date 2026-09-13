@@ -106,3 +106,60 @@ it('carries the chosen language through knowledge-base links', function (): void
     $this->get('/help/getting-started/basics/create-your-first-project')->assertOk()
         ->assertDontSee('?lang=en', false);
 });
+
+it('shows the language switcher with every supported language', function (): void {
+    helpKbWorld();
+    $res = $this->get('/help')->assertOk();
+    $res->assertSee('Read this help center in');
+    foreach (['English', 'French', 'German', 'Spanish', 'Italian', 'Portuguese (Brazil)'] as $name) {
+        $res->assertSee($name);
+    }
+});
+
+it('marks which languages this article is actually available in', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $art = helpKbArticle(helpKbSection(helpKbCategory($ws)), $user);
+    helpSeedTranslation($art->id, 'fr');
+
+    // On an article page the switcher says which languages exist for THIS article.
+    $this->get('/help/getting-started/basics/create-your-first-project')->assertOk()
+        ->assertSee('English only');
+    // Elsewhere there is no per-article claim to make.
+    $this->get('/help')->assertOk()->assertDontSee('English only');
+});
+
+it('uses translated titles in topic and home listings, and English where none exists', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $sec = helpKbSection(helpKbCategory($ws));
+    $translated = helpKbArticle($sec, $user, ['title' => 'Translated one', 'slug' => 'translated-one']);
+    helpKbArticle($sec, $user, ['title' => 'Untranslated one', 'slug' => 'untranslated-one']);
+    helpSeedTranslation($translated->id, 'fr', ['title' => 'Traduit']);
+
+    $res = $this->get('/help/getting-started?lang=fr')->assertOk();
+    $res->assertSee('Traduit');
+    $res->assertDontSee('Translated one');
+    // No translation for the second article — its English title still shows.
+    $res->assertSee('Untranslated one');
+});
+
+it('keeps category names in English even when a language is selected', function (): void {
+    [$ws, $user] = helpKbWorld();
+    helpKbArticle(helpKbSection(helpKbCategory($ws, 'getting-started', ['name' => 'Getting started'])), $user);
+
+    $this->get('/help?lang=fr')->assertOk()->assertSee('Getting started');
+});
+
+it('translates related-article titles too, leaving untranslated ones in English', function (): void {
+    [$ws, $user] = helpKbWorld();
+    $sec = helpKbSection(helpKbCategory($ws));
+    helpKbArticle($sec, $user, ['title' => 'Main article', 'slug' => 'main-article']);
+    $translatedRelated = helpKbArticle($sec, $user, ['title' => 'Related one', 'slug' => 'related-one']);
+    helpKbArticle($sec, $user, ['title' => 'Related two', 'slug' => 'related-two']);
+    helpSeedTranslation($translatedRelated->id, 'fr', ['title' => 'Lié un']);
+
+    $res = $this->get('/help/getting-started/basics/main-article?lang=fr')->assertOk();
+    $res->assertSee('Lié un');
+    $res->assertDontSee('Related one');
+    // No translation for the other related article — its English title still shows.
+    $res->assertSee('Related two');
+});

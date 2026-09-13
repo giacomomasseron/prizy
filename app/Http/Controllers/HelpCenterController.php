@@ -38,17 +38,21 @@ final class HelpCenterController extends Controller
         return $this->resolveHelpLocale->handle(is_string($raw) ? $raw : null, $request->headers->get('accept-language'));
     }
 
-    public function home(): View
+    public function home(Request $request): View
     {
         // deptrac: Controller must not depend on the Contact Entity directly —
         // the guard's result is handed straight to the use case, whose own
         // `?Contact $contact` parameter is where that type belongs.
-        return view('help.home', $this->showHelpHome->handle(Auth::guard('contact')->user()));
+        // helpRoute/helpRouteParams let the shared layout's switcher rebuild THIS
+        // page's URL in another language.
+        return view('help.home', $this->showHelpHome->handle(Auth::guard('contact')->user(), $this->lang($request))
+            + ['helpRoute' => 'help.home', 'helpRouteParams' => []]);
     }
 
-    public function topic(string $category): View
+    public function topic(Request $request, string $category): View
     {
-        return view('help.topic', $this->showHelpTopic->handle($category));
+        return view('help.topic', $this->showHelpTopic->handle($category, $this->lang($request))
+            + ['helpRoute' => 'help.topic', 'helpRouteParams' => [$category]]);
     }
 
     public function article(Request $request, string $category, string $section, string $article): View|RedirectResponse

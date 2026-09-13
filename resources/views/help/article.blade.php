@@ -47,7 +47,7 @@
                 <h2 style="font-size:15px;font-weight:600;margin:0 0 14px">Related articles</h2>
                 <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
                     @foreach ($related as $r)
-                        <li><a href="{{ \App\Services\HelpLocale::url('help.article', [$category->slug, $section->slug, $r->slug], $lang) }}">{{ $r->title }}</a></li>
+                        <li><a href="{{ \App\Services\HelpLocale::url('help.article', [$category->slug, $section->slug, $r->slug], $lang) }}">{{ $r->display_title }}</a></li>
                     @endforeach
                 </ul>
             </div>

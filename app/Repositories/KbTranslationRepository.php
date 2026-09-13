@@ -4,8 +4,11 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Models\KbArticle;
 use App\Models\KbArticleTranslation;
+use App\Services\KbLocales;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Collection as BaseCollection;
 use Illuminate\Support\Str;
 
 /**
@@ -93,5 +96,31 @@ final class KbTranslationRepository
     public function delete(KbArticleTranslation $translation): void
     {
         $translation->delete();
+    }
+
+    /**
+     * Overlay a display_title on each article: the published translation's title
+     * when one exists, else the English one. ONE query for the whole page, never
+     * one per row.
+     *
+     * Takes the base Collection rather than the Eloquent one: ShowHelpTopic hands
+     * this the articles nested under sections via flatMap(), which degrades to a
+     * plain Support Collection once the mapped values are themselves collections
+     * rather than models. An Eloquent Collection satisfies this type too, so
+     * every call site — home's, topic's flattened one, and article's related
+     * list — works unchanged.
+     *
+     * @param  BaseCollection<int, KbArticle>  $articles
+     */
+    public function applyDisplayTitles(BaseCollection $articles, string $lang): void
+    {
+        if ($lang === KbLocales::SOURCE || $articles->isEmpty()) {
+            $articles->each(fn (KbArticle $a) => $a->setAttribute('display_title', $a->title));
+
+            return;
+        }
+
+        $byArticle = $this->publishedForArticles($articles->pluck('id')->all(), $lang);
+        $articles->each(fn (KbArticle $a) => $a->setAttribute('display_title', $byArticle[$a->id]->title ?? $a->title));
     }
 }

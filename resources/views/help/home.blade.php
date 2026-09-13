@@ -15,6 +15,11 @@
                     placeholder="Search articles, guides, and FAQs…"
                     style="flex:1;padding:12px 16px;border-radius:10px;border:1px solid var(--border2);background:var(--panel);color:var(--fg);font-size:14px;font-family:inherit"
                 >
+                {{-- A GET form serialises only its own inputs, so a lang in the
+                     action URL's query string would be silently dropped on submit. --}}
+                @if ($lang !== \App\Services\KbLocales::SOURCE)
+                    <input type="hidden" name="lang" value="{{ $lang }}">
+                @endif
                 <button type="submit" class="btn btn-primary">Search</button>
             </form>
 
@@ -22,9 +27,9 @@
                 <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:20px">
                     @foreach ($suggestions as $article)
                         <a
-                            href="{{ route('help.article', [$article->section->category->slug, $article->section->slug, $article->slug]) }}"
+                            href="{{ \App\Services\HelpLocale::url('help.article', [$article->section->category->slug, $article->section->slug, $article->slug], $lang) }}"
                             style="padding:6px 14px;border-radius:999px;border:1px solid var(--border2);font-size:12.5px;color:var(--fg2)"
-                        >{{ $article->title }}</a>
+                        >{{ $article->display_title }}</a>
                     @endforeach
                 </div>
             @endif
@@ -60,7 +65,7 @@
         @else
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px">
                 @foreach ($categories as $category)
-                    <a href="{{ route('help.topic', $category->slug) }}" class="card" style="display:block;padding:20px;color:var(--fg)">
+                    <a href="{{ \App\Services\HelpLocale::url('help.topic', [$category->slug], $lang) }}" class="card" style="display:block;padding:20px;color:var(--fg)">
                         <div style="width:38px;height:38px;border-radius:10px;background:{{ $category->color ?? '#8b8b95' }}26;color:{{ $category->color ?? '#8b8b95' }};display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:14px">{{ $category->icon ?? '◇' }}</div>
                         <div style="font-size:15px;font-weight:600;margin-bottom:6px">{{ $category->name }}</div>
                         @if ($category->description)
