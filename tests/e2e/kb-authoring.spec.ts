@@ -109,4 +109,43 @@ test.describe('Knowledge base authoring (agent) → public help center', () => {
         await expect(page.getByText(/Restored the version from/)).toBeVisible();
         await expect(textarea).not.toHaveValue(new RegExp(marker));
     });
+
+    test('translates an article and a visitor reads it in Italian', async ({ page, context }) => {
+        test.setTimeout(90_000);
+        await page.goto('/support/kb');
+        await page.getByRole('button', { name: /Getting started/ }).click();
+        await page.getByRole('button', { name: /Create your first project/ }).first().click();
+        await expect(page).toHaveURL(/\/support\/kb\/articles\//);
+
+        await expect(page.getByText('Translations')).toBeVisible();
+        await page.getByRole('button', { name: 'Manage translations' }).click();
+        // Scoped to the drawer's own dialog (aria-label="Translations", set by Drawer.tsx) — the
+        // sidebar KbTranslationCard behind it renders its OWN "Italian" locale row with the exact
+        // same accessible name, and (same as every other collision documented in this file) the
+        // Drawer component doesn't aria-hide the page behind it, so a bare locator resolves to
+        // both at once. Confirmed via Playwright's strict-mode error before adding this scope.
+        const translationsDialog = page.getByRole('dialog', { name: 'Translations' });
+        await translationsDialog.getByRole('button', { name: /Italian/ }).click();
+        await expect(page.getByText('Not translated yet')).toBeVisible();
+        await page.getByRole('button', { name: 'Start from English' }).click();
+
+        const marker = `it-${Date.now().toString(36)}`;
+        await page.getByPlaceholder('Translated title').fill(`Primo progetto ${marker}`);
+        await page.getByRole('button', { name: 'Save translation' }).click();
+        await page.getByRole('button', { name: 'Published', exact: true }).click();
+
+        // The public side. Every page in every context carries the seeded agent's
+        // storageState (playwright.config.ts's top-level `storageState`) — this is
+        // NOT an anonymous visitor. That doesn't matter here: the help pages decide
+        // what identity chrome to show from the `contact` guard, not the agent
+        // session, so the assertions below are unaffected either way.
+        const pub = await context.newPage();
+        await pub.goto('/help/getting-started/basics/create-your-first-project?lang=it');
+        await expect(pub.getByRole('heading', { name: `Primo progetto ${marker}` })).toBeVisible();
+
+        // A language with no translation falls back to English, with the notice.
+        await pub.goto('/help/getting-started/basics/create-your-first-project?lang=es');
+        await expect(pub.getByText('showing the English version')).toBeVisible();
+        await expect(pub.getByRole('heading', { name: 'Create your first project' })).toBeVisible();
+    });
 });

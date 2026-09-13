@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
-import type { KbArticleEdit, KbCategoryNode, KbLibrary, KbSectionNode, KbStatus, KbVersionDetail, KbVersionSummary } from './types';
+import type { KbArticleEdit, KbCategoryNode, KbLibrary, KbSectionNode, KbStatus, KbTranslationDetail, KbTranslationSummary, KbVersionDetail, KbVersionSummary } from './types';
 
 export const KB_KEY = ['kb'] as const;
 export function useKbLibrary() { return useQuery({ queryKey: [...KB_KEY, 'library'], queryFn: () => api.get<KbLibrary>('/kb/library') }); }
@@ -47,4 +47,30 @@ export function useKbArticleVersion(articleId: string | undefined, versionId: st
 export const useRestoreKbArticleVersion = () => useKbMutation(
     ({ articleId, versionId }: { articleId: string; versionId: string }) =>
         api.post<KbArticleEdit>(`/kb/articles/${articleId}/versions/${versionId}/restore`),
+);
+export function useKbArticleTranslations(articleId: string | undefined) {
+    return useQuery({
+        queryKey: [...KB_KEY, 'translations', articleId],
+        queryFn: () => api.get<KbTranslationSummary[]>(`/kb/articles/${articleId}/translations`),
+        enabled: !!articleId,
+    });
+}
+export function useKbTranslation(articleId: string | undefined, locale: string | null) {
+    return useQuery({
+        queryKey: [...KB_KEY, 'translations', articleId, locale],
+        queryFn: () => api.get<KbTranslationDetail>(`/kb/articles/${articleId}/translations/${locale}`),
+        enabled: !!articleId && !!locale,
+    });
+}
+export const useUpsertKbTranslation = () => useKbMutation(
+    ({ articleId, locale, ...body }: { articleId: string; locale: string; title: string; body: string }) =>
+        api.put<KbTranslationDetail>(`/kb/articles/${articleId}/translations/${locale}`, body),
+);
+export const useChangeKbTranslationStatus = () => useKbMutation(
+    ({ articleId, locale, status }: { articleId: string; locale: string; status: KbStatus }) =>
+        api.post<KbTranslationDetail>(`/kb/articles/${articleId}/translations/${locale}/status`, { status }),
+);
+export const useDeleteKbTranslation = () => useKbMutation(
+    ({ articleId, locale }: { articleId: string; locale: string }) =>
+        api.del(`/kb/articles/${articleId}/translations/${locale}`),
 );

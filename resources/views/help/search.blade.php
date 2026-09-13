@@ -14,7 +14,7 @@
                 @foreach ($results as $r)
                     <div class="card" style="padding:18px 20px">
                         <div class="faint" style="font-size:12px;margin-bottom:6px">{{ $r->category_name }}</div>
-                        <a href="{{ route('help.article', [$r->category_slug, $r->section_slug, $r->slug]) }}" style="font-size:15px;font-weight:600">{{ $r->title }}</a>
+                        <a href="{{ \App\Services\HelpLocale::url('help.article', [$r->category_slug, $r->section_slug, $r->slug], $lang) }}" style="font-size:15px;font-weight:600">{{ $r->title }}</a>
                         <p class="muted" style="font-size:13.5px;margin:8px 0 0;line-height:1.6">{!! $r->snippet_html !!}</p>
                     </div>
                 @endforeach
