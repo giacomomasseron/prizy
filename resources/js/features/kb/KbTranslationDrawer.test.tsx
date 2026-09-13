@@ -120,6 +120,30 @@ describe('KbTranslationDrawer', () => {
         expect(onClose).toHaveBeenCalled();
     });
 
+    // Sweep finding: "View what changed" abandons this pane for the version drawer exactly like
+    // switching languages or closing does, and cancelling must abort BOTH halves of that action —
+    // neither opening the version drawer nor closing this one — not just skip the close.
+    it('confirms before handing off to the version drawer with unsaved text, aborting both halves on cancel', async () => {
+        const { onViewChanges, onClose } = renderDrawer({ initialLocale: 'es' });
+        const titleInput = await screen.findByPlaceholderText('Translated title');
+        await userEvent.type(titleInput, ' v2');
+
+        await userEvent.click(screen.getByRole('button', { name: 'View what changed' }));
+        expect(await screen.findByText('Discard unsaved changes?')).toBeInTheDocument();
+
+        // Cancel: a full abort — neither call fires, and the text is untouched.
+        await userEvent.click(await screen.findByTestId('confirm-dialog-cancel'));
+        expect(onViewChanges).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByPlaceholderText('Translated title')).toHaveValue('Crear tu primer proyecto v2');
+
+        // Confirm this time: both halves proceed.
+        await userEvent.click(screen.getByRole('button', { name: 'View what changed' }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        expect(onViewChanges).toHaveBeenCalledTimes(1);
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it('disables the status control while the English article is a draft', async () => {
         renderDrawer({ initialLocale: 'fr', articleStatus: 'draft' });
         expect(await screen.findByText('Publish the English article first')).toBeInTheDocument();

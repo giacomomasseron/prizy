@@ -73,17 +73,19 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
     const row = rows.find((r) => r.locale === locale) ?? null;
 
     // Reported up by TranslationEditor (mirroring how KbVersionDrawer threads `dirty` the other
-    // way, into a destructive action's own confirmation). Gates BOTH ways of losing an unsaved
-    // draft — switching languages and closing the drawer entirely — so neither can silently
-    // discard it. The article editor has no such guard, but this codebase does add one wherever
-    // it's actually been considered (KbVersionDrawer.tsx's restore flow), and losing typed
-    // translation work is real data loss.
+    // way, into a destructive action's own confirmation). Gates every way of abandoning an unsaved
+    // draft — switching languages, closing the drawer, and handing off to the version drawer — so
+    // none of them can silently discard it. The article editor has no such guard, but this
+    // codebase does add one wherever it's actually been considered (KbVersionDrawer.tsx's restore
+    // flow), and losing typed translation work is real data loss.
     const [editorDirty, setEditorDirty] = useState(false);
     const confirm = useConfirm();
 
-    // Shared by both places that would otherwise discard the current draft outright: switching
-    // the selected language, and closing the drawer (the ✕ button, Escape, and the backdrop click
-    // all route through Drawer's own `onClose`, so wrapping that one prop covers all three).
+    // Shared by every place that would otherwise discard the current draft outright: switching the
+    // selected language, closing the drawer (the ✕ button, Escape, and the backdrop click all
+    // route through Drawer's own `onClose`, so wrapping that one prop covers all three), and the
+    // stale banner's "View what changed". One dialog, reused everywhere a draft could be
+    // abandoned, rather than several similar-but-not-identical ones per trigger.
     async function confirmDiscardIfDirty(): Promise<boolean> {
         if (!editorDirty) return true;
         return confirm({
@@ -107,6 +109,17 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
     async function handleClose() {
         if (!(await confirmDiscardIfDirty())) return;
         setEditorDirty(false);
+        onClose();
+    }
+
+    // Composes the stale banner's whole action behind the same gate, rather than letting
+    // TranslationEditor call onViewChanges and onClose directly: on cancel this must abort BOTH —
+    // opening the version drawer while leaving this one's dirty editor open (or the reverse) would
+    // be worse than the silent-loss bug the gate exists to prevent.
+    async function handleViewChanges() {
+        if (!(await confirmDiscardIfDirty())) return;
+        setEditorDirty(false);
+        onViewChanges();
         onClose();
     }
 
@@ -151,8 +164,7 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
                             article={article}
                             sourceHtml={sourceHtml}
                             articleStatus={articleStatus}
-                            onViewChanges={onViewChanges}
-                            onClose={onClose}
+                            onViewChanges={handleViewChanges}
                             onDirtyChange={setEditorDirty}
                         />
                     ) : null}
@@ -215,18 +227,21 @@ interface TranslationEditorProps {
     article: KbArticleEdit | undefined;
     sourceHtml: string;
     articleStatus: KbStatus;
+    // Already composed by the drawer to confirm-if-dirty, then open the version drawer AND close
+    // this one — never called bare, so this component has no separate onClose of its own to call
+    // alongside it (see KbTranslationDrawer's handleViewChanges for why those two must not be
+    // split across a cancellable confirm).
     onViewChanges(): void;
-    onClose(): void;
-    // Reports this pane's dirty state up to the drawer, which gates the locale-switch guard on it
-    // — this component has no way to know it's about to be unmounted for a different language, so
-    // the parent has to ask before that happens, not after.
+    // Reports this pane's dirty state up to the drawer, which gates every abandon path on it —
+    // this component has no way to know it's about to be unmounted or navigated away from, so the
+    // parent has to ask before that happens, not after.
     onDirtyChange(dirty: boolean): void;
 }
 
 // Keyed by locale in the parent, so switching languages — or closing and reopening the drawer,
 // which unmounts everything under Drawer — always starts this component fresh rather than
 // carrying one language's unsaved draft into another's fields.
-function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus, onViewChanges, onClose, onDirtyChange }: TranslationEditorProps) {
+function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus, onViewChanges, onDirtyChange }: TranslationEditorProps) {
     const confirm = useConfirm();
     // Owned locally rather than read straight from `row.status`: a successful delete must flip
     // this pane back to the empty state immediately, and the parent's `rows` list is only as
@@ -404,7 +419,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                         <span style={{ fontSize: 12.5, color: 'var(--fg2)', flex: 1 }}>
                             The English article changed on {formatDate(article?.updated_at ?? null)}, after this translation was last saved. Review it for accuracy.
                         </span>
-                        <Button variant="secondary" size="sm" onClick={() => { onViewChanges(); onClose(); }}>View what changed</Button>
+                        <Button variant="secondary" size="sm" onClick={onViewChanges}>View what changed</Button>
                     </div>
                 )}
 
