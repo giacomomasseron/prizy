@@ -80,6 +80,49 @@ it('404s a foreign-workspace or malformed article id', function (): void {
     $this->withToken($token)->getJson('/v1/kb/articles/not-a-uuid/translations')->assertStatus(404);
 });
 
+it('returns an existing translation with its title and body', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
+    kbSeedTranslation($art->id, 'fr', ['title' => 'Le titre', 'body' => 'Le corps.', 'status' => 'published']);
+
+    $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/translations/fr")->assertStatus(200)
+        ->assertJsonPath('data.locale', 'fr')
+        ->assertJsonPath('data.title', 'Le titre')
+        ->assertJsonPath('data.body', 'Le corps.')
+        ->assertJsonPath('data.status', 'published')
+        ->assertJsonPath('data.is_source', false);
+});
+
+it('404s a supported locale with no translation row yet', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
+
+    $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/translations/it")->assertStatus(404);
+});
+
+it('refuses to show a translation for the source language', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
+
+    $this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/translations/en")
+        ->assertStatus(422)->assertJsonValidationErrors('locale');
+});
+
+it('gates the single-translation read on is_agent and 404s foreign or malformed article ids', function (): void {
+    [$token, $ws, $user] = kbAuthWorld();
+    $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
+    kbSeedTranslation($art->id, 'fr');
+
+    // Same tenancy rule as the write-gate test above: the non-agent's own
+    // workspace stays current for its own assertion, never re-pointed to $ws.
+    [$nonAgent] = kbAuthWorld(['is_agent' => false, 'admin_level' => 'owner']);
+    $this->withToken($nonAgent)->getJson("/v1/kb/articles/{$art->id}/translations/fr")->assertStatus(403);
+
+    test()->flushSession();
+    $this->actingInWorkspace($ws);
+    $this->withToken($token)->getJson('/v1/kb/articles/not-a-uuid/translations/fr')->assertStatus(404);
+});
+
 it('creates then updates the one row for a locale, never a duplicate', function (): void {
     [$token, $ws, $user] = kbAuthWorld();
     $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);

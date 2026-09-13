@@ -11,6 +11,7 @@ use App\Http\Resources\KbArticleTranslationResource;
 use App\UseCases\Kb\ChangeKbTranslationStatus;
 use App\UseCases\Kb\DeleteKbArticleTranslation;
 use App\UseCases\Kb\ListKbArticleTranslations;
+use App\UseCases\Kb\ShowKbArticleTranslation;
 use App\UseCases\Kb\UpsertKbArticleTranslation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ final class KbTranslationController extends Controller
 {
     public function __construct(
         private readonly ListKbArticleTranslations $listTranslations,
+        private readonly ShowKbArticleTranslation $showTranslation,
         private readonly UpsertKbArticleTranslation $upsertTranslation,
         private readonly ChangeKbTranslationStatus $changeStatus,
         private readonly DeleteKbArticleTranslation $deleteTranslation,
@@ -30,6 +32,13 @@ final class KbTranslationController extends Controller
         // The use case already returns the exact payload shape; a JsonResource
         // would only re-wrap a plain array.
         return response()->json(['data' => $this->listTranslations->handle($request->user(), $id)]);
+    }
+
+    public function show(Request $request, string $id, string $locale): JsonResponse
+    {
+        return KbArticleTranslationResource::make(
+            $this->showTranslation->handle($request->user(), $id, $locale)
+        )->response();
     }
 
     public function upsert(KbTranslationRequest $request, string $id, string $locale): JsonResponse
