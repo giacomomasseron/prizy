@@ -21,6 +21,10 @@ final class ResolveHelpLocale
      * a specific language is better served by English than by a third language
      * they never chose. Accept-Language is consulted only when the parameter is
      * absent, and never rewrites the URL.
+     *
+     * A present-but-empty `?lang=` is treated as absent too, so it also falls
+     * through to Accept-Language rather than resolving to the source — an empty
+     * value carries no explicit choice to honor, unlike an unsupported one.
      */
     public function handle(?string $requested, ?string $acceptLanguage = null): string
     {

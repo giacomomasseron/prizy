@@ -228,9 +228,9 @@ it('pins KbTranslationRepository::find, upsert and delete directly', function ()
 it('treats an equal timestamp as fresh, not stale', function (): void {
     [$token, $ws, $user] = kbAuthWorld();
     $art = kbAuthArticle(kbAuthSection(kbAuthCategory($ws)), $user);
-    // Postgres freezes now() for the whole transaction, so an insert that takes
-    // the column default lands on the exact same instant as the article's own
-    // updated_at. stale is computed with a strict lt(), so equal must read false.
+    // Passes the article's own updated_at explicitly, forcing the exact-equal
+    // case rather than hoping two independent now() calls happen to coincide.
+    // stale is computed with a strict lt(), so equal must read false.
     kbSeedTranslation($art->id, 'fr', ['updated_at' => $art->updated_at]);
 
     $rows = collect($this->withToken($token)->getJson("/v1/kb/articles/{$art->id}/translations")->json('data'))->keyBy('locale');
