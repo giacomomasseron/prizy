@@ -202,6 +202,27 @@ describe('KbTranslationDrawer', () => {
         expect(await screen.findByText('Not translated yet')).toBeInTheDocument();
     });
 
+    // Same guard, the other trigger: Drawer routes Escape and the backdrop click through the same
+    // onClose the ✕ button calls directly, so exercising the ✕ button covers all three at once.
+    it('confirms before closing the drawer with unsaved text, and cancelling leaves it open with the text intact', async () => {
+        const { onClose } = renderDrawer({ initialLocale: 'fr' });
+        const titleInput = await screen.findByPlaceholderText('Translated title');
+        await userEvent.type(titleInput, ' v2');
+
+        await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+        expect(await screen.findByText('Discard unsaved changes?')).toBeInTheDocument();
+
+        // Cancel: onClose never fires, and the typed text is still there.
+        await userEvent.click(await screen.findByTestId('confirm-dialog-cancel'));
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByPlaceholderText('Translated title')).toHaveValue('Créer votre premier projet v2');
+
+        // Confirm this time: the close actually goes through.
+        await userEvent.click(screen.getByRole('button', { name: 'Close' }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
     it('surfaces a translations-list failure instead of a blank drawer', async () => {
         renderDrawer({ translationsFail: true });
         expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load translations.');

@@ -73,37 +73,51 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
     const row = rows.find((r) => r.locale === locale) ?? null;
 
     // Reported up by TranslationEditor (mirroring how KbVersionDrawer threads `dirty` the other
-    // way, into a destructive action's own confirmation). Gates the locale switch below so
-    // clicking a different language can't silently discard an unsaved draft — the article editor
-    // has no such guard, but this codebase does add one wherever it's actually been considered
-    // (KbVersionDrawer.tsx's restore flow), and losing typed translation work is real data loss.
+    // way, into a destructive action's own confirmation). Gates BOTH ways of losing an unsaved
+    // draft — switching languages and closing the drawer entirely — so neither can silently
+    // discard it. The article editor has no such guard, but this codebase does add one wherever
+    // it's actually been considered (KbVersionDrawer.tsx's restore flow), and losing typed
+    // translation work is real data loss.
     const [editorDirty, setEditorDirty] = useState(false);
     const confirm = useConfirm();
 
+    // Shared by both places that would otherwise discard the current draft outright: switching
+    // the selected language, and closing the drawer (the ✕ button, Escape, and the backdrop click
+    // all route through Drawer's own `onClose`, so wrapping that one prop covers all three).
+    async function confirmDiscardIfDirty(): Promise<boolean> {
+        if (!editorDirty) return true;
+        return confirm({
+            title: 'Discard unsaved changes?',
+            message: `Your unsaved edits to the ${row?.name ?? 'current'} translation will be discarded. This can't be undone.`,
+            confirmLabel: 'Discard changes',
+            cancelLabel: 'Keep editing',
+            danger: true,
+        });
+    }
+
     async function selectLocale(next: string) {
         if (next === locale) return;
-        if (editorDirty) {
-            const ok = await confirm({
-                title: 'Discard unsaved changes?',
-                message: `Your unsaved edits to the ${row?.name ?? 'current'} translation will be discarded. This can't be undone.`,
-                confirmLabel: 'Discard changes',
-                cancelLabel: 'Keep editing',
-                danger: true,
-            });
-            if (!ok) return;
-        }
+        if (!(await confirmDiscardIfDirty())) return;
         setEditorDirty(false);
         setLocale(next);
     }
 
+    // Fires only when the editor is actually dirty — a confirmation on every close, dirty or not,
+    // would be worse than the bug it prevents.
+    async function handleClose() {
+        if (!(await confirmDiscardIfDirty())) return;
+        setEditorDirty(false);
+        onClose();
+    }
+
     return (
-        <Drawer open={open} onClose={onClose} side="right" width={820} label="Translations">
+        <Drawer open={open} onClose={handleClose} side="right" width={820} label="Translations">
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
                 <div>
                     <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Translations</h2>
                     <div style={{ fontSize: 12.5, color: 'var(--fg3)', marginTop: 4 }}>{article?.title}</div>
                 </div>
-                <IconButton title="Close" onClick={onClose}>✕</IconButton>
+                <IconButton title="Close" onClick={handleClose}>✕</IconButton>
             </div>
 
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
