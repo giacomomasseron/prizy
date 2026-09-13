@@ -55,6 +55,13 @@ export function useKbArticleTranslations(articleId: string | undefined) {
         enabled: !!articleId,
     });
 }
+export function useKbTranslation(articleId: string | undefined, locale: string | null) {
+    return useQuery({
+        queryKey: [...KB_KEY, 'translations', articleId, locale],
+        queryFn: () => api.get<KbTranslationDetail>(`/kb/articles/${articleId}/translations/${locale}`),
+        enabled: !!articleId && !!locale,
+    });
+}
 export const useUpsertKbTranslation = () => useKbMutation(
     ({ articleId, locale, ...body }: { articleId: string; locale: string; title: string; body: string }) =>
         api.put<KbTranslationDetail>(`/kb/articles/${articleId}/translations/${locale}`, body),
