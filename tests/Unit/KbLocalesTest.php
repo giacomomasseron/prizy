@@ -61,6 +61,22 @@ it('keeps the regconfig map in step with the migration that mirrors it in SQL', 
 
     foreach (KbLocales::TRANSLATABLE as $code) {
         $config = KbLocales::regconfig($code);
-        expect($sql)->toContain("WHEN '{$code}' THEN '{$config}'::regconfig");
+        // Exactly twice: once in the title vector's CASE, once in the body's.
+        expect(substr_count($sql, "WHEN '{$code}' THEN '{$config}'::regconfig"))->toBe(2);
     }
+});
+
+it("keeps the migration's two locale CASE blocks identical to each other", function (): void {
+    // The generated column maps locale -> regconfig twice, once for the title
+    // vector and once for the body vector. If the two ever diverge, a title
+    // would index under a different stemmer than its own body, silently. The
+    // per-locale assertions pass as long as ONE copy is right, so this is the
+    // assertion that actually pins them together.
+    $sql = file_get_contents(__DIR__.'/../../database/migrations/2026_09_13_000001_add_search_to_kb_article_translations.php');
+
+    preg_match_all('/CASE locale.*?END/s', $sql, $m);
+    expect($m[0])->toHaveCount(2);
+
+    $normalise = fn (string $block): string => (string) preg_replace('/\s+/', ' ', trim($block));
+    expect($normalise($m[0][0]))->toBe($normalise($m[0][1]));
 });
