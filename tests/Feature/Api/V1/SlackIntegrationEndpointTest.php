@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -61,6 +62,10 @@ it('forbids a non-admin member (403)', function (): void {
 });
 
 it('returns 422 on test when no url configured, 202 when configured', function (): void {
+    // The sync queue runs SendSlackMessage inline, so without this the test posts to the
+    // real hooks.slack.com: seconds of network wait, and a pass that depends on Slack.
+    Http::fake();
+
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $token = slackToken($ws, 'admin');
