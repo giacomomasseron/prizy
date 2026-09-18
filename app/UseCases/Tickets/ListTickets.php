@@ -6,6 +6,7 @@ namespace App\UseCases\Tickets;
 
 use App\Models\User;
 use App\Repositories\TicketRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Pagination\CursorPaginator;
 
 final class ListTickets
@@ -17,7 +18,7 @@ final class ListTickets
      */
     public function handle(User $actor, array $filters = [], string $sort = 'updated_at', int $limit = 25): CursorPaginator
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->tickets->forWorkspace($actor->workspace_id, $filters, $sort, $limit);
     }

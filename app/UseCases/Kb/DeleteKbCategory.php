@@ -6,6 +6,7 @@ namespace App\UseCases\Kb;
 
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 
 final class DeleteKbCategory
 {
@@ -13,7 +14,7 @@ final class DeleteKbCategory
 
     public function handle(User $actor, string $id): void
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $category = $this->kb->findCategory($id);
         abort_unless($category !== null, 404);
         $this->kb->deleteCategory($category);

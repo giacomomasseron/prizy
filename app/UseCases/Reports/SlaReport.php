@@ -6,6 +6,7 @@ namespace App\UseCases\Reports;
 
 use App\Models\User;
 use App\Repositories\ReportRepository;
+use App\Services\HelpdeskAccess;
 
 final class SlaReport
 {
@@ -14,7 +15,7 @@ final class SlaReport
     /** @return array<string, mixed> */
     public function handle(User $actor, string $range): array
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->reports->sla($actor->workspace_id, $range);
     }

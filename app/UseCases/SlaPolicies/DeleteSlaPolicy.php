@@ -6,6 +6,7 @@ namespace App\UseCases\SlaPolicies;
 
 use App\Models\User;
 use App\Repositories\SlaPolicyRepository;
+use App\Services\HelpdeskAccess;
 
 final class DeleteSlaPolicy
 {
@@ -13,7 +14,7 @@ final class DeleteSlaPolicy
 
     public function handle(User $actor, string $id): void
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $policy = $this->policies->find($id);
         abort_unless($policy !== null, 404);
 

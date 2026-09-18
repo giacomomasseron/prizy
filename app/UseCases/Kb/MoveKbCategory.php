@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbCategory;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 
 final class MoveKbCategory
 {
@@ -14,7 +15,7 @@ final class MoveKbCategory
 
     public function handle(User $actor, string $id, string $direction): KbCategory
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $category = $this->kb->findCategory($id);
         abort_unless($category !== null, 404);
         $this->kb->moveCategory($category, $direction);

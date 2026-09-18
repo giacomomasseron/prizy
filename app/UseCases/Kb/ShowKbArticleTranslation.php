@@ -8,6 +8,7 @@ use App\Models\KbArticleTranslation;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbTranslationRepository;
+use App\Services\HelpdeskAccess;
 
 final class ShowKbArticleTranslation
 {
@@ -18,7 +19,7 @@ final class ShowKbArticleTranslation
 
     public function handle(User $actor, string $articleId, string $locale): KbArticleTranslation
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
         UpsertKbArticleTranslation::assertTranslatable($locale);

@@ -8,6 +8,7 @@ use App\Models\KbArticleVersion;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbVersionRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\Collection;
 
 final class ListKbArticleVersions
@@ -20,7 +21,7 @@ final class ListKbArticleVersions
     /** @return Collection<int, KbArticleVersion> newest first, each with `summary` and `is_current` attributes */
     public function handle(User $actor, string $articleId): Collection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
 

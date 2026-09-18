@@ -9,6 +9,7 @@ use App\Models\TicketMessage;
 use App\Models\User;
 use App\Repositories\ContactRepository;
 use App\Repositories\TicketRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -23,7 +24,7 @@ final class CreateTicket
     /** @param array<string, mixed> $data */
     public function handle(User $actor, array $data): Ticket
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         $contact = $this->contacts->find((string) $data['requester_id']);
         if ($contact === null) {

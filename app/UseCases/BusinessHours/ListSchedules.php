@@ -7,6 +7,7 @@ namespace App\UseCases\BusinessHours;
 use App\Models\BusinessHourSchedule;
 use App\Models\User;
 use App\Repositories\ScheduleRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\Collection;
 
 final class ListSchedules
@@ -16,7 +17,7 @@ final class ListSchedules
     /** @return Collection<int, BusinessHourSchedule> */
     public function handle(User $actor): Collection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->schedules->forWorkspace();
     }

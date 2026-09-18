@@ -7,6 +7,7 @@ namespace App\UseCases\HelpdeskSavedViews;
 use App\Models\HelpdeskSavedView;
 use App\Models\User;
 use App\Repositories\HelpdeskSavedViewRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\Collection;
 
 final class ListHelpdeskSavedViews
@@ -16,7 +17,7 @@ final class ListHelpdeskSavedViews
     /** @return Collection<int, HelpdeskSavedView> */
     public function handle(User $actor): Collection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->views->forWorkspace();
     }

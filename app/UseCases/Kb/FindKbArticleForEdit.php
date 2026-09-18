@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 
 final class FindKbArticleForEdit
 {
@@ -14,7 +15,7 @@ final class FindKbArticleForEdit
 
     public function handle(User $actor, string $id): KbArticle
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
 

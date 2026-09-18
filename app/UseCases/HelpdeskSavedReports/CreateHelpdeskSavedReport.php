@@ -7,6 +7,7 @@ namespace App\UseCases\HelpdeskSavedReports;
 use App\Models\HelpdeskSavedReport;
 use App\Models\User;
 use App\Repositories\HelpdeskSavedReportRepository;
+use App\Services\HelpdeskAccess;
 
 final class CreateHelpdeskSavedReport
 {
@@ -15,7 +16,7 @@ final class CreateHelpdeskSavedReport
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): HelpdeskSavedReport
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->reports->create([
             'name' => $data['name'],

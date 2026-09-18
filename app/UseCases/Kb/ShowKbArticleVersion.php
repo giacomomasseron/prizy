@@ -8,6 +8,7 @@ use App\Models\KbArticleVersion;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbVersionRepository;
+use App\Services\HelpdeskAccess;
 use App\Services\KbDiffer;
 use App\Services\MarkdownRenderer;
 
@@ -23,7 +24,7 @@ final class ShowKbArticleVersion
     /** @return array{version: KbArticleVersion, is_current: bool, summary: string, html: string, diff: array<string, mixed>|null} */
     public function handle(User $actor, string $articleId, string $versionId): array
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
 

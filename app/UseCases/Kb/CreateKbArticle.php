@@ -8,6 +8,7 @@ use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbVersionRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +22,7 @@ final class CreateKbArticle
     /** @param array{section_id:string,title:string,slug:string,body:string} $data */
     public function handle(User $actor, array $data): KbArticle
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $section = $this->kb->findSection($data['section_id']);
         if ($section === null) {
             throw ValidationException::withMessages(['section_id' => ['Unknown section.']]);

@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\User;
 use App\Notifications\CsatRequest;
 use App\Repositories\TicketRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
@@ -21,7 +22,7 @@ final class ChangeTicketStatus
 
     public function handle(User $actor, string $ticketId, string $status): Ticket
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         $ticket = $this->tickets->find($ticketId);
         if ($ticket === null) {

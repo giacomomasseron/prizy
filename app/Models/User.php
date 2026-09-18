@@ -313,6 +313,18 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
+     * May this user work in the support module?
+     *
+     * Two conditions, both required: the per-user `is_agent` capability from
+     * roles.md, and the workspace-level `helpdesk_enabled` switch. Nobody is an
+     * agent in a workspace that has turned the module off.
+     */
+    public function canWorkHelpdesk(): bool
+    {
+        return $this->is_agent && ($this->workspace?->helpdesk_enabled ?? false);
+    }
+
+    /**
      * @return BelongsToMany<AgentGroup, $this>
      */
     public function agentGroupMembersAgentGroups(): BelongsToMany

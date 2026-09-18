@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Validation\ValidationException;
 
 final class ChangeKbArticleStatus
@@ -16,7 +17,7 @@ final class ChangeKbArticleStatus
     /** @param 'draft'|'published'|'archived' $status */
     public function handle(User $actor, string $id, string $status): KbArticle
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
 

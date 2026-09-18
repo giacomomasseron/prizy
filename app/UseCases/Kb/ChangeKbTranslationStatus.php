@@ -8,6 +8,7 @@ use App\Models\KbArticleTranslation;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbTranslationRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Validation\ValidationException;
 
 final class ChangeKbTranslationStatus
@@ -20,7 +21,7 @@ final class ChangeKbTranslationStatus
     /** @param 'draft'|'published'|'archived' $status */
     public function handle(User $actor, string $articleId, string $locale, string $status): KbArticleTranslation
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
         UpsertKbArticleTranslation::assertTranslatable($locale);

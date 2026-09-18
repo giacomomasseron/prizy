@@ -6,6 +6,7 @@ namespace App\UseCases\Kb;
 
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 
 final class ArchiveKbArticlesUnder
 {
@@ -14,7 +15,7 @@ final class ArchiveKbArticlesUnder
     /** @param 'category'|'section' $kind */
     public function handle(User $actor, string $kind, string $id): int
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         if ($kind === 'category') {
             $category = $this->kb->findCategory($id);
             abort_unless($category !== null, 404);

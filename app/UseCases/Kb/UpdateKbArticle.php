@@ -8,6 +8,7 @@ use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbVersionRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -21,7 +22,7 @@ final class UpdateKbArticle
     /** @param array<string,mixed> $data any of title, slug, body, section_id */
     public function handle(User $actor, string $id, array $data): KbArticle
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
 

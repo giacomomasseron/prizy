@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UseCases\Kb;
 
 use App\Models\User;
+use App\Services\HelpdeskAccess;
 use App\Services\MarkdownRenderer;
 
 final class PreviewKbMarkdown
@@ -13,7 +14,7 @@ final class PreviewKbMarkdown
 
     public function handle(User $actor, string $body): string
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->markdown->render($body);
     }
