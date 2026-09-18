@@ -6,6 +6,7 @@ namespace App\UseCases\HelpdeskSavedViews;
 
 use App\Models\User;
 use App\Repositories\HelpdeskSavedViewRepository;
+use App\Services\HelpdeskAccess;
 
 final class DeleteHelpdeskSavedView
 {
@@ -13,7 +14,7 @@ final class DeleteHelpdeskSavedView
 
     public function handle(User $actor, string $id): void
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $view = $this->views->findInWorkspace($id);
         abort_unless($view !== null, 404);
 

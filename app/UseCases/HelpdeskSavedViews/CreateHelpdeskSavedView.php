@@ -7,6 +7,7 @@ namespace App\UseCases\HelpdeskSavedViews;
 use App\Models\HelpdeskSavedView;
 use App\Models\User;
 use App\Repositories\HelpdeskSavedViewRepository;
+use App\Services\HelpdeskAccess;
 
 final class CreateHelpdeskSavedView
 {
@@ -15,7 +16,7 @@ final class CreateHelpdeskSavedView
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): HelpdeskSavedView
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->views->create([
             'name' => $data['name'],

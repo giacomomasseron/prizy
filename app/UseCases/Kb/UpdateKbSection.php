@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbSection;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Validation\ValidationException;
 
 final class UpdateKbSection
@@ -16,7 +17,7 @@ final class UpdateKbSection
     /** @param array<string,mixed> $data */
     public function handle(User $actor, string $id, array $data): KbSection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $section = $this->kb->findSection($id);
         abort_unless($section !== null, 404);
         if ($this->kb->sectionSlugTaken($section->category_id, $data['slug'], $section->id)) {

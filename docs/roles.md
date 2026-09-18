@@ -34,6 +34,21 @@ use macros, and write Knowledge Base articles. This is the Zendesk-style surface
 A developer (without `is_agent`) has no access to the issue tracker beyond seeing
 issues linked to tickets they can reach.
 
+## The workspace switch (`workspaces.helpdesk_enabled`)
+
+Above both axes sits one workspace-level switch: a workspace can turn the
+Support module off entirely. It defaults to on, and an owner or admin flips it
+under Settings → General → Modules (`PATCH /v1/workspace`).
+
+While it is off, nobody is an agent: `User::canWorkHelpdesk()` requires the
+`is_agent` capability **and** the switch, every support use case goes through
+`HelpdeskAccess::gate()` and answers 403, and the public help centre, the
+customer portal and the agent desk answer 404. Nothing is deleted — every
+ticket, contact and article is where you left it when the switch goes back on.
+
+The Issue Tracker has no equivalent switch: it is gated per user by
+`is_developer` alone.
+
 ## Putting the two axes together
 
 A user holds one level **and** any combination of capabilities:

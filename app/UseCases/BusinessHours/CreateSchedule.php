@@ -7,6 +7,7 @@ namespace App\UseCases\BusinessHours;
 use App\Models\BusinessHourSchedule;
 use App\Models\User;
 use App\Repositories\ScheduleRepository;
+use App\Services\HelpdeskAccess;
 
 final class CreateSchedule
 {
@@ -15,7 +16,7 @@ final class CreateSchedule
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): BusinessHourSchedule
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->schedules->create(
             ['name' => $data['name'], 'timezone' => $data['timezone']],

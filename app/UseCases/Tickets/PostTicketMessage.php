@@ -8,6 +8,7 @@ use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
 use App\Repositories\TicketRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -18,7 +19,7 @@ final class PostTicketMessage
 
     public function handle(User $actor, string $ticketId, string $body, bool $internal): TicketMessage
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         $ticket = $this->tickets->find($ticketId); // WorkspaceScope → cross-workspace id yields null
         if ($ticket === null) {

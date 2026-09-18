@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { canUseTracker, canDevelop as canDevelopFor } from '../auth/capabilities';
+import { canDevelop as canDevelopFor, canUseTracker, canWorkHelpdesk } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
@@ -90,7 +90,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         {unreadCount > 0 && <span data-testid="inbox-badge" style={{ fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
                     </NavLink>
                     {/* Support inbox → agent desk (design: outlined-square glyph + "Agent" badge); agent-gated so non-agents get no dead /support link */}
-                    {me.data?.is_agent && (
+                    {canWorkHelpdesk(me.data) && (
                         <>
                             <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
                                 <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>

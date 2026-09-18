@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
 use App\Repositories\KbTranslationRepository;
+use App\Services\HelpdeskAccess;
 use App\Services\KbLocales;
 
 final class ListKbArticleTranslations
@@ -25,7 +26,7 @@ final class ListKbArticleTranslations
      */
     public function handle(User $actor, string $articleId): array
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
 

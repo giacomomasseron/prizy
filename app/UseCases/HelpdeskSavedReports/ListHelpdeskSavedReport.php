@@ -7,6 +7,7 @@ namespace App\UseCases\HelpdeskSavedReports;
 use App\Models\HelpdeskSavedReport;
 use App\Models\User;
 use App\Repositories\HelpdeskSavedReportRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\Collection;
 
 final class ListHelpdeskSavedReport
@@ -16,7 +17,7 @@ final class ListHelpdeskSavedReport
     /** @return Collection<int, HelpdeskSavedReport> */
     public function handle(User $actor): Collection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->reports->forWorkspace();
     }

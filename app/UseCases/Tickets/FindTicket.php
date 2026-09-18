@@ -7,6 +7,7 @@ namespace App\UseCases\Tickets;
 use App\Models\Ticket;
 use App\Models\User;
 use App\Repositories\TicketRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 final class FindTicket
@@ -15,7 +16,7 @@ final class FindTicket
 
     public function handle(User $actor, string $id): Ticket
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         $ticket = $this->tickets->find($id); // WorkspaceScope → cross-workspace id yields null
 

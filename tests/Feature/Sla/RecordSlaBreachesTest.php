@@ -145,3 +145,17 @@ it('the sla:record-breaches command runs and exits 0', function (): void {
     $this->artisan('sla:record-breaches')->assertExitCode(0);
     expect(DB::table('sla_breaches')->count())->toBeGreaterThanOrEqual(1);
 });
+
+it('records no breach for a workspace with the helpdesk switched off', function (): void {
+    Carbon::setTestNow(Carbon::parse('2026-07-29 12:00:00', 'UTC'));
+    $ws = Workspace::factory()->create(['helpdesk_enabled' => false]);
+    $ws->makeCurrent();
+    $p = breachPolicy($ws, 60, 480);
+    $t = breachTicket($ws, $p->id, ['created_at' => Carbon::parse('2026-07-29 10:00:00', 'UTC')]); // would breach at 11:00
+    Workspace::forgetCurrent();
+
+    $written = app(SlaBreachRepository::class)->recordDueBreaches();
+
+    expect($written)->toBe(0);
+    expect(DB::table('sla_breaches')->where('ticket_id', $t->id)->exists())->toBeFalse();
+});

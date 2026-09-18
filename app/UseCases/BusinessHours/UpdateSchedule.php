@@ -7,6 +7,7 @@ namespace App\UseCases\BusinessHours;
 use App\Models\BusinessHourSchedule;
 use App\Models\User;
 use App\Repositories\ScheduleRepository;
+use App\Services\HelpdeskAccess;
 
 final class UpdateSchedule
 {
@@ -15,7 +16,7 @@ final class UpdateSchedule
     /** @param array<string,mixed> $data */
     public function handle(User $actor, string $id, array $data): BusinessHourSchedule
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $schedule = $this->schedules->find($id);
         abort_unless($schedule !== null, 404);
 

@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbCategory;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Validation\ValidationException;
 
 final class CreateKbCategory
@@ -16,7 +17,7 @@ final class CreateKbCategory
     /** @param array{name:string,slug:string,icon:string,color:string,description:?string} $data */
     public function handle(User $actor, array $data): KbCategory
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         if ($this->kb->categorySlugTaken($data['slug'])) {
             throw ValidationException::withMessages(['slug' => ['Already used by another category.']]);
         }

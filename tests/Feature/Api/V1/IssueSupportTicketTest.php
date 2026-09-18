@@ -65,3 +65,16 @@ it('returns null support_ticket for a non-escalated issue', function (): void {
     $this->withToken($token)->getJson("/v1/issues/{$plain->id}")->assertStatus(200)
         ->assertJsonPath('data.support_ticket', null);
 });
+
+it('drops the support bridge from the issue payload when the helpdesk is off', function (): void {
+    ['token' => $token, 'issue' => $issue] = escalatedIssueWorld();
+    Workspace::current()->update(['helpdesk_enabled' => false]);
+
+    // The card links to /support/tickets/{id}, which a switched-off workspace 404s,
+    // so serving it would leave a dead link in the tracker.
+    $this->withToken($token)->getJson("/v1/issues/{$issue->id}")
+        ->assertOk()
+        ->assertJsonPath('data.support_ticket', null);
+
+    Workspace::forgetCurrent();
+});

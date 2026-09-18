@@ -7,6 +7,7 @@ namespace App\UseCases\SlaPolicies;
 use App\Models\SlaPolicy;
 use App\Models\User;
 use App\Repositories\SlaPolicyRepository;
+use App\Services\HelpdeskAccess;
 
 final class UpdateSlaPolicy
 {
@@ -15,7 +16,7 @@ final class UpdateSlaPolicy
     /** @param array<string,mixed> $data */
     public function handle(User $actor, string $id, array $data): SlaPolicy
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $policy = $this->policies->find($id);
         abort_unless($policy !== null, 404);
 

@@ -41,6 +41,7 @@ use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\TicketMessageController;
+use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\Api\V1\WorkspaceMemberController;
 use App\Http\Controllers\GithubWebhookController;
 use App\Http\Middleware\VerifyCsrfToken;
@@ -109,6 +110,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/me', MeController::class);
 
         Route::get('/members', [MemberController::class, 'index']);
+        // Workspace configuration (owner/admin, enforced in the use case).
+        Route::patch('/workspace', [WorkspaceController::class, 'update'])->middleware('verified');
+
         Route::get('/workspace/members', [WorkspaceMemberController::class, 'index'])
             ->middleware('can:viewWorkspaceMembers,App\\Models\\User');
         Route::patch('/members/{user}', [WorkspaceMemberController::class, 'update'])->middleware('verified');

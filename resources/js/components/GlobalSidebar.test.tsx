@@ -6,10 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalSidebar } from './GlobalSidebar';
 
 function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
-function renderSidebar(adminLevel = 'owner', isAgent = false) {
+function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/members')) return j({ data: [] });
-        if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off' } });
+        if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off', workspace: { helpdesk_enabled: helpdeskEnabled } } });
         if (url.includes('/unread-count')) return j({ data: { count: 0 } });
         if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', member_count: 3, created_at: '', updated_at: '' }], links: { next: null } });
         if (url.includes('/issues')) return j({ data: [], links: { next: null } });
@@ -87,7 +87,7 @@ describe('GlobalSidebar', () => {
         // agent-only: admin_level member, is_developer false, is_agent true
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {
             if (url.includes('/members')) return j({ data: [] });
-            if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Maya', email: 'm@e.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off' } });
+            if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Maya', email: 'm@e.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true } } });
             if (url.includes('/unread-count')) return j({ data: { count: 0 } });
             if (url.includes('/teams')) return j({ data: [], links: { next: null } });
             if (url.includes('/issues')) return j({ data: [], links: { next: null } });
@@ -119,6 +119,18 @@ describe('GlobalSidebar', () => {
         renderSidebar('member', true);
         expect(await screen.findByRole('link', { name: /Knowledge base/ })).toHaveAttribute('href', '/support/kb');
         expect(screen.getByRole('link', { name: /Help center/ })).toHaveAttribute('href', '/help');
+    });
+    it('hides every desk row when the workspace has the helpdesk switched off', async () => {
+        renderSidebar('owner', true, false);
+        // The desk rows resolve with /me, so assert only after something else that
+        // /me gates has committed — otherwise this passes on the loading render.
+        expect(await screen.findByText('Workspace')).toBeInTheDocument();
+        // The bridge itself stays — Inbox is notifications, not support.
+        expect(screen.getByText('Support bridge')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Inbox' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Support inbox/ })).toBeNull();
+        expect(screen.queryByRole('link', { name: /Knowledge base/ })).toBeNull();
+        expect(screen.queryByRole('link', { name: /Help center/ })).toBeNull();
     });
     it('hides the Knowledge base row from non-agents', async () => {
         renderSidebar('owner', false);

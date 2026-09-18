@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
-import { RequireDeveloper } from './RequireDeveloper';
+import { RequireAgent } from './RequireAgent';
 import type { Me } from '../lib/types';
 
 const base: Me = {
@@ -16,27 +16,29 @@ let mockMe: { data?: Me; isLoading: boolean };
 function renderAt(me: { data?: Me; isLoading: boolean }) {
     mockMe = me;
     return render(
-        <MemoryRouter initialEntries={['/']}>
+        <MemoryRouter initialEntries={['/support']}>
             <Routes>
-                <Route path="/" element={<RequireDeveloper><div>TRACKER</div></RequireDeveloper>} />
-                <Route path="/support" element={<div>DESK</div>} />
+                <Route path="/support" element={<RequireAgent><div>DESK</div></RequireAgent>} />
+                <Route path="/" element={<div>TRACKER</div>} />
                 <Route path="/settings" element={<div>SETTINGS</div>} />
             </Routes>
         </MemoryRouter>,
     );
 }
 
-describe('RequireDeveloper', () => {
-    it('renders children for a developer', () => {
-        renderAt({ data: { ...base, is_developer: true }, isLoading: false });
-        expect(screen.getByText('TRACKER')).toBeInTheDocument();
-    });
-    it('redirects an agent-only user to the support desk', () => {
+describe('RequireAgent', () => {
+    it('renders the desk for an agent while the workspace runs a help desk', () => {
         renderAt({ data: { ...base, is_agent: true }, isLoading: false });
         expect(screen.getByText('DESK')).toBeInTheDocument();
     });
-    it('redirects a no-capability member to settings', () => {
-        renderAt({ data: base, isLoading: false });
+    it('sends an agent away once the workspace switches the helpdesk off', () => {
+        renderAt({ data: { ...base, is_agent: true, workspace: { helpdesk_enabled: false } }, isLoading: false });
+        expect(screen.queryByText('DESK')).not.toBeInTheDocument();
+        // No tracker capability either, so settings is the only place left.
         expect(screen.getByText('SETTINGS')).toBeInTheDocument();
+    });
+    it('sends a developer who is not an agent to the tracker', () => {
+        renderAt({ data: { ...base, is_developer: true }, isLoading: false });
+        expect(screen.getByText('TRACKER')).toBeInTheDocument();
     });
 });

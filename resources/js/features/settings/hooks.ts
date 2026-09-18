@@ -14,3 +14,19 @@ export function useUpdateNotificationPreferences() {
         },
     });
 }
+
+/**
+ * Workspace-level module switch. Invalidates `me` because that payload carries
+ * the switch the navigation reads — without it the desk rows would linger until
+ * the next reload.
+ */
+export function useUpdateHelpdeskEnabled() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (helpdesk_enabled: boolean) =>
+            api.patch<{ data: { helpdesk_enabled: boolean } }>('/workspace', { helpdesk_enabled }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['me'] });
+        },
+    });
+}

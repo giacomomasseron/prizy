@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbArticle;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 
 final class MoveKbArticle
 {
@@ -14,7 +15,7 @@ final class MoveKbArticle
 
     public function handle(User $actor, string $id, string $direction): KbArticle
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
         $this->kb->moveArticle($article, $direction);

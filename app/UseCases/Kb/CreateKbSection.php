@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbSection;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Validation\ValidationException;
 
 final class CreateKbSection
@@ -16,7 +17,7 @@ final class CreateKbSection
     /** @param array{category_id:string,name:string,slug:string} $data */
     public function handle(User $actor, array $data): KbSection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $category = $this->kb->findCategory($data['category_id']);
         if ($category === null) {
             throw ValidationException::withMessages(['category_id' => ['Unknown category.']]);

@@ -60,6 +60,8 @@ export interface Me {
     is_developer: boolean;
     is_agent: boolean;
     email_digest_frequency: 'off' | 'daily' | 'weekly';
+    /** Workspace-level module switches, from /v1/me. */
+    workspace: { helpdesk_enabled: boolean };
 }
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'paused' | 'completed' | 'cancelled';

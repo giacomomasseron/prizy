@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\SparseFieldset;
 use App\Models\Ticket;
+use App\Services\HelpdeskAccess;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -50,7 +51,9 @@ final class IssueResource extends JsonResource
             'support_ticket' => $this->whenLoaded('supportTickets', function () {
                 /** @var Ticket|null $ticket */
                 $ticket = $this->supportTickets->first();
-                if ($ticket === null) {
+                // The card links into the desk, which a workspace with the support
+                // module switched off answers 404 on — so the bridge closes with it.
+                if ($ticket === null || ! HelpdeskAccess::enabledFor($ticket->workspace_id)) {
                     return null;
                 }
                 $meta = $ticket->requester?->contactMetadata->keyBy('key');

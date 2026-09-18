@@ -7,6 +7,7 @@ namespace App\UseCases\Kb;
 use App\Models\KbSection;
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 
 final class MoveKbSection
 {
@@ -14,7 +15,7 @@ final class MoveKbSection
 
     public function handle(User $actor, string $id, string $direction): KbSection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
         $section = $this->kb->findSection($id);
         abort_unless($section !== null, 404);
         $this->kb->moveSection($section, $direction);

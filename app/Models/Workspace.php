@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $custom_domain — optional CNAME
  * @property string|null $logo_url      — workspace logo URL
  * @property string      $plan
+ * @property bool        $helpdesk_enabled — workspace-level switch for the support module
  * @property string      $timezone
  * @property string      $locale
  */
@@ -37,11 +38,13 @@ final class Workspace extends Tenant
         'custom_domain',
         'logo_url',
         'plan',
+        'helpdesk_enabled',
         'timezone',
         'locale',
     ];
 
     protected $casts = [
+        'helpdesk_enabled' => 'boolean',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

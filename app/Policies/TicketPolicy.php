@@ -28,12 +28,12 @@ final class TicketPolicy
     /** Replying to a ticket requires agent capability, a non-viewer level, and same workspace. */
     public function reply(User $user, Ticket $ticket): bool
     {
-        return $user->is_agent && $user->admin_level !== 'viewer' && $user->workspace_id === $ticket->workspace_id;
+        return $user->canWorkHelpdesk() && $user->admin_level !== 'viewer' && $user->workspace_id === $ticket->workspace_id;
     }
 
     /** Full ticket management (status, assignment, macros) requires the same as reply. */
     public function manage(User $user, Ticket $ticket): bool
     {
-        return $user->is_agent && $user->admin_level !== 'viewer' && $user->workspace_id === $ticket->workspace_id;
+        return $user->canWorkHelpdesk() && $user->admin_level !== 'viewer' && $user->workspace_id === $ticket->workspace_id;
     }
 }

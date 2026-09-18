@@ -6,6 +6,7 @@ namespace App\UseCases\Kb;
 
 use App\Models\User;
 use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
 use Illuminate\Database\Eloquent\Collection;
 
 final class ShowKbLibrary
@@ -14,7 +15,7 @@ final class ShowKbLibrary
 
     public function handle(User $actor): Collection
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->kb->libraryTree();
     }

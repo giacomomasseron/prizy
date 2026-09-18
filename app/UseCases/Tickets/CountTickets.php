@@ -6,6 +6,7 @@ namespace App\UseCases\Tickets;
 
 use App\Models\User;
 use App\Repositories\TicketRepository;
+use App\Services\HelpdeskAccess;
 
 final class CountTickets
 {
@@ -16,7 +17,7 @@ final class CountTickets
      */
     public function handle(User $actor): array
     {
-        abort_unless($actor->is_agent, 403);
+        HelpdeskAccess::gate($actor);
 
         return $this->tickets->counts($actor->workspace_id, $actor->id);
     }
