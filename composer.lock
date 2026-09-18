@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "efc3dbf8b4045db2317c42956e01da47",
+    "content-hash": "ada4157c716e494076f3608c6802b550",
     "packages": [
         {
             "name": "brick/math",
@@ -8357,16 +8357,16 @@
         },
         {
             "name": "giacomomasseron/filo",
-            "version": "v0.2.0",
+            "version": "v1.2.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/giacomomasseron/filo.git",
-                "reference": "808377f20ec6653fe7fdd8dae75af06ecba984b5"
+                "reference": "9c99ce7d5945db5e8f9f29d25a4113dbf297058a"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/giacomomasseron/filo/zipball/808377f20ec6653fe7fdd8dae75af06ecba984b5",
-                "reference": "808377f20ec6653fe7fdd8dae75af06ecba984b5",
+                "url": "https://api.github.com/repos/giacomomasseron/filo/zipball/9c99ce7d5945db5e8f9f29d25a4113dbf297058a",
+                "reference": "9c99ce7d5945db5e8f9f29d25a4113dbf297058a",
                 "shasum": ""
             },
             "require": {
@@ -8375,8 +8375,10 @@
                 "php": "^8.1"
             },
             "require-dev": {
-                "pestphp/pest": "^2.0 || ^3.0",
-                "phpunit/phpunit": "^10.5.62 || ^11.0"
+                "justinrainbow/json-schema": "^6.12",
+                "pestphp/pest": "^2.0 || ^3.0 || ^4.0 || ^5.0",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^10.5.62 || ^11.0 || ^12.0 || ^13.0"
             },
             "suggest": {
                 "pestphp/pest": "toRunUnder()/toCall() expectations and automatic per-test trace artifacts",
@@ -8405,12 +8407,12 @@
             "license": [
                 "MIT"
             ],
-            "description": "Filo — zero-extension PHP call tracer: userland instrumentation via stream wrapper + AST rewriting",
+            "description": "Filo — zero-extension PHP call tracer: a stream wrapper splices hooks into your code as it loads",
             "support": {
                 "issues": "https://github.com/giacomomasseron/filo/issues",
-                "source": "https://github.com/giacomomasseron/filo/tree/v0.2.0"
+                "source": "https://github.com/giacomomasseron/filo/tree/v1.2.0"
             },
-            "time": "2026-09-10T08:28:50+00:00"
+            "time": "2026-09-15T13:49:44+00:00"
         },
         {
             "name": "giacomomasseron/laravel-models-generator",

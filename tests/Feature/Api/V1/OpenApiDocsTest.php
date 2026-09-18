@@ -6,13 +6,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
 
-// filo-incompatible: Scramble re-reads and parses app sources at runtime, and
-// under filo's instrumentation (FILO_ENABLED=1) it receives rewritten code that
-// php-parser rejects. The traced CI run excludes this group; the untraced run
-// still executes these tests.
-uses()->group('no-trace');
-
 it('serves a valid OpenAPI 3.1 document at /docs/api.json', function (): void {
+    // Scramble builds the document by statically analysing every app source, so this
+    // test's cost tracks the size of the codebase, not request performance (~4 s here,
+    // traced or not). A loose ceiling instead of the global 3 s budget: it still catches
+    // a runaway, without turning every new controller into a performance failure.
+    $this->threshold(15000);
+
     $res = $this->getJson('/docs/api.json');
 
     $res->assertStatus(200);
