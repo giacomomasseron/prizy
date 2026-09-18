@@ -14,9 +14,18 @@ export function canDevelop(me: Me | undefined): boolean {
     return canUseTracker(me) && me?.admin_level !== 'viewer';
 }
 
+/**
+ * Support access: the is_agent capability AND the workspace-level switch. Mirrors
+ * User::canWorkHelpdesk() on the backend, including the absence of an owner bypass
+ * — an owner who isn't an agent has no desk access there either.
+ */
+export function canWorkHelpdesk(me: Me | undefined): boolean {
+    return !!me && me.is_agent && me.workspace?.helpdesk_enabled === true;
+}
+
 /** Where a user belongs on landing / when redirected off a route they can't use. */
 export function homePathFor(me: Me | undefined): string {
     if (canUseTracker(me)) return '/';
-    if (me?.is_agent) return '/support';
+    if (canWorkHelpdesk(me)) return '/support';
     return '/settings';
 }

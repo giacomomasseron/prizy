@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\UseCases\Workspace\ShowWorkspaceModules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -16,10 +17,14 @@ use Illuminate\Http\Request;
  */
 final class MeController extends Controller
 {
+    public function __construct(private readonly ShowWorkspaceModules $showWorkspaceModules) {}
+
     public function __invoke(Request $request): JsonResponse
     {
+        $user = $request->user();
+
         return response()->json([
-            'data' => $request->user()->only([
+            'data' => $user->only([
                 'id',
                 'workspace_id',
                 'name',
@@ -33,7 +38,10 @@ final class MeController extends Controller
                 'last_seen_at',
                 'email_digest_frequency',
                 'created_at',
-            ]),
+            ]) + [
+                // Module switches the SPA needs before it renders navigation.
+                'workspace' => $this->showWorkspaceModules->handle($user),
+            ],
         ]);
     }
 }

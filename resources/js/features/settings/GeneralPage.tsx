@@ -3,11 +3,13 @@ import { ApiError } from '../../lib/apiClient';
 import { downloadBlob } from '../../lib/downloadBlob';
 import { useMe } from '../../auth/useAuth';
 import type { DigestFrequency } from './hooks';
-import { useUpdateNotificationPreferences } from './hooks';
+import { useUpdateHelpdeskEnabled, useUpdateNotificationPreferences } from './hooks';
 
 export default function GeneralPage() {
     const me = useMe();
     const update = useUpdateNotificationPreferences();
+    const updateHelpdesk = useUpdateHelpdeskEnabled();
+    const [moduleError, setModuleError] = useState('');
     const [error, setError] = useState('');
     const [saved, setSaved] = useState(false);
     const [exporting, setExporting] = useState(false);
@@ -21,6 +23,15 @@ export default function GeneralPage() {
             setSaved(true);
         } catch (err) {
             setError(err instanceof ApiError ? err.detail : 'Failed to save.');
+        }
+    }
+
+    async function switchHelpdesk(enabled: boolean) {
+        setModuleError('');
+        try {
+            await updateHelpdesk.mutateAsync(enabled);
+        } catch (err) {
+            setModuleError(err instanceof ApiError ? err.detail : 'Failed to save.');
         }
     }
 
@@ -68,6 +79,26 @@ export default function GeneralPage() {
                 {saved && <span className="ml-2 text-sm text-green">Saved</span>}
                 {error && <p className="mt-2 text-sm text-red">{error}</p>}
             </section>
+            {(me.data?.admin_level === 'owner' || me.data?.admin_level === 'admin') && (
+                <section className="mt-4 rounded border border-border bg-panel p-4">
+                    <h2 className="mb-2 font-semibold">Modules</h2>
+                    <label className="flex items-center gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            checked={me.data?.workspace?.helpdesk_enabled ?? false}
+                            disabled={updateHelpdesk.isPending}
+                            onChange={(e) => switchHelpdesk(e.target.checked)}
+                        />
+                        Support — help desk, knowledge base and customer portal
+                    </label>
+                    <p className="mt-2 text-sm text-fg2">
+                        Switching this off closes the help centre, the customer portal, the agent desk and
+                        knowledge-base authoring for everyone in this workspace. Nothing is deleted — switch it
+                        back on and every ticket, contact and article is where you left it.
+                    </p>
+                    {moduleError && <p className="mt-2 text-sm text-red">{moduleError}</p>}
+                </section>
+            )}
             {me.data?.admin_level === 'owner' && (
                 <section className="mt-4 rounded border border-border bg-panel p-4">
                     <h2 className="mb-2 font-semibold">Data export</h2>

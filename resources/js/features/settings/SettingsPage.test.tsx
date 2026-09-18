@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import GeneralPage from './GeneralPage';
 
-const me = { id: 'u1', workspace_id: 'w', name: 'A', email: 'a@x.co', admin_level: 'member', is_developer: true, is_agent: false, email_digest_frequency: 'off' };
+const me = { id: 'u1', workspace_id: 'w', name: 'A', email: 'a@x.co', admin_level: 'member', is_developer: true, is_agent: false, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true } };
 
 function renderPage() {
     return render(
@@ -126,5 +126,57 @@ describe('GeneralPage data export', () => {
         renderPage();
         await screen.findByText('Notifications');
         expect(screen.queryByText('Data export')).not.toBeInTheDocument();
+    });
+});
+
+describe('GeneralPage (support module switch)', () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+
+    function stub(level: string, helpdeskEnabled: boolean) {
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            calls.push({ url, init });
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return j({ data: { ...me, admin_level: level, workspace: { helpdesk_enabled: helpdeskEnabled } } });
+            if (url.includes('/v1/workspace')) return j({ data: { id: 'w', name: 'W', slug: 'w', helpdesk_enabled: false } });
+            return j({ data: {} });
+        }));
+    }
+
+    beforeEach(() => { calls.length = 0; });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('shows an owner the switch, on when the workspace runs a help desk', async () => {
+        stub('owner', true);
+        renderPage();
+        expect(await screen.findByRole('checkbox', { name: /Support/ })).toBeChecked();
+    });
+
+    it('shows an admin the switch, off when the workspace has it switched off', async () => {
+        stub('admin', false);
+        renderPage();
+        expect(await screen.findByRole('checkbox', { name: /Support/ })).not.toBeChecked();
+    });
+
+    it('patches the workspace when the switch is turned off', async () => {
+        stub('owner', true);
+        renderPage();
+        await userEvent.click(await screen.findByRole('checkbox', { name: /Support/ }));
+
+        const patch = calls.find((c) => c.url.includes('/v1/workspace') && c.init?.method === 'PATCH');
+        expect(patch).toBeDefined();
+        expect(JSON.parse(String(patch?.init?.body))).toEqual({ helpdesk_enabled: false });
+    });
+
+    it('hides the switch from a member who works the desk', async () => {
+        stub('member', true);
+        renderPage();
+        await screen.findByText('Notifications');
+        expect(screen.queryByText('Modules')).not.toBeInTheDocument();
+    });
+
+    it('names what switching it off takes away', async () => {
+        stub('owner', true);
+        renderPage();
+        expect(await screen.findByText(/help centre, the customer portal, the agent desk/i)).toBeInTheDocument();
     });
 });
