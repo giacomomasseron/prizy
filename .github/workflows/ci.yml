@@ -54,11 +54,10 @@ jobs:
 
       # filo performance gate (BLOCKING): re-run the suite traced; any Feature
       # test slower than phpunit.xml's 3000 ms threshold fails, naming the
-      # slowest function. The 'no-trace' group (Scramble docs test) is excluded
-      # here — it re-parses app sources at runtime, incompatible with
-      # instrumentation — but still runs untraced in the step above.
+      # slowest function. Tests with a cost that isn't request performance set
+      # their own ceiling with $this->threshold(ms).
       - name: Performance gate (filo — >3s fails)
-        run: docker compose exec -T -e FILO_ENABLED=1 app php artisan test --exclude-group=no-trace
+        run: docker compose exec -T -e FILO_ENABLED=1 app php artisan test
 
       - name: Upload filo traces on failure
         uses: actions/upload-artifact@v4
