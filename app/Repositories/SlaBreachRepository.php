@@ -22,7 +22,9 @@ final class SlaBreachRepository
     {
         $written = 0;
 
-        Workspace::all()->each(function (Workspace $workspace) use (&$written): void {
+        // A workspace that has switched the support module off has nobody who can
+        // answer a ticket, so it shouldn't accrue breaches while it is off.
+        Workspace::query()->where('helpdesk_enabled', true)->get()->each(function (Workspace $workspace) use (&$written): void {
             $workspace->makeCurrent();
             try {
                 Ticket::query()

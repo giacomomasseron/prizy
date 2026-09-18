@@ -294,3 +294,16 @@ it('exposes csat_rating on the ticket payload', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('404s a validly signed rating URL once the workspace switches the helpdesk off', function (): void {
+    $ws = csatWorld();
+    $ticket = csatTicket($ws);
+    $url = csatUrl($ticket, 'up');
+
+    $ws->update(['helpdesk_enabled' => false]);
+
+    $this->get($url)->assertNotFound();
+    expect($ticket->refresh()->csat_rating)->toBeNull();
+
+    Workspace::forgetCurrent();
+});

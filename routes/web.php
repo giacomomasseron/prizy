@@ -11,6 +11,7 @@ use App\Http\Controllers\HelpCenterController;
 use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalController;
+use App\Http\Middleware\EnsureHelpdeskEnabled;
 use App\Services\KbSlug;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
@@ -41,20 +42,22 @@ Route::view('/settings/members', 'app');
 Route::view('/settings/teams', 'app');
 Route::view('/settings/general', 'app');
 Route::view('/settings/labels', 'app');
-Route::view('/settings/business-hours', 'app');
-Route::view('/settings/sla-policies', 'app');
+Route::view('/settings/business-hours', 'app')->middleware(EnsureHelpdeskEnabled::class);
+Route::view('/settings/sla-policies', 'app')->middleware(EnsureHelpdeskEnabled::class);
 Route::view('/settings/billing', 'app');
 Route::view('/settings/audit', 'app');
 Route::view('/settings/integrations', 'app');
 Route::view('/search', 'app');
 Route::view('/integrations', 'app');
 Route::view('/create', 'app');
-Route::view('/support', 'app');
-Route::view('/support/tickets/{ticket}', 'app');
-Route::view('/support/reporting', 'app');
-Route::view('/support/kb', 'app');
-Route::view('/support/kb/new', 'app');
-Route::view('/support/kb/articles/{article}', 'app');
+Route::middleware(EnsureHelpdeskEnabled::class)->group(function (): void {
+    Route::view('/support', 'app');
+    Route::view('/support/tickets/{ticket}', 'app');
+    Route::view('/support/reporting', 'app');
+    Route::view('/support/kb', 'app');
+    Route::view('/support/kb/new', 'app');
+    Route::view('/support/kb/articles/{article}', 'app');
+});
 
 // Landlord routes — exempt from both tenant middlewares (no workspace is resolved yet).
 Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])->group(function (): void {
@@ -95,7 +98,7 @@ Route::post('/magic-link', [MagicLinkController::class, 'request'])->middleware(
 // is exempted exactly like /login.
 Route::get('/csat/{ticket}/{rating}', [CsatController::class, 'respond'])
     ->whereIn('rating', ['up', 'down'])
-    ->middleware(['throttle:30,1'])
+    ->middleware(['throttle:30,1', EnsureHelpdeskEnabled::class])
     ->withoutMiddleware([EnsureValidTenantSession::class])
     ->name('csat.respond');
 
@@ -108,7 +111,7 @@ Route::get('/csat/{ticket}/{rating}', [CsatController::class, 'respond'])
 $reservedHelpSlugs = implode('|', KbSlug::RESERVED);
 $helpCategoryPattern = '^(?!(?:'.$reservedHelpSlugs.')$)[a-z0-9-]+$';
 
-Route::withoutMiddleware([EnsureValidTenantSession::class])->group(function () use ($helpCategoryPattern): void {
+Route::withoutMiddleware([EnsureValidTenantSession::class])->middleware(EnsureHelpdeskEnabled::class)->group(function () use ($helpCategoryPattern): void {
     // Contact portal auth (HC-2) — magic-link only. This group's tenant
     // isolation does NOT come from its own middleware (EnsureValidTenantSession
     // is exempted here, same as /login): it rests on (1) the `contact` guard's

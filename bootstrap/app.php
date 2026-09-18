@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\EnsureHelpdeskEnabled;
 use App\Support\Http\ProblemDetails;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -28,6 +30,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('api', NeedsTenant::class);
         $middleware->appendToGroup('web', NeedsTenant::class);
         $middleware->appendToGroup('web', EnsureValidTenantSession::class);
+
+        // A workspace with the support module switched off answers 404 on the
+        // help centre and the portal — including the routes behind the contact
+        // guard, which would otherwise redirect a guest to a sign-in page that
+        // is itself gone. So the switch is decided before authentication.
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, EnsureHelpdeskEnabled::class);
 
         // Guest redirects: the contact portal sends guests to its own sign-in
         // page; everything else keeps the SPA login path.
