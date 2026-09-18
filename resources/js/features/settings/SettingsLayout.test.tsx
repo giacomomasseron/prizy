@@ -4,28 +4,29 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import SettingsLayout, { RequireManage } from './SettingsLayout';
 
-function makeMe(adminLevel: string) {
+function makeMe(adminLevel: string, isAgent = false, helpdeskEnabled = true) {
     return {
         id: 'u1', workspace_id: 'w1', name: 'Alice', email: 'a@x.co',
-        admin_level: adminLevel, is_developer: false, is_agent: false,
+        admin_level: adminLevel, is_developer: false, is_agent: isAgent,
         email_digest_frequency: 'off' as const,
+        workspace: { helpdesk_enabled: helpdeskEnabled },
     };
 }
 
-function stubFetch(adminLevel: string) {
+function stubFetch(adminLevel: string, isAgent = false, helpdeskEnabled = true) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         const j = (b: unknown, s = 200) =>
             new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
         // /workspace/members must match before /me (substring overlap)
         if ((url as string).includes('/workspace/members')) return j({ data: [{ id: 'u1', name: 'Alice', email: 'a@x.co', admin_level: 'owner', is_developer: false, is_agent: false, status: 'active', teams: [] }] });
-        if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel) });
+        if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel, isAgent, helpdeskEnabled) });
         return j({ data: {} });
     }));
 }
 
-function renderLayout(adminLevel: string, initialPath = '/settings/general') {
+function renderLayout(adminLevel: string, initialPath = '/settings/general', isAgent = false, helpdeskEnabled = true) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    stubFetch(adminLevel);
+    stubFetch(adminLevel, isAgent, helpdeskEnabled);
     return render(
         <QueryClientProvider client={qc}>
             <MemoryRouter initialEntries={[initialPath]}>
@@ -74,5 +75,19 @@ describe('SettingsLayout', () => {
         // After redirect, general-content should render, members-content should not
         expect(await screen.findByTestId('general-content')).toBeInTheDocument();
         expect(screen.queryByTestId('members-content')).toBeNull();
+    });
+
+    it('shows the helpdesk config links to an agent', async () => {
+        renderLayout('member', '/settings/general', true, true);
+        expect(await screen.findByRole('link', { name: 'Business hours' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'SLA policies' })).toBeInTheDocument();
+    });
+
+    it('drops the helpdesk config links when the workspace has the helpdesk off', async () => {
+        renderLayout('owner', '/settings/general', true, false);
+        // Anchor on another /me-gated row, so this cannot pass on the loading render.
+        expect(await screen.findByRole('link', { name: 'Integrations' })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Business hours' })).toBeNull();
+        expect(screen.queryByRole('link', { name: 'SLA policies' })).toBeNull();
     });
 });

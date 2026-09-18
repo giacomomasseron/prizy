@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react';
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
-import { canDevelop as canDevelopFor } from '../../auth/capabilities';
+import { canDevelop as canDevelopFor, canWorkHelpdesk } from '../../auth/capabilities';
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { useTeams } from '../teams/hooks';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
@@ -35,7 +35,8 @@ export default function SettingsLayout() {
     const navigate = useNavigate();
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const canDevelop = canDevelopFor(me.data);
-    const isAgent = !!me.data?.is_agent;
+    // Both rows link to pages a workspace with the module switched off answers 404 on.
+    const isAgent = canWorkHelpdesk(me.data);
     const members = useWorkspaceMembers({ enabled: canManage });
     const memberCount = members.data?.length;
     const teams = useTeams({ enabled: canManage });
