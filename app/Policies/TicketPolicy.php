@@ -25,6 +25,16 @@ final class TicketPolicy
         return $user->workspace_id === $ticket->workspace_id;
     }
 
+    /*
+     * canWorkHelpdesk() covers is_agent AND the workspace module switch. Note
+     * that an OWNER never reaches these methods: Gate::before short-circuits
+     * every policy inside the owner's own workspace, and a policy cannot undo
+     * that. The authoritative gate for the module is HelpdeskAccess::gate() in
+     * the use cases (no bypass — HelpdeskToggleTest pins it for an owner) plus
+     * EnsureHelpdeskEnabled at the request boundary; these abilities are a
+     * secondary check and are not currently wired to any route.
+     */
+
     /** Replying to a ticket requires agent capability, a non-viewer level, and same workspace. */
     public function reply(User $user, Ticket $ticket): bool
     {

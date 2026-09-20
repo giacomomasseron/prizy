@@ -134,6 +134,7 @@ CREATE TABLE workspaces (
     custom_domain       VARCHAR(253)    UNIQUE,              -- optional CNAME
     logo_url            VARCHAR(2048),                       -- workspace logo
     plan                workspace_plan  NOT NULL DEFAULT 'starter',
+    helpdesk_enabled    BOOLEAN         NOT NULL DEFAULT TRUE, -- support module switch
     timezone            VARCHAR(64)     NOT NULL DEFAULT 'UTC',
     locale              VARCHAR(10)     NOT NULL DEFAULT 'en',
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),

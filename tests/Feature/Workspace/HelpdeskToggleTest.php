@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Models\Contact;
 use App\Models\User;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -16,7 +19,7 @@ function toggleWorld(array $userAttrs = ['is_agent' => true], bool $helpdeskEnab
 {
     $ws = Workspace::factory()->create(['helpdesk_enabled' => $helpdeskEnabled]);
     test()->actingInWorkspace($ws);
-    $user  = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $userAttrs));
+    $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $userAttrs));
     $token = app(CreatePersonalAccessToken::class)->handle($user, 't', null)['token'];
 
     return [$token, $ws, $user];
@@ -142,7 +145,7 @@ it('forbids anyone below admin from switching the helpdesk', function (string $l
     Workspace::forgetCurrent();
 })->with([
     'a member who works the desk' => ['member', true],
-    'a viewer'                    => ['viewer', false],
+    'a viewer' => ['viewer', false],
 ]);
 
 it('rejects a missing or non-boolean switch', function (mixed $payload): void {
@@ -152,9 +155,9 @@ it('rejects a missing or non-boolean switch', function (mixed $payload): void {
 
     Workspace::forgetCurrent();
 })->with([
-    'nothing'   => [[]],
-    'a string'  => [['helpdesk_enabled' => 'nope']],
-    'an array'  => [['helpdesk_enabled' => ['a']]],
+    'nothing' => [[]],
+    'a string' => [['helpdesk_enabled' => 'nope']],
+    'an array' => [['helpdesk_enabled' => ['a']]],
 ]);
 
 // The SPA decides what to render from /v1/me; without the switch there it would
@@ -168,3 +171,34 @@ it('reports the switch on the authenticated user payload', function (bool $enabl
 
     Workspace::forgetCurrent();
 })->with([true, false]);
+
+// Gate::before hands an owner every policy check inside their own workspace, so
+// the owner is exactly the role a module switch could fail to close. The gate
+// that actually runs on the request path has no such bypass — pin it.
+it('forbids an OWNER who is an agent when the switch is off', function (): void {
+    [$token] = toggleWorld(['admin_level' => 'owner', 'is_agent' => true], helpdeskEnabled: false);
+
+    $this->withToken($token)->getJson('/v1/tickets')->assertStatus(403);
+    $this->withToken($token)->getJson('/v1/kb/library')->assertStatus(403);
+
+    Workspace::forgetCurrent();
+});
+
+// Every portal page 404s, so a signed-in contact would otherwise have no way to
+// end a session they can still be holding when the switch is flipped.
+it('still lets a signed-in contact log out of the portal when the helpdesk is off', function (): void {
+    $ws = Workspace::factory()->create();
+    test()->actingInWorkspace($ws);
+    $contact = Contact::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id,
+        'name' => 'Grace', 'email' => 'grace@northwind.com',
+    ]);
+    $this->actingAs($contact, 'contact');
+
+    $ws->update(['helpdesk_enabled' => false]);
+
+    $this->post('/help/logout')->assertRedirect();
+    expect(Auth::guard('contact')->check())->toBeFalse();
+
+    Workspace::forgetCurrent();
+});

@@ -123,7 +123,11 @@ Route::withoutMiddleware([EnsureValidTenantSession::class])->middleware(EnsureHe
     Route::get('/help/login', [PortalAuthController::class, 'showLogin'])->name('help.login');
     Route::post('/help/login', [PortalAuthController::class, 'sendLink'])->middleware('throttle:6,1');
     Route::get('/help/login/consume/{nonce}/{contact}', [PortalAuthController::class, 'consume'])->name('help.login.consume');
-    Route::post('/help/logout', [PortalAuthController::class, 'logout'])->name('help.logout');
+    // Exempt from the module guard: a contact can still be holding a portal
+    // session when the switch is flipped, and every other /help route 404s, so
+    // this is their only way to end it.
+    Route::post('/help/logout', [PortalAuthController::class, 'logout'])
+        ->withoutMiddleware([EnsureHelpdeskEnabled::class])->name('help.logout');
 
     Route::middleware('auth:contact')->group(function (): void {
         Route::get('/help/requests', [PortalController::class, 'requests'])->name('help.requests');

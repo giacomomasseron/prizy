@@ -19,10 +19,14 @@ use Symfony\Component\HttpFoundation\Response;
  * open. The agent-side API answers 403 instead — the caller is authenticated
  * there, and a capability error is the honest answer.
  *
- * Runs after NeedsTenant, so the workspace is resolved. The switch is read from
- * the workspaces table rather than off the resolved tenant instance, which is
- * not guaranteed to carry every column (a tenant made current from a model
- * built in memory carries only what that model was given).
+ * Ordering: the priority-list entry in bootstrap/app.php puts this ahead of the
+ * authentication contract (so a guest on a portal route gets the 404 rather
+ * than a redirect to a sign-in page that is itself gone), which also hoists it
+ * above NeedsTenant. That is safe because spatie/laravel-multitenancy resolves
+ * the tenant in its service provider's boot, not in NeedsTenant — but this
+ * middleware must not assume a resolved tenant, so it fails closed when there
+ * is none and HelpdeskAccess falls back to the table when the instance is
+ * partial.
  */
 final class EnsureHelpdeskEnabled
 {

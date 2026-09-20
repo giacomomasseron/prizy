@@ -60,8 +60,12 @@ export interface Me {
     is_developer: boolean;
     is_agent: boolean;
     email_digest_frequency: 'off' | 'daily' | 'weekly';
-    /** Workspace-level module switches, from /v1/me. */
-    workspace: { helpdesk_enabled: boolean };
+    /**
+     * Workspace-level module switches. Present on /v1/me; the login, magic-link,
+     * sign-up and accept-invite payloads are also typed Me and do NOT carry it,
+     * so every reader must treat it as possibly absent.
+     */
+    workspace?: { helpdesk_enabled: boolean };
 }
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'paused' | 'completed' | 'cancelled';

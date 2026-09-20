@@ -24,7 +24,7 @@ export function useUpdateHelpdeskEnabled() {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (helpdesk_enabled: boolean) =>
-            api.patch<{ data: { helpdesk_enabled: boolean } }>('/workspace', { helpdesk_enabled }),
+            api.patch<{ id: string; name: string; slug: string; helpdesk_enabled: boolean }>('/workspace', { helpdesk_enabled }),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['me'] });
         },
