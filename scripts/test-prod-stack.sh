@@ -83,6 +83,38 @@ else
     fail "redis publishes no port"
 fi
 
+log "The database is initialised for production"
+# psql runs inside the container as the superuser; -tAc gives an unadorned value.
+psql_super() { compose exec -T postgres psql -U prizy -d prizy -tAc "$1" 2>/dev/null | tr -d '[:space:]'; }
+
+if [ "$(psql_super "SELECT 1 FROM pg_roles WHERE rolname='prizy_app'")" = "1" ]; then
+    pass "the prizy_app role exists"
+else
+    fail "the prizy_app role exists"
+fi
+
+# The whole point of the rewrite: the password is the generated one, not
+# the literal 'secret' the dev init script uses.
+app_pw=$(grep '^PRIZY_APP_DB_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
+if compose exec -T -e PGPASSWORD="$app_pw" postgres \
+        psql -U prizy_app -d prizy -h 127.0.0.1 -tAc "SELECT 1" >/dev/null 2>&1; then
+    pass "prizy_app can log in with the generated password"
+else
+    fail "prizy_app can log in with the generated password"
+fi
+if compose exec -T -e PGPASSWORD=secret postgres \
+        psql -U prizy_app -d prizy -h 127.0.0.1 -tAc "SELECT 1" >/dev/null 2>&1; then
+    fail "the dev password 'secret' is rejected"
+else
+    pass "the dev password 'secret' is rejected"
+fi
+
+if [ "$(psql_super "SELECT count(*) FROM pg_database WHERE datname='prizy_test'")" = "0" ]; then
+    pass "no prizy_test database in production"
+else
+    fail "no prizy_test database in production"
+fi
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction stack tests FAILED\033[0m\n'
     exit 1
