@@ -115,6 +115,35 @@ else
     fail "no prizy_test database in production"
 fi
 
+log "Migrations ran, as the right role"
+if [ "$(compose ps -a --format '{{.Service}} {{.State}}' | grep -c 'migrate exited')" -eq 1 ]; then
+    pass "the migrate service ran and exited"
+else
+    fail "the migrate service ran and exited"
+fi
+if compose exec -T app php artisan migrate:status 2>/dev/null | grep -q "Pending"; then
+    fail "no migrations are left pending"
+else
+    pass "no migrations are left pending"
+fi
+
+# THE assertion of this task. prizy_app must OWN the tables, because
+# FORCE ROW LEVEL SECURITY only applies to a table's owner — migrating as the
+# superuser leaves every tenant-isolation policy inert while the app still
+# appears to work.
+owner=$(psql_super "SELECT tableowner FROM pg_tables WHERE tablename='workspaces'")
+if [ "$owner" = "prizy_app" ]; then
+    pass "the workspaces table is owned by prizy_app, so RLS applies"
+else
+    fail "the workspaces table is owned by prizy_app, so RLS applies (owner=$owner)"
+fi
+
+if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'app healthy')" -eq 1 ]; then
+    pass "the app container reports healthy"
+else
+    fail "the app container reports healthy"
+fi
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction stack tests FAILED\033[0m\n'
     exit 1

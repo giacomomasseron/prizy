@@ -2,6 +2,35 @@
 # docker-compose.yml and is deliberately untouched by this file.
 #
 # Deploy is one command: docker compose -f docker-compose.prod.yml up -d --wait
+
+# Every PHP role runs the same image and the same environment; only the
+# command differs. Defined once here and merged into each service.
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile.prod
+    target: runtime
+  image: prizy/app:${PRIZY_VERSION:-local}
+  env_file: ["${ENV_FILE:-.env}"]
+  environment:
+    # Fixed by this stack's topology, not by the installation — every
+    # deployment of this compose file talks Postgres over the compose
+    # network as prizy_app, never anything else, so these are not left to
+    # the installer's .env (unlike .env.production.example, which lists
+    # DB_CONNECTION alongside the same fixed values as a human-readable
+    # reference, not as the actual source of truth here).
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_DATABASE: prizy
+    DB_USERNAME: prizy_app
+    DB_PASSWORD: ${PRIZY_APP_DB_PASSWORD:?PRIZY_APP_DB_PASSWORD is required}
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+  volumes:
+    - storage:/var/www/html/storage
+
 services:
   postgres:
     image: postgres:16
@@ -42,6 +71,27 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
 
+  # One-shot: waits for Postgres, migrates, exits. The long-running services
+  # wait on its successful completion, so exactly one container ever runs
+  # migrations, and `up -d --wait` deploys and upgrades in a single command.
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["php", "artisan", "migrate", "--force"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    <<: *app
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
 volumes:
   pgdata:
   redisdata:
+  storage:
