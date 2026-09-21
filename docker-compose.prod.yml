@@ -91,6 +91,19 @@ services:
       redis:
         condition: service_healthy
 
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      target: web
+    image: prizy/web:${PRIZY_VERSION:-local}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      app:
+        condition: service_healthy
+
 volumes:
   pgdata:
   redisdata:

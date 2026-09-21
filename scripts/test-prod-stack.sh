@@ -144,6 +144,40 @@ else
     fail "the app container reports healthy"
 fi
 
+log "nginx serves the application"
+base="http://localhost:${HTTP_PORT}"
+
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/up")" = "200" ]; then
+    pass "/up returns 200 through nginx"
+else
+    fail "/up returns 200 through nginx"
+fi
+
+# Prove nginx serves static files itself rather than proxying everything to
+# fpm. Take a real hashed filename out of the manifest inside the image.
+asset=$(compose exec -T app sh -c \
+    "php -r 'echo array_values(json_decode(file_get_contents(\"/var/www/html/public/build/manifest.json\"), true))[0][\"file\"];'" \
+    2>/dev/null | tr -d '\r')
+if [ -n "$asset" ] && [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/build/$asset")" = "200" ]; then
+    pass "a hashed asset is served (build/$asset)"
+else
+    fail "a hashed asset is served (build/$asset)"
+fi
+
+# A PHP file must never be served as text. If this returns the source of
+# index.php, the fastcgi wiring is wrong in the most dangerous way.
+if curl -s "$base/index.php" | grep -q '<?php'; then
+    fail "PHP source is not served as text"
+else
+    pass "PHP source is not served as text"
+fi
+
+if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'web healthy')" -eq 1 ]; then
+    pass "the web container reports healthy"
+else
+    fail "the web container reports healthy"
+fi
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction stack tests FAILED\033[0m\n'
     exit 1
