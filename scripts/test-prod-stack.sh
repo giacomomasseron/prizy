@@ -207,13 +207,14 @@ for svc in worker scheduler; do
     else
         fail "$svc is running"
     fi
-    # The image's healthcheck is a FastCGI ping; nothing answers it here. If it
-    # is not disabled the container is permanently unhealthy and `up --wait`
-    # (which already succeeded above) would have hung instead.
-    if compose ps --format '{{.Service}} {{.Health}}' | grep -q "$svc unhealthy"; then
-        fail "$svc is not reported unhealthy"
+    # Each role carries its own liveness probe instead of the image's FastCGI
+    # ping. Assert it actually reports healthy — "not unhealthy" would also pass
+    # for a container with no healthcheck at all, which is the configuration
+    # that makes `up --wait` exit 1 on Compose 2.29.1.
+    if compose ps --format '{{.Service}} {{.Health}}' | grep -qx "$svc healthy"; then
+        pass "$svc reports healthy on its own probe"
     else
-        pass "$svc is not reported unhealthy"
+        fail "$svc reports healthy on its own probe"
     fi
 done
 

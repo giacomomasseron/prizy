@@ -113,11 +113,20 @@ services:
         condition: service_completed_successfully
       redis:
         condition: service_healthy
-    # The image's healthcheck pings php-fpm on :9000, which does not run here.
-    # Leaving it enabled makes this container permanently unhealthy and hangs
-    # `up -d --wait`, which is the installer's whole deploy step.
+    # The image's healthcheck pings php-fpm on :9000, which does not run here,
+    # so inheriting it would leave this container permanently unhealthy and hang
+    # `up -d --wait` — the installer's whole deploy step. Disabling it is NOT the
+    # answer either: on Compose 2.29.1 `up --wait` exits 1 with "container X has
+    # no healthcheck configured" while everything runs fine (compose #13522,
+    # reproduced on this machine). So each role gets a real liveness probe.
+    # `pgrep` is not in the image, but the entrypoint `exec`s its command, so the
+    # role's own command line is readable at /proc/1/cmdline.
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "grep -q queue:work /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   scheduler:
     <<: *app
@@ -127,7 +136,11 @@ services:
       migrate:
         condition: service_completed_successfully
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "grep -q schedule:work /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
   # Opt-in: `--profile realtime`. Without it the frontend polls, which is the
   # application's own default.
@@ -140,7 +153,11 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      disable: true
+      test: ["CMD-SHELL", "grep -q reverb:start /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
 
 volumes:
   pgdata:
