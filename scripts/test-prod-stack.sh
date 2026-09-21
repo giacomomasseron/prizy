@@ -50,7 +50,7 @@ REDIS_PASSWORD=$(secret)
 ENV
 
 log "Bringing the stack up"
-compose up -d --wait
+compose up -d --build --wait
 
 log "Data services are healthy and unreachable from outside"
 if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'postgres healthy')" -eq 1 ]; then
@@ -170,6 +170,17 @@ if curl -s "$base/index.php" | grep -q '<?php'; then
     fail "PHP source is not served as text"
 else
     pass "PHP source is not served as text"
+fi
+
+# grep -q '<?php' above also passes on a 404 or a 500, which would prove
+# nothing was served rather than that PHP was executed. Pin down that
+# index.php actually ran: a statically served .php file would arrive as
+# application/octet-stream (nginx has no MIME mapping for .php), so an
+# html Content-Type is only possible if fpm executed and rendered it.
+if curl -s -I "$base/index.php" | grep -qi '^Content-Type: *text/html'; then
+    pass "index.php is executed by fpm, not served statically (Content-Type: text/html)"
+else
+    fail "index.php is executed by fpm, not served statically (Content-Type: text/html)"
 fi
 
 if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'web healthy')" -eq 1 ]; then
