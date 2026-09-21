@@ -75,8 +75,23 @@ COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
 COPY --from=assets /app/public/build /var/www/html/public/build
 
 COPY docker/prod/entrypoint.sh /usr/local/bin/prizy-entrypoint
-RUN chmod +x /usr/local/bin/prizy-entrypoint \
-    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+# storage/ is excluded from the build context entirely (see .dockerignore) -
+# none of its content belongs in the image - so the skeleton directories
+# docker/prod/entrypoint.sh needs don't exist yet at this point. Recreate the
+# same list entrypoint.sh recreates on every container start, both so this
+# chown has something to act on and so the app can boot on a `docker run`
+# with no volume mounted over storage/ at all.
+RUN mkdir -p \
+        /var/www/html/storage/framework/cache/data \
+        /var/www/html/storage/framework/sessions \
+        /var/www/html/storage/framework/views \
+        /var/www/html/storage/framework/testing \
+        /var/www/html/storage/logs \
+        /var/www/html/storage/app/public \
+        /var/www/html/storage/app/private \
+    && chmod +x /usr/local/bin/prizy-entrypoint \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod 755 /var/www/html
 
 USER www-data
 
