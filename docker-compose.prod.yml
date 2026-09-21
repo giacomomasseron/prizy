@@ -1,7 +1,10 @@
 # Production stack for a self-hosted Prizy. The development stack lives in
 # docker-compose.yml and is deliberately untouched by this file.
 #
-# Deploy is one command: docker compose -f docker-compose.prod.yml up -d --wait
+# Fresh deploy is one command: docker compose -f docker-compose.prod.yml up -d --wait
+# An upgrade needs `--build` or a new PRIZY_VERSION too — with the image tag
+# already present, `up -d --wait` alone builds nothing and just redeploys the
+# code that is already there.
 
 # Every PHP role runs the same image and the same environment; only the
 # command differs. Defined once here and merged into each service.
@@ -28,6 +31,11 @@ x-app: &app
     REDIS_HOST: redis
     REDIS_PORT: "6379"
     REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    # Without this guard, an empty APP_KEY still lets every container come up
+    # and report healthy while every real request 500s with
+    # MissingAppKeyException — `up -d --wait` would return 0 on a fatally
+    # misconfigured install.
+    APP_KEY: ${APP_KEY:?APP_KEY is required}
   volumes:
     - storage:/var/www/html/storage
 
@@ -73,7 +81,11 @@ services:
 
   # One-shot: waits for Postgres, migrates, exits. The long-running services
   # wait on its successful completion, so exactly one container ever runs
-  # migrations, and `up -d --wait` deploys and upgrades in a single command.
+  # migrations. `up -d --wait` alone only redeploys whatever image is already
+  # tagged `prizy/app:${PRIZY_VERSION:-local}` — on an upgrade that means
+  # pairing it with `--build` or a new PRIZY_VERSION, otherwise compose finds
+  # the old image already present, builds nothing, and silently redeploys the
+  # old code (migrations included).
   migrate:
     <<: *app
     restart: "no"
@@ -118,9 +130,14 @@ services:
     # `up -d --wait` — the installer's whole deploy step. Disabling it is NOT the
     # answer either: on Compose 2.29.1 `up --wait` exits 1 with "container X has
     # no healthcheck configured" while everything runs fine (compose #13522,
-    # reproduced on this machine). So each role gets a real liveness probe.
+    # reproduced on this machine). So each role gets a probe instead.
     # `pgrep` is not in the image, but the entrypoint `exec`s its command, so the
-    # role's own command line is readable at /proc/1/cmdline.
+    # role's own command line is readable at /proc/1/cmdline. This only proves
+    # the process is still the one we started — it is true from the moment the
+    # entrypoint execs the command until the container dies, so it cannot
+    # detect a hung-but-alive worker (stuck job, dead Redis connection, etc).
+    # Its actual job is narrower: give `--wait` a real HEALTHCHECK to wait on
+    # instead of exiting 1 on "no healthcheck configured".
     healthcheck:
       test: ["CMD-SHELL", "grep -q queue:work /proc/1/cmdline || exit 1"]
       interval: 15s

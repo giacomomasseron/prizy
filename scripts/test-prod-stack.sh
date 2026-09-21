@@ -57,28 +57,54 @@ PRIZY_APP_DB_PASSWORD=$(secret)
 REDIS_PASSWORD=$(secret)
 ENV
 
+log ".env.production.example never hands out a comment as a value"
+# This harness generates its own throwaway environment above and never reads
+# .env.production.example, so nothing else in this script can catch a
+# regression here. Compose's dotenv parser only strips an inline "# comment"
+# when a value precedes it on the line; on an EMPTY value (exactly the state
+# every GENERATED key ships in) the comment text itself becomes the value —
+# e.g. POSTGRES_PASSWORD would come out as the literal string "# GENERATED",
+# which both defeats the `:?` required-variable guards (a non-empty string
+# satisfies them) and becomes Postgres's actual superuser password.
+if grep -qE '^[A-Z_]+= *#' .env.production.example; then
+    fail "no key in .env.production.example has a comment as its value"
+else
+    pass "no key in .env.production.example has a comment as its value"
+fi
+
 log "Bringing the stack up"
 compose up -d --build --wait
 
 log "Data services are healthy and unreachable from outside"
-if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'postgres healthy')" -eq 1 ]; then
+# -cx anchors the match to the WHOLE line so one service's name cannot match
+# inside another's line (e.g. an unanchored 'app healthy' would also count a
+# line for some future 'webapp healthy').
+if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'postgres healthy')" -eq 1 ]; then
     pass "postgres is healthy"
 else
     fail "postgres is healthy"
 fi
-if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'redis healthy')" -eq 1 ]; then
+if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'redis healthy')" -eq 1 ]; then
     pass "redis is healthy"
 else
     fail "redis is healthy"
 fi
 # `compose port` prints "host:port" for a published binding. When a service
-# publishes nothing, older Compose exits non-zero; the Compose version this
-# repo targets instead exits 0 and prints the empty binding ":0" — so check
-# the output, not just the exit code, to catch a leaked port either way.
+# publishes nothing, some Compose versions exit non-zero with a message
+# naming the port and container (e.g. "no port 5432/tcp for container ...");
+# others exit 0 and print the empty binding ":0". Either is "unpublished" —
+# but a nonzero exit with ANY OTHER message (bad service name, daemon
+# unreachable, ...) is a genuine command failure, not proof of anything, and
+# must not be read as a pass.
 port_is_unpublished() {
-    local output
-    output="$(compose port "$1" "$2" 2>/dev/null)" || return 0
-    [ -z "$output" ] || [ "$output" = ":0" ]
+    local output rc
+    output="$(compose port "$1" "$2" 2>&1)"
+    rc=$?
+    if [ "$rc" -eq 0 ]; then
+        [ -z "$output" ] || [ "$output" = ":0" ]
+        return
+    fi
+    [[ "$output" == "no port "*"for container"* ]]
 }
 if port_is_unpublished postgres 5432; then
     pass "postgres publishes no port"
@@ -124,15 +150,28 @@ else
 fi
 
 log "Migrations ran, as the right role"
-if [ "$(compose ps -a --format '{{.Service}} {{.State}}' | grep -c 'migrate exited')" -eq 1 ]; then
-    pass "the migrate service ran and exited"
+# {{.State}} is just "exited", which is equally true whether the container
+# exited 0 or 1 — it cannot tell a successful migrate run from a failed one.
+# {{.Status}} carries the actual exit code (e.g. "Exited (0) 3 seconds ago");
+# match that instead, anchored to the start of the line so "migrate" cannot
+# match as a substring of some other service name.
+if [ "$(compose ps -a --format '{{.Service}} {{.Status}}' | grep -cE '^migrate Exited \(0\)')" -eq 1 ]; then
+    pass "the migrate service ran and exited 0"
 else
-    fail "the migrate service ran and exited"
+    fail "the migrate service ran and exited 0"
 fi
-if compose exec -T app php artisan migrate:status 2>/dev/null | grep -q "Pending"; then
-    fail "no migrations are left pending"
+# A bare `grep -q "Pending" | ...` with no output at all (unreachable database,
+# a renamed command, an exec failure) also reports "no migrations pending" —
+# this is the assertion covering the deploy's core action, so it must not
+# infer success from the mere absence of a word. Require the command itself
+# to exit 0, AND find positive evidence migrations actually ran ("Ran"), not
+# just the absence of "Pending".
+migrate_exit=0
+migrate_status="$(compose exec -T app php artisan migrate:status 2>/dev/null)" || migrate_exit=$?
+if [ "$migrate_exit" -eq 0 ] && grep -q "Ran" <<<"$migrate_status" && ! grep -q "Pending" <<<"$migrate_status"; then
+    pass "migrate:status exits 0, shows migrations Ran, and none are Pending"
 else
-    pass "no migrations are left pending"
+    fail "migrate:status exits 0, shows migrations Ran, and none are Pending"
 fi
 
 # THE assertion of this task. prizy_app must OWN the tables, because
@@ -146,7 +185,7 @@ else
     fail "the workspaces table is owned by prizy_app, so RLS applies (owner=$owner)"
 fi
 
-if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'app healthy')" -eq 1 ]; then
+if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'app healthy')" -eq 1 ]; then
     pass "the app container reports healthy"
 else
     fail "the app container reports healthy"
@@ -180,8 +219,13 @@ else
     fail "/signup returns 200 (the SPA shell renders on the landlord host)"
 fi
 
-# Prove nginx serves static files itself rather than proxying everything to
-# fpm. Take a real hashed filename out of the manifest inside the image.
+# Prove manifest/asset parity between the two images: pull a real hashed
+# filename out of the app image's Vite manifest and confirm nginx serves that
+# exact file at 200. This is the skew Dockerfile.prod's web stage comment
+# warns about (app and web built from different asset sets); it does NOT
+# prove nginx serves statics itself rather than proxying to fpm — this
+# assertion would pass identically either way, as long as the bytes at
+# build/$asset eventually come back with a 200.
 asset=$(compose exec -T app sh -c \
     "php -r 'echo array_values(json_decode(file_get_contents(\"/var/www/html/public/build/manifest.json\"), true))[0][\"file\"];'" \
     2>/dev/null | tr -d '\r')
@@ -210,7 +254,7 @@ else
     fail "index.php is executed by fpm, not served statically (Content-Type: text/html)"
 fi
 
-if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'web healthy')" -eq 1 ]; then
+if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'web healthy')" -eq 1 ]; then
     pass "the web container reports healthy"
 else
     fail "the web container reports healthy"
@@ -218,7 +262,7 @@ fi
 
 log "Background roles run without blocking the deploy"
 for svc in worker scheduler; do
-    if [ "$(compose ps --format '{{.Service}} {{.State}}' | grep -c "$svc running")" -eq 1 ]; then
+    if [ "$(compose ps --format '{{.Service}} {{.State}}' | grep -cx "$svc running")" -eq 1 ]; then
         pass "$svc is running"
     else
         fail "$svc is running"
@@ -255,11 +299,20 @@ echo sentinel > "$views_dir/framework/views/sentinel.txt"
 # sentinel would survive for the wrong reason — making this assertion pass
 # whether or not the guard exists.
 chmod -R 777 "$views_dir"
-docker run --rm -v "$views_dir:/var/www/html/storage" \
-    -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
-    --entrypoint prizy-entrypoint "prizy/app:${PRIZY_VERSION:-local}" \
-    php artisan about >/dev/null 2>&1 || true
-if [ -f "$views_dir/framework/views/sentinel.txt" ]; then
+# `|| true` here would swallow the entrypoint dying before it ever reaches
+# the case guard that decides whether to run view:cache — the sentinel would
+# then survive for the wrong reason (nothing ran at all), and this assertion
+# would pass whether or not the guard exists. Require the container to
+# actually exit 0, same as the permissions-side sentinel check above.
+if docker run --rm -v "$views_dir:/var/www/html/storage" \
+        -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+        --entrypoint prizy-entrypoint "prizy/app:${PRIZY_VERSION:-local}" \
+        php artisan about >/dev/null 2>&1; then
+    sentinel_run_ok=1
+else
+    sentinel_run_ok=0
+fi
+if [ "$sentinel_run_ok" -eq 1 ] && [ -f "$views_dir/framework/views/sentinel.txt" ]; then
     pass "a non-fpm role does not clear the compiled views"
 else
     fail "a non-fpm role does not clear the compiled views"
