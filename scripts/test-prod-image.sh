@@ -56,6 +56,11 @@ assert_in_image "artisan boots against the installed dependencies" \
 assert_in_image "package discovery ran at build time" "test -f /var/www/html/bootstrap/cache/packages.php"
 assert_not_in_image "composer is absent from the runtime" "command -v composer"
 assert_not_in_image "dev dependencies are absent (pest)" "test -d /var/www/html/vendor/pestphp"
+# The host's bootstrap/cache is built from a --dev install, so it registers
+# Pest, Pail and Collision. Excluding it from the build context is what keeps
+# those out; this assertion is what proves the exclusion works.
+assert_not_in_image "no dev service providers are registered" \
+    "grep -q PestServiceProvider /var/www/html/bootstrap/cache/packages.php"
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'

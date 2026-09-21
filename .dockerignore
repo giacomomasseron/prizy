@@ -15,3 +15,6 @@ docs
 storage/logs/*
 storage/framework/cache/*
 .filo
+
+# Built from a --dev install on the host; the vendor stage regenerates them.
+bootstrap/cache/*.php
