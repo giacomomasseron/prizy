@@ -1,6 +1,23 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
+# assets — the compiled frontend.
+#
+# node:24-slim, not node:22 — Vite 8.1.1 declares
+# `node: ^20.19.0 || >=22.12.0`.
+# `npm run build` is `tsc --noEmit && vite build`, so devDependencies are
+# required and a type error fails the image build on purpose.
+# ---------------------------------------------------------------------------
+FROM node:24-slim AS assets
+
+WORKDIR /app
+COPY package.json package-lock.json /app/
+RUN npm ci
+
+COPY . /app
+RUN npm run build
+
+# ---------------------------------------------------------------------------
 # vendor — PHP dependencies, production only.
 #
 # The whole source is copied in first because composer.json's
@@ -28,3 +45,4 @@ WORKDIR /var/www/html
 COPY . /var/www/html
 COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
+COPY --from=assets /app/public/build /var/www/html/public/build

@@ -62,6 +62,15 @@ assert_not_in_image "dev dependencies are absent (pest)" "test -d /var/www/html/
 assert_not_in_image "no dev service providers are registered" \
     "grep -q PestServiceProvider /var/www/html/bootstrap/cache/packages.php"
 
+log "Frontend assets are compiled in, build tooling is not"
+assert_in_image "the Vite manifest exists" "test -f /var/www/html/public/build/manifest.json"
+assert_in_image "the manifest lists the app entrypoint" \
+    "grep -q 'resources/js/main.tsx' /var/www/html/public/build/manifest.json"
+assert_not_in_image "node is absent from the runtime" "command -v node"
+assert_not_in_image "node_modules is absent" "test -d /var/www/html/node_modules"
+assert_not_in_image "no public/hot (would point @vite at a dead dev server)" \
+    "test -f /var/www/html/public/hot"
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
     exit 1
