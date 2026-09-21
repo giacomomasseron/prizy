@@ -65,3 +65,10 @@ jobs:
         with:
           name: filo-traces
           path: .filo/traces/
+
+      # The production image is what self-hosted installs build (P-1). It has
+      # no test suite of its own; scripts/test-prod-image.sh asserts the
+      # properties that only exist at the image level — the app is baked in,
+      # build tooling did not leak in, it runs unprivileged.
+      - name: Production image builds and passes smoke tests
+        run: bash scripts/test-prod-image.sh

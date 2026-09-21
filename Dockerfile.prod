@@ -1,0 +1,103 @@
+# syntax=docker/dockerfile:1
+
+# ---------------------------------------------------------------------------
+# assets — the compiled frontend.
+#
+# node:24-slim, not node:22 — Vite 8.1.1 declares
+# `node: ^20.19.0 || >=22.12.0`.
+# `npm run build` is `tsc --noEmit && vite build`, so devDependencies are
+# required and a type error fails the image build on purpose.
+# ---------------------------------------------------------------------------
+FROM node:24-slim AS assets
+
+WORKDIR /app
+COPY package.json package-lock.json /app/
+RUN npm ci
+
+COPY . /app
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# vendor — PHP dependencies, production only.
+#
+# The whole source is copied in first because composer.json's
+# post-autoload-dump runs `artisan package:discover`, which boots the app.
+# ---------------------------------------------------------------------------
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY . /app
+
+RUN composer install \
+        --no-dev \
+        --optimize-autoloader \
+        --no-interaction \
+        --no-progress \
+        --prefer-dist
+
+# ---------------------------------------------------------------------------
+# Runtime — php-fpm with the application baked in.
+# ---------------------------------------------------------------------------
+FROM php:8.5-fpm AS runtime
+
+WORKDIR /var/www/html
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq-dev libzip-dev libicu-dev \
+    && docker-php-ext-install pdo pdo_pgsql pgsql zip intl pcntl \
+    && pecl install redis && docker-php-ext-enable redis \
+    && apt-mark manual libpq5 libzip5 libicu76 \
+    && apt-get purge -y --auto-remove libpq-dev libzip-dev libicu-dev \
+    && rm -rf /var/lib/apt/lists/*
+# The -dev packages are purged after the extensions are built, but the
+# runtime shared libraries they pulled in as dependencies (libpq5, libzip5,
+# libicu76) are marked manual first, so `apt-get purge --auto-remove` cannot
+# sweep them away with the -dev packages — the technique the php:8.5-fpm base
+# image uses on itself. Confirmed via `ldd` + `dpkg -S` on this base image
+# that these three package names own the .so files the extensions link
+# against.
+
+# The base image ships php.ini-production but activates no php.ini at all.
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+COPY docker/prod/php.ini /usr/local/etc/php/conf.d/zz-prizy-prod.ini
+
+# libfcgi-bin provides cgi-fcgi, which the HEALTHCHECK below uses to speak
+# FastCGI to the fpm pool directly — php-fpm has no HTTP listener to probe.
+RUN apt-get update && apt-get install -y --no-install-recommends libfcgi-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/prod/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-prizy.conf
+
+COPY . /var/www/html
+COPY --from=vendor /app/vendor /var/www/html/vendor
+COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
+COPY --from=assets /app/public/build /var/www/html/public/build
+
+COPY docker/prod/entrypoint.sh /usr/local/bin/prizy-entrypoint
+# storage/ is excluded from the build context entirely (see .dockerignore) -
+# none of its content belongs in the image - so the skeleton directories
+# docker/prod/entrypoint.sh needs don't exist yet at this point. Recreate the
+# same list entrypoint.sh recreates on every container start, both so this
+# chown has something to act on and so the app can boot on a `docker run`
+# with no volume mounted over storage/ at all.
+RUN mkdir -p \
+        /var/www/html/storage/framework/cache/data \
+        /var/www/html/storage/framework/sessions \
+        /var/www/html/storage/framework/views \
+        /var/www/html/storage/framework/testing \
+        /var/www/html/storage/logs \
+        /var/www/html/storage/app/public \
+        /var/www/html/storage/app/private \
+    && chmod +x /usr/local/bin/prizy-entrypoint \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod 755 /var/www/html
+
+USER www-data
+
+ENTRYPOINT ["prizy-entrypoint"]
+CMD ["php-fpm"]
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET \
+        cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong

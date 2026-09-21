@@ -1,5 +1,80 @@
-.git
-vendor
-node_modules
-storage/*.key
-.env
+# Allowlist for Dockerfile.prod's build context.
+#
+# This ONE file governs the context for all three stages (assets, vendor,
+# runtime) - there is no per-stage .dockerignore. `*` on the first line
+# excludes everything; every `!` line below re-includes exactly what one of
+# the stages needs. If a stage needs something, it must be listed here even
+# if the other two stages don't touch it.
+#
+# Why an allowlist and not a denylist: a denylist only keeps out what someone
+# thought to name, so anything new in the developer's working tree (design
+# review notes, IDE state, dotfiles with secrets in them, dev-only manifests)
+# ships into the image by default. A missing `!` entry here instead fails
+# the build loudly - composer install, npm run build, or a later COPY/chown
+# in Dockerfile.prod will error on a path that isn't there - which is the
+# point: the failure mode is "build breaks," not "secret ships."
+#
+# Docker's `!` precedence rule: the LAST matching line wins, but a `!` can
+# only reach a file whose ancestor directories aren't themselves excluded by
+# a bare (non-glob) directory-name pattern - `dir` blocks descending into
+# `dir` even for later `!dir/keep-me` lines, whereas `dir/*` excludes dir's
+# *contents* without blocking descent, so a later `!dir/keep-me` still works.
+# Every exclusion below that needs a file re-included afterward therefore
+# uses the `dir/*`-style (or exact-file) form, never a bare directory name.
+*
+
+# --- composer (vendor stage) + booting the framework -----------------------
+# vendor stage copies the whole (filtered) context in, then runs
+# `composer install`, whose post-autoload-dump hook runs
+# `artisan package:discover` - which boots the framework. That needs the
+# app's service providers, config, and the autoloaded database/ namespaces
+# (Database\Factories, Database\Seeders - see composer.json's "autoload"),
+# not just app code.
+!artisan
+!composer.json
+!composer.lock
+!app
+!bootstrap
+# Built from a --dev install on the host; the vendor stage regenerates them
+# (and the runtime stage's COPY --from=vendor overwrites them again anyway).
+bootstrap/cache/*.php
+!config
+!database
+!routes
+
+# --- npm (assets stage) -----------------------------------------------------
+!package.json
+!package-lock.json
+!.npmrc
+!vite.config.js
+!tsconfig.json
+
+# --- Blade views + the frontend source the assets stage compiles -----------
+# One directory for both: resources/views is Blade (runtime), resources/js
+# and resources/css are what `npm run build` compiles (assets stage).
+!resources
+
+# --- public/: the docroot, minus dev-only build artifacts ------------------
+!public
+# Generated on the host - the assets stage rebuilds it inside the image, and
+# the runtime stage's COPY --from=assets overwrites this path again anyway.
+public/build
+# Written by `npm run dev`; in an image it would point @vite at a dead dev
+# server.
+public/hot
+# Only written by `npm run dev` (Vite dev-server font manifest); the assets
+# stage writes the production one to public/build/fonts-manifest.json.
+public/fonts-manifest.dev.json
+
+# --- deploy-time PHP-FPM config, read directly by explicit COPYs -----------
+!docker/prod
+
+# storage/ is deliberately NOT re-included here. None of its content belongs
+# in the image: dev-compiled Blade views, this builder's local sessions,
+# cached data, or anything a dev box's storage/app/{public,private} happened
+# to hold. Dockerfile.prod's runtime stage creates the empty skeleton
+# directories at build time (the same list docker/prod/entrypoint.sh
+# recreates on every container start), so the app never depends on anything
+# under storage/ surviving the build context - and storage/oauth/*.key (or
+# any other secret one level deeper than the old `storage/*.key` denylist
+# entry reached) is excluded right along with everything else under it.
