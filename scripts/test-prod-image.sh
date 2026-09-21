@@ -82,6 +82,22 @@ for ext in pdo_pgsql pgsql zip intl pcntl redis; do
 done
 assert_not_in_image "pcov is absent (coverage driver, CI only)" "php -m | grep -qx pcov"
 
+log "The container runs unprivileged"
+assert_not_in_image "does not run as root" "test \"\$(id -un)\" = root"
+assert_in_image "runs as the www-data user" "test \"\$(id -un)\" = www-data"
+
+log "The entrypoint survives a volume mounted over storage/"
+# An anonymous volume at storage/ reproduces what P-2's named volume does:
+# it hides the skeleton baked into the image.
+if docker run --rm -v /var/www/html/storage \
+        -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+        --entrypoint prizy-entrypoint "$IMAGE" \
+        php artisan config:cache >/dev/null 2>&1; then
+    pass "config:cache succeeds with an empty storage volume"
+else
+    fail "config:cache succeeds with an empty storage volume"
+fi
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
     exit 1

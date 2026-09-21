@@ -46,11 +46,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libpq-dev libzip-dev libicu-dev \
     && docker-php-ext-install pdo pdo_pgsql pgsql zip intl pcntl \
     && pecl install redis && docker-php-ext-enable redis \
+    && apt-mark manual libpq5 libzip5 libicu76 \
+    && apt-get purge -y --auto-remove libpq-dev libzip-dev libicu-dev \
     && rm -rf /var/lib/apt/lists/*
-# Not purging the -dev packages: apt-get purge --auto-remove pulls out shared
-# libraries (e.g. libpq5, libzip5) that the compiled extensions link against,
-# breaking pdo_pgsql/pgsql/zip/intl at runtime. A slightly larger image beats
-# a broken one.
+# The -dev packages are purged after the extensions are built, but the
+# runtime shared libraries they pulled in as dependencies (libpq5, libzip5,
+# libicu76) are marked manual first, so `apt-get purge --auto-remove` cannot
+# sweep them away with the -dev packages — the technique the php:8.5-fpm base
+# image uses on itself. Confirmed via `ldd` + `dpkg -S` on this base image
+# that these three package names own the .so files the extensions link
+# against.
 
 # The base image ships php.ini-production but activates no php.ini at all.
 RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
@@ -61,3 +66,12 @@ COPY . /var/www/html
 COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
 COPY --from=assets /app/public/build /var/www/html/public/build
+
+COPY docker/prod/entrypoint.sh /usr/local/bin/prizy-entrypoint
+RUN chmod +x /usr/local/bin/prizy-entrypoint \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
+USER www-data
+
+ENTRYPOINT ["prizy-entrypoint"]
+CMD ["php-fpm"]
