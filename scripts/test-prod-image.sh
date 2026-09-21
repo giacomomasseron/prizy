@@ -71,6 +71,17 @@ assert_not_in_image "node_modules is absent" "test -d /var/www/html/node_modules
 assert_not_in_image "no public/hot (would point @vite at a dead dev server)" \
     "test -f /var/www/html/public/hot"
 
+log "PHP is configured for production"
+assert_in_image "opcache is enabled" "php -i | grep -q 'opcache.enable => On => On'"
+assert_in_image "opcache does not stat files on every request" \
+    "php -i | grep -q 'opcache.validate_timestamps => Off => Off'"
+assert_in_image "errors are not displayed" "php -i | grep -q 'display_errors => Off => Off'"
+
+for ext in pdo_pgsql pgsql zip intl pcntl redis; do
+    assert_in_image "extension $ext is loaded" "php -m | grep -qx $ext"
+done
+assert_not_in_image "pcov is absent (coverage driver, CI only)" "php -m | grep -qx pcov"
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
     exit 1
