@@ -49,6 +49,14 @@ assert_in_image "the app source is present" "test -f /var/www/html/bootstrap/app
 assert_not_in_image "no .env is baked in" "test -f /var/www/html/.env"
 assert_not_in_image "the host's vendor/ was not copied in" "test -d /var/www/html/vendor/pestphp"
 
+log "PHP dependencies are installed, build tooling is not"
+assert_in_image "vendor/autoload.php exists" "test -f /var/www/html/vendor/autoload.php"
+assert_in_image "artisan boots against the installed dependencies" \
+    "php /var/www/html/artisan --version"
+assert_in_image "package discovery ran at build time" "test -f /var/www/html/bootstrap/cache/packages.php"
+assert_not_in_image "composer is absent from the runtime" "command -v composer"
+assert_not_in_image "dev dependencies are absent (pest)" "test -d /var/www/html/vendor/pestphp"
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
     exit 1

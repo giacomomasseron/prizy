@@ -1,6 +1,24 @@
 # syntax=docker/dockerfile:1
 
 # ---------------------------------------------------------------------------
+# vendor — PHP dependencies, production only.
+#
+# The whole source is copied in first because composer.json's
+# post-autoload-dump runs `artisan package:discover`, which boots the app.
+# ---------------------------------------------------------------------------
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY . /app
+
+RUN composer install \
+        --no-dev \
+        --optimize-autoloader \
+        --no-interaction \
+        --no-progress \
+        --prefer-dist
+
+# ---------------------------------------------------------------------------
 # Runtime — php-fpm with the application baked in.
 # ---------------------------------------------------------------------------
 FROM php:8.5-fpm AS runtime
@@ -8,3 +26,5 @@ FROM php:8.5-fpm AS runtime
 WORKDIR /var/www/html
 
 COPY . /var/www/html
+COPY --from=vendor /app/vendor /var/www/html/vendor
+COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
