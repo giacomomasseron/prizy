@@ -62,6 +62,13 @@ RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
 
 COPY docker/prod/php.ini /usr/local/etc/php/conf.d/zz-prizy-prod.ini
 
+# libfcgi-bin provides cgi-fcgi, which the HEALTHCHECK below uses to speak
+# FastCGI to the fpm pool directly — php-fpm has no HTTP listener to probe.
+RUN apt-get update && apt-get install -y --no-install-recommends libfcgi-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/prod/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-prizy.conf
+
 COPY . /var/www/html
 COPY --from=vendor /app/vendor /var/www/html/vendor
 COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
@@ -75,3 +82,7 @@ USER www-data
 
 ENTRYPOINT ["prizy-entrypoint"]
 CMD ["php-fpm"]
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET \
+        cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong

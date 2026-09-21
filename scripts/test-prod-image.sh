@@ -132,6 +132,25 @@ if [ -n "$empty_storage" ]; then
     rmdir "$empty_storage" 2>/dev/null || true
 fi
 
+log "The image declares a working healthcheck"
+if docker image inspect --format '{{.Config.Healthcheck.Test}}' "$IMAGE" | grep -q cgi-fcgi; then
+    pass "HEALTHCHECK is declared"
+else
+    fail "HEALTHCHECK is declared"
+fi
+
+# Start fpm, then ping the pool over FastCGI the way the healthcheck does.
+cid=$(docker run -d -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= "$IMAGE")
+sleep 5
+if docker exec "$cid" sh -c \
+    'SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET \
+     cgi-fcgi -bind -connect 127.0.0.1:9000' 2>/dev/null | grep -q pong; then
+    pass "the fpm pool answers /ping with pong"
+else
+    fail "the fpm pool answers /ping with pong"
+fi
+docker rm -f "$cid" >/dev/null 2>&1 || true
+
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
     exit 1
