@@ -40,9 +40,14 @@ log "Building $IMAGE from Dockerfile.prod"
 docker build -f Dockerfile.prod -t "$IMAGE" .
 
 log "The image carries the application"
-assert_in_image "artisan is present and runs" "php /var/www/html/artisan --version"
+# NOT `artisan --version` yet — that needs vendor/autoload.php, which the
+# vendor stage does not build until Task 2. Asserting it here would only pass
+# by copying the host's vendor/ into the image, dev dependencies and all.
+assert_in_image "php runs in the image" "php --version"
+assert_in_image "artisan is present" "test -f /var/www/html/artisan"
 assert_in_image "the app source is present" "test -f /var/www/html/bootstrap/app.php"
 assert_not_in_image "no .env is baked in" "test -f /var/www/html/.env"
+assert_not_in_image "the host's vendor/ was not copied in" "test -d /var/www/html/vendor/pestphp"
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
