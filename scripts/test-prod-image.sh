@@ -122,7 +122,15 @@ if [ -d "$empty_storage/framework/views" ] && [ -d "$empty_storage/framework/cac
 else
     fail "the entrypoint created the framework directories"
 fi
-[ -n "$empty_storage" ] && rm -rf "$empty_storage"
+# The container wrote these files as uid 33, so the host user generally cannot
+# remove them — clean up from inside a root container. Cleanup must never decide
+# the script's exit code: under `set -e` a failing `rm` here would fail the whole
+# run with zero failing assertions, which in CI looks exactly like a broken image.
+if [ -n "$empty_storage" ]; then
+    docker run --rm --user 0 -v "$empty_storage:/cleanup" --entrypoint sh "$IMAGE" \
+        -c 'rm -rf /cleanup/* /cleanup/.[!.]*' >/dev/null 2>&1 || true
+    rmdir "$empty_storage" 2>/dev/null || true
+fi
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'
