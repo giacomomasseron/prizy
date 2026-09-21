@@ -153,6 +153,17 @@ else
     fail "/up returns 200 through nginx"
 fi
 
+# /up is a framework-level route and proves only that Laravel can answer a
+# health check, not that the application actually boots and routes a real
+# page. On the test's own host (localhost, matching APP_BASE_DOMAIN) this is
+# the landlord host, which serves the SPA shell, so a healthy stack returns
+# 200 here.
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/")" = "200" ]; then
+    pass "/ returns 200 through nginx (the application, not just the framework's /up route)"
+else
+    fail "/ returns 200 through nginx (the application, not just the framework's /up route)"
+fi
+
 # Prove nginx serves static files itself rather than proxying everything to
 # fpm. Take a real hashed filename out of the manifest inside the image.
 asset=$(compose exec -T app sh -c \
@@ -188,6 +199,51 @@ if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -c 'web healthy')"
 else
     fail "the web container reports healthy"
 fi
+
+log "Background roles run without blocking the deploy"
+for svc in worker scheduler; do
+    if [ "$(compose ps --format '{{.Service}} {{.State}}' | grep -c "$svc running")" -eq 1 ]; then
+        pass "$svc is running"
+    else
+        fail "$svc is running"
+    fi
+    # The image's healthcheck is a FastCGI ping; nothing answers it here. If it
+    # is not disabled the container is permanently unhealthy and `up --wait`
+    # (which already succeeded above) would have hung instead.
+    if compose ps --format '{{.Service}} {{.Health}}' | grep -q "$svc unhealthy"; then
+        fail "$svc is not reported unhealthy"
+    else
+        pass "$svc is not reported unhealthy"
+    fi
+done
+
+# Reverb is opt-in: absent unless the `realtime` profile is selected.
+if compose ps --format '{{.Service}}' | grep -q '^reverb$'; then
+    fail "reverb does not start without its profile"
+else
+    pass "reverb does not start without its profile"
+fi
+
+log "A non-fpm role leaves the shared view cache alone"
+# Pre-seed a sentinel where compiled views live, run the entrypoint with a
+# non-fpm command, and check the sentinel survived. If view:cache runs for
+# every role, view:clear deletes it — which is the race this guards.
+views_dir=$(mktemp -d)
+chmod 777 "$views_dir"
+mkdir -p "$views_dir/framework/views"
+echo sentinel > "$views_dir/framework/views/sentinel.txt"
+docker run --rm -v "$views_dir:/var/www/html/storage" \
+    -e APP_KEY=base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= \
+    --entrypoint prizy-entrypoint "prizy/app:${PRIZY_VERSION:-local}" \
+    php artisan about >/dev/null 2>&1 || true
+if [ -f "$views_dir/framework/views/sentinel.txt" ]; then
+    pass "a non-fpm role does not clear the compiled views"
+else
+    fail "a non-fpm role does not clear the compiled views"
+fi
+docker run --rm --user 0 -v "$views_dir:/cleanup" --entrypoint sh \
+    "prizy/app:${PRIZY_VERSION:-local}" -c 'rm -rf /cleanup/* /cleanup/.[!.]*' >/dev/null 2>&1 || true
+rmdir "$views_dir" 2>/dev/null || true
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction stack tests FAILED\033[0m\n'

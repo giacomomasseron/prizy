@@ -104,6 +104,44 @@ services:
       app:
         condition: service_healthy
 
+  worker:
+    <<: *app
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600", "--sleep=1"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    # The image's healthcheck pings php-fpm on :9000, which does not run here.
+    # Leaving it enabled makes this container permanently unhealthy and hangs
+    # `up -d --wait`, which is the installer's whole deploy step.
+    healthcheck:
+      disable: true
+
+  scheduler:
+    <<: *app
+    restart: unless-stopped
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      disable: true
+
+  # Opt-in: `--profile realtime`. Without it the frontend polls, which is the
+  # application's own default.
+  reverb:
+    <<: *app
+    profiles: ["realtime"]
+    restart: unless-stopped
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      disable: true
+
 volumes:
   pgdata:
   redisdata:
