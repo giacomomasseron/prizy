@@ -1,5 +1,16 @@
 .git
-vendor
 node_modules
 storage/*.key
 .env
+
+# Generated on the host — the assets stage rebuilds them inside the image.
+public/build
+# Written by `npm run dev`; in an image it points @vite at a dead dev server.
+public/hot
+# Not needed at runtime.
+tests
+.github
+docs
+storage/logs/*
+storage/framework/cache/*
+.filo

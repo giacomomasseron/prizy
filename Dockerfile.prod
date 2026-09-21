@@ -1,0 +1,10 @@
+# syntax=docker/dockerfile:1
+
+# ---------------------------------------------------------------------------
+# Runtime — php-fpm with the application baked in.
+# ---------------------------------------------------------------------------
+FROM php:8.5-fpm AS runtime
+
+WORKDIR /var/www/html
+
+COPY . /var/www/html
