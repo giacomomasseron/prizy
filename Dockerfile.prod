@@ -101,3 +101,26 @@ CMD ["php-fpm"]
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
     CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET \
         cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong
+
+# ---------------------------------------------------------------------------
+# web — nginx carrying the same compiled assets as the runtime image.
+#
+# Built from the runtime stage rather than sharing public/ through a volume:
+# the asset filenames are content-hashed and the app's Vite manifest points at
+# them, so a skew between the two 404s every asset and renders a blank page
+# with no error. Building them together makes that skew impossible.
+# ---------------------------------------------------------------------------
+FROM nginx:alpine AS web
+
+COPY --from=runtime /var/www/html/public /var/www/html/public
+COPY docker/prod/nginx.conf /etc/nginx/conf.d/default.conf
+
+# /up is registered outside the `web` middleware group (see bootstrap/app.php),
+# so it never touches the encrypter, the session store, or a controller — it
+# proves only that PHP boots, not that the application can actually serve a
+# page (e.g. it stays 200 with APP_KEY unset, while every real route 500s).
+# /health is a landlord route inside the `web` group: it is reachable without
+# a tenant session but still exercises session/cookie middleware and routes
+# to a controller.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD wget -qO- http://127.0.0.1/health >/dev/null 2>&1 || exit 1

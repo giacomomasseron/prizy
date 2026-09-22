@@ -72,3 +72,10 @@ jobs:
       # build tooling did not leak in, it runs unprivileged.
       - name: Production image builds and passes smoke tests
         run: bash scripts/test-prod-image.sh
+
+      # The production stack is what a self-hosted install actually runs (P-2).
+      # This brings the whole thing up against throwaway secrets and proves it
+      # serves — the only check that can catch nginx pointing at the wrong
+      # socket, a missing environment variable, or migrations that never ran.
+      - name: Production stack comes up and serves
+        run: bash scripts/test-prod-stack.sh

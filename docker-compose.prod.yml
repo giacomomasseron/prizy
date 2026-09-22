@@ -1,0 +1,182 @@
+# Production stack for a self-hosted Prizy. The development stack lives in
+# docker-compose.yml and is deliberately untouched by this file.
+#
+# Fresh deploy is one command: docker compose -f docker-compose.prod.yml up -d --wait
+# An upgrade needs `--build` or a new PRIZY_VERSION too — with the image tag
+# already present, `up -d --wait` alone builds nothing and just redeploys the
+# code that is already there.
+
+# Every PHP role runs the same image and the same environment; only the
+# command differs. Defined once here and merged into each service.
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile.prod
+    target: runtime
+  image: prizy/app:${PRIZY_VERSION:-local}
+  env_file: ["${ENV_FILE:-.env}"]
+  environment:
+    # Fixed by this stack's topology, not by the installation — every
+    # deployment of this compose file talks Postgres over the compose
+    # network as prizy_app, never anything else, so these are not left to
+    # the installer's .env (unlike .env.production.example, which lists
+    # DB_CONNECTION alongside the same fixed values as a human-readable
+    # reference, not as the actual source of truth here).
+    DB_CONNECTION: pgsql
+    DB_HOST: postgres
+    DB_PORT: "5432"
+    DB_DATABASE: prizy
+    DB_USERNAME: prizy_app
+    DB_PASSWORD: ${PRIZY_APP_DB_PASSWORD:?PRIZY_APP_DB_PASSWORD is required}
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    # Without this guard, an empty APP_KEY still lets every container come up
+    # and report healthy while every real request 500s with
+    # MissingAppKeyException — `up -d --wait` would return 0 on a fatally
+    # misconfigured install.
+    APP_KEY: ${APP_KEY:?APP_KEY is required}
+  volumes:
+    - storage:/var/www/html/storage
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: prizy
+      POSTGRES_USER: prizy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      PRIZY_APP_DB_PASSWORD: ${PRIZY_APP_DB_PASSWORD:?PRIZY_APP_DB_PASSWORD is required}
+      # Without this, initdb's own default pg_hba.conf trusts 127.0.0.1/::1
+      # unconditionally (ahead of the password-checked catch-all this image's
+      # entrypoint appends), so any password — including the dev literal —
+      # would authenticate over loopback. Force password auth there too.
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/prod/postgres-init.sh:/docker-entrypoint-initdb.d/01-app-role.sh:ro
+    # No published port: reachable only on the compose network.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prizy -d prizy"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 3s
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  # One-shot: waits for Postgres, migrates, exits. The long-running services
+  # wait on its successful completion, so exactly one container ever runs
+  # migrations. `up -d --wait` alone only redeploys whatever image is already
+  # tagged `prizy/app:${PRIZY_VERSION:-local}` — on an upgrade that means
+  # pairing it with `--build` or a new PRIZY_VERSION, otherwise compose finds
+  # the old image already present, builds nothing, and silently redeploys the
+  # old code (migrations included).
+  migrate:
+    <<: *app
+    restart: "no"
+    command: ["php", "artisan", "migrate", "--force"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    <<: *app
+    restart: unless-stopped
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+      target: web
+    image: prizy/web:${PRIZY_VERSION:-local}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-8080}:80"
+    depends_on:
+      app:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600", "--sleep=1"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    # The image's healthcheck pings php-fpm on :9000, which does not run here,
+    # so inheriting it would leave this container permanently unhealthy and hang
+    # `up -d --wait` — the installer's whole deploy step. Disabling it is NOT the
+    # answer either: on Compose 2.29.1 `up --wait` exits 1 with "container X has
+    # no healthcheck configured" while everything runs fine (compose #13522,
+    # reproduced on this machine). So each role gets a probe instead.
+    # `pgrep` is not in the image, but the entrypoint `exec`s its command, so the
+    # role's own command line is readable at /proc/1/cmdline. This only proves
+    # the process is still the one we started — it is true from the moment the
+    # entrypoint execs the command until the container dies, so it cannot
+    # detect a hung-but-alive worker (stuck job, dead Redis connection, etc).
+    # Its actual job is narrower: give `--wait` a real HEALTHCHECK to wait on
+    # instead of exiting 1 on "no healthcheck configured".
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q queue:work /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  scheduler:
+    <<: *app
+    restart: unless-stopped
+    command: ["php", "artisan", "schedule:work"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q schedule:work /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+  # Opt-in: `--profile realtime`. Without it the frontend polls, which is the
+  # application's own default.
+  reverb:
+    <<: *app
+    profiles: ["realtime"]
+    restart: unless-stopped
+    command: ["php", "artisan", "reverb:start", "--host=0.0.0.0", "--port=8080"]
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q reverb:start /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:

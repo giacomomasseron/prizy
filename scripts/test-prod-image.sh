@@ -37,7 +37,7 @@ assert_not_in_image() {
 }
 
 log "Building $IMAGE from Dockerfile.prod"
-docker build -f Dockerfile.prod -t "$IMAGE" .
+docker build -f Dockerfile.prod --target runtime -t "$IMAGE" .
 
 log "The image carries the application"
 # NOT `artisan --version` yet — that needs vendor/autoload.php, which the
