@@ -86,6 +86,26 @@ _dotenv_trim() {
     printf '%s' "$s"
 }
 
+# Prints the value of key $1 in the .env at $2, or nothing when the file does
+# not exist or does not set that key.
+#
+# Parsed exactly the way merge_env parses the same file, and last-assignment-
+# wins for the same reason: the two functions read the same .env, and a prompt
+# whose default disagreed with what the merge is about to preserve would show
+# the operator a value the install does not actually hold.
+env_value_of() {
+    local key="$1" file="$2" line found=""
+    [ -f "$file" ] || return 0
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%$'\r'}"
+        case "$line" in ''|'#'*) continue ;; esac
+        if [ "${line%%=*}" != "$line" ] && [ "$(_dotenv_trim "${line%%=*}")" = "$key" ]; then
+            found="$(_dotenv_trim "${line#*=}")"
+        fi
+    done < "$file"
+    printf '%s' "$found"
+}
+
 # Merges a template into an existing .env and prints the result on stdout.
 #
 # THE RULE: an existing NON-EMPTY value always wins. Everything else follows
@@ -227,8 +247,38 @@ Options:
   --https-port <port>    Default 443.
   --require-dns          Treat a failed DNS check as fatal rather than a warning.
   --dry-run              Print what would happen and change nothing.
-  --yes                  Never prompt; fail instead if something is missing.
+  --yes                  Never prompt; take every answer from the environment
+                         below and fail if a required one is missing. An SMTP
+                         relay that needs no authentication is expressed by
+                         leaving PRIZY_SMTP_USERNAME and PRIZY_SMTP_PASSWORD
+                         unset; only PRIZY_SMTP_HOST is required.
   --help                 This text.
+
+Environment:
+  Every prompt and every required flag has an environment variable behind it,
+  so an unattended run can come from a config management tool. A flag always
+  wins over its variable.
+
+  PRIZY_DOMAIN           Same as --domain.
+  PRIZY_EMAIL            Same as --email.
+  PRIZY_MAIL             Same as --mail= (smtp or log).
+  PRIZY_SMTP_HOST        SMTP host. Required under --yes --mail=smtp.
+  PRIZY_SMTP_PORT        SMTP port (default 587).
+  PRIZY_SMTP_USERNAME    SMTP username. Leave unset for an auth-less relay.
+  PRIZY_SMTP_PASSWORD    SMTP password. Leave unset for an auth-less relay.
+  PRIZY_SMTP_ENCRYPTION  tls, ssl or none (default tls).
+  PRIZY_ROOT             Install directory (default /data/prizy).
+  PRIZY_REPO_URL         Repository to clone under --ref.
+
+  On a re-run, an SMTP setting that is not given defaults to the value already
+  in the install's .env, so pressing Enter — or running with --yes and none of
+  the PRIZY_SMTP_* variables — keeps the mail configuration as it is.
+
+  Unattended example:
+
+    PRIZY_DOMAIN=example.com PRIZY_EMAIL=ops@example.com PRIZY_MAIL=smtp \
+    PRIZY_SMTP_HOST=smtp.example.com \
+    bash install.sh --yes --source-path /root/prizy
 USAGE
 }
 
@@ -319,16 +369,43 @@ preflight() {
     fi
 }
 
+# Checks the installed docker is new enough, and tells the two failures apart.
+#
+# `docker version --format '{{.Server.Version}}'` asks the DAEMON, so it prints
+# nothing and exits non-zero when the daemon is merely stopped. The previous
+# `|| echo 0` collapsed that into the string 0, which then failed the >= 24
+# comparison and reported a stopped daemon as "docker 0 is too old" — a claim
+# that sent the operator looking for an upgrade they did not need.
+check_docker_version() {
+    local have=""
+    have="$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)"
+
+    if [ -z "$have" ] && command -v systemctl >/dev/null 2>&1; then
+        info "the docker daemon is not answering; trying to start it"
+        run systemctl start docker || true
+        have="$(docker version --format '{{.Server.Version}}' 2>/dev/null || true)"
+    fi
+
+    if [ -z "$have" ]; then
+        if [ "$OPT_DRY_RUN" -eq 1 ]; then
+            warn "cannot reach the docker daemon; a real run would stop here"
+            return 0
+        fi
+        die "docker is installed but its daemon is not reachable. Start it (systemctl start docker) and re-run; if this is a rootless or remote setup, check DOCKER_HOST."
+    fi
+
+    if version_gte "$have" "24"; then
+        info "docker $have"
+    else
+        die "docker $have is too old; this stack needs 24 or newer"
+    fi
+}
+
 ensure_docker() {
     step 2 "Docker"
 
     if command -v docker >/dev/null 2>&1; then
-        local have; have="$(docker version --format '{{.Server.Version}}' 2>/dev/null || echo 0)"
-        if version_gte "$have" "24"; then
-            info "docker $have is already installed"
-        else
-            die "docker $have is too old; this stack needs 24 or newer"
-        fi
+        check_docker_version
     else
         info "installing docker via get.docker.com"
         run sh -c 'curl -fsSL https://get.docker.com | sh'
@@ -340,6 +417,12 @@ ensure_docker() {
             esac
         fi
         run systemctl enable --now docker
+        # The fallback above can land docker.io 20.x on an older Debian, so the
+        # >= 24 requirement is checked after every install path rather than
+        # only for a docker that was already present.
+        if [ "$OPT_DRY_RUN" -eq 0 ]; then
+            check_docker_version
+        fi
     fi
 
     if [ "$OPT_DRY_RUN" -eq 0 ] && ! docker compose version >/dev/null 2>&1; then
@@ -378,7 +461,40 @@ fetch_source() {
         [ -f "$OPT_SOURCE_PATH/docker-compose.prod.yml" ] || \
             die "--source-path '$OPT_SOURCE_PATH' does not look like a Prizy checkout (no docker-compose.prod.yml)"
         info "copying from $OPT_SOURCE_PATH"
+
+        # The install's own .env lives in $SOURCE_DIR and holds every secret
+        # this instance has. `cp -a` would overwrite it with whatever the
+        # checkout carries, and the strip below would delete it, so it is
+        # parked outside the copy's target and put back afterwards. Without
+        # this, a --source-path upgrade regenerates POSTGRES_PASSWORD against
+        # a database that still has the old one.
+        local parked="$PRIZY_ROOT/.env-parked-during-copy" had_env=0
+        if [ -f "$SOURCE_DIR/.env" ]; then
+            had_env=1
+            run mv "$SOURCE_DIR/.env" "$parked"
+        fi
+
         run sh -c "cp -a '$OPT_SOURCE_PATH/.' '$SOURCE_DIR/'"
+        # `cp -a src/. dst/` copies the SOURCE directory's own mode onto dst
+        # (verified: 0700 -> 0755), undoing what ensure_layout just set and
+        # just announced. Put it back.
+        run chmod 700 "$SOURCE_DIR"
+
+        # A developer checkout has a .env. It is gitignored, so `git clone`
+        # never carries it — but `cp -a` does, and configure() would then read
+        # it as "the existing install's .env", where merge_env's existing-wins
+        # rule lets development values (APP_ENV=local, APP_DEBUG=true, a dev
+        # APP_KEY, REDIS_PASSWORD=null) beat this template's production ones.
+        # So it is dropped before configure() ever sees it. The .env-* glob
+        # covers .env backups the checkout may carry for the same reason.
+        if [ -f "$OPT_SOURCE_PATH/.env" ]; then
+            info "not importing the checkout's .env; a production .env is generated instead"
+        fi
+        run sh -c "rm -f '$SOURCE_DIR/.env' '$SOURCE_DIR'/.env-*"
+
+        if [ "$had_env" -eq 1 ]; then
+            run mv "$parked" "$SOURCE_DIR/.env"
+        fi
         return 0
     fi
 
@@ -416,10 +532,18 @@ SMTP_PASSWORD=""
 # shellcheck disable=SC2034
 SMTP_ENCRYPTION=""
 
+# prompt_for <var> <question> [default] [empty-is-an-answer]
+#
+# The fourth argument marks a setting whose empty value is a real answer rather
+# than a missing one, so --yes accepts it: .env.production.example documents
+# empty MAIL_USERNAME/MAIL_PASSWORD as the auth-less-relay case, and without
+# this an unattended run could not express it.
 prompt_for() {
-    local var="$1" question="$2" default="${3:-}" answer=""
+    local var="$1" question="$2" default="${3:-}" allow_empty="${4:-0}" answer=""
     if [ "$OPT_YES" -eq 1 ]; then
-        [ -n "$default" ] || die "--yes was given but $var has no value and no default"
+        if [ -z "$default" ] && [ "$allow_empty" -eq 0 ]; then
+            die "--yes was given but $var has no value and no default; set PRIZY_$var (see --help, Environment)"
+        fi
         printf -v "$var" '%s' "$default"
         return 0
     fi
@@ -444,15 +568,34 @@ collect_mail_settings() {
                 info "DRY-RUN: would prompt for SMTP host, port, username, password and encryption"
                 return 0
             fi
-            # PRIZY_SMTP_* mirrors the PRIZY_DOMAIN/PRIZY_EMAIL/PRIZY_MAIL
-            # fallbacks in parse_args: passed as prompt_for's default, so
-            # --yes can use them without prompting and an interactive run
-            # sees them as the suggested [default].
-            prompt_for SMTP_HOST "SMTP host" "${PRIZY_SMTP_HOST:-}"
-            prompt_for SMTP_PORT "SMTP port" "${PRIZY_SMTP_PORT:-587}"
-            prompt_for SMTP_USERNAME "SMTP username" "${PRIZY_SMTP_USERNAME:-}"
-            prompt_for SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-}"
-            prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "${PRIZY_SMTP_ENCRYPTION:-tls}"
+            # Three sources, in this order: PRIZY_SMTP_* (the operator said so
+            # on this run), then whatever the install's .env already holds,
+            # then a fixed default.
+            #
+            # The middle one is what makes a re-run safe. Without it an
+            # operator pressing Enter through prompts that showed no current
+            # value collected empty strings, and write_env_file then wrote them
+            # over live credentials — mail failures in this application are
+            # silent, so nobody would find out until a customer said so.
+            local live="$SOURCE_DIR/.env" cur_host cur_port cur_user cur_pass cur_enc
+            cur_host="$(env_value_of MAIL_HOST "$live")"
+            cur_port="$(env_value_of MAIL_PORT "$live")"
+            cur_user="$(env_value_of MAIL_USERNAME "$live")"
+            cur_pass="$(env_value_of MAIL_PASSWORD "$live")"
+            # Back through mail_scheme_for's mapping, so the prompt offers the
+            # operator's own vocabulary rather than Laravel's.
+            case "$(env_value_of MAIL_SCHEME "$live")" in
+                smtps) cur_enc="ssl" ;;
+                smtp)  cur_enc="tls" ;;
+                null)  cur_enc="none" ;;
+                *)     cur_enc="" ;;
+            esac
+
+            prompt_for SMTP_HOST "SMTP host" "${PRIZY_SMTP_HOST:-$cur_host}"
+            prompt_for SMTP_PORT "SMTP port" "${PRIZY_SMTP_PORT:-${cur_port:-587}}"
+            prompt_for SMTP_USERNAME "SMTP username" "${PRIZY_SMTP_USERNAME:-$cur_user}" 1
+            prompt_for SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-$cur_pass}" 1
+            prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "${PRIZY_SMTP_ENCRYPTION:-${cur_enc:-tls}}"
             [ -n "$SMTP_HOST" ] || die "--mail=smtp needs an SMTP host"
             ;;
     esac
@@ -464,8 +607,45 @@ collect_mail_settings() {
 # function to shellcheck; bash's dynamic scoping means it still sees and
 # mutates write_env_file's local $merged either way.
 set_env_value() {
-    merged="$(printf '%s' "$merged" | awk -v k="$1" -v v="$2" \
-        'index($0, k "=") == 1 { print k "=" v; next } { print }')"
+    # The value travels through the environment rather than `awk -v v=...`,
+    # because awk processes escape sequences in a -v assignment. Verified on
+    # this machine: the five characters `pa\ts` passed with -v come out as
+    # `pa`, a real tab, `s`, and `\\` comes out as a single backslash — so an
+    # SMTP password containing either was silently written as a different
+    # password. ENVIRON is taken byte-for-byte; same inputs, same output.
+    merged="$(printf '%s' "$merged" | SET_ENV_VALUE="$2" awk -v k="$1" \
+        'index($0, k "=") == 1 { print k "=" ENVIRON["SET_ENV_VALUE"]; next } { print }')"
+}
+
+# Refuses a value this .env cannot carry back out unchanged.
+#
+# Values here are written UNQUOTED. Quoting them is not the fix: merge_env
+# preserves every existing value byte-for-byte and has no unquoting step, so
+# quotes added on write would be read back as part of the value and wrapped
+# again on the next upgrade. Refusing is, and these are the two cases:
+#
+#   $  — Compose's dotenv parser expands it as an interpolation. This is the
+#        same hazard gen_secret_for's comment cites as the reason generated
+#        secrets are hex.
+#   whitespace — merge_env's own specification (see its header) is that
+#        Compose trims whitespace from a value's edges, so a password with a
+#        leading or trailing space is read back as a different password. The
+#        check refuses whitespace anywhere rather than at the edges only,
+#        because .env.production.example's header records that Compose also
+#        strips an inline `# comment` when a value precedes it on the line,
+#        and a value holding both a space and a `#` risks being truncated
+#        there. (A `#` on its own is safe, and stays allowed — the merge
+#        tests above round-trip `p=a#ss/w+rd==`.)
+#
+# Refusing with a message the operator can act on beats writing a credential
+# that quietly becomes a different credential.
+reject_undotenvable() {
+    case "$2" in
+        *'$'*)
+            die "$1 cannot contain '\$': Compose's dotenv parser would read it as an interpolation. Use a value without it, or set $1 in $SOURCE_DIR/.env by hand after the install." ;;
+        *[[:space:]]*)
+            die "$1 cannot contain whitespace: Compose's dotenv parser trims it from a value's edges. Use a value without it, or set $1 in $SOURCE_DIR/.env by hand after the install." ;;
+    esac
 }
 
 # Laravel 13 names this MAIL_SCHEME (null|smtp|smtps), not MAIL_ENCRYPTION —
@@ -482,31 +662,49 @@ mail_scheme_for() {
     esac
 }
 
-# Writes a complete .env at $1 from the template at $2.
+# Writes a complete .env at $1 from the template at $2, backing up any existing
+# $1 into the directory $3 (default: alongside $1).
 #
-# Split out from `configure` and taking both paths explicitly so the test
-# suite can drive it against a temporary directory. The ordering matters and
-# is the whole point: merge FIRST (existing non-empty values win), then fill
-# only what is still empty. Doing it the other way round would generate a new
-# password and then "preserve" it over the live one.
+# Split out from `configure` and taking the paths explicitly so the test suite
+# can drive it against a temporary directory. The ordering matters and is the
+# whole point: merge FIRST (existing non-empty values win), then fill only what
+# is still empty. Doing it the other way round would generate a new password
+# and then "preserve" it over the live one.
 write_env_file() {
-    local dest="$1" template="$2" merged key value mail_scheme
+    local dest="$1" template="$2" backup_dir="${3:-}" merged key value mail_scheme
+    [ -n "$backup_dir" ] || backup_dir="$(dirname "$dest")"
 
     if [ -f "$dest" ]; then
-        local backup
-        backup="${dest}-$(date +%Y%m%d%H%M%S)"
+        local backup stamp n=0
+        mkdir -p "$backup_dir"
+        # `date +%...S` has one-second resolution and two runs a second apart
+        # are ordinary (the test suite alone produces several), so the stamp
+        # alone silently overwrote the older backup. Take the first free name
+        # instead of trusting the clock.
+        stamp="$(date +%Y%m%d%H%M%S)"
+        backup="$backup_dir/$(basename "$dest")-$stamp"
+        while [ -e "$backup" ]; do
+            n=$((n + 1))
+            backup="$backup_dir/$(basename "$dest")-$stamp.$n"
+        done
         cp "$dest" "$backup"
         chmod 600 "$backup"
-        info "backed up the existing .env to $(basename "$backup")"
+        info "backed up the existing .env to $backup"
     fi
 
     merged="$(merge_env "$dest" "$template")"
 
     for key in "${SECRET_KEYS[@]}"; do
-        if printf '%s' "$merged" | grep -qx "${key}="; then
+        # The literal string `null` counts as unset HERE ONLY. A four-character
+        # secret is never one an operator meant, and it is what a development
+        # .env carries for REDIS_PASSWORD — non-empty, so it wins the merge and
+        # satisfies the compose `:?` guard, and Redis then starts with
+        # `--requirepass null`. Deliberately not generalised past SECRET_KEYS:
+        # .env.example uses `null` legitimately for MAIL_USERNAME/MAIL_PASSWORD.
+        if printf '%s' "$merged" | grep -qxE "${key}=(null)?"; then
             value="$(gen_secret_for "$key")"
             merged="$(printf '%s' "$merged" | awk -v k="$key" -v v="$value" \
-                '$0 == k "=" { print k "=" v; next } { print }')"
+                '$0 == k "=" || $0 == k "=null" { print k "=" v; next } { print }')"
         fi
     done
 
@@ -523,12 +721,22 @@ write_env_file() {
         # MAIL_HOST empty, whichever caller reaches this function.
         [ -n "$SMTP_HOST" ] || die "--mail=smtp needs an SMTP host (SMTP_HOST is empty)"
         mail_scheme_for "$SMTP_ENCRYPTION"
+        reject_undotenvable MAIL_HOST "$SMTP_HOST"
+        reject_undotenvable MAIL_PORT "$SMTP_PORT"
+        reject_undotenvable MAIL_USERNAME "$SMTP_USERNAME"
+        reject_undotenvable MAIL_PASSWORD "$SMTP_PASSWORD"
         set_env_value MAIL_MAILER smtp
         set_env_value MAIL_SCHEME "$mail_scheme"
         set_env_value MAIL_HOST "$SMTP_HOST"
-        set_env_value MAIL_PORT "$SMTP_PORT"
-        set_env_value MAIL_USERNAME "$SMTP_USERNAME"
-        set_env_value MAIL_PASSWORD "$SMTP_PASSWORD"
+        # An EMPTY collected value never overwrites: merge_env has already
+        # preserved whatever the live .env held, and blanking it here would
+        # undo that for the three keys a re-run is most likely to leave
+        # unanswered. MAIL_HOST is exempt because it is guarded non-empty
+        # above, and MAIL_SCHEME because mail_scheme_for only ever yields one
+        # of three fixed strings.
+        if [ -n "$SMTP_PORT" ];     then set_env_value MAIL_PORT "$SMTP_PORT"; fi
+        if [ -n "$SMTP_USERNAME" ]; then set_env_value MAIL_USERNAME "$SMTP_USERNAME"; fi
+        if [ -n "$SMTP_PASSWORD" ]; then set_env_value MAIL_PASSWORD "$SMTP_PASSWORD"; fi
         set_env_value MAIL_FROM_ADDRESS "$OPT_EMAIL"
     fi
 
@@ -547,7 +755,11 @@ configure() {
         info "DRY-RUN: would write $SOURCE_DIR/.env for $OPT_DOMAIN, generating ${#SECRET_KEYS[@]} secrets"
         return 0
     fi
-    write_env_file "$SOURCE_DIR/.env" "$SOURCE_DIR/.env.production.example"
+    # Third argument: $PRIZY_ROOT/backups is the directory ensure_layout
+    # creates and the layout message advertises, so .env backups belong there
+    # rather than beside the file. Keeping them out of $SOURCE_DIR also means
+    # fetch_source's .env-* strip can only ever delete a checkout's own files.
+    write_env_file "$SOURCE_DIR/.env" "$SOURCE_DIR/.env.production.example" "$PRIZY_ROOT/backups"
     info "wrote $SOURCE_DIR/.env (mode 0600)"
 }
 
@@ -658,19 +870,42 @@ deploy() {
     run sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"
 }
 
+# deploy() ran `up -d --wait`, which returns only once every service has passed
+# its own healthcheck — including the web container's, which is
+# `wget -qO- http://127.0.0.1:2020/health` (Dockerfile.prod). So arriving here
+# IS the verification that the stack is serving, and this step says so instead
+# of inventing a second, weaker one.
+#
+# The probe below repeats that same request by hand, for a line in the log an
+# operator can read. It has to run INSIDE the container: /health is routed only
+# on Caddy's :2020 listener (docker/prod/Caddyfile), which is deliberately
+# never published, and the public site address defaults to `https://`, so the
+# host's published HTTP port carries nothing but the ACME challenge handler.
+# Probing 127.0.0.1:$OPT_HTTP_PORT from the host, as this step used to, could
+# therefore never answer — it warned on every successful install.
+verify_health() {
+    local probe
+    probe="cd '$SOURCE_DIR' && $(compose_cmd) exec -T web wget -qO- http://127.0.0.1:2020/health"
+
+    if [ "$OPT_DRY_RUN" -eq 1 ]; then
+        run sh -c "$probe"
+        return 0
+    fi
+
+    info "every service passed its healthcheck, so the stack is already serving"
+    if sh -c "$probe" >/dev/null 2>&1; then
+        info "/health answered inside the web container"
+    else
+        warn "could not re-run the /health probe inside the web container. The stack is"
+        warn "up — every healthcheck passed — but this check did not; look at"
+        warn "  cd $SOURCE_DIR && $(compose_cmd) ps"
+    fi
+}
+
 report() {
     step 8 "Ready"
 
-    if [ "$OPT_DRY_RUN" -eq 0 ]; then
-        local health=""
-        health="$(curl -fsS --max-time 10 "http://127.0.0.1:${OPT_HTTP_PORT}/health" 2>/dev/null || echo '')"
-        if [ -n "$health" ]; then
-            info "the application answers on the edge"
-        else
-            warn "the stack started but /health did not answer yet; give it a moment and check"
-            warn "  cd $SOURCE_DIR && $(compose_cmd) ps"
-        fi
-    fi
+    verify_health
 
     # /signup and NOT the bare domain: routes/web.php:19 serves / through the
     # tenant middleware with no exemption, and the tenant finder resolves no

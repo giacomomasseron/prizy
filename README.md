@@ -89,11 +89,21 @@ foreground, since Horizon owns the queue in that profile.
 
 ## Self-hosting
 
-One command on a fresh Debian/Ubuntu or RHEL box, as root:
+`scripts/install.sh` takes a fresh Debian/Ubuntu or RHEL box to a running,
+TLS-terminated Prizy. It has to run **on that box, as root**, so the first step
+is getting a copy of this repository onto it. The repository has no published
+remote yet, so today that means copying a checkout across and installing from
+it:
 
 ```bash
-bash scripts/install.sh --domain example.com --email ops@example.com --mail=smtp
+scp -r . root@your-server:/opt/prizy-src
+ssh root@your-server 'bash /opt/prizy-src/scripts/install.sh \
+    --domain example.com --email ops@example.com --mail=smtp \
+    --source-path /opt/prizy-src'
 ```
+
+Once the repository is published, drop `--source-path` and the installer clones
+it instead — `--ref <tag|branch>` picks what to clone (default `main`).
 
 Point both `A example.com` and `A *.example.com` at the machine first — every
 workspace lives at its own subdomain, and certificates are issued per hostname
@@ -101,17 +111,38 @@ on first request.
 
 The installer checks the machine, installs Docker, writes `/data/prizy/source`,
 generates every secret, builds the image and brings the stack up. It finishes by
-printing `https://<domain>/signup`, where you create the first workspace.
+printing `https://<domain>/signup`, where you create the first workspace. A
+checkout's own `.env` is never imported: the installer deletes it after the copy
+and generates a production one, so a laptop's `APP_DEBUG=true` and `APP_KEY`
+cannot follow the source onto a server.
 
-Re-running the same command is the upgrade path. It backs up `.env`, fills only
-keys that are missing or empty — an existing value is never overwritten — then
-rebuilds and migrates.
+Re-running the same command is the upgrade path. It backs up `.env` to
+`/data/prizy/backups`, fills only keys that are missing or empty — an existing
+value is never overwritten — then rebuilds and migrates.
 
 Useful flags: `--with-realtime` to run Reverb and compile the WebSocket client
 into the bundle (without it the interface polls), `--mail=log` for an evaluation
-install that sends no email, `--source-path <dir>` to install from a local
-checkout instead of cloning, and `--dry-run` to see the plan without touching
+install that sends no email, and `--dry-run` to see the plan without touching
 anything. `--help` lists them all.
+
+### Unattended installs
+
+Every prompt and every required flag has a `PRIZY_*` environment variable behind
+it, so a config management tool can drive the whole install with `--yes` and no
+terminal:
+
+```bash
+ssh root@your-server 'PRIZY_DOMAIN=example.com PRIZY_EMAIL=ops@example.com \
+    PRIZY_MAIL=smtp PRIZY_SMTP_HOST=smtp.example.com PRIZY_SMTP_PORT=587 \
+    PRIZY_SMTP_USERNAME=postmaster PRIZY_SMTP_PASSWORD=... \
+    PRIZY_SMTP_ENCRYPTION=tls \
+    bash /opt/prizy-src/scripts/install.sh --yes --source-path /opt/prizy-src'
+```
+
+Only `PRIZY_SMTP_HOST` is required under `--mail=smtp`; leave the username and
+password unset for a relay that needs no authentication. On a re-run, any SMTP
+setting you do not supply keeps the value already in the install's `.env`.
+`--help` lists every variable.
 
 ## About Laravel
 

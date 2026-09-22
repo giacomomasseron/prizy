@@ -10,10 +10,15 @@
 set -euo pipefail
 
 FAILED=0
+SKIPPED=0
 
 log()  { printf '\033[0;34m==>\033[0m %s\n' "$1"; }
 pass() { printf '  \033[0;32mok\033[0m   %s\n' "$1"; }
 fail() { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; FAILED=1; }
+# A third outcome, for the two checks that need something this machine may not
+# have (working DNS, dig). Reported, and counted in the closing line, so an
+# unrunnable check is visible rather than passing quietly.
+skip() { printf '  \033[0;33mskip\033[0m %s\n' "$1"; SKIPPED=$((SKIPPED + 1)); }
 
 assert_eq() {
     local description="$1" expected="$2" actual="$3"
@@ -380,30 +385,49 @@ else
 fi
 
 log "DNS resolution helper — resolves via both getent and dig"
-ip_via_getent="$(resolve_a example.com || echo '')"
-if printf '%s' "$ip_via_getent" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
-    pass "resolve_a resolves example.com via getent"
+# These two are the only checks in this file that leave the machine. A unit
+# suite must not fail because the network is down or a tool is missing, and it
+# must not pass either — that would hide a real regression behind a cable. So
+# each one first establishes that its prerequisite works at all, and skips
+# loudly when it does not.
+if ! command -v getent >/dev/null 2>&1; then
+    skip "resolve_a resolves example.com via getent (getent is not installed)"
+elif ! getent ahostsv4 example.com >/dev/null 2>&1; then
+    skip "resolve_a resolves example.com via getent (no DNS from this machine)"
 else
-    fail "resolve_a resolves example.com via getent (got '$ip_via_getent')"
+    ip_via_getent="$(resolve_a example.com || echo '')"
+    if printf '%s' "$ip_via_getent" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+        pass "resolve_a resolves example.com via getent"
+    else
+        fail "resolve_a resolves example.com via getent (got '$ip_via_getent')"
+    fi
 fi
 
 # A PATH containing only dig/awk/grep/head (no getent) forces the fallback
 # branch without needing root or an actual uninstall — command -v getent
 # genuinely fails to find it under this PATH, same as a box that never had
 # the package installed.
-FAKEBIN="$(mktemp -d)"
-for tool in dig awk grep head; do
-    ln -s "$(command -v "$tool")" "$FAKEBIN/$tool"
-done
-OLD_PATH="$PATH"
-PATH="$FAKEBIN"
-ip_via_dig="$(resolve_a example.com || echo '')"
-PATH="$OLD_PATH"
-rm -rf "$FAKEBIN"
-if printf '%s' "$ip_via_dig" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
-    pass "resolve_a falls back to dig when getent is unavailable"
+if ! command -v dig >/dev/null 2>&1; then
+    # Not merely unrunnable: `ln -s "$(command -v dig)" …` with no dig becomes
+    # `ln -s "" …`, which under set -e aborted this whole file.
+    skip "resolve_a falls back to dig when getent is unavailable (dig is not installed)"
+elif ! dig +short A example.com 2>/dev/null | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+    skip "resolve_a falls back to dig when getent is unavailable (no DNS from this machine)"
 else
-    fail "resolve_a falls back to dig when getent is unavailable (got '$ip_via_dig')"
+    FAKEBIN="$(mktemp -d)"
+    for tool in dig awk grep head; do
+        ln -s "$(command -v "$tool")" "$FAKEBIN/$tool"
+    done
+    OLD_PATH="$PATH"
+    PATH="$FAKEBIN"
+    ip_via_dig="$(resolve_a example.com || echo '')"
+    PATH="$OLD_PATH"
+    rm -rf "$FAKEBIN"
+    if printf '%s' "$ip_via_dig" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+        pass "resolve_a falls back to dig when getent is unavailable"
+    else
+        fail "resolve_a falls back to dig when getent is unavailable (got '$ip_via_dig')"
+    fi
 fi
 
 # Reset for the sections below, which assume --mail=log's plain shape.
@@ -434,6 +458,337 @@ else
     fail "the previous .env was backed up before being rewritten"
 fi
 rm -rf "$GEN_TMP"
+
+log "A source checkout's .env is never imported into the install"
+# A developer checkout has a .env. It is gitignored, so `git clone` never
+# carries it — but `cp -a` does, and merge_env's existing-wins rule would then
+# let APP_ENV=local, APP_DEBUG=true, LOG_LEVEL=debug and a dev APP_KEY beat the
+# production template, with REDIS_PASSWORD=null non-empty enough to satisfy
+# both the generator's emptiness test and the compose `:?` guard.
+CHECKOUT="$(mktemp -d -p "$TMP")"
+# 0755, because `cp -a src/. dst/` copies the SOURCE directory's mode onto the
+# destination — the mode assertion below is vacuous if both are already 0700.
+chmod 755 "$CHECKOUT"
+cp "$(dirname "$0")/../.env.production.example" "$CHECKOUT/.env.production.example"
+touch "$CHECKOUT/docker-compose.prod.yml"
+cat > "$CHECKOUT/.env" <<'DEVENV'
+APP_ENV=local
+APP_DEBUG=true
+APP_KEY=base64:DEVELOPER_KEY_FROM_A_LAPTOP
+LOG_LEVEL=debug
+REDIS_PASSWORD=null
+DEVENV
+printf 'APP_ENV=local\n' > "$CHECKOUT/.env-20200101000000"
+
+FAKE_ROOT="$(mktemp -d -p "$TMP")"
+mkdir -p "$FAKE_ROOT/source" "$FAKE_ROOT/backups"
+chmod 700 "$FAKE_ROOT/source"
+# Subshells throughout this section: PRIZY_ROOT/SOURCE_DIR/OPT_* are globals in
+# the sourced installer, and the sections below this one depend on their
+# file-scope values.
+(
+    PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
+    OPT_SOURCE_PATH="$CHECKOUT"; OPT_DRY_RUN=0
+    fetch_source
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+
+if [ -e "$FAKE_ROOT/source/.env" ]; then
+    fail "the checkout's .env does not survive fetch_source"
+else
+    pass "the checkout's .env does not survive fetch_source"
+fi
+if ls "$FAKE_ROOT/source"/.env-* >/dev/null 2>&1; then
+    fail "the checkout's .env-* backups do not survive fetch_source either"
+else
+    pass "the checkout's .env-* backups do not survive fetch_source either"
+fi
+assert_eq "the copy leaves the install directory at mode 700" "700" \
+    "$(stat -c '%a' "$FAKE_ROOT/source")"
+
+(
+    PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    configure
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+
+assert_eq "APP_ENV is the template's production, not the checkout's local" "production" \
+    "$(grep '^APP_ENV=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+assert_eq "APP_DEBUG is the template's false, not the checkout's true" "false" \
+    "$(grep '^APP_DEBUG=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+assert_eq "LOG_LEVEL is the template's warning, not the checkout's debug" "warning" \
+    "$(grep '^LOG_LEVEL=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+generated_redis="$(grep '^REDIS_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+if printf '%s' "$generated_redis" | grep -qE '^[0-9a-f]{64}$'; then
+    pass "REDIS_PASSWORD is a generated 64-character hex secret, not the checkout's null"
+else
+    fail "REDIS_PASSWORD is a generated 64-character hex secret, not the checkout's null (got '$generated_redis')"
+fi
+if [ "$(grep '^APP_KEY=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)" = "base64:DEVELOPER_KEY_FROM_A_LAPTOP" ]; then
+    fail "APP_KEY is generated here, not inherited from the developer's checkout"
+else
+    pass "APP_KEY is generated here, not inherited from the developer's checkout"
+fi
+
+log "A --source-path re-run keeps the install's own .env"
+# The strip above must not take the live one with it: this is the documented
+# upgrade path, and regenerating POSTGRES_PASSWORD against a database that
+# still holds the old one takes the instance down.
+live_db_pw="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+(
+    PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
+    OPT_SOURCE_PATH="$CHECKOUT"; OPT_DRY_RUN=0
+    fetch_source
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+if [ -f "$FAKE_ROOT/source/.env" ]; then
+    live_db_pw_after="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+else
+    live_db_pw_after="<the install has no .env at all>"
+fi
+assert_eq "the install's own POSTGRES_PASSWORD survives a --source-path re-run" \
+    "$live_db_pw" "$live_db_pw_after"
+
+log ".env backups land in PRIZY_ROOT/backups, and never collide"
+(
+    PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    configure
+    configure
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+# Two in the same second, which is what `date +…%S` alone could not name apart.
+assert_eq "two .env backups written within one second are both kept" "2" \
+    "$(find "$FAKE_ROOT/backups" -maxdepth 1 -name '.env-*' | wc -l)"
+if ls "$FAKE_ROOT/source"/.env-* >/dev/null 2>&1; then
+    fail "no .env backup is left inside the source directory"
+else
+    pass "no .env backup is left inside the source directory"
+fi
+
+log "A secret whose value is the literal string null is regenerated"
+NULL_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$NULL_TMP/.env.production.example"
+cat > "$NULL_TMP/.env" <<'NULLENV'
+REDIS_PASSWORD=null
+MAIL_USERNAME=null
+NULLENV
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    write_env_file "$NULL_TMP/.env" "$NULL_TMP/.env.production.example"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+null_redis="$(grep '^REDIS_PASSWORD=' "$NULL_TMP/.env" | cut -d= -f2-)"
+if printf '%s' "$null_redis" | grep -qE '^[0-9a-f]{64}$'; then
+    pass "REDIS_PASSWORD=null is treated as unset and regenerated"
+else
+    fail "REDIS_PASSWORD=null is treated as unset and regenerated (got '$null_redis')"
+fi
+# .env.example uses `null` legitimately for MAIL_USERNAME/MAIL_PASSWORD, so the
+# rule covers SECRET_KEYS and nothing else.
+assert_eq "MAIL_USERNAME=null is left alone (SECRET_KEYS only)" "null" \
+    "$(grep '^MAIL_USERNAME=' "$NULL_TMP/.env" | cut -d= -f2-)"
+
+log "An SMTP password reaches the .env byte for byte, or is refused"
+ESC_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$ESC_TMP/.env.production.example"
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="smtp"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    SMTP_HOST="smtp.example.com"; SMTP_PORT="587"; SMTP_USERNAME="postmaster"
+    SMTP_ENCRYPTION="tls"
+    # awk expands escape sequences in a -v assignment: this arrives as a real
+    # tab and a single backslash unless the value travels another way.
+    SMTP_PASSWORD='pa\ts\\word'
+    write_env_file "$ESC_TMP/.env" "$ESC_TMP/.env.production.example"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "a password containing backslash escapes is written literally" 'pa\ts\\word' \
+    "$(grep '^MAIL_PASSWORD=' "$ESC_TMP/.env" | cut -d= -f2-)"
+
+dollar_rc=0
+# SC2030: every OPT_*/SMTP_* assignment in this file's subshells is deliberately
+# scoped to its subshell, so the sections that follow keep the file-scope values
+# they were set up with. SC2016: the single quotes are the point — this password
+# must reach write_env_file with a literal $ in it.
+# shellcheck disable=SC2030,SC2016
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="smtp"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    SMTP_HOST="smtp.example.com"; SMTP_PORT="587"; SMTP_USERNAME="postmaster"
+    SMTP_ENCRYPTION="tls"
+    SMTP_PASSWORD='pa$sword'
+    write_env_file "$ESC_TMP/.env" "$ESC_TMP/.env.production.example"
+) >/dev/null 2>&1 || dollar_rc=$?
+if [ "$dollar_rc" -ne 0 ]; then
+    pass "a password containing \$ is refused, not written for Compose to interpolate"
+else
+    fail "a password containing \$ is refused, not written for Compose to interpolate"
+fi
+assert_eq "the refused password never reaches the file" 'pa\ts\\word' \
+    "$(grep '^MAIL_PASSWORD=' "$ESC_TMP/.env" | cut -d= -f2-)"
+
+log "A re-run with --mail=smtp keeps the live mail credentials"
+# write_env_file merges first (preserving everything) and then filled MAIL_*
+# unconditionally, so an operator pressing Enter through prompts that showed no
+# current value blanked MAIL_USERNAME/MAIL_PASSWORD and reset MAIL_PORT and
+# MAIL_SCHEME. Mail failures here are silent, so nobody would notice.
+SMTP_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$SMTP_TMP/.env.production.example"
+cat > "$SMTP_TMP/.env" <<'LIVEMAIL'
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.live.example
+MAIL_PORT=2525
+MAIL_USERNAME=live-user
+MAIL_PASSWORD=live-pass
+MAIL_SCHEME=smtps
+LIVEMAIL
+
+# SC2031: the SMTP_* read here are the ones collect_mail_settings set in THIS
+# subshell; the earlier subshells' assignments are irrelevant to it by design.
+# shellcheck disable=SC2031
+if (
+    SOURCE_DIR="$SMTP_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    collect_mail_settings >/dev/null 2>&1
+    [ "$SMTP_HOST" = "smtp.live.example" ] && [ "$SMTP_PORT" = "2525" ] && \
+        [ "$SMTP_USERNAME" = "live-user" ] && [ "$SMTP_PASSWORD" = "live-pass" ] && \
+        [ "$SMTP_ENCRYPTION" = "ssl" ]
+); then
+    pass "each SMTP prompt defaults to the value already in the install's .env"
+else
+    fail "each SMTP prompt defaults to the value already in the install's .env"
+fi
+
+(
+    SOURCE_DIR="$SMTP_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    collect_mail_settings
+    write_env_file "$SMTP_TMP/.env" "$SMTP_TMP/.env.production.example"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "MAIL_USERNAME is byte-identical after a re-run that supplies nothing" "live-user" \
+    "$(grep '^MAIL_USERNAME=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_PASSWORD is byte-identical after a re-run that supplies nothing" "live-pass" \
+    "$(grep '^MAIL_PASSWORD=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_PORT is not reset from 2525 to the 587 default" "2525" \
+    "$(grep '^MAIL_PORT=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_SCHEME is not reset from smtps to smtp" "smtps" \
+    "$(grep '^MAIL_SCHEME=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+
+(
+    SOURCE_DIR="$SMTP_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    PRIZY_SMTP_USERNAME="new-user"; PRIZY_SMTP_PASSWORD="new-pass"
+    PRIZY_SMTP_PORT="465"; PRIZY_SMTP_ENCRYPTION="ssl"
+    collect_mail_settings
+    write_env_file "$SMTP_TMP/.env" "$SMTP_TMP/.env.production.example"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "a re-run that does supply a new MAIL_USERNAME updates it" "new-user" \
+    "$(grep '^MAIL_USERNAME=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "a re-run that does supply a new MAIL_PASSWORD updates it" "new-pass" \
+    "$(grep '^MAIL_PASSWORD=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "a re-run that does supply a new MAIL_PORT updates it" "465" \
+    "$(grep '^MAIL_PORT=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+
+# The seeding above and this guard are two separate defences, and the brief
+# asked for both: this one is what protects any caller reaching write_env_file
+# with an empty collected value, which is the shape the unit suite itself has.
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="smtp"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    SMTP_HOST="smtp.live.example"; SMTP_ENCRYPTION="ssl"
+    SMTP_PORT=""; SMTP_USERNAME=""; SMTP_PASSWORD=""
+    write_env_file "$SMTP_TMP/.env" "$SMTP_TMP/.env.production.example"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "an empty collected MAIL_USERNAME leaves the live one alone" "new-user" \
+    "$(grep '^MAIL_USERNAME=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "an empty collected MAIL_PASSWORD leaves the live one alone" "new-pass" \
+    "$(grep '^MAIL_PASSWORD=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+assert_eq "an empty collected MAIL_PORT leaves the live one alone" "465" \
+    "$(grep '^MAIL_PORT=' "$SMTP_TMP/.env" | cut -d= -f2-)"
+
+log "An unattended run can express an SMTP relay that needs no authentication"
+# .env.production.example documents empty MAIL_USERNAME/MAIL_PASSWORD as the
+# auth-less relay, which --yes used to refuse to produce: prompt_for died on
+# any setting with no default.
+RELAY_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$RELAY_TMP/.env.production.example"
+relay_rc=0
+(
+    SOURCE_DIR="$RELAY_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    PRIZY_SMTP_HOST="relay.example.com"
+    collect_mail_settings
+    write_env_file "$RELAY_TMP/.env" "$RELAY_TMP/.env.production.example"
+) >/dev/null 2>&1 || relay_rc=$?
+if [ "$relay_rc" -eq 0 ]; then
+    pass "--yes --mail=smtp with only PRIZY_SMTP_HOST completes"
+else
+    fail "--yes --mail=smtp with only PRIZY_SMTP_HOST completes (exit $relay_rc)"
+fi
+assert_eq "the auth-less relay's MAIL_HOST is written" "relay.example.com" \
+    "$(grep '^MAIL_HOST=' "$RELAY_TMP/.env" | cut -d= -f2-)"
+assert_eq "the auth-less relay's MAIL_USERNAME is empty" "" \
+    "$(grep '^MAIL_USERNAME=' "$RELAY_TMP/.env" | cut -d= -f2-)"
+assert_eq "the auth-less relay's MAIL_PASSWORD is empty" "" \
+    "$(grep '^MAIL_PASSWORD=' "$RELAY_TMP/.env" | cut -d= -f2-)"
+
+log "Every PRIZY_* variable is documented in --help"
+help_text="$(bash "$INSTALL_SH" --help 2>&1)"
+missing_env_docs=""
+for prizy_var in PRIZY_DOMAIN PRIZY_EMAIL PRIZY_MAIL PRIZY_SMTP_HOST PRIZY_SMTP_PORT \
+                 PRIZY_SMTP_USERNAME PRIZY_SMTP_PASSWORD PRIZY_SMTP_ENCRYPTION \
+                 PRIZY_ROOT PRIZY_REPO_URL; do
+    printf '%s' "$help_text" | grep -q "$prizy_var" || missing_env_docs="$missing_env_docs $prizy_var"
+done
+assert_eq "--help names every PRIZY_* variable the installer reads" "" "$missing_env_docs"
+
+log "Docker: a stopped daemon is not an old daemon"
+# `docker version --format '{{.Server.Version}}'` asks the daemon, so a stopped
+# daemon prints nothing and exits non-zero. The old `|| echo 0` turned that into
+# the version string "0" and reported it as "docker 0 is too old".
+#
+# The fake PATH holds docker plus only what version_gte needs, so
+# check_docker_version finds no systemctl under it and cannot touch this
+# machine's services.
+DOCKER_BIN="$(mktemp -d -p "$TMP")"
+for tool in sort head; do
+    ln -s "$(command -v "$tool")" "$DOCKER_BIN/$tool"
+done
+
+printf '#!/bin/sh\nexit 1\n' > "$DOCKER_BIN/docker"
+chmod +x "$DOCKER_BIN/docker"
+daemon_rc=0
+daemon_out="$( ( PATH="$DOCKER_BIN"; OPT_DRY_RUN=0; check_docker_version ) 2>&1 )" || daemon_rc=$?
+if [ "$daemon_rc" -ne 0 ] && printf '%s' "$daemon_out" | grep -q 'daemon is not reachable'; then
+    pass "an unreachable docker daemon is reported as unreachable"
+else
+    fail "an unreachable docker daemon is reported as unreachable (exit $daemon_rc: $daemon_out)"
+fi
+if printf '%s' "$daemon_out" | grep -q 'too old'; then
+    fail "an unreachable docker daemon is never called too old"
+else
+    pass "an unreachable docker daemon is never called too old"
+fi
+
+printf '#!/bin/sh\necho 20.10.5\n' > "$DOCKER_BIN/docker"
+old_docker_rc=0
+old_docker_out="$( ( PATH="$DOCKER_BIN"; OPT_DRY_RUN=0; check_docker_version ) 2>&1 )" || old_docker_rc=$?
+if [ "$old_docker_rc" -ne 0 ] && printf '%s' "$old_docker_out" | grep -q 'too old'; then
+    pass "a reachable docker older than 24 is refused as too old"
+else
+    fail "a reachable docker older than 24 is refused as too old (exit $old_docker_rc: $old_docker_out)"
+fi
+
+printf '#!/bin/sh\necho 27.1.1\n' > "$DOCKER_BIN/docker"
+new_docker_rc=0
+( PATH="$DOCKER_BIN"; OPT_DRY_RUN=0; check_docker_version ) >/dev/null 2>&1 || new_docker_rc=$?
+if [ "$new_docker_rc" -eq 0 ]; then
+    pass "a reachable docker 27.1.1 is accepted"
+else
+    fail "a reachable docker 27.1.1 is accepted (exit $new_docker_rc)"
+fi
+rm -rf "$DOCKER_BIN"
 
 log "The full --dry-run path"
 full_dry="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com \
@@ -470,6 +825,24 @@ else
     pass "the closing instruction never points at the bare domain (it 500s)"
 fi
 
+# The closing verification used to curl http://127.0.0.1:$OPT_HTTP_PORT/health
+# from the host, which can never answer: /health is routed only on Caddy's
+# internal :2020 listener (docker/prod/Caddyfile), which is never published,
+# and the public site address defaults to https://, so the published HTTP port
+# carries only the ACME challenge handler. Every successful install therefore
+# ended on a warning. Anchored on the DRY-RUN: prefix, which only run() prints,
+# so this reads the command that would actually execute.
+if printf '%s' "$full_dry" | grep -qE 'DRY-RUN:.*exec -T web wget .*127\.0\.0\.1:2020/health'; then
+    pass "the closing check probes /health on the internal listener inside the web container"
+else
+    fail "the closing check probes /health on the internal listener inside the web container"
+fi
+if printf '%s' "$full_dry" | grep -q '127\.0\.0\.1:80'; then
+    fail "the closing check never probes the published HTTP port, which cannot answer"
+else
+    pass "the closing check never probes the published HTTP port, which cannot answer"
+fi
+
 realtime_dry="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com \
     --mail=log --with-realtime --source-path "$(dirname "$0")/.." 2>&1 || true)"
 if printf '%s' "$realtime_dry" | grep -q 'VITE_REVERB_APP_KEY'; then
@@ -493,6 +866,9 @@ else
 fi
 
 echo
+if [ "$SKIPPED" -gt 0 ]; then
+    printf '\033[0;33m%d check(s) skipped — see the skip lines above\033[0m\n' "$SKIPPED"
+fi
 if [ "$FAILED" -eq 0 ]; then
     printf '\033[0;32mInstaller unit tests passed\033[0m\n'
 else
