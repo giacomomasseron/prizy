@@ -87,6 +87,32 @@ foreground, since Horizon owns the queue in that profile.
 > host — `DB_HOST=postgres` and `REDIS_HOST=redis` only resolve inside the Docker
 > network.
 
+## Self-hosting
+
+One command on a fresh Debian/Ubuntu or RHEL box, as root:
+
+```bash
+bash scripts/install.sh --domain example.com --email ops@example.com --mail=smtp
+```
+
+Point both `A example.com` and `A *.example.com` at the machine first — every
+workspace lives at its own subdomain, and certificates are issued per hostname
+on first request.
+
+The installer checks the machine, installs Docker, writes `/data/prizy/source`,
+generates every secret, builds the image and brings the stack up. It finishes by
+printing `https://<domain>/signup`, where you create the first workspace.
+
+Re-running the same command is the upgrade path. It backs up `.env`, fills only
+keys that are missing or empty — an existing value is never overwritten — then
+rebuilds and migrates.
+
+Useful flags: `--with-realtime` to run Reverb and compile the WebSocket client
+into the bundle (without it the interface polls), `--mail=log` for an evaluation
+install that sends no email, `--source-path <dir>` to install from a local
+checkout instead of cloning, and `--dry-run` to see the plan without touching
+anything. `--help` lists them all.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
