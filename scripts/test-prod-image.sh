@@ -39,6 +39,37 @@ assert_not_in_image() {
 log "Building $IMAGE from Dockerfile.prod"
 docker build -f Dockerfile.prod --target runtime -t "$IMAGE" .
 
+log "VITE_* build arguments reach the compiled bundle"
+# Without this wiring an operator can set VITE_REVERB_APP_KEY, rebuild, and get
+# no error and no WebSocket: .dockerignore is an allowlist with no .env entry,
+# so nothing carries the value into `npm run build`. The canary is the only
+# honest test — set a known value, build, and look for it in the bundle.
+CANARY="vite-canary-$(openssl rand -hex 6)"
+docker build -f Dockerfile.prod --target assets \
+    --build-arg "VITE_REVERB_APP_KEY=$CANARY" \
+    -t prizy/assets:canary . >/dev/null 2>&1
+
+if docker run --rm --entrypoint sh prizy/assets:canary \
+    -c "grep -rq '$CANARY' /app/public/build/assets" >/dev/null 2>&1; then
+    pass "a VITE_* build arg is compiled into public/build/assets"
+else
+    fail "a VITE_* build arg is compiled into public/build/assets"
+fi
+
+# The other half: with no build arg the value must be absent, because that
+# absence is what keeps real-time opt-in. echo.ts does `if (!key) return null`,
+# so an empty-but-defined key would still be falsy — but an undeclared ARG
+# keeps it genuinely undefined, exactly as it is today.
+docker build -f Dockerfile.prod --target assets -t prizy/assets:nocanary . >/dev/null 2>&1
+if docker run --rm --entrypoint sh prizy/assets:nocanary \
+    -c "grep -rq '$CANARY' /app/public/build/assets" >/dev/null 2>&1; then
+    fail "without the build arg, no canary value is present in the bundle"
+else
+    pass "without the build arg, no canary value is present in the bundle"
+fi
+
+docker image rm prizy/assets:canary prizy/assets:nocanary >/dev/null 2>&1 || true
+
 log "The image carries the application"
 # NOT `artisan --version` yet — that needs vendor/autoload.php, which the
 # vendor stage does not build until Task 2. Asserting it here would only pass

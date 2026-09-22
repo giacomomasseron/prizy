@@ -13,6 +13,25 @@ x-app: &app
     context: .
     dockerfile: Dockerfile.prod
     target: runtime
+    # Bare `- VARNAME` list form, not `KEY: value` mapping: a mapping's
+    # `${VITE_REVERB_PORT:-}` shell-expands to an empty string when unset,
+    # so Compose would pass the build an ARG that is SET-AND-EMPTY, not
+    # omitted (verified: `docker compose config` emits `VITE_REVERB_PORT: ""`
+    # for the mapping form here vs. no key at all for this list form). That
+    # distinction is load-bearing: Dockerfile.prod declares these ARGs with
+    # no `=""` default specifically so an unset one stays undefined, and
+    # echo.ts's `Number(import.meta.env.VITE_REVERB_PORT ?? 8080)` only
+    # falls back to 8080 on undefined — `Number('')` is 0. Real-time is
+    # opt-in and these are baked into the JS bundle at build time, so they
+    # can only come from the build, never from the container's environment;
+    # this list form is what lets an operator who leaves a var unset get it
+    # OMITTED from the build args, which is what keeps the frontend polling
+    # instead of silently getting wsPort: 0.
+    args:
+      - VITE_REVERB_APP_KEY
+      - VITE_REVERB_HOST
+      - VITE_REVERB_PORT
+      - VITE_REVERB_SCHEME
   image: prizy/app:${PRIZY_VERSION:-local}
   env_file: ["${ENV_FILE:-.env}"]
   environment:

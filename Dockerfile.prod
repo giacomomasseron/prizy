@@ -15,6 +15,21 @@ COPY package.json package-lock.json /app/
 RUN npm ci
 
 COPY . /app
+
+# Vite inlines every VITE_*-prefixed variable into the bundle at BUILD time,
+# reading them from the build environment — and Docker exposes an ARG to RUN
+# as an environment variable, so these four declarations are the whole wiring.
+# Verified by canary: `VITE_REVERB_APP_KEY=x npm run build` puts x into
+# public/build/assets/main-*.js.
+#
+# Deliberately no `=""` defaults. An ARG with an empty default is DEFINED and
+# empty, which would make `import.meta.env.VITE_REVERB_PORT ?? 8080` evaluate
+# to Number('') = 0 rather than the fallback. Undeclared values stay genuinely
+# undefined, which is today's behaviour and the polling default.
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
 RUN npm run build
 
 # ---------------------------------------------------------------------------

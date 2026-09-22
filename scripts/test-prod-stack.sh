@@ -87,6 +87,42 @@ else
     pass "no key in .env.production.example has a comment as its value"
 fi
 
+log "VITE_REVERB_* build args go through Compose's bare-list omission, not a mapping's empty-string"
+# Neither suite catches this without a dedicated check: the image canary test
+# (test-prod-image.sh) builds with `docker build` directly, bypassing
+# Compose's build.args entirely, and $ENV_FILE above never sets a
+# VITE_REVERB_* value, so a plain `compose up` run never exercises the "set"
+# path either. `docker compose config` resolves build.args without starting
+# anything, so it is cheap to run twice: once with none of the four set
+# (a mapping's `${VAR:-}` would still resolve to an empty-but-present value
+# here; this must show build.args as entirely ABSENT, proving the ARG is
+# genuinely omitted from the build, not defined-and-empty) and once with all
+# four set (must carry the real values through unchanged).
+#
+# `--format json` scoped to the resolved `app` service, not a plain grep
+# over the YAML: `x-app` is a YAML anchor, and `docker compose config`
+# echoes that top-level extension block back VERBATIM (still reading
+# `- VITE_REVERB_APP_KEY` etc.) regardless of what any real service resolves
+# to — a plain `grep VITE_REVERB` on that output always matches, so it can
+# never fail and would have let the mapping-form bug back in unnoticed. jq's
+# `.services.app.build.args` reads only what `app` actually resolved to.
+unset_args=$(compose config --format json app | jq -c '.services.app.build.args')
+if [ "$unset_args" = "null" ]; then
+    pass "no VITE_REVERB_* key appears in build.args when the operator leaves them unset"
+else
+    fail "no VITE_REVERB_* key appears in build.args when the operator leaves them unset (got: $unset_args)"
+fi
+
+set_args=$(VITE_REVERB_APP_KEY=config-test-key VITE_REVERB_HOST=config-test-host \
+    VITE_REVERB_PORT=8080 VITE_REVERB_SCHEME=https \
+    compose config --format json app | jq -r '.services.app.build.args
+        | "\(.VITE_REVERB_APP_KEY) \(.VITE_REVERB_HOST) \(.VITE_REVERB_PORT) \(.VITE_REVERB_SCHEME)"')
+if [ "$set_args" = "config-test-key config-test-host 8080 https" ]; then
+    pass "VITE_REVERB_* values carry through build.args when the operator sets them"
+else
+    fail "VITE_REVERB_* values carry through build.args when the operator sets them (got: $set_args)"
+fi
+
 log "Bringing the stack up"
 compose up -d --build --wait
 

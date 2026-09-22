@@ -1,5 +1,9 @@
 # Running the app locally
 
+> This document covers **local development**. To run Prizy in production on
+> your own server, see [Self-hosting](../README.md#self-hosting) —
+> `scripts/install.sh` handles the whole thing.
+
 ## Start everything
 
 ```bash

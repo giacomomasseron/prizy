@@ -75,7 +75,25 @@ jobs:
 
       # The production stack is what a self-hosted install actually runs (P-2).
       # This brings the whole thing up against throwaway secrets and proves it
-      # serves — the only check that can catch nginx pointing at the wrong
-      # socket, a missing environment variable, or migrations that never ran.
+      # serves — the only check that can catch the edge pointing at the wrong
+      # upstream, a missing environment variable, or migrations that never ran.
       - name: Production stack comes up and serves
         run: bash scripts/test-prod-stack.sh
+
+      # The installer is bash operating on a machine, so most of it can only be
+      # smoke-tested — but its pure functions can be tested properly, and the
+      # .env merge MUST be, because getting it wrong overwrites a live database
+      # password on an upgrade.
+      - name: Installer unit tests
+        run: bash scripts/test-install.sh
+
+      # Run through Docker so CI needs no shellcheck install and matches what a
+      # developer runs locally. -x follows sourced files (test-install.sh
+      # sources install.sh) so linting one script in isolation — a narrower
+      # CI step, an editor plugin, a pre-commit hook — gives the same result
+      # as linting them together, instead of raising false SC1091/SC2034s.
+      - name: Shellcheck every script
+        run: |
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x \
+            scripts/install.sh scripts/test-install.sh \
+            scripts/test-prod-image.sh scripts/test-prod-stack.sh
