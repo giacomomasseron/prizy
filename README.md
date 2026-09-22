@@ -144,6 +144,15 @@ password unset for a relay that needs no authentication. On a re-run, any SMTP
 setting you do not supply keeps the value already in the install's `.env`.
 `--help` lists every variable.
 
+An SMTP value cannot contain `$`, whitespace, or a leading or trailing quote.
+The `.env` is read by Compose's dotenv parser, which would expand, trim or
+unquote them and hand the application a different credential, so the installer
+refuses such a value rather than writing it: interactively it explains why and
+asks again, and under `--yes` it stops. If a password needs one of them, leave
+that setting empty and write it into `/data/prizy/source/.env` by hand — the
+installer never offers back a value it would refuse as a prompt default, and an
+empty answer never overwrites a `MAIL_*` key, so later re-runs leave it alone.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

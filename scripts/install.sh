@@ -453,8 +453,69 @@ start_logging() {
     info "logging to $LOG_FILE"
 }
 
+# Set by fetch_source to the path it parks the install's .env at, and read by
+# restore_parked_env. Empty until a --source-path copy is about to start.
+ENV_PARKED_PATH=""
+
+# Puts the parked .env back where the installer expects it.
+#
+# fetch_source moves the install's live .env aside for the duration of the
+# copy. Without this handler an interruption in that window — the SIGHUP an
+# `ssh host 'bash install.sh …'` takes when the connection drops, a Ctrl-C, a
+# `cp` that ran out of disk — leaves the only copy of the live secrets at the
+# parked path, where the next run's guard has to find it.
+#
+# A no-op once fetch_source's own restore has run (the file is gone), and
+# under --dry-run, where `run mv` printed rather than moved and so any file at
+# the parked path belongs to some earlier real run.
+#
+# This is the installer's ONLY trap handler, deliberately: a second
+# `trap … EXIT` would silently replace the first, so anything else that needs
+# to run on exit belongs in this function rather than in a trap of its own.
+restore_parked_env() {
+    local rc=$?
+    [ "$OPT_DRY_RUN" -eq 1 ] && return "$rc"
+    [ -n "$ENV_PARKED_PATH" ] && [ -f "$ENV_PARKED_PATH" ] || return "$rc"
+    if mv -f "$ENV_PARKED_PATH" "$SOURCE_DIR/.env"; then
+        warn "restored the .env parked during the copy to $SOURCE_DIR/.env"
+    else
+        warn "could not move $ENV_PARKED_PATH back to $SOURCE_DIR/.env. That file is this install's .env: move it there by hand before re-running."
+    fi
+    return "$rc"
+}
+
 fetch_source() {
     step 4 "Source"
+
+    # The install's own .env lives in $SOURCE_DIR and holds every secret this
+    # instance has. A --source-path run parks it outside the copy's target
+    # across the `cp -a` and the strip below, and puts it back afterwards;
+    # without that, an upgrade regenerates POSTGRES_PASSWORD against a
+    # database that still has the old one.
+    #
+    # A file sitting at the parked path means a previous run was interrupted
+    # between the move and the restore. THAT file is this install's .env;
+    # whatever is at $SOURCE_DIR/.env now came from the interrupted copy and
+    # is the checkout's. Deciding this BEFORE the branch below, and not inside
+    # the --source-path arm, because `cp -a` copies the checkout's .git too:
+    # the re-run after an interruption can perfectly well be an update run
+    # with no --source-path at all, and that arm never looked here — leaving
+    # configure to generate a fresh password against the live database, the
+    # same loss by another door.
+    local parked="$PRIZY_ROOT/.env-parked-during-copy" had_env=0
+    ENV_PARKED_PATH="$parked"
+    # One handler, four registrations. Verified on bash 5.2.21 that the EXIT
+    # trap alone already runs when an untrapped SIGTERM arrives, so the three
+    # signal lines are redundancy plus a defined exit status rather than the
+    # only thing standing between a Ctrl-C and a parked .env.
+    trap 'restore_parked_env' EXIT
+    trap 'restore_parked_env; exit 130' INT
+    trap 'restore_parked_env; exit 143' TERM
+    trap 'restore_parked_env; exit 129' HUP
+    if [ -f "$parked" ]; then
+        had_env=1
+        warn "found a .env parked by an interrupted run at $parked; that file is this install's .env and is being restored"
+    fi
 
     if [ -n "$OPT_SOURCE_PATH" ]; then
         [ -d "$OPT_SOURCE_PATH" ] || die "--source-path '$OPT_SOURCE_PATH' is not a directory"
@@ -462,14 +523,10 @@ fetch_source() {
             die "--source-path '$OPT_SOURCE_PATH' does not look like a Prizy checkout (no docker-compose.prod.yml)"
         info "copying from $OPT_SOURCE_PATH"
 
-        # The install's own .env lives in $SOURCE_DIR and holds every secret
-        # this instance has. `cp -a` would overwrite it with whatever the
-        # checkout carries, and the strip below would delete it, so it is
-        # parked outside the copy's target and put back afterwards. Without
-        # this, a --source-path upgrade regenerates POSTGRES_PASSWORD against
-        # a database that still has the old one.
-        local parked="$PRIZY_ROOT/.env-parked-during-copy" had_env=0
-        if [ -f "$SOURCE_DIR/.env" ]; then
+        # Nothing to park when a previous run already did it: parking again
+        # would move the checkout's .env over the live secrets, which is what
+        # made the operator's recovery run the thing that destroyed them.
+        if [ "$had_env" -eq 0 ] && [ -f "$SOURCE_DIR/.env" ]; then
             had_env=1
             run mv "$SOURCE_DIR/.env" "$parked"
         fi
@@ -490,12 +547,29 @@ fetch_source() {
         if [ -f "$OPT_SOURCE_PATH/.env" ]; then
             info "not importing the checkout's .env; a production .env is generated instead"
         fi
+        # Announced whatever the checkout carries, because the glob is wider
+        # than the line above: it also deletes any .env-* file sitting in the
+        # source directory, including one an operator left there themselves.
+        # The install's own .env is not among them — it is parked across this
+        # line — and its backups are written to $PRIZY_ROOT/backups.
+        info "removing $SOURCE_DIR/.env and any $SOURCE_DIR/.env-* files; this install's own .env is kept across the copy"
         run sh -c "rm -f '$SOURCE_DIR/.env' '$SOURCE_DIR'/.env-*"
 
         if [ "$had_env" -eq 1 ]; then
             run mv "$parked" "$SOURCE_DIR/.env"
+            # The file is back; nothing left for the handler to restore. Also
+            # covers --dry-run, where `run mv` printed and did not move.
+            ENV_PARKED_PATH=""
         fi
         return 0
+    fi
+
+    # Every other path leaves $SOURCE_DIR/.env alone and parks nothing, so an
+    # interrupted earlier run's file goes back here. Before git runs rather
+    # than after: a fetch that fails must not leave the secrets parked.
+    if [ "$had_env" -eq 1 ]; then
+        run mv "$parked" "$SOURCE_DIR/.env"
+        ENV_PARKED_PATH=""
     fi
 
     if [ -d "$SOURCE_DIR/.git" ]; then
@@ -556,6 +630,56 @@ prompt_for() {
     printf -v "$var" '%s' "$answer"
 }
 
+# prompt_dotenvable <var> <question> <default> <empty-is-an-answer> <env-key>
+#
+# prompt_for, plus the check that the answer is one the .env can carry back out
+# unchanged — the same check write_env_file makes, run where the operator can
+# still do something about it. Interactively it says why and asks again. Under
+# --yes there is nobody to ask, so it is fatal here exactly as it was fatal in
+# write_env_file, but with the variable the operator actually set named in the
+# message.
+#
+# Validating here and not only at write time is what makes the refusal
+# survivable: write_env_file dies before it writes anything, so a fresh install
+# that hit it stopped at step 5 of 8 with no .env on disk at all.
+prompt_dotenvable() {
+    local var="$1" question="$2" default="${3:-}" allow_empty="${4:-0}" env_key="$5" reason
+    while true; do
+        prompt_for "$var" "$question" "$default" "$allow_empty"
+        reason="$(undotenvable_reason "${!var}")"
+        [ -n "$reason" ] || return 0
+        [ "$OPT_YES" -eq 1 ] && die "PRIZY_$var $reason. Choose a value without it, or unset PRIZY_$var and write $env_key into $SOURCE_DIR/.env by hand — a value this installer would refuse is never offered back as a prompt default and never overwritten by an empty answer, so later runs leave a hand-written one alone."
+        warn "$env_key $reason."
+        info "Enter a different value, or leave it empty and write $env_key into $SOURCE_DIR/.env by hand afterwards — an empty answer never overwrites what the file already holds."
+        # The refused value is not offered back as the default: accepting it
+        # by pressing Enter is the one thing this loop must not allow.
+        default=""
+    done
+}
+
+# unseedable_default <var> <env-key>
+#
+# Blanks the prompt default in $var when the value it carries is one this .env
+# cannot carry back out unchanged, and says why.
+#
+# The operator who followed the refusal's advice and wrote a `$` password into
+# .env by hand would otherwise have it read straight back into the same
+# refusal, and every later --mail=smtp run would die at Configuration telling
+# them to do what they had already done. Dropping it means pressing Enter
+# collects nothing, and write_env_file's rule that an empty collected value
+# never overwrites a MAIL_* key leaves the hand-written value alone.
+#
+# Reaches collect_mail_settings' locals the way set_env_value reaches
+# write_env_file's $merged: bash is dynamically scoped, so a called function
+# sees and can assign to its caller's locals.
+unseedable_default() {
+    local var="$1" env_key="$2" reason
+    reason="$(undotenvable_reason "${!var}")"
+    [ -n "$reason" ] || return 0
+    warn "$env_key in $SOURCE_DIR/.env $reason, so it is not offered here as a default; an empty answer leaves it exactly as it is."
+    printf -v "$var" '%s' ""
+}
+
 collect_mail_settings() {
     case "$OPT_MAIL" in
         log)
@@ -591,10 +715,17 @@ collect_mail_settings() {
                 *)     cur_enc="" ;;
             esac
 
-            prompt_for SMTP_HOST "SMTP host" "${PRIZY_SMTP_HOST:-$cur_host}"
-            prompt_for SMTP_PORT "SMTP port" "${PRIZY_SMTP_PORT:-${cur_port:-587}}"
-            prompt_for SMTP_USERNAME "SMTP username" "${PRIZY_SMTP_USERNAME:-$cur_user}" 1
-            prompt_for SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-$cur_pass}" 1
+            unseedable_default cur_host MAIL_HOST
+            unseedable_default cur_port MAIL_PORT
+            unseedable_default cur_user MAIL_USERNAME
+            unseedable_default cur_pass MAIL_PASSWORD
+
+            prompt_dotenvable SMTP_HOST "SMTP host" "${PRIZY_SMTP_HOST:-$cur_host}" 0 MAIL_HOST
+            prompt_dotenvable SMTP_PORT "SMTP port" "${PRIZY_SMTP_PORT:-${cur_port:-587}}" 0 MAIL_PORT
+            prompt_dotenvable SMTP_USERNAME "SMTP username" "${PRIZY_SMTP_USERNAME:-$cur_user}" 1 MAIL_USERNAME
+            prompt_dotenvable SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-$cur_pass}" 1 MAIL_PASSWORD
+            # Not a dotenv value: mail_scheme_for maps this answer to one of
+            # three fixed strings and dies on anything else.
             prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "${PRIZY_SMTP_ENCRYPTION:-${cur_enc:-tls}}"
             [ -n "$SMTP_HOST" ] || die "--mail=smtp needs an SMTP host"
             ;;
@@ -617,12 +748,13 @@ set_env_value() {
         'index($0, k "=") == 1 { print k "=" ENVIRON["SET_ENV_VALUE"]; next } { print }')"
 }
 
-# Refuses a value this .env cannot carry back out unchanged.
+# Prints why $1 cannot be written to this .env unchanged, or nothing when it
+# can. The text completes the sentence "<KEY> ...".
 #
 # Values here are written UNQUOTED. Quoting them is not the fix: merge_env
 # preserves every existing value byte-for-byte and has no unquoting step, so
 # quotes added on write would be read back as part of the value and wrapped
-# again on the next upgrade. Refusing is, and these are the two cases:
+# again on the next upgrade. Refusing is, and these are the three cases:
 #
 #   $  — Compose's dotenv parser expands it as an interpolation. This is the
 #        same hazard gen_secret_for's comment cites as the reason generated
@@ -636,16 +768,29 @@ set_env_value() {
 #        and a value holding both a space and a `#` risks being truncated
 #        there. (A `#` on its own is safe, and stays allowed — the merge
 #        tests above round-trip `p=a#ss/w+rd==`.)
-#
-# Refusing with a message the operator can act on beats writing a credential
-# that quietly becomes a different credential.
-reject_undotenvable() {
-    case "$2" in
+#   a leading or trailing quote — written unquoted, `"abc` produces
+#        MAIL_PASSWORD="abc, which Compose's dotenv parser reads as an
+#        unterminated quoted value and refuses, taking the whole stack down
+#        with a parse error; and `"abc"` is unquoted back to abc, a different
+#        password. An interior quote is neither and stays allowed.
+undotenvable_reason() {
+    case "$1" in
         *'$'*)
-            die "$1 cannot contain '\$': Compose's dotenv parser would read it as an interpolation. Use a value without it, or set $1 in $SOURCE_DIR/.env by hand after the install." ;;
+            printf "cannot contain '\$': Compose's dotenv parser would read it as an interpolation" ;;
         *[[:space:]]*)
-            die "$1 cannot contain whitespace: Compose's dotenv parser trims it from a value's edges. Use a value without it, or set $1 in $SOURCE_DIR/.env by hand after the install." ;;
+            printf "cannot contain whitespace: Compose's dotenv parser trims it from a value's edges" ;;
+        '"'*|"'"*|*'"'|*"'")
+            printf "cannot start or end with a quote: Compose's dotenv parser reads a fully quoted value as the text inside the quotes, and an unbalanced one as an unterminated value it refuses to parse at all" ;;
     esac
+}
+
+# Stops the install rather than writing a credential that quietly becomes a
+# different credential. The last resort: collect_mail_settings validates the
+# same values as they are typed, where the operator can still fix them.
+reject_undotenvable() {
+    local reason
+    reason="$(undotenvable_reason "$2")"
+    [ -z "$reason" ] || die "$1 $reason. Choose a value without it, or leave this setting empty and write $1 into $SOURCE_DIR/.env by hand — a value this installer would refuse is never offered back as a prompt default and never overwritten by an empty answer, so later runs leave a hand-written one alone."
 }
 
 # Laravel 13 names this MAIL_SCHEME (null|smtp|smtps), not MAIL_ENCRYPTION —

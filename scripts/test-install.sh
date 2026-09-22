@@ -66,8 +66,8 @@ if validate_email "ops@localhost"; then fail "an address with no TLD is refused"
 if validate_email "not-an-email"; then fail "a bare word is not an email"; else pass "a bare word is not an email"; fi
 
 log "Secret generation"
-key_a="$(gen_secret_for APP_KEY)"
-key_b="$(gen_secret_for APP_KEY)"
+key_a="$(gen_secret_for APP_KEY || true)"
+key_b="$(gen_secret_for APP_KEY || true)"
 case "$key_a" in
     base64:*) pass "APP_KEY carries the base64: prefix Laravel requires" ;;
     *)        fail "APP_KEY carries the base64: prefix Laravel requires" ;;
@@ -77,7 +77,7 @@ if [ "$key_a" != "$key_b" ]; then
 else
     fail "two APP_KEYs differ (not a constant)"
 fi
-pw="$(gen_secret_for POSTGRES_PASSWORD)"
+pw="$(gen_secret_for POSTGRES_PASSWORD || true)"
 if [ "${#pw}" -ge 32 ]; then
     pass "a generated password is at least 32 characters"
 else
@@ -111,7 +111,7 @@ POSTGRES_PASSWORD=live-database-password
 OPERATOR_ADDED=keep-me
 EXI
 
-merged="$(merge_env "$TMP/existing" "$TMP/template")"
+merged="$(merge_env "$TMP/existing" "$TMP/template" || true)"
 
 if printf '%s' "$merged" | grep -qx 'POSTGRES_PASSWORD=live-database-password'; then
     pass "a live POSTGRES_PASSWORD survives the merge"
@@ -142,7 +142,7 @@ assert_eq "no key is emitted twice" "1" \
     "$(printf '%s' "$merged" | grep -c '^POSTGRES_PASSWORD=')"
 
 log "The .env merge — a fresh install fills from the template"
-merged_fresh="$(merge_env "$TMP/does-not-exist" "$TMP/template")"
+merged_fresh="$(merge_env "$TMP/does-not-exist" "$TMP/template" || true)"
 if printf '%s' "$merged_fresh" | grep -qx 'POSTGRES_PASSWORD='; then
     pass "with no existing file, a GENERATED key stays empty for the caller to fill"
 else
@@ -151,7 +151,7 @@ fi
 
 log "The .env merge — an EMPTY existing value is not treated as a real value"
 printf 'POSTGRES_PASSWORD=\n' > "$TMP/empty-existing"
-merged_empty="$(merge_env "$TMP/empty-existing" "$TMP/template")"
+merged_empty="$(merge_env "$TMP/empty-existing" "$TMP/template" || true)"
 if printf '%s' "$merged_empty" | grep -qx 'POSTGRES_PASSWORD='; then
     pass "an empty existing value does not win over the template"
 else
@@ -160,7 +160,7 @@ fi
 
 log "The .env merge — values containing = and # are preserved whole"
 printf 'MAIL_PASSWORD=p=a#ss/w+rd==\n' > "$TMP/tricky"
-merged_tricky="$(merge_env "$TMP/tricky" "$TMP/template")"
+merged_tricky="$(merge_env "$TMP/tricky" "$TMP/template" || true)"
 if printf '%s' "$merged_tricky" | grep -qx 'MAIL_PASSWORD=p=a#ss/w+rd=='; then
     pass "a value containing = and # round-trips unchanged"
 else
@@ -173,7 +173,7 @@ log "The .env merge — parsed the way Compose's own dotenv parser parses it"
 # canonical, unpadded key rather than being lost under a key with a
 # trailing space that the template never matches.
 printf 'POSTGRES_PASSWORD = live-database-password\n' > "$TMP/padded-existing"
-merged_padded="$(merge_env "$TMP/padded-existing" "$TMP/template")"
+merged_padded="$(merge_env "$TMP/padded-existing" "$TMP/template" || true)"
 if printf '%s' "$merged_padded" | grep -qx 'POSTGRES_PASSWORD=live-database-password'; then
     pass "a space-padded KEY = value survives the merge under its canonical key"
 else
@@ -184,7 +184,7 @@ fi
 # editor default on Windows) must not glue a literal \r onto every
 # preserved value on every re-run.
 printf 'POSTGRES_PASSWORD=live-database-password\r\n' > "$TMP/crlf-existing"
-merged_crlf="$(merge_env "$TMP/crlf-existing" "$TMP/template")"
+merged_crlf="$(merge_env "$TMP/crlf-existing" "$TMP/template" || true)"
 if printf '%s' "$merged_crlf" | grep -qx 'POSTGRES_PASSWORD=live-database-password'; then
     pass "a CRLF existing file's value arrives without a trailing CR"
 else
@@ -195,7 +195,7 @@ fi
 # fall through to the template exactly like a truly empty value does — not
 # "win" the merge as if it were a real secret.
 printf 'POSTGRES_PASSWORD=   \n' > "$TMP/whitespace-only-existing"
-merged_ws="$(merge_env "$TMP/whitespace-only-existing" "$TMP/template")"
+merged_ws="$(merge_env "$TMP/whitespace-only-existing" "$TMP/template" || true)"
 if printf '%s' "$merged_ws" | grep -qx 'POSTGRES_PASSWORD='; then
     pass "a whitespace-only existing value falls through to the template"
 else
@@ -286,7 +286,7 @@ write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example"
 
 for key in APP_KEY POSTGRES_PASSWORD PRIZY_APP_DB_PASSWORD REDIS_PASSWORD \
            REVERB_APP_ID REVERB_APP_KEY REVERB_APP_SECRET ACME_EMAIL; do
-    value="$(grep "^${key}=" "$GEN_TMP/.env" | head -n1 | cut -d= -f2-)"
+    value="$(grep "^${key}=" "$GEN_TMP/.env" | head -n1 | cut -d= -f2- || true)"
     if [ -n "$value" ]; then
         pass "$key is filled in the generated .env"
     else
@@ -444,8 +444,8 @@ else
 fi
 
 log "Re-running the installer never overwrites live secrets"
-live_pw="$(grep '^POSTGRES_PASSWORD=' "$GEN_TMP/.env" | cut -d= -f2-)"
-live_key="$(grep '^APP_KEY=' "$GEN_TMP/.env" | cut -d= -f2-)"
+live_pw="$(grep '^POSTGRES_PASSWORD=' "$GEN_TMP/.env" | cut -d= -f2- || true)"
+live_key="$(grep '^APP_KEY=' "$GEN_TMP/.env" | cut -d= -f2- || true)"
 write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example"
 assert_eq "POSTGRES_PASSWORD survives a re-run" "$live_pw" \
     "$(grep '^POSTGRES_PASSWORD=' "$GEN_TMP/.env" | cut -d= -f2-)"
@@ -518,7 +518,7 @@ assert_eq "APP_DEBUG is the template's false, not the checkout's true" "false" \
     "$(grep '^APP_DEBUG=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
 assert_eq "LOG_LEVEL is the template's warning, not the checkout's debug" "warning" \
     "$(grep '^LOG_LEVEL=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
-generated_redis="$(grep '^REDIS_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+generated_redis="$(grep '^REDIS_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2- || true)"
 if printf '%s' "$generated_redis" | grep -qE '^[0-9a-f]{64}$'; then
     pass "REDIS_PASSWORD is a generated 64-character hex secret, not the checkout's null"
 else
@@ -534,31 +534,188 @@ log "A --source-path re-run keeps the install's own .env"
 # The strip above must not take the live one with it: this is the documented
 # upgrade path, and regenerating POSTGRES_PASSWORD against a database that
 # still holds the old one takes the instance down.
-live_db_pw="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+live_db_pw="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2- || true)"
 (
     PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
     OPT_SOURCE_PATH="$CHECKOUT"; OPT_DRY_RUN=0
     fetch_source
 ) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
 if [ -f "$FAKE_ROOT/source/.env" ]; then
-    live_db_pw_after="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-)"
+    live_db_pw_after="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2- || true)"
 else
     live_db_pw_after="<the install has no .env at all>"
 fi
 assert_eq "the install's own POSTGRES_PASSWORD survives a --source-path re-run" \
     "$live_db_pw" "$live_db_pw_after"
+if [ -e "$FAKE_ROOT/.env-parked-during-copy" ]; then
+    fail "a completed --source-path run leaves nothing at the parked path"
+else
+    pass "a completed --source-path run leaves nothing at the parked path"
+fi
+
+log "An interrupted --source-path run cannot lose the install's .env"
+# What an interruption between the park and the restore leaves behind: the
+# install's live .env at the parked path, and — if the copy got that far — the
+# checkout's development .env in the source directory. The next run used to
+# park AGAIN, moving the checkout's .env over the live secrets, so the
+# operator's recovery attempt was what destroyed them, unrecoverably.
+INT_ROOT="$(mktemp -d -p "$TMP")"
+mkdir -p "$INT_ROOT/source" "$INT_ROOT/backups"
+printf 'POSTGRES_PASSWORD=live-db-password\nAPP_ENV=production\n' > "$INT_ROOT/.env-parked-during-copy"
+printf 'POSTGRES_PASSWORD=dev-password\nAPP_DEBUG=true\n' > "$INT_ROOT/source/.env"
+(
+    PRIZY_ROOT="$INT_ROOT"; SOURCE_DIR="$INT_ROOT/source"
+    OPT_SOURCE_PATH="$CHECKOUT"; OPT_DRY_RUN=0
+    fetch_source
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "the .env parked by an interrupted run is the one the next run restores" \
+    "live-db-password" \
+    "$(grep '^POSTGRES_PASSWORD=' "$INT_ROOT/source/.env" 2>/dev/null | cut -d= -f2- || true)"
+if grep -qx 'APP_DEBUG=true' "$INT_ROOT/source/.env" 2>/dev/null; then
+    fail "the recovery run does not adopt the development .env the interruption left behind"
+else
+    pass "the recovery run does not adopt the development .env the interruption left behind"
+fi
+if [ -e "$INT_ROOT/.env-parked-during-copy" ]; then
+    fail "the recovery run empties the parked path once it has restored from it"
+else
+    pass "the recovery run empties the parked path once it has restored from it"
+fi
+
+log "A run that is not a --source-path run recovers a parked .env too"
+# `cp -a` copies the checkout's .git along with everything else, so after an
+# interruption the operator's next run can perfectly well be an update run
+# with no --source-path. That branch never looked at the parked path, so the
+# live secrets stayed orphaned there and configure went on to generate a fresh
+# POSTGRES_PASSWORD against the live database — the same loss by another door.
+# `git` is shadowed so the update branch runs offline.
+GIT_ROOT="$(mktemp -d -p "$TMP")"
+mkdir -p "$GIT_ROOT/source/.git"
+printf 'POSTGRES_PASSWORD=live-db-password\n' > "$GIT_ROOT/.env-parked-during-copy"
+printf 'POSTGRES_PASSWORD=dev-password\n' > "$GIT_ROOT/source/.env"
+GIT_BIN="$(mktemp -d -p "$TMP")"
+printf '#!/bin/sh\nexit 0\n' > "$GIT_BIN/git"
+chmod +x "$GIT_BIN/git"
+# SC2030: shadowing git for this subshell only is the point, as with cp below.
+# shellcheck disable=SC2030
+(
+    PATH="$GIT_BIN:$PATH"
+    PRIZY_ROOT="$GIT_ROOT"; SOURCE_DIR="$GIT_ROOT/source"
+    OPT_SOURCE_PATH=""; OPT_REF="main"; OPT_DRY_RUN=0
+    fetch_source
+    # Snapshotted HERE, not after the subshell. fetch_source's own EXIT
+    # handler would otherwise put the file back on the way out and report
+    # green whether or not the step itself did it — verified: with the
+    # recovery deleted, assertions read after the subshell still passed. In a
+    # real install that handler is far too late: configure runs next, and
+    # would generate a fresh POSTGRES_PASSWORD against the live database
+    # before the process ever exits.
+    cp "$SOURCE_DIR/.env" "$GIT_ROOT/env-as-fetch-source-left-it"
+    [ -e "$GIT_ROOT/.env-parked-during-copy" ] && touch "$GIT_ROOT/still-parked"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "an update run restores the .env an interrupted --source-path run parked" \
+    "live-db-password" \
+    "$(grep '^POSTGRES_PASSWORD=' "$GIT_ROOT/env-as-fetch-source-left-it" 2>/dev/null | cut -d= -f2- || true)"
+if [ -e "$GIT_ROOT/still-parked" ]; then
+    fail "an update run empties the parked path before configure runs"
+else
+    pass "an update run empties the parked path before configure runs"
+fi
+
+log "An interruption during the copy puts the parked .env back by itself"
+# The trap rather than the next run's guard: fetch_source installs one handler
+# on EXIT, INT, TERM and HUP, so an interruption self-heals instead of leaving
+# the only copy of the live secrets at the parked path.
+#
+# `cp` is shadowed on PATH so the interruption lands inside the window between
+# the park and the restore deterministically, with no signal racing a real
+# copy. Only `cp` is shadowed — the directory is prepended to PATH — so mv,
+# rm, chmod and sh still resolve normally, including the mv the handler needs.
+TRAP_BIN="$(mktemp -d -p "$TMP")"
+cat > "$TRAP_BIN/cp" <<'FAKECP'
+#!/bin/sh
+# No signal named: just fail, which is the ENOSPC-shaped case `set -e` turns
+# into an exit. Otherwise raise the named signal in the shell running
+# fetch_source AND die from it here, because that is what a real Ctrl-C does:
+# it reaches the whole foreground process group. Verified necessary rather
+# than tidy — bash discards a SIGINT that arrives while it is waiting on a
+# foreground child that then exits 0, so without the second kill the SIGINT
+# case reported green with every trap deleted from the installer.
+if [ -n "${FAKE_SIG:-}" ]; then
+    kill -s "$FAKE_SIG" "$FAKE_TARGET"
+    kill -s "$FAKE_SIG" $$
+    exit 0
+fi
+exit 1
+FAKECP
+chmod +x "$TRAP_BIN/cp"
+# Driven in its own process rather than in a `( … ) || true` subshell like the
+# sections above. Bash ignores `set -e` for every command inside a compound
+# command that is part of a || list — an explicit `set -e` within the subshell
+# does not bring it back — so in that form a failing `cp` does not end the run
+# at all, fetch_source's own restore puts the file back, and the trap is never
+# what is being measured. Verified: with all four traps deleted, the subshell
+# form still reported the failed-copy case green.
+TRAP_DRIVER="$TMP/drive-fetch-source.sh"
+cat > "$TRAP_DRIVER" <<'DRIVER'
+# $1 installer, $2 PRIZY_ROOT, $3 the checkout to copy from.
+source "$1"
+PRIZY_ROOT="$2"; SOURCE_DIR="$2/source"
+OPT_SOURCE_PATH="$3"; OPT_DRY_RUN=0
+export FAKE_TARGET=$$
+fetch_source
+DRIVER
+for trap_case in "a failed copy:" "a SIGINT:INT" "a SIGTERM:TERM" "a SIGHUP:HUP"; do
+    trap_name="${trap_case%%:*}"
+    trap_sig="${trap_case#*:}"
+    TRAP_ROOT="$(mktemp -d -p "$TMP")"
+    mkdir -p "$TRAP_ROOT/source"
+    printf 'POSTGRES_PASSWORD=secrets-that-must-come-back\n' > "$TRAP_ROOT/source/.env"
+    # SC2031: a per-command PATH prefix, not a lost subshell assignment.
+    # shellcheck disable=SC2031
+    PATH="$TRAP_BIN:$PATH" FAKE_SIG="$trap_sig" \
+        bash "$TRAP_DRIVER" "$INSTALL_SH" "$TRAP_ROOT" "$CHECKOUT" \
+        >/dev/null 2>&1 || true   # the interruption is the point, not the exit code
+    assert_eq "$trap_name during the copy puts the install's .env back" \
+        "secrets-that-must-come-back" \
+        "$(grep '^POSTGRES_PASSWORD=' "$TRAP_ROOT/source/.env" 2>/dev/null | cut -d= -f2- || true)"
+    if [ -e "$TRAP_ROOT/.env-parked-during-copy" ]; then
+        fail "$trap_name leaves nothing at the parked path"
+    else
+        pass "$trap_name leaves nothing at the parked path"
+    fi
+done
 
 log ".env backups land in PRIZY_ROOT/backups, and never collide"
+# Deterministic rather than racing two `configure` calls for the same
+# wall-clock second: `date` is shadowed so write_env_file's stamp is fixed,
+# and the name it is about to choose is pre-created with known content.
+# Removing the uniquifier then always overwrites that file — the timing
+# version went undetected in 1 run of 6.
+STAMP_BIN="$(mktemp -d -p "$TMP")"
+printf '#!/bin/sh\necho 20200101000000\n' > "$STAMP_BIN/date"
+chmod +x "$STAMP_BIN/date"
+printf 'THE-BACKUP-THAT-WAS-ALREADY-THERE\n' > "$FAKE_ROOT/backups/.env-20200101000000"
+# SC2031: shadowing date for this subshell only is the point, as above.
+# shellcheck disable=SC2031
 (
+    PATH="$STAMP_BIN:$PATH"
     PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
     OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
     OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
-    configure
     configure
 ) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
 # Two in the same second, which is what `date +…%S` alone could not name apart.
 assert_eq "two .env backups written within one second are both kept" "2" \
     "$(find "$FAKE_ROOT/backups" -maxdepth 1 -name '.env-*' | wc -l)"
+assert_eq "the backup already holding that second's name is not overwritten" \
+    "THE-BACKUP-THAT-WAS-ALREADY-THERE" \
+    "$(cat "$FAKE_ROOT/backups/.env-20200101000000" 2>/dev/null || true)"
+if [ -f "$FAKE_ROOT/backups/.env-20200101000000.1" ]; then
+    pass "the colliding backup is written under a uniquified name"
+else
+    fail "the colliding backup is written under a uniquified name"
+fi
 if ls "$FAKE_ROOT/source"/.env-* >/dev/null 2>&1; then
     fail "no .env backup is left inside the source directory"
 else
@@ -577,7 +734,7 @@ NULLENV
     OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
     write_env_file "$NULL_TMP/.env" "$NULL_TMP/.env.production.example"
 ) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
-null_redis="$(grep '^REDIS_PASSWORD=' "$NULL_TMP/.env" | cut -d= -f2-)"
+null_redis="$(grep '^REDIS_PASSWORD=' "$NULL_TMP/.env" | cut -d= -f2- || true)"
 if printf '%s' "$null_redis" | grep -qE '^[0-9a-f]{64}$'; then
     pass "REDIS_PASSWORD=null is treated as unset and regenerated"
 else
@@ -624,6 +781,52 @@ else
     fail "a password containing \$ is refused, not written for Compose to interpolate"
 fi
 assert_eq "the refused password never reaches the file" 'pa\ts\\word' \
+    "$(grep '^MAIL_PASSWORD=' "$ESC_TMP/.env" | cut -d= -f2-)"
+
+# Written unquoted, `"abc` yields MAIL_PASSWORD="abc, which compose-go's dotenv
+# parser rejects as an unterminated quoted value — the whole stack then fails
+# to start on a parse error — and `"abc"` is unquoted back to abc, a different
+# password. Both used to pass the check.
+# SC2030: the OPT_*/SMTP_* assignments in these subshells are deliberately
+# scoped to them, exactly as in the subshells above.
+for quoted_case in '"abc' 'abc"' "'abc" "abc'" '"abc"'; do
+    quote_rc=0
+    # shellcheck disable=SC2030
+    (
+        OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="smtp"
+        OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+        SMTP_HOST="smtp.example.com"; SMTP_PORT="587"; SMTP_USERNAME="postmaster"
+        SMTP_ENCRYPTION="tls"
+        SMTP_PASSWORD="$quoted_case"
+        write_env_file "$ESC_TMP/.env" "$ESC_TMP/.env.production.example"
+    ) >/dev/null 2>&1 || quote_rc=$?
+    if [ "$quote_rc" -ne 0 ]; then
+        pass "a password written as $quoted_case is refused, not handed to the dotenv parser"
+    else
+        fail "a password written as $quoted_case is refused, not handed to the dotenv parser"
+    fi
+done
+assert_eq "no refused quoted password reaches the file" 'pa\ts\\word' \
+    "$(grep '^MAIL_PASSWORD=' "$ESC_TMP/.env" | cut -d= -f2-)"
+
+# An interior quote is neither unterminated nor strippable, so it stays
+# allowed: the check refuses the two edges, not the character.
+inner_quote_rc=0
+# shellcheck disable=SC2030
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="smtp"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    SMTP_HOST="smtp.example.com"; SMTP_PORT="587"; SMTP_USERNAME="postmaster"
+    SMTP_ENCRYPTION="tls"
+    SMTP_PASSWORD='pa"ss'
+    write_env_file "$ESC_TMP/.env" "$ESC_TMP/.env.production.example"
+) >/dev/null 2>&1 || inner_quote_rc=$?
+if [ "$inner_quote_rc" -eq 0 ]; then
+    pass "a password with an interior quote is still accepted"
+else
+    fail "a password with an interior quote is still accepted (exit $inner_quote_rc)"
+fi
+assert_eq "the interior-quote password reaches the file byte for byte" 'pa"ss' \
     "$(grep '^MAIL_PASSWORD=' "$ESC_TMP/.env" | cut -d= -f2-)"
 
 log "A re-run with --mail=smtp keeps the live mail credentials"
@@ -692,6 +895,8 @@ assert_eq "a re-run that does supply a new MAIL_PORT updates it" "465" \
 # The seeding above and this guard are two separate defences, and the brief
 # asked for both: this one is what protects any caller reaching write_env_file
 # with an empty collected value, which is the shape the unit suite itself has.
+# SC2030: scoped to this subshell deliberately, as everywhere else here.
+# shellcheck disable=SC2030
 (
     OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="smtp"
     OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
@@ -733,8 +938,115 @@ assert_eq "the auth-less relay's MAIL_USERNAME is empty" "" \
 assert_eq "the auth-less relay's MAIL_PASSWORD is empty" "" \
     "$(grep '^MAIL_PASSWORD=' "$RELAY_TMP/.env" | cut -d= -f2-)"
 
+log "A value the .env cannot carry is refused where it can still be fixed"
+# The refusal's old advice — "set MAIL_PASSWORD in .env by hand after the
+# install" — worked in neither direction. On a fresh install write_env_file
+# died before writing anything, so there was no install to edit; on an
+# existing one the hand-written value was seeded straight back into the same
+# refusal, so every later --mail=smtp run died at Configuration telling the
+# operator to do what they had already done.
+
+# 1. Interactively the refusal is explained and the prompt comes round again,
+#    so the operator fixes it where they are standing.
+REPROMPT_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$REPROMPT_TMP/.env.production.example"
+# SC2016: the single quotes are the point — this password must reach
+# collect_mail_settings with a literal $ in it.
+# shellcheck disable=SC2016
+cat > "$REPROMPT_TMP/answers" <<'ANSWERS'
+smtp.example.com
+587
+postmaster
+pa$sword
+clean-password
+tls
+ANSWERS
+reprompt_rc=0
+# shellcheck disable=SC2030
+reprompt_out="$( (
+    SOURCE_DIR="$REPROMPT_TMP"; OPT_MAIL="smtp"; OPT_YES=0; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    collect_mail_settings
+    write_env_file "$REPROMPT_TMP/.env" "$REPROMPT_TMP/.env.production.example"
+) < "$REPROMPT_TMP/answers" 2>&1 )" || reprompt_rc=$?
+if [ "$reprompt_rc" -eq 0 ]; then
+    pass "an interactive run given an unwritable password and then a clean one completes"
+else
+    fail "an interactive run given an unwritable password and then a clean one completes (exit $reprompt_rc)"
+fi
+assert_eq "the clean password is the one that reaches the .env" "clean-password" \
+    "$(grep '^MAIL_PASSWORD=' "$REPROMPT_TMP/.env" 2>/dev/null | cut -d= -f2- || true)"
+if printf '%s' "$reprompt_out" | grep -q 'MAIL_PASSWORD cannot contain'; then
+    pass "the re-prompt says which setting was refused and why"
+else
+    fail "the re-prompt says which setting was refused and why"
+fi
+
+# 2. A hand-written value the installer would refuse is never seeded as a
+#    prompt default, so it never reaches the refusal at all.
+DOLLAR_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$DOLLAR_TMP/.env.production.example"
+cat > "$DOLLAR_TMP/.env" <<'DOLLARENV'
+MAIL_MAILER=smtp
+MAIL_HOST=smtp.live.example
+MAIL_PORT=2525
+MAIL_USERNAME=live-user
+MAIL_PASSWORD=pa$sword-set-by-hand
+MAIL_SCHEME=smtp
+DOLLARENV
+# SC2031: the SMTP_* read here are the ones collect_mail_settings set in THIS
+# subshell, exactly as in the seeding test above.
+# shellcheck disable=SC2031
+if (
+    SOURCE_DIR="$DOLLAR_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    collect_mail_settings >/dev/null 2>&1
+    [ -z "$SMTP_PASSWORD" ] && [ "$SMTP_USERNAME" = "live-user" ]
+); then
+    pass "a MAIL_PASSWORD the installer would refuse is not offered back as a prompt default"
+else
+    fail "a MAIL_PASSWORD the installer would refuse is not offered back as a prompt default"
+fi
+
+# 3. Which is what makes the whole documented upgrade path survive it.
+dollar_rerun_rc=0
+(
+    SOURCE_DIR="$DOLLAR_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    collect_mail_settings
+    write_env_file "$DOLLAR_TMP/.env" "$DOLLAR_TMP/.env.production.example"
+) >/dev/null 2>&1 || dollar_rerun_rc=$?
+if [ "$dollar_rerun_rc" -eq 0 ]; then
+    pass "a --mail=smtp re-run against a hand-written \$ password completes"
+else
+    fail "a --mail=smtp re-run against a hand-written \$ password completes (exit $dollar_rerun_rc)"
+fi
+# SC2016: the literal $ is the point — this is the byte-for-byte comparison.
+# shellcheck disable=SC2016
+assert_eq "the hand-written MAIL_PASSWORD is byte-identical after that re-run" 'pa$sword-set-by-hand' \
+    "$(grep '^MAIL_PASSWORD=' "$DOLLAR_TMP/.env" 2>/dev/null | cut -d= -f2- || true)"
+
+# 4. Under --yes there is nobody to re-prompt, so it stays fatal — but it names
+#    the variable the operator set rather than the .env key they did not.
+yes_dollar_rc=0
+# SC2016: the literal $ is the point, as above.
+# shellcheck disable=SC2016,SC2030
+yes_dollar_out="$( (
+    SOURCE_DIR="$DOLLAR_TMP"; OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    PRIZY_SMTP_PASSWORD='pa$sword'
+    collect_mail_settings
+) 2>&1 )" || yes_dollar_rc=$?
+if [ "$yes_dollar_rc" -ne 0 ] && printf '%s' "$yes_dollar_out" | grep -q 'PRIZY_SMTP_PASSWORD'; then
+    pass "--yes with an unwritable PRIZY_SMTP_PASSWORD dies, naming that variable"
+else
+    fail "--yes with an unwritable PRIZY_SMTP_PASSWORD dies, naming that variable (exit $yes_dollar_rc: $yes_dollar_out)"
+fi
+
 log "Every PRIZY_* variable is documented in --help"
-help_text="$(bash "$INSTALL_SH" --help 2>&1)"
+help_text="$(bash "$INSTALL_SH" --help 2>&1 || true)"
 missing_env_docs=""
 for prizy_var in PRIZY_DOMAIN PRIZY_EMAIL PRIZY_MAIL PRIZY_SMTP_HOST PRIZY_SMTP_PORT \
                  PRIZY_SMTP_USERNAME PRIZY_SMTP_PASSWORD PRIZY_SMTP_ENCRYPTION \
@@ -813,6 +1125,14 @@ if printf '%s' "$full_dry" | grep -q 'migrate'; then
     pass "--dry-run runs migrations as part of the deploy"
 else
     fail "--dry-run runs migrations as part of the deploy"
+fi
+# The .env-* glob is wider than the checkout's own .env: it also deletes a
+# file an operator left in the source directory. The old info line fired only
+# when the checkout carried a .env, and named only that file.
+if printf '%s' "$full_dry" | grep -qE 'removing .*/\.env and any .*/\.env-\* files'; then
+    pass "the run says which .env files it removes from the source directory"
+else
+    fail "the run says which .env files it removes from the source directory"
 fi
 if printf '%s' "$full_dry" | grep -q 'https://example.com/signup'; then
     pass "the closing instruction names /signup"
