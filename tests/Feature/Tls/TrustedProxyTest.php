@@ -24,15 +24,23 @@ it('ignores a forwarded host from an untrusted client', function (): void {
     expect($response->status())->not->toBe(200);
 });
 
-it('honours a forwarded host from the edge', function (): void {
+it('never lets a forwarded host select a tenant, even from the edge', function (): void {
     Workspace::factory()->create(['slug' => 'alpha']);
 
-    // 127.0.0.1 stands in for the edge here. If this fails, the trusted list is
-    // too narrow and every URL the app generates behind TLS will be wrong.
-    $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+    // Stronger than "untrusted senders are ignored": in this application a
+    // forwarded host can NEVER select a tenant, whatever the proxy is trusted.
+    // Spatie resolves the tenant in Multitenancy::configureRequests(), called
+    // from the service provider's boot — strictly before any middleware, so
+    // TrustProxies has not run and the raw Host header is what gets matched.
+    //
+    // This pins that property. If a future upgrade moves tenant resolution into
+    // middleware, this test fails and tells us that trusting the edge has
+    // quietly become a tenant-selection surface.
+    $response = $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
         ->withHeaders(['X-Forwarded-Host' => 'alpha.localhost'])
-        ->get('http://ghost.localhost/login')
-        ->assertOk();
+        ->get('http://ghost.localhost/login');
+
+    expect($response->status())->not->toBe(200);
 });
 
 it('honours the forwarded protocol from the edge', function (): void {
