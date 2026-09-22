@@ -18,6 +18,15 @@
 	on_demand_tls {
 		ask http://127.0.0.1:2020/_caddy/ask
 	}
+
+	# Test-only: substitute Caddy's own internal CA (self-signed, no network
+	# call) for real ACME issuance, but only for the space-separated hostnames
+	# named here — `ask` above still gates every one of them, unchanged. This
+	# is what lets scripts/test-prod-stack.sh prove on-demand TLS actually
+	# activates, offline, in seconds. No real deploy ever sets this variable,
+	# so the inert placeholder default (a hostname nothing ever requests)
+	# means `local_certs` never applies in production.
+	local_certs {$CADDY_LOCAL_CERTS_HOSTS:caddy-local-certs-test-only.invalid}
 }
 
 # The routing every site shares.
@@ -32,6 +41,18 @@
 	# `/build/.secret` fell through to file_server and was served. `route`
 	# disables that re-sorting and runs these in exactly the order written.
 	route {
+		# nginx enforced client_max_body_size 25m; Caddy has no default body
+		# limit and streams straight to fpm, so an unbounded (or slow-drip)
+		# POST would occupy an fpm worker for its whole duration — with
+		# pm.max_children=8 (docker/prod/fpm-pool.conf), eight of those is a
+		# full outage. 26214400 = 25 * 1024 * 1024, the exact byte count of
+		# post_max_size=25M in docker/prod/php.ini (PHP's ini shorthand is
+		# binary, not decimal), so this refuses at the edge no later than PHP
+		# itself would.
+		request_body {
+			max_size 26214400
+		}
+
 		# Never serve a dotfile: neither one directly under public/ (e.g. a
 		# stray .env, .git, .DS_Store, editor swapfile) nor one nested under
 		# a subdirectory such as /build/.secret. Must come before every other
@@ -41,8 +62,13 @@
 			respond 404
 		}
 
-		# Reachable only on the internal :2020 listener below.
-		handle /_caddy/ask {
+		# Reachable only on the internal :2020 listener below. Laravel's
+		# router rtrims a trailing slash before matching, so without the
+		# second form here `/_caddy/ask/` would fall through every handler
+		# below and reach php_fastcgi, turning the gate into a public
+		# hostname oracle. Match both forms.
+		@caddy_ask path /_caddy/ask /_caddy/ask/
+		handle @caddy_ask {
 			respond 404
 		}
 
@@ -97,4 +123,15 @@
 
 {$CADDY_SITE_ADDRESS:https://} {
 	import app
+
+	# Configuring on-demand issuance globally (above) only makes certificates
+	# available; a site must still opt in with its own `tls` directive or it
+	# holds none. Without this, every TLS handshake fails in production —
+	# `:80` test mode is unaffected: Caddy logs "listening only on the HTTP
+	# port, so no automatic HTTPS will be applied" and this directive is
+	# inert, proven by `caddy validate` passing in both modes and a plain
+	# `:80` run still answering HTTP with no TLS involved.
+	tls {
+		on_demand
+	}
 }

@@ -14,6 +14,7 @@ set -euo pipefail
 
 PROJECT="prizy-stacktest"
 HTTP_PORT="18080"
+HTTPS_PORT="18443"
 ENV_FILE="$(mktemp)"
 export ENV_FILE   # Compose interpolates ${ENV_FILE} in the service's env_file
 FAILED=0
@@ -52,7 +53,12 @@ APP_URL=http://localhost:${HTTP_PORT}
 APP_BASE_DOMAIN=localhost
 HTTP_PORT=${HTTP_PORT}
 CADDY_SITE_ADDRESS=:80
-HTTPS_PORT=18443
+HTTPS_PORT=${HTTPS_PORT}
+# docker-compose.prod.yml now requires this (I5): an empty value would
+# silently become admin@localhost, which Let's Encrypt refuses. :80 test
+# mode never issues a certificate, so this value is never actually used —
+# it only needs to satisfy the compose-level guard.
+ACME_EMAIL=test@example.com
 # Match .env.production.example: this app's session/cache/queue stores are
 # Redis by design — there is no sessions table migration, so leaving these
 # unset falls back to Laravel's own SESSION_DRIVER=database default and 500s
@@ -278,6 +284,16 @@ else
     fail "/_caddy/ask is not reachable from outside"
 fi
 
+# Caddy's path matcher is exact, but Laravel's router rtrims a trailing slash
+# before matching — so without matching both forms in the Caddyfile (I3),
+# /_caddy/ask/ falls through every handler and reaches php_fastcgi, turning
+# this into a public hostname oracle via one extra character.
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/_caddy/ask/?domain=localhost")" = "404" ]; then
+    pass "/_caddy/ask/ (trailing slash) is not reachable from outside either"
+else
+    fail "/_caddy/ask/ (trailing slash) is not reachable from outside either"
+fi
+
 # ...but Caddy itself must be able to reach it, or on-demand TLS fails closed
 # and every workspace subdomain goes dark.
 if compose exec -T web sh -c \
@@ -297,6 +313,23 @@ else
     fail "a dotfile under public/ is refused, not served"
 fi
 compose exec -T web sh -c 'rm -f /var/www/html/public/.probe' >/dev/null 2>&1 || true
+
+# nginx had client_max_body_size 25m; Caddy has no default and streams
+# straight to fpm, so an unbounded (or slow-drip) POST would occupy an fpm
+# worker for its whole duration (I4) — with pm.max_children=8
+# (docker/prod/fpm-pool.conf), eight of those is a full outage. 26214401 is
+# one byte past post_max_size=25M in docker/prod/php.ini (PHP's ini
+# shorthand is binary: 25 * 1024 * 1024 = 26214400), so this must already be
+# refused. The target route need not even accept POST: the limit applies in
+# the shared route before any handler, so a 413 here (rather than a 405 from
+# Laravel) is itself proof the edge is what refused it.
+oversized_code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 30 \
+    -X POST --data-binary @<(head -c 26214401 /dev/zero) "$base/health")
+if [ "$oversized_code" = "413" ]; then
+    pass "an oversized POST is refused at the edge (413), never reaches fpm"
+else
+    fail "an oversized POST is refused at the edge (413), never reaches fpm (got '$oversized_code')"
+fi
 
 log "Background roles run without blocking the deploy"
 for svc in worker scheduler; do
@@ -385,6 +418,75 @@ else
 fi
 
 compose --profile realtime stop reverb >/dev/null 2>&1 || true
+
+log "On-demand TLS actually activates, and still gates on a real workspace (C1)"
+# Everything above this point runs Caddy in CADDY_SITE_ADDRESS=:80 test mode,
+# which never touches TLS at all — that is exactly how the branch's headline
+# feature (on-demand certificates) shipped with no site-level `tls` directive
+# and went uncaught. This section runs Caddy the way production actually
+# does (an HTTPS site with on-demand issuance) and proves, offline, that a
+# real workspace hostname gets a certificate and is served while a bogus one
+# is refused at the TLS layer. It is intentionally the LAST assertion block:
+# it recreates the `web` container in a different mode and nothing after it
+# depends on :80 test mode again.
+
+# A real workspace, inserted directly by SQL: Workspace::factory() pulls in
+# fakerphp/faker, which is require-dev only and absent from the production
+# image (--no-dev), so the factory cannot run inside this stack.
+compose exec -T postgres psql -U prizy -d prizy -c \
+    "INSERT INTO workspaces (name, slug) VALUES ('Edge Test', 'edge-test') ON CONFLICT (slug) DO NOTHING;" \
+    >/dev/null 2>&1
+
+# Switch the throwaway env to real TLS mode: blank CADDY_SITE_ADDRESS so the
+# compose default (https://) applies, and scope Caddy's internal CA to just
+# the workspace hostname this section tests, via CADDY_LOCAL_CERTS_HOSTS (see
+# docker/prod/Caddyfile and docker-compose.prod.yml). `ask` is untouched —
+# both hostnames below are still gated by the real application and its
+# database, only the ISSUER is swapped for one that needs no network.
+sed -i 's/^CADDY_SITE_ADDRESS=:80$/CADDY_SITE_ADDRESS=/' "$ENV_FILE"
+echo "CADDY_LOCAL_CERTS_HOSTS=edge-test.localhost" >> "$ENV_FILE"
+compose up -d --force-recreate --no-deps web >/dev/null 2>&1
+
+web_tls_ready=0
+for _ in $(seq 1 30); do
+    if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'web healthy')" -eq 1 ]; then
+        web_tls_ready=1
+        break
+    fi
+    sleep 1
+done
+if [ "$web_tls_ready" -eq 1 ]; then
+    pass "web (Caddy) is healthy again in real TLS mode"
+else
+    fail "web (Caddy) is healthy again in real TLS mode"
+fi
+
+# --resolve pins the SNI hostname to this box without needing real DNS.
+# -k is required for the internal CA's root, not to paper over a mismatch:
+# the /health body and status code are what prove a certificate was actually
+# issued and the request was served, not just that curl stopped complaining.
+real_code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
+    --resolve "edge-test.localhost:${HTTPS_PORT}:127.0.0.1" \
+    "https://edge-test.localhost:${HTTPS_PORT}/health" 2>/dev/null || true)
+if [ "$real_code" = "200" ]; then
+    pass "a real workspace hostname (edge-test.localhost) gets an on-demand certificate and is served"
+else
+    fail "a real workspace hostname (edge-test.localhost) gets an on-demand certificate and is served (got '$real_code')"
+fi
+
+# No -k rescue here: a bogus hostname must fail the TLS handshake itself
+# (curl exits non-zero, http_code comes back empty/000) because `ask` never
+# authorises it and on-demand TLS refuses to obtain ANY certificate — local
+# or otherwise. A 404/500 HTTP response would mean a certificate WAS issued
+# and the request reached the application, which is the failure this guards.
+bogus_code=$(curl -sk -o /dev/null -w '%{http_code}' --max-time 10 \
+    --resolve "nonexistent-workspace.localhost:${HTTPS_PORT}:127.0.0.1" \
+    "https://nonexistent-workspace.localhost:${HTTPS_PORT}/health" 2>/dev/null || true)
+if [ "$bogus_code" != "200" ]; then
+    pass "a bogus hostname (nonexistent-workspace.localhost) is refused a certificate, not served (got '$bogus_code')"
+else
+    fail "a bogus hostname (nonexistent-workspace.localhost) is refused a certificate, not served (got '$bogus_code')"
+fi
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction stack tests FAILED\033[0m\n'
