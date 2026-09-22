@@ -166,7 +166,11 @@ merge_env() {
 
 # --- steps -----------------------------------------------------------------
 
-PRIZY_ROOT="/data/prizy"
+# Overridable so the test suite can drive a real (non-dry-run) layout into a
+# temp directory. Without this the dry-run assertion is untestable on a non-root
+# box: /data is root-owned, so a broken gate fails on permissions rather than
+# creating anything, and the assertion passes either way.
+PRIZY_ROOT="${PRIZY_ROOT:-/data/prizy}"
 SOURCE_DIR="$PRIZY_ROOT/source"
 REPO_URL="${PRIZY_REPO_URL:-https://github.com/giacomomasseron/prizy.git}"
 

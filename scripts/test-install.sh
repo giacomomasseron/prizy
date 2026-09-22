@@ -201,21 +201,25 @@ log "Argument parsing and --dry-run"
 INSTALL_SH="$(dirname "$0")/install.sh"
 
 # --dry-run must be safe to run as an ordinary user on a developer's machine:
-# it is the only end-to-end path the test suite can drive.
-prizy_root_before="$(test -d /data/prizy && echo present || echo absent)"
-dry_out="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log 2>&1 || true)"
+# it is the only end-to-end path the test suite can drive. PRIZY_ROOT is
+# overridable specifically so this can point at a directory this test can
+# actually write to: real /data is root-owned, so on a non-root box a broken
+# `run` gate would fail with Permission denied rather than creating anything,
+# letting a before/after comparison against /data/prizy pass whether the gate
+# works or not. A `mktemp -d` under the suite's own $TMP (already cleaned up
+# by the trap above) has no such blind spot — this user can always write to it.
+fake_prizy_root="$(mktemp -d -p "$TMP")"
+dry_out="$(PRIZY_ROOT="$fake_prizy_root" bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log 2>&1 || true)"
 
 if printf '%s' "$dry_out" | grep -q 'DRY-RUN'; then
     pass "--dry-run announces what it would do"
 else
     fail "--dry-run announces what it would do"
 fi
-# Compare before/after rather than asserting absence: a developer running this
-# on a box that already has a real install would otherwise see a spurious red.
-if [ "$prizy_root_before" = "$(test -d /data/prizy && echo present || echo absent)" ]; then
-    pass "--dry-run did not create or remove /data/prizy"
+if [ -z "$(ls -A "$fake_prizy_root" 2>/dev/null)" ]; then
+    pass "--dry-run did not write into PRIZY_ROOT"
 else
-    fail "--dry-run did not create or remove /data/prizy"
+    fail "--dry-run did not write into PRIZY_ROOT"
 fi
 
 bad_domain_rc=0
@@ -235,8 +239,12 @@ else
 fi
 
 both_sources_rc=0
+# A valid checkout (this repo itself), not /tmp: /tmp has no
+# docker-compose.prod.yml, so fetch_source's own --source-path validation
+# would refuse it independently of --ref/--source-path being mutually
+# exclusive, masking a removed guard behind an unrelated nonzero exit.
 bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
-    --ref main --source-path /tmp >/dev/null 2>&1 || both_sources_rc=$?
+    --ref main --source-path "$(dirname "$0")/.." >/dev/null 2>&1 || both_sources_rc=$?
 if [ "$both_sources_rc" -ne 0 ]; then
     pass "--ref and --source-path together are refused as ambiguous"
 else
