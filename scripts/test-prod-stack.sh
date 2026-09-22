@@ -364,14 +364,24 @@ log "The edge carries Reverb"
 compose --profile realtime up -d --wait reverb >/dev/null 2>&1 || true
 
 # GET /app/{key} is Reverb's WebSocket endpoint (verified in the package
-# source). Without an upgrade header Reverb answers rather than proxying to the
-# Laravel app — what matters is that the edge routes it to Reverb at all, so a
-# 404 from Laravel's router here means the route is being swallowed by the app.
+# source). This proves the edge routes the path to a LIVE Reverb process —
+# it does not, and cannot, prove the WebSocket handshake itself works, since
+# no Upgrade header is sent and Reverb never gets that far. Two failure modes
+# must both be excluded, not just one:
+#   - 404 means Laravel's router answered, i.e. the request never reached
+#     Caddy's reverse_proxy — the route is being swallowed by the app.
+#   - 502 means Caddy's reverse_proxy answered because reverb was down or
+#     unreachable — a genuine boot failure. The `up --wait || true` above
+#     does not itself catch that; excluding 502 here is what does.
+# The 500 actually observed on a healthy Reverb is NOT a deliberate protocol
+# rejection of a non-upgrade GET — it's an uncaught TypeError in Reverb's own
+# non-upgrade code path, caught only by its blanket `catch (Throwable)`. Read
+# it as "a live Reverb process answered", not as a polite refusal.
 code=$(curl -s -o /dev/null -w '%{http_code}' "$base/app/prizy-key")
-if [ "$code" != "404" ] && [ -n "$code" ]; then
-    pass "/app/{key} reaches Reverb rather than the Laravel router (got $code)"
+if [ "$code" != "404" ] && [ "$code" != "502" ] && [ -n "$code" ]; then
+    pass "/app/{key} reaches a live Reverb, not the Laravel router or a dead upstream (got $code)"
 else
-    fail "/app/{key} reaches Reverb rather than the Laravel router (got $code)"
+    fail "/app/{key} reaches a live Reverb, not the Laravel router or a dead upstream (got $code)"
 fi
 
 compose --profile realtime stop reverb >/dev/null 2>&1 || true
