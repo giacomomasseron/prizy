@@ -560,6 +560,11 @@ fetch_source() {
             # The file is back; nothing left for the handler to restore. Also
             # covers --dry-run, where `run mv` printed and did not move.
             ENV_PARKED_PATH=""
+        else
+            # Nothing was ever parked in this run either, so the handler's
+            # window is already closed; do not leave it pointed at a file
+            # that was never written.
+            ENV_PARKED_PATH=""
         fi
         return 0
     fi
@@ -569,8 +574,10 @@ fetch_source() {
     # than after: a fetch that fails must not leave the secrets parked.
     if [ "$had_env" -eq 1 ]; then
         run mv "$parked" "$SOURCE_DIR/.env"
-        ENV_PARKED_PATH=""
     fi
+    # This arm parks nothing itself, so the handler's window is closed either
+    # way: the file is back, or there was never one to restore.
+    ENV_PARKED_PATH=""
 
     if [ -d "$SOURCE_DIR/.git" ]; then
         info "updating existing checkout to $OPT_REF"

@@ -539,15 +539,20 @@ live_db_pw="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2-
     PRIZY_ROOT="$FAKE_ROOT"; SOURCE_DIR="$FAKE_ROOT/source"
     OPT_SOURCE_PATH="$CHECKOUT"; OPT_DRY_RUN=0
     fetch_source
+    # Snapshotted HERE, not after the subshell. fetch_source's own EXIT
+    # handler would otherwise put the file back on the way out and report
+    # green whether or not the arm's own in-line restore did it.
+    [ -f "$SOURCE_DIR/.env" ] && cp "$SOURCE_DIR/.env" "$FAKE_ROOT/env-as-fetch-source-left-it"
+    [ -e "$FAKE_ROOT/.env-parked-during-copy" ] && touch "$FAKE_ROOT/still-parked"
 ) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
-if [ -f "$FAKE_ROOT/source/.env" ]; then
-    live_db_pw_after="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/source/.env" | cut -d= -f2- || true)"
+if [ -f "$FAKE_ROOT/env-as-fetch-source-left-it" ]; then
+    live_db_pw_after="$(grep '^POSTGRES_PASSWORD=' "$FAKE_ROOT/env-as-fetch-source-left-it" | cut -d= -f2- || true)"
 else
     live_db_pw_after="<the install has no .env at all>"
 fi
 assert_eq "the install's own POSTGRES_PASSWORD survives a --source-path re-run" \
     "$live_db_pw" "$live_db_pw_after"
-if [ -e "$FAKE_ROOT/.env-parked-during-copy" ]; then
+if [ -e "$FAKE_ROOT/still-parked" ]; then
     fail "a completed --source-path run leaves nothing at the parked path"
 else
     pass "a completed --source-path run leaves nothing at the parked path"
@@ -567,16 +572,21 @@ printf 'POSTGRES_PASSWORD=dev-password\nAPP_DEBUG=true\n' > "$INT_ROOT/source/.e
     PRIZY_ROOT="$INT_ROOT"; SOURCE_DIR="$INT_ROOT/source"
     OPT_SOURCE_PATH="$CHECKOUT"; OPT_DRY_RUN=0
     fetch_source
+    # Snapshotted HERE, not after the subshell. fetch_source's own EXIT
+    # handler would otherwise put the file back on the way out and report
+    # green whether or not the arm's own in-line restore did it.
+    [ -f "$SOURCE_DIR/.env" ] && cp "$SOURCE_DIR/.env" "$INT_ROOT/env-as-fetch-source-left-it"
+    [ -e "$INT_ROOT/.env-parked-during-copy" ] && touch "$INT_ROOT/still-parked"
 ) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
 assert_eq "the .env parked by an interrupted run is the one the next run restores" \
     "live-db-password" \
-    "$(grep '^POSTGRES_PASSWORD=' "$INT_ROOT/source/.env" 2>/dev/null | cut -d= -f2- || true)"
-if grep -qx 'APP_DEBUG=true' "$INT_ROOT/source/.env" 2>/dev/null; then
+    "$(grep '^POSTGRES_PASSWORD=' "$INT_ROOT/env-as-fetch-source-left-it" 2>/dev/null | cut -d= -f2- || true)"
+if grep -qx 'APP_DEBUG=true' "$INT_ROOT/env-as-fetch-source-left-it" 2>/dev/null; then
     fail "the recovery run does not adopt the development .env the interruption left behind"
 else
     pass "the recovery run does not adopt the development .env the interruption left behind"
 fi
-if [ -e "$INT_ROOT/.env-parked-during-copy" ]; then
+if [ -e "$INT_ROOT/still-parked" ]; then
     fail "the recovery run empties the parked path once it has restored from it"
 else
     pass "the recovery run empties the parked path once it has restored from it"
