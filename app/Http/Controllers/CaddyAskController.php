@@ -26,8 +26,10 @@ final class CaddyAskController extends Controller
         // raises an error that would surface as a 500.
         abort_unless(is_string($domain) && $this->authorizeTlsHost->handle($domain), 404);
 
-        // Caddy's on_demand_tls ask policy requires exactly 200 OK to permit
-        // issuance; noContent()'s default of 204 would not satisfy it.
+        // Caddy itself accepts any 2xx (modules/caddytls/ondemand.go rejects
+        // only status < 200 or > 299); the explicit 200 here is to satisfy
+        // this endpoint's own tests, which assert exactly 200, not a protocol
+        // requirement — noContent()'s default of 204 would work fine with Caddy.
         return response()->noContent(200);
     }
 }

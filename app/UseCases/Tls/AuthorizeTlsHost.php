@@ -21,6 +21,14 @@ final class AuthorizeTlsHost
     {
         $host = strtolower(trim($host));
 
+        // Neither reaches this endpoint through real Caddy traffic — SNI
+        // carries no port, and RFC 6066 excludes a trailing dot — but
+        // WorkspaceTenantFinder sees a host already normalised by Symfony's
+        // Request::getHost(), while this one arrives raw from a query
+        // string. Strip both here too, to stay in agreement.
+        $host = rtrim($host, '.');
+        $host = Str::before($host, ':');
+
         if ($host === '') {
             return false;
         }
@@ -36,6 +44,17 @@ final class AuthorizeTlsHost
         }
 
         if ($base === '' || ! str_ends_with($host, '.'.$base)) {
+            // Deliberately stricter than WorkspaceTenantFinder here. The finder
+            // derives its slug with Str::before($host, '.'.$base), which is
+            // strstr(..., true) — it matches the FIRST occurrence of ".$base"
+            // anywhere in the string, not an anchored suffix, so it would
+            // resolve an attacker-controlled host like
+            // "acme.example.com.evil.test" to the "acme" workspace. This
+            // anchored str_ends_with() check refuses that host instead, so no
+            // certificate is ever issued for it — the divergence is in the
+            // safe direction and is intentional. Do not "fix" this to match
+            // the finder; the finder has its own pre-existing bug here, out of
+            // scope for this task and needing its own design decision.
             return false;
         }
 

@@ -89,3 +89,35 @@ it('matches hostnames case-insensitively', function (): void {
 
     $this->get('/_caddy/ask?domain=ACME.Example.Com')->assertOk();
 });
+
+it('authorises a host with a port suffix', function (): void {
+    config(['app.base_domain' => 'example.com']);
+
+    // SNI carries no port, so real Caddy traffic never sends one — but
+    // WorkspaceTenantFinder sees a host already stripped of it by Symfony's
+    // Request::getHost(), so this endpoint must strip it too, to agree.
+    $this->get('/_caddy/ask?domain='.urlencode('example.com:8443'))->assertOk();
+});
+
+it('authorises a host with a trailing dot', function (): void {
+    config(['app.base_domain' => 'example.com']);
+    Workspace::factory()->create(['slug' => 'acme']);
+
+    // RFC 6066 excludes a trailing dot from SNI, so real Caddy traffic never
+    // sends one — but agreement with WorkspaceTenantFinder's normalised host
+    // still requires stripping it here.
+    $this->get('/_caddy/ask?domain='.urlencode('acme.example.com.'))->assertOk();
+});
+
+it('refuses a host that embeds the base domain rather than ending in it', function (): void {
+    config(['app.base_domain' => 'example.com']);
+    Workspace::factory()->create(['slug' => 'acme']);
+
+    // WorkspaceTenantFinder derives its slug with Str::before(), which matches
+    // the FIRST occurrence of ".example.com" anywhere in the string rather
+    // than an anchored suffix, so it would actually resolve this host to the
+    // "acme" workspace — a pre-existing bug in the finder, out of scope here.
+    // This endpoint's anchored str_ends_with() check must still refuse it, so
+    // no certificate is ever issued for an attacker-controlled host like this.
+    $this->get('/_caddy/ask?domain=acme.example.com.evil.test')->assertNotFound();
+});
