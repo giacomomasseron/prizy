@@ -162,6 +162,41 @@ else
     fail "a value containing = and # round-trips unchanged"
 fi
 
+log "The .env merge — parsed the way Compose's own dotenv parser parses it"
+# Compose trims whitespace around the =, so an existing line saved with
+# stray spaces (a hand-edited .env) must still be recognised under its
+# canonical, unpadded key rather than being lost under a key with a
+# trailing space that the template never matches.
+printf 'POSTGRES_PASSWORD = live-database-password\n' > "$TMP/padded-existing"
+merged_padded="$(merge_env "$TMP/padded-existing" "$TMP/template")"
+if printf '%s' "$merged_padded" | grep -qx 'POSTGRES_PASSWORD=live-database-password'; then
+    pass "a space-padded KEY = value survives the merge under its canonical key"
+else
+    fail "a space-padded KEY = value survives the merge under its canonical key"
+fi
+
+# Compose strips a trailing \r, so a .env saved with CRLF line endings (an
+# editor default on Windows) must not glue a literal \r onto every
+# preserved value on every re-run.
+printf 'POSTGRES_PASSWORD=live-database-password\r\n' > "$TMP/crlf-existing"
+merged_crlf="$(merge_env "$TMP/crlf-existing" "$TMP/template")"
+if printf '%s' "$merged_crlf" | grep -qx 'POSTGRES_PASSWORD=live-database-password'; then
+    pass "a CRLF existing file's value arrives without a trailing CR"
+else
+    fail "a CRLF existing file's value arrives without a trailing CR"
+fi
+
+# A whitespace-only value trims to empty under Compose's rules, so it must
+# fall through to the template exactly like a truly empty value does — not
+# "win" the merge as if it were a real secret.
+printf 'POSTGRES_PASSWORD=   \n' > "$TMP/whitespace-only-existing"
+merged_ws="$(merge_env "$TMP/whitespace-only-existing" "$TMP/template")"
+if printf '%s' "$merged_ws" | grep -qx 'POSTGRES_PASSWORD='; then
+    pass "a whitespace-only existing value falls through to the template"
+else
+    fail "a whitespace-only existing value falls through to the template"
+fi
+
 echo
 if [ "$FAILED" -eq 0 ]; then
     printf '\033[0;32mInstaller unit tests passed\033[0m\n'

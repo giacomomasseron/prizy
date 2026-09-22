@@ -76,6 +76,16 @@ gen_secret_for() {
     esac
 }
 
+# Trims leading and trailing [:space:] from $1. Only the two edges are
+# touched — interior whitespace, =, #, quotes and backslashes are left
+# exactly as given.
+_dotenv_trim() {
+    local s="$1"
+    s="${s#"${s%%[![:space:]]*}"}"
+    s="${s%"${s##*[![:space:]]}"}"
+    printf '%s' "$s"
+}
+
 # Merges a template into an existing .env and prints the result on stdout.
 #
 # THE RULE: an existing NON-EMPTY value always wins. Everything else follows
@@ -87,35 +97,53 @@ gen_secret_for() {
 # reads like the shipped template. Keys the operator added that the template
 # does not know about are appended rather than dropped.
 #
+# Every line this function reads is parsed exactly the way Compose's own
+# dotenv parser parses it — because Compose is what reads the .env this
+# function writes. That means, on every line of every file it reads: (1) a
+# trailing \r is stripped before anything else runs, so a file saved with
+# CRLF line endings does not glue a literal \r onto every preserved value;
+# (2) whitespace around the `=` is trimmed — trailing on the key, leading on
+# the value; (3) trailing whitespace on the value is trimmed too, so a
+# whitespace-only value (`KEY=   `) trims to empty and is treated exactly
+# like an unset one, falling through to the template rather than "winning"
+# as if it were real. This is a specification to match, not a style choice —
+# if Compose's parsing ever changes, this must change with it.
+#
 # Usage: merge_env <existing-file> <template-file>
 merge_env() {
     local existing="$1" template="$2"
-    local line key
+    local line key value
     declare -A existing_values=()
     declare -A emitted=()
 
     if [ -f "$existing" ]; then
         while IFS= read -r line || [ -n "$line" ]; do
+            line="${line%$'\r'}"
             case "$line" in ''|'#'*) continue ;; esac
             key="${line%%=*}"
             # Not a KEY=VALUE line at all.
             [ "$key" = "$line" ] && continue
+            key="$(_dotenv_trim "$key")"
             # ${line#*=} and not a split on every =, so a value that itself
             # contains = (base64 padding, an SMTP password) survives whole.
-            existing_values["$key"]="${line#*=}"
+            value="$(_dotenv_trim "${line#*=}")"
+            existing_values["$key"]="$value"
         done < "$existing"
     fi
 
     while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%$'\r'}"
         case "$line" in ''|'#'*) printf '%s\n' "$line"; continue ;; esac
         key="${line%%=*}"
         if [ "$key" = "$line" ]; then
             printf '%s\n' "$line"
             continue
         fi
+        key="$(_dotenv_trim "$key")"
         emitted["$key"]=1
-        # :- so an existing-but-EMPTY value falls through to the template,
-        # which is what makes a half-filled .env recoverable by a re-run.
+        # :- so an existing-but-EMPTY (or whitespace-only, now that it has
+        # been trimmed above) value falls through to the template, which is
+        # what makes a half-filled .env recoverable by a re-run.
         if [ -n "${existing_values[$key]:-}" ]; then
             printf '%s=%s\n' "$key" "${existing_values[$key]}"
         else
