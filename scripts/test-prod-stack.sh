@@ -25,9 +25,16 @@ fail() { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; FAILED=1; }
 compose() { docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" -p "$PROJECT" "$@"; }
 
 # Teardown must run whatever happens, and must not change the exit code.
+# --profile realtime is required here even though the base run never selects
+# it: `down` only tears down containers/volumes in scope for the profiles
+# named on ITS OWN invocation, not the profiles a prior `up` used to start
+# them. The Reverb check below brings up `reverb` (profile-gated, and sharing
+# the `storage` volume via the `app` anchor) for one assertion; without the
+# flag here, a plain `down -v` leaves that container behind exited and the
+# shared volume undeletable because that container still references it.
 cleanup() {
     local status=$?
-    compose down -v --remove-orphans >/dev/null 2>&1 || true
+    compose --profile realtime down -v --remove-orphans >/dev/null 2>&1 || true
     rm -f "$ENV_FILE" || true
     return $status
 }
@@ -351,6 +358,23 @@ fi
 docker run --rm --user 0 -v "$views_dir:/cleanup" --entrypoint sh \
     "prizy/app:${PRIZY_VERSION:-local}" -c 'rm -rf /cleanup/* /cleanup/.[!.]*' >/dev/null 2>&1 || true
 rmdir "$views_dir" 2>/dev/null || true
+
+log "The edge carries Reverb"
+# Reverb is opt-in, so bring it up for this check only.
+compose --profile realtime up -d --wait reverb >/dev/null 2>&1 || true
+
+# GET /app/{key} is Reverb's WebSocket endpoint (verified in the package
+# source). Without an upgrade header Reverb answers rather than proxying to the
+# Laravel app — what matters is that the edge routes it to Reverb at all, so a
+# 404 from Laravel's router here means the route is being swallowed by the app.
+code=$(curl -s -o /dev/null -w '%{http_code}' "$base/app/prizy-key")
+if [ "$code" != "404" ] && [ -n "$code" ]; then
+    pass "/app/{key} reaches Reverb rather than the Laravel router (got $code)"
+else
+    fail "/app/{key} reaches Reverb rather than the Laravel router (got $code)"
+fi
+
+compose --profile realtime stop reverb >/dev/null 2>&1 || true
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction stack tests FAILED\033[0m\n'
