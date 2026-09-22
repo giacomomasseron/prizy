@@ -111,7 +111,52 @@ services:
     image: prizy/web:${PRIZY_VERSION:-local}
     restart: unless-stopped
     ports:
-      - "${HTTP_PORT:-8080}:80"
+      # HTTP_BIND/HTTPS_BIND default to every interface (0.0.0.0); the test
+      # harness (scripts/test-prod-stack.sh) never sets either, so its stack
+      # publishes on every interface too, on the alternate ports it does set
+      # (HTTP_PORT/HTTPS_PORT) — the binds exist for an operator who wants to
+      # restrict a real install to a single interface, not for the tests.
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
+      - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
+      # UDP too: Caddy advertises HTTP/3 over QUIC via Alt-Svc, and without
+      # the UDP mapping every browser that takes it up burns a failed QUIC
+      # attempt before falling back to HTTP/2.
+      - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443/udp"
+    # List form, not `KEY: value` mapping: CADDY_TEST_ISSUER (below) is a
+    # bare `- VARNAME` entry, which is the only form that can leave the
+    # container's env var OMITTED rather than merely empty when the host
+    # doesn't set it. That distinction no longer changes anything here:
+    # docker/prod/Caddyfile now substitutes the whole `local_certs`
+    # directive TEXT, not an argument to it, with an empty default — so an
+    # omitted and an empty CADDY_TEST_ISSUER adapt identically (verified:
+    # both leave no directive in place, and Caddy falls back to its
+    # built-in ACME issuers). The old value-placeholder shape this replaced
+    # did not actually differ between those two states either (verified: both
+    # adapted to the same global `internal` issuer), so the bare form is no
+    # longer load-bearing here — it is kept because it is the correct shape
+    # for a variable no real deploy sets. The other
+    # two keep explicit `=` values; mixing forms in one `environment:` list
+    # is fine, only mixing list and mapping syntax is not.
+    environment:
+      - CADDY_SITE_ADDRESS=${CADDY_SITE_ADDRESS:-https://}
+      # No fallback: an empty value would still need to become SOME string to
+      # flow through Caddy's `email` directive, and the only candidate that
+      # doesn't require a real operator-owned domain (admin@localhost) is one
+      # Let's Encrypt's servers refuse as an account contact — silently
+      # failing every certificate request instead of loudly failing the
+      # deploy. See .env.production.example for the operator-facing text.
+      - ACME_EMAIL=${ACME_EMAIL:?ACME_EMAIL is required (a real, deliverable address for the ACME account)}
+      # Test-only, see docker/prod/Caddyfile. Injects the whole `local_certs`
+      # directive — `local_certs` takes no arguments, so this can't scope it
+      # by passing one, it can only make the directive exist or not. Bare on
+      # purpose (see the note above this block), though omitted and empty
+      # now behave the same either way; no real deploy sets this variable.
+      - CADDY_TEST_ISSUER
+    volumes:
+      # Losing this means re-issuing every workspace's certificate, and
+      # Let's Encrypt rate-limits that.
+      - caddydata:/data
+      - caddyconfig:/config
     depends_on:
       app:
         condition: service_healthy
@@ -180,3 +225,5 @@ volumes:
   pgdata:
   redisdata:
   storage:
+  caddydata:
+  caddyconfig:

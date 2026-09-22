@@ -31,6 +31,43 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', NeedsTenant::class);
         $middleware->appendToGroup('web', EnsureValidTenantSession::class);
 
+        // Caddy terminates TLS in front of this app (P-3). Measured reality,
+        // not the original assumption:
+        //   - fpm receives the CLIENT's own address as REMOTE_ADDR, not
+        //     Caddy's, and Caddy sets HTTPS=on directly — so this middleware
+        //     is not actually load-bearing for scheme in production. It IS
+        //     load-bearing in the Pest suite (tests/Feature/Tls/TrustedProxyTest.php),
+        //     which simulates the edge over HTTP with X-Forwarded-Proto and
+        //     has no real fpm environment to set HTTPS=on.
+        //   - Caddy overwrites X-Forwarded-For/-Host/-Proto with its own view
+        //     before they reach fpm, but sets neither X-Forwarded-Prefix nor
+        //     X-Forwarded-Port — so trusting Laravel's default header set
+        //     (which includes Prefix) lets a client-supplied X-Forwarded-Prefix
+        //     through untouched from any trusted address.
+        //   - Scoped to loopback and the RFC1918 ranges the compose network
+        //     uses, never '*' — but on a LAN install every client IS RFC1918,
+        //     so every LAN user is a trusted address for this middleware's
+        //     purposes. Trusting Prefix there lets any of them poison the
+        //     path of every generated and signed URL in a request they send —
+        //     including a magic-link or CSAT email addressed to someone else —
+        //     with a forged X-Forwarded-Prefix. Narrowed to only the three
+        //     headers Caddy actually sets and actually needs to be believed.
+        //
+        // The Host header still cannot select a tenant regardless of trust:
+        // Spatie resolves the tenant from the raw Host before this middleware
+        // ever runs (see the pinning test in TrustedProxyTest.php).
+        $middleware->trustProxies(
+            at: [
+                '127.0.0.1',
+                '10.0.0.0/8',
+                '172.16.0.0/12',
+                '192.168.0.0/16',
+            ],
+            headers: Request::HEADER_X_FORWARDED_FOR
+                | Request::HEADER_X_FORWARDED_HOST
+                | Request::HEADER_X_FORWARDED_PROTO,
+        );
+
         // A workspace with the support module switched off answers 404 on the
         // help centre and the portal — including the routes behind the contact
         // guard, which would otherwise redirect a guest to a sign-in page that
