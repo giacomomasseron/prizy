@@ -444,11 +444,15 @@ collect_mail_settings() {
                 info "DRY-RUN: would prompt for SMTP host, port, username, password and encryption"
                 return 0
             fi
-            prompt_for SMTP_HOST "SMTP host" ""
-            prompt_for SMTP_PORT "SMTP port" "587"
-            prompt_for SMTP_USERNAME "SMTP username" ""
-            prompt_for SMTP_PASSWORD "SMTP password" ""
-            prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "tls"
+            # PRIZY_SMTP_* mirrors the PRIZY_DOMAIN/PRIZY_EMAIL/PRIZY_MAIL
+            # fallbacks in parse_args: passed as prompt_for's default, so
+            # --yes can use them without prompting and an interactive run
+            # sees them as the suggested [default].
+            prompt_for SMTP_HOST "SMTP host" "${PRIZY_SMTP_HOST:-}"
+            prompt_for SMTP_PORT "SMTP port" "${PRIZY_SMTP_PORT:-587}"
+            prompt_for SMTP_USERNAME "SMTP username" "${PRIZY_SMTP_USERNAME:-}"
+            prompt_for SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-}"
+            prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "${PRIZY_SMTP_ENCRYPTION:-tls}"
             [ -n "$SMTP_HOST" ] || die "--mail=smtp needs an SMTP host"
             ;;
     esac
@@ -464,6 +468,20 @@ set_env_value() {
         'index($0, k "=") == 1 { print k "=" v; next } { print }')"
 }
 
+# Laravel 13 names this MAIL_SCHEME (null|smtp|smtps), not MAIL_ENCRYPTION —
+# verified against config/mail.php and .env.example. Maps the operator's
+# tls/ssl/none answer into the caller's $mail_scheme. A plain case, not a
+# $(...) substitution: die() calls exit, which a subshell would swallow,
+# letting an invalid scheme through silently instead of stopping the install.
+mail_scheme_for() {
+    case "$1" in
+        ssl)  mail_scheme="smtps" ;;
+        tls)  mail_scheme="smtp" ;;
+        none) mail_scheme="null" ;;
+        *)    die "SMTP encryption must be tls, ssl or none (got '$1')" ;;
+    esac
+}
+
 # Writes a complete .env at $1 from the template at $2.
 #
 # Split out from `configure` and taking both paths explicitly so the test
@@ -472,7 +490,7 @@ set_env_value() {
 # only what is still empty. Doing it the other way round would generate a new
 # password and then "preserve" it over the live one.
 write_env_file() {
-    local dest="$1" template="$2" merged key value
+    local dest="$1" template="$2" merged key value mail_scheme
 
     if [ -f "$dest" ]; then
         local backup
@@ -499,7 +517,18 @@ write_env_file() {
     set_env_value HTTPS_PORT "$OPT_HTTPS_PORT"
 
     if [ "$OPT_MAIL" = "smtp" ]; then
+        # Defended here too, not just in collect_mail_settings: write_env_file
+        # is what scripts/test-install.sh drives directly, and this is the
+        # guarantee the brief asked for — --mail=smtp can never leave
+        # MAIL_HOST empty, whichever caller reaches this function.
+        [ -n "$SMTP_HOST" ] || die "--mail=smtp needs an SMTP host (SMTP_HOST is empty)"
+        mail_scheme_for "$SMTP_ENCRYPTION"
         set_env_value MAIL_MAILER smtp
+        set_env_value MAIL_SCHEME "$mail_scheme"
+        set_env_value MAIL_HOST "$SMTP_HOST"
+        set_env_value MAIL_PORT "$SMTP_PORT"
+        set_env_value MAIL_USERNAME "$SMTP_USERNAME"
+        set_env_value MAIL_PASSWORD "$SMTP_PASSWORD"
         set_env_value MAIL_FROM_ADDRESS "$OPT_EMAIL"
     fi
 
@@ -522,6 +551,23 @@ configure() {
     info "wrote $SOURCE_DIR/.env (mode 0600)"
 }
 
+# Resolves $1 to its first A record on stdout, or nothing if it doesn't
+# resolve. getent when available; dig +short A as the fallback check_dns's
+# own availability guard already advertises but, until now, never actually
+# ran — on a box with dig and no getent that guard let execution reach a
+# plain `getent` call that doesn't exist, so every lookup silently came back
+# empty and a real DNS record was reported as missing. The grep on the dig
+# path is deliberate: `dig +short A` prints any CNAME hops before the final
+# address, so a bare `head -n1` there would hand back a hostname instead of
+# an IP on a domain with a CNAME layer.
+resolve_a() {
+    if command -v getent >/dev/null 2>&1; then
+        getent ahostsv4 "$1" 2>/dev/null | awk 'NR==1 {print $1}'
+    else
+        dig +short A "$1" 2>/dev/null | grep -E '^[0-9]{1,3}(\.[0-9]{1,3}){3}$' | head -n1
+    fi
+}
+
 # On-demand TLS asks a CA for a certificate the first time a hostname is
 # requested, so BOTH records must exist. This warns rather than blocks by
 # default: operators routinely install while DNS is still propagating, and a
@@ -536,9 +582,9 @@ check_dns() {
 
     local public_ip resolved wildcard_probe wildcard_resolved problem=0
     public_ip="$(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null || echo '')"
-    resolved="$(getent ahostsv4 "$OPT_DOMAIN" 2>/dev/null | awk 'NR==1 {print $1}' || echo '')"
+    resolved="$(resolve_a "$OPT_DOMAIN" || echo '')"
     wildcard_probe="dns-check-$(openssl rand -hex 4).${OPT_DOMAIN}"
-    wildcard_resolved="$(getent ahostsv4 "$wildcard_probe" 2>/dev/null | awk 'NR==1 {print $1}' || echo '')"
+    wildcard_resolved="$(resolve_a "$wildcard_probe" || echo '')"
 
     if [ -z "$resolved" ]; then
         warn "$OPT_DOMAIN does not resolve. Add an A record pointing at this machine."

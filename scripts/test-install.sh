@@ -304,6 +304,112 @@ else
     pass "no key in the generated .env has a comment as its value"
 fi
 
+log "SMTP mail settings are written under --mail=smtp"
+OPT_MAIL="smtp"
+SMTP_HOST="smtp.example.com"; SMTP_PORT="2525"; SMTP_USERNAME="postmaster"
+SMTP_PASSWORD="s3cret"; SMTP_ENCRYPTION="tls"
+write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example"
+
+assert_eq "MAIL_MAILER is smtp" "smtp" \
+    "$(grep '^MAIL_MAILER=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_SCHEME is filled from the collected encryption" "smtp" \
+    "$(grep '^MAIL_SCHEME=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_HOST is the collected SMTP host" "smtp.example.com" \
+    "$(grep '^MAIL_HOST=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_PORT is the collected SMTP port" "2525" \
+    "$(grep '^MAIL_PORT=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_USERNAME is the collected SMTP username" "postmaster" \
+    "$(grep '^MAIL_USERNAME=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_PASSWORD is the collected SMTP password" "s3cret" \
+    "$(grep '^MAIL_PASSWORD=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "MAIL_FROM_ADDRESS is the operator's address under smtp" "ops@example.com" \
+    "$(grep '^MAIL_FROM_ADDRESS=' "$GEN_TMP/.env" | cut -d= -f2-)"
+
+log "SMTP encryption maps to Laravel's MAIL_SCHEME, not MAIL_ENCRYPTION"
+for pair in "ssl:smtps" "tls:smtp" "none:null"; do
+    enc="${pair%%:*}"
+    want="${pair##*:}"
+    SMTP_ENCRYPTION="$enc"
+    write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example"
+    assert_eq "SMTP encryption '$enc' maps to MAIL_SCHEME '$want'" "$want" \
+        "$(grep '^MAIL_SCHEME=' "$GEN_TMP/.env" | cut -d= -f2-)"
+done
+SMTP_ENCRYPTION="tls"
+
+log "An invalid SMTP encryption answer is refused, not written"
+SMTP_ENCRYPTION="rot13"
+invalid_enc_rc=0
+( write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example" ) >/dev/null 2>&1 || invalid_enc_rc=$?
+if [ "$invalid_enc_rc" -ne 0 ]; then
+    pass "an invalid SMTP encryption answer is refused"
+else
+    fail "an invalid SMTP encryption answer is refused"
+fi
+SMTP_ENCRYPTION="tls"
+
+log "--mail=smtp can never leave MAIL_HOST empty"
+SMTP_HOST=""
+empty_host_rc=0
+( write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example" ) >/dev/null 2>&1 || empty_host_rc=$?
+if [ "$empty_host_rc" -ne 0 ]; then
+    pass "--mail=smtp with an empty SMTP host is refused"
+else
+    fail "--mail=smtp with an empty SMTP host is refused"
+fi
+
+log "PRIZY_SMTP_* environment fallbacks satisfy --yes --mail=smtp"
+# Mirrors the PRIZY_DOMAIN/PRIZY_EMAIL/PRIZY_MAIL fallback shape in
+# parse_args. Without this, --yes --mail=smtp dies inside prompt_for because
+# SMTP_HOST has no default — the one path the spec requires for unattended
+# runs. Isolated in a subshell so none of these overrides leak into the rest
+# of the suite (collect_mail_settings itself is what's under test here, not
+# write_env_file).
+if (
+    OPT_MAIL="smtp"; OPT_YES=1; OPT_DRY_RUN=0
+    PRIZY_SMTP_HOST="smtp.env.example"; PRIZY_SMTP_PORT="2526"
+    PRIZY_SMTP_USERNAME="envuser"; PRIZY_SMTP_PASSWORD="envpass"
+    PRIZY_SMTP_ENCRYPTION="ssl"
+    collect_mail_settings
+    [ "$SMTP_HOST" = "smtp.env.example" ] && [ "$SMTP_PORT" = "2526" ] && \
+        [ "$SMTP_USERNAME" = "envuser" ] && [ "$SMTP_PASSWORD" = "envpass" ] && \
+        [ "$SMTP_ENCRYPTION" = "ssl" ]
+); then
+    pass "--yes --mail=smtp uses PRIZY_SMTP_* as defaults instead of dying"
+else
+    fail "--yes --mail=smtp uses PRIZY_SMTP_* as defaults instead of dying"
+fi
+
+log "DNS resolution helper — resolves via both getent and dig"
+ip_via_getent="$(resolve_a example.com || echo '')"
+if printf '%s' "$ip_via_getent" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+    pass "resolve_a resolves example.com via getent"
+else
+    fail "resolve_a resolves example.com via getent (got '$ip_via_getent')"
+fi
+
+# A PATH containing only dig/awk/grep/head (no getent) forces the fallback
+# branch without needing root or an actual uninstall — command -v getent
+# genuinely fails to find it under this PATH, same as a box that never had
+# the package installed.
+FAKEBIN="$(mktemp -d)"
+for tool in dig awk grep head; do
+    ln -s "$(command -v "$tool")" "$FAKEBIN/$tool"
+done
+OLD_PATH="$PATH"
+PATH="$FAKEBIN"
+ip_via_dig="$(resolve_a example.com || echo '')"
+PATH="$OLD_PATH"
+rm -rf "$FAKEBIN"
+if printf '%s' "$ip_via_dig" | grep -qE '^[0-9]{1,3}(\.[0-9]{1,3}){3}$'; then
+    pass "resolve_a falls back to dig when getent is unavailable"
+else
+    fail "resolve_a falls back to dig when getent is unavailable (got '$ip_via_dig')"
+fi
+
+# Reset for the sections below, which assume --mail=log's plain shape.
+OPT_MAIL="log"
+SMTP_HOST=""; SMTP_PORT=""; SMTP_USERNAME=""; SMTP_PASSWORD=""; SMTP_ENCRYPTION=""
+
 log "--mail=log warns about what stops working"
 mail_dry="$(bash "$(dirname "$0")/install.sh" --dry-run --domain example.com \
     --email ops@example.com --mail=log 2>&1 || true)"
