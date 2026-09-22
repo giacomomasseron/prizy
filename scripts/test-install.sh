@@ -257,6 +257,78 @@ else
     fail "--help exits 0"
 fi
 
+log "Generated .env"
+GEN_TMP="$(mktemp -d)"
+cp "$(dirname "$0")/../.env.production.example" "$GEN_TMP/.env.production.example"
+touch "$GEN_TMP/docker-compose.prod.yml"
+
+# write_env_file is called with an explicit destination so it can be driven
+# here without a real install.
+OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+# write_env_file itself never reads these; set for parity with a real run.
+# shellcheck disable=SC2034
+SMTP_HOST=""
+# shellcheck disable=SC2034
+SMTP_PORT=""
+# shellcheck disable=SC2034
+SMTP_USERNAME=""
+# shellcheck disable=SC2034
+SMTP_PASSWORD=""
+# shellcheck disable=SC2034
+SMTP_ENCRYPTION=""
+write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example"
+
+for key in APP_KEY POSTGRES_PASSWORD PRIZY_APP_DB_PASSWORD REDIS_PASSWORD \
+           REVERB_APP_ID REVERB_APP_KEY REVERB_APP_SECRET ACME_EMAIL; do
+    value="$(grep "^${key}=" "$GEN_TMP/.env" | head -n1 | cut -d= -f2-)"
+    if [ -n "$value" ]; then
+        pass "$key is filled in the generated .env"
+    else
+        fail "$key is filled in the generated .env"
+    fi
+done
+
+assert_eq "APP_BASE_DOMAIN is the operator's domain" "example.com" \
+    "$(grep '^APP_BASE_DOMAIN=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "APP_URL is https on that domain" "https://example.com" \
+    "$(grep '^APP_URL=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "ACME_EMAIL is the operator's address" "ops@example.com" \
+    "$(grep '^ACME_EMAIL=' "$GEN_TMP/.env" | cut -d= -f2-)"
+
+# The guard added in P-3 rejects empty and unset alike, so a generated .env
+# that leaves ACME_EMAIL blank would stop the deploy.
+if grep -qE '^[A-Z_]+= *#' "$GEN_TMP/.env"; then
+    fail "no key in the generated .env has a comment as its value"
+else
+    pass "no key in the generated .env has a comment as its value"
+fi
+
+log "--mail=log warns about what stops working"
+mail_dry="$(bash "$(dirname "$0")/install.sh" --dry-run --domain example.com \
+    --email ops@example.com --mail=log 2>&1 || true)"
+if printf '%s' "$mail_dry" | grep -qi 'magic-link\|verification\|invitation'; then
+    pass "--mail=log names the features that stop working"
+else
+    fail "--mail=log names the features that stop working"
+fi
+
+log "Re-running the installer never overwrites live secrets"
+live_pw="$(grep '^POSTGRES_PASSWORD=' "$GEN_TMP/.env" | cut -d= -f2-)"
+live_key="$(grep '^APP_KEY=' "$GEN_TMP/.env" | cut -d= -f2-)"
+write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example"
+assert_eq "POSTGRES_PASSWORD survives a re-run" "$live_pw" \
+    "$(grep '^POSTGRES_PASSWORD=' "$GEN_TMP/.env" | cut -d= -f2-)"
+assert_eq "APP_KEY survives a re-run" "$live_key" \
+    "$(grep '^APP_KEY=' "$GEN_TMP/.env" | cut -d= -f2-)"
+
+if ls "$GEN_TMP"/.env-* >/dev/null 2>&1; then
+    pass "the previous .env was backed up before being rewritten"
+else
+    fail "the previous .env was backed up before being rewritten"
+fi
+rm -rf "$GEN_TMP"
+
 echo
 if [ "$FAILED" -eq 0 ]; then
     printf '\033[0;32mInstaller unit tests passed\033[0m\n'

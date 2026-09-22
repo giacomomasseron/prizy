@@ -403,12 +403,178 @@ fetch_source() {
     run git clone --depth 1 --branch "$OPT_REF" "$REPO_URL" "$SOURCE_DIR"
 }
 
+# Set by prompt_for via `printf -v "$var"`, which shellcheck cannot trace back
+# to these declarations, hence the disables below (SMTP_HOST itself is read
+# directly a few lines down, so it needs none).
+SMTP_HOST=""
+# shellcheck disable=SC2034
+SMTP_PORT=""
+# shellcheck disable=SC2034
+SMTP_USERNAME=""
+# shellcheck disable=SC2034
+SMTP_PASSWORD=""
+# shellcheck disable=SC2034
+SMTP_ENCRYPTION=""
+
+prompt_for() {
+    local var="$1" question="$2" default="${3:-}" answer=""
+    if [ "$OPT_YES" -eq 1 ]; then
+        [ -n "$default" ] || die "--yes was given but $var has no value and no default"
+        printf -v "$var" '%s' "$default"
+        return 0
+    fi
+    if [ -n "$default" ]; then
+        read -r -p "    $question [$default]: " answer
+        answer="${answer:-$default}"
+    else
+        read -r -p "    $question: " answer
+    fi
+    printf -v "$var" '%s' "$answer"
+}
+
+collect_mail_settings() {
+    case "$OPT_MAIL" in
+        log)
+            warn "mail is set to 'log': messages are written to the log instead of sent."
+            warn "Contact-portal magic-link sign-in, email verification, workspace invitations"
+            warn "and CSAT requests will not reach anyone. Re-run with --mail=smtp to fix this."
+            ;;
+        smtp)
+            if [ "$OPT_DRY_RUN" -eq 1 ]; then
+                info "DRY-RUN: would prompt for SMTP host, port, username, password and encryption"
+                return 0
+            fi
+            prompt_for SMTP_HOST "SMTP host" ""
+            prompt_for SMTP_PORT "SMTP port" "587"
+            prompt_for SMTP_USERNAME "SMTP username" ""
+            prompt_for SMTP_PASSWORD "SMTP password" ""
+            prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "tls"
+            [ -n "$SMTP_HOST" ] || die "--mail=smtp needs an SMTP host"
+            ;;
+    esac
+}
+
+# Replaces the line beginning "$1=" in the file-scoped $merged with "$1=$2".
+# Hoisted to file scope (rather than nested inside write_env_file, which is
+# where it is only ever called from) so it reads as an ordinary top-level
+# function to shellcheck; bash's dynamic scoping means it still sees and
+# mutates write_env_file's local $merged either way.
+set_env_value() {
+    merged="$(printf '%s' "$merged" | awk -v k="$1" -v v="$2" \
+        'index($0, k "=") == 1 { print k "=" v; next } { print }')"
+}
+
+# Writes a complete .env at $1 from the template at $2.
+#
+# Split out from `configure` and taking both paths explicitly so the test
+# suite can drive it against a temporary directory. The ordering matters and
+# is the whole point: merge FIRST (existing non-empty values win), then fill
+# only what is still empty. Doing it the other way round would generate a new
+# password and then "preserve" it over the live one.
+write_env_file() {
+    local dest="$1" template="$2" merged key value
+
+    if [ -f "$dest" ]; then
+        local backup
+        backup="${dest}-$(date +%Y%m%d%H%M%S)"
+        cp "$dest" "$backup"
+        chmod 600 "$backup"
+        info "backed up the existing .env to $(basename "$backup")"
+    fi
+
+    merged="$(merge_env "$dest" "$template")"
+
+    for key in "${SECRET_KEYS[@]}"; do
+        if printf '%s' "$merged" | grep -qx "${key}="; then
+            value="$(gen_secret_for "$key")"
+            merged="$(printf '%s' "$merged" | awk -v k="$key" -v v="$value" \
+                '$0 == k "=" { print k "=" v; next } { print }')"
+        fi
+    done
+
+    set_env_value APP_URL "https://${OPT_DOMAIN}"
+    set_env_value APP_BASE_DOMAIN "$OPT_DOMAIN"
+    set_env_value ACME_EMAIL "$OPT_EMAIL"
+    set_env_value HTTP_PORT "$OPT_HTTP_PORT"
+    set_env_value HTTPS_PORT "$OPT_HTTPS_PORT"
+
+    if [ "$OPT_MAIL" = "smtp" ]; then
+        set_env_value MAIL_MAILER smtp
+        set_env_value MAIL_FROM_ADDRESS "$OPT_EMAIL"
+    fi
+
+    if [ "$OPT_WITH_REALTIME" -eq 1 ]; then
+        set_env_value BROADCAST_CONNECTION reverb
+    fi
+
+    printf '%s\n' "$merged" > "$dest"
+    chmod 600 "$dest"
+}
+
+configure() {
+    step 5 "Configuration"
+    collect_mail_settings
+    if [ "$OPT_DRY_RUN" -eq 1 ]; then
+        info "DRY-RUN: would write $SOURCE_DIR/.env for $OPT_DOMAIN, generating ${#SECRET_KEYS[@]} secrets"
+        return 0
+    fi
+    write_env_file "$SOURCE_DIR/.env" "$SOURCE_DIR/.env.production.example"
+    info "wrote $SOURCE_DIR/.env (mode 0600)"
+}
+
+# On-demand TLS asks a CA for a certificate the first time a hostname is
+# requested, so BOTH records must exist. This warns rather than blocks by
+# default: operators routinely install while DNS is still propagating, and a
+# fatal check there wastes a working install.
+check_dns() {
+    step 6 "DNS"
+
+    if ! command -v getent >/dev/null 2>&1 && ! command -v dig >/dev/null 2>&1; then
+        warn "no getent or dig available; skipping the DNS check"
+        return 0
+    fi
+
+    local public_ip resolved wildcard_probe wildcard_resolved problem=0
+    public_ip="$(curl -fsS --max-time 10 https://api.ipify.org 2>/dev/null || echo '')"
+    resolved="$(getent ahostsv4 "$OPT_DOMAIN" 2>/dev/null | awk 'NR==1 {print $1}' || echo '')"
+    wildcard_probe="dns-check-$(openssl rand -hex 4).${OPT_DOMAIN}"
+    wildcard_resolved="$(getent ahostsv4 "$wildcard_probe" 2>/dev/null | awk 'NR==1 {print $1}' || echo '')"
+
+    if [ -z "$resolved" ]; then
+        warn "$OPT_DOMAIN does not resolve. Add an A record pointing at this machine."
+        problem=1
+    elif [ -n "$public_ip" ] && [ "$resolved" != "$public_ip" ]; then
+        warn "$OPT_DOMAIN resolves to $resolved but this machine appears to be $public_ip."
+        problem=1
+    else
+        info "$OPT_DOMAIN resolves to $resolved"
+    fi
+
+    if [ -z "$wildcard_resolved" ]; then
+        warn "*.$OPT_DOMAIN does not resolve (probed $wildcard_probe)."
+        warn "Every workspace lives at a subdomain, so without the wildcard A record"
+        warn "no workspace will ever get a certificate and none will be reachable."
+        problem=1
+    else
+        info "*.$OPT_DOMAIN resolves to $wildcard_resolved"
+    fi
+
+    if [ "$problem" -eq 1 ]; then
+        if [ "$OPT_REQUIRE_DNS" -eq 1 ]; then
+            die "DNS is not ready and --require-dns was given"
+        fi
+        warn "continuing anyway; certificates will be issued once DNS is correct"
+    fi
+}
+
 main() {
     parse_args "$@"
     preflight
     ensure_docker
     ensure_layout
     fetch_source
+    configure
+    check_dns
 }
 
 # Only run when executed, never when sourced — this is what makes the library
