@@ -13,6 +13,15 @@ x-app: &app
     context: .
     dockerfile: Dockerfile.prod
     target: runtime
+    # Real-time is opt-in and these are baked into the JS bundle at build
+    # time, so they can only come from the build, never from the container's
+    # environment. Unset (the default) leaves them undeclared in the image
+    # build, which is what keeps the frontend polling.
+    args:
+      VITE_REVERB_APP_KEY: ${VITE_REVERB_APP_KEY:-}
+      VITE_REVERB_HOST: ${VITE_REVERB_HOST:-}
+      VITE_REVERB_PORT: ${VITE_REVERB_PORT:-}
+      VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-}
   image: prizy/app:${PRIZY_VERSION:-local}
   env_file: ["${ENV_FILE:-.env}"]
   environment:
