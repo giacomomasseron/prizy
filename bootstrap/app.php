@@ -31,6 +31,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('web', NeedsTenant::class);
         $middleware->appendToGroup('web', EnsureValidTenantSession::class);
 
+        // Caddy terminates TLS in front of this app (P-3), so the forwarded
+        // headers must be believed — otherwise every generated URL, signed URL
+        // and redirect comes out as http:// behind https, breaking magic-link
+        // sign-in and the signed CSAT links.
+        //
+        // Scoped to loopback and the RFC1918 ranges the compose network uses,
+        // never '*': the Host header selects the TENANT in this application, so
+        // anything that can present X-Forwarded-Host can select a workspace.
+        $middleware->trustProxies(at: [
+            '127.0.0.1',
+            '10.0.0.0/8',
+            '172.16.0.0/12',
+            '192.168.0.0/16',
+        ]);
+
         // A workspace with the support module switched off answers 404 on the
         // help centre and the portal — including the routes behind the contact
         // guard, which would otherwise redirect a guest to a sign-in page that
