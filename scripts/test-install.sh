@@ -439,11 +439,21 @@ log "The full --dry-run path"
 full_dry="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com \
     --mail=log --source-path "$(dirname "$0")/.." 2>&1 || true)"
 
-if printf '%s' "$full_dry" | grep -q 'docker compose'; then
+# Anchored on the DRY-RUN: prefix, which only run() ever prints — report()'s
+# closing "Logs:" line also calls compose_cmd() and would satisfy a bare
+# 'docker compose' grep whether or not deploy() actually ran. A DRY-RUN line
+# naming both compose and build can only come from deploy()'s own build
+# command.
+if printf '%s' "$full_dry" | grep -qE 'DRY-RUN:.*compose.*build'; then
     pass "--dry-run reaches the deploy step"
 else
     fail "--dry-run reaches the deploy step"
 fi
+# This proves the line "starting the stack (migrate runs first, then app and
+# web)" was printed with this wording — not that migrations actually execute.
+# Real execution happens inside the container at `up` time, via the one-shot
+# migrate service that docker-compose.prod.yml gates with
+# depends_on: condition: service_completed_successfully.
 if printf '%s' "$full_dry" | grep -q 'migrate'; then
     pass "--dry-run runs migrations as part of the deploy"
 else
@@ -467,7 +477,11 @@ if printf '%s' "$realtime_dry" | grep -q 'VITE_REVERB_APP_KEY'; then
 else
     fail "--with-realtime passes VITE_REVERB_APP_KEY into the build"
 fi
-if printf '%s' "$realtime_dry" | grep -q 'realtime'; then
+# Same DRY-RUN: anchor as above, for the same reason: report()'s closing
+# text also mentions compose_cmd()'s output, which includes --profile
+# realtime whenever OPT_WITH_REALTIME is set — a bare 'realtime' grep would
+# pass even if deploy() never ran.
+if printf '%s' "$realtime_dry" | grep -q 'DRY-RUN:.*--profile realtime'; then
     pass "--with-realtime selects the realtime compose profile"
 else
     fail "--with-realtime selects the realtime compose profile"
