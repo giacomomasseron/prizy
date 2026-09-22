@@ -441,7 +441,7 @@ log "On-demand TLS actually activates, and still gates on a real workspace (C1)"
 # internal CA by design) while still emitting a global `internal` issuer
 # for every real deploy, because `local_certs` silently discards the
 # argument. Both halves matter — ACME must be present, `internal` must not.
-shipped_adapt="$(docker run --rm --entrypoint caddy prizy/web:local adapt --config /etc/caddy/Caddyfile 2>/dev/null)" || true
+shipped_adapt="$(docker run --rm --entrypoint caddy "prizy/web:${PRIZY_VERSION:-local}" adapt --config /etc/caddy/Caddyfile 2>/dev/null)" || true
 if grep -q '"module":"acme"' <<<"$shipped_adapt"; then
     pass "the shipped Caddyfile (production shape) issues via ACME"
 else
@@ -451,6 +451,21 @@ if ! grep -q '"module":"internal"' <<<"$shipped_adapt"; then
     pass "the shipped Caddyfile (production shape) never falls back to the internal CA"
 else
     fail "the shipped Caddyfile (production shape) never falls back to the internal CA"
+fi
+# The issuer is only half of on-demand TLS. The handshake assertions further
+# down prove on_demand and the ask gate are wired, but they only ever run in
+# CADDY_TEST_ISSUER=local_certs mode — so without these two, production shape
+# has no assertion that it issues on demand at all, or that issuance is gated
+# rather than open to any hostname pointed at the box.
+if grep -q '"on_demand":true' <<<"$shipped_adapt"; then
+    pass "the shipped Caddyfile (production shape) issues on demand"
+else
+    fail "the shipped Caddyfile (production shape) issues on demand"
+fi
+if grep -q '"endpoint":"http://127.0.0.1:2020/_caddy/ask"' <<<"$shipped_adapt"; then
+    pass "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
+else
+    fail "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
 fi
 
 # A real workspace, inserted directly by SQL: Workspace::factory() pulls in
@@ -467,11 +482,12 @@ compose exec -T postgres psql -U prizy -d prizy -c \
 # hostname tested below — `local_certs` takes no arguments, so there is no
 # way to scope it to just edge-test.localhost, and there never was (the
 # previous per-hostname argument was silently discarded; that was the bug
-# this wave fixes). It's acceptable here because this stack serves only its
-# own throwaway hostnames on ports nothing else reaches, and `ask` is
-# untouched — both hostnames below are still gated by the real application
-# and its database, only the ISSUER is swapped for one that needs no
-# network.
+# this wave fixes). It's acceptable here because `ask` is untouched: both
+# hostnames below are still gated by the real application and its database,
+# and only the ISSUER is swapped for one that needs no network. The stack is
+# throwaway and serves only its own hostnames — note it does publish on every
+# interface (see the ports comment in docker-compose.prod.yml), so this is a
+# scope argument about what the stack answers for, not about reachability.
 sed -i 's/^CADDY_SITE_ADDRESS=:80$/CADDY_SITE_ADDRESS=/' "$ENV_FILE"
 echo "CADDY_TEST_ISSUER=local_certs" >> "$ENV_FILE"
 compose up -d --force-recreate --no-deps web >/dev/null 2>&1

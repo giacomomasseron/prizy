@@ -130,10 +130,11 @@ services:
     # directive TEXT, not an argument to it, with an empty default — so an
     # omitted and an empty CADDY_TEST_ISSUER adapt identically (verified:
     # both leave no directive in place, and Caddy falls back to its
-    # built-in ACME issuers). Unlike the old value-placeholder shape this
-    # replaced, where a present-but-empty variable and a truly absent one
-    # really could differ, the bare form here is no longer load-bearing —
-    # it's kept for consistency with the variable it replaces. The other
+    # built-in ACME issuers). The old value-placeholder shape this replaced
+    # did not actually differ between those two states either (verified: both
+    # adapted to the same global `internal` issuer), so the bare form is no
+    # longer load-bearing here — it is kept because it is the correct shape
+    # for a variable no real deploy sets. The other
     # two keep explicit `=` values; mixing forms in one `environment:` list
     # is fine, only mixing list and mapping syntax is not.
     environment:
