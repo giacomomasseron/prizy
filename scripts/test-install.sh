@@ -197,6 +197,58 @@ else
     fail "a whitespace-only existing value falls through to the template"
 fi
 
+log "Argument parsing and --dry-run"
+INSTALL_SH="$(dirname "$0")/install.sh"
+
+# --dry-run must be safe to run as an ordinary user on a developer's machine:
+# it is the only end-to-end path the test suite can drive.
+prizy_root_before="$(test -d /data/prizy && echo present || echo absent)"
+dry_out="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log 2>&1 || true)"
+
+if printf '%s' "$dry_out" | grep -q 'DRY-RUN'; then
+    pass "--dry-run announces what it would do"
+else
+    fail "--dry-run announces what it would do"
+fi
+# Compare before/after rather than asserting absence: a developer running this
+# on a box that already has a real install would otherwise see a spurious red.
+if [ "$prizy_root_before" = "$(test -d /data/prizy && echo present || echo absent)" ]; then
+    pass "--dry-run did not create or remove /data/prizy"
+else
+    fail "--dry-run did not create or remove /data/prizy"
+fi
+
+bad_domain_rc=0
+bash "$INSTALL_SH" --dry-run --domain "not a domain" --email ops@example.com --mail=log >/dev/null 2>&1 || bad_domain_rc=$?
+if [ "$bad_domain_rc" -ne 0 ]; then
+    pass "an invalid --domain is refused"
+else
+    fail "an invalid --domain is refused"
+fi
+
+bad_email_rc=0
+bash "$INSTALL_SH" --dry-run --domain example.com --email nope --mail=log >/dev/null 2>&1 || bad_email_rc=$?
+if [ "$bad_email_rc" -ne 0 ]; then
+    pass "an invalid --email is refused"
+else
+    fail "an invalid --email is refused"
+fi
+
+both_sources_rc=0
+bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
+    --ref main --source-path /tmp >/dev/null 2>&1 || both_sources_rc=$?
+if [ "$both_sources_rc" -ne 0 ]; then
+    pass "--ref and --source-path together are refused as ambiguous"
+else
+    fail "--ref and --source-path together are refused as ambiguous"
+fi
+
+if bash "$INSTALL_SH" --help >/dev/null 2>&1; then
+    pass "--help exits 0"
+else
+    fail "--help exits 0"
+fi
+
 echo
 if [ "$FAILED" -eq 0 ]; then
     printf '\033[0;32mInstaller unit tests passed\033[0m\n'
