@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\EmailVerificationController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
+use App\Http\Controllers\CaddyAskController;
 use App\Http\Controllers\CsatController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HelpCenterController;
@@ -62,6 +63,13 @@ Route::middleware(EnsureHelpdeskEnabled::class)->group(function (): void {
 // Landlord routes — exempt from both tenant middlewares (no workspace is resolved yet).
 Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])->group(function (): void {
     Route::get('/health', HealthController::class);
+
+    // Caddy's on-demand TLS gate. Landlord, because the whole point is that the
+    // host may not resolve to a tenant. Throttled because it is unauthenticated.
+    Route::get('/_caddy/ask', CaddyAskController::class)
+        ->middleware('throttle:60,1')
+        ->name('caddy.ask');
+
     Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
 
     // Email verification — landlord route because the user may click the link
