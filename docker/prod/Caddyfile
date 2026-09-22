@@ -2,15 +2,15 @@
 	admin off
 	email {$ACME_EMAIL:admin@localhost}
 
-	# No `auto_https {$CADDY_AUTO_HTTPS:...}` directive here on purpose: the
-	# directive's argument must be one of off/disable_redirects/disable_certs/
-	# ignore_loaded_certs — "on" is not a legal value (`caddy validate` rejects
-	# it), because fully-on IS the default and is spelled by omitting the
-	# directive, not by naming it. Test-vs-production mode is switched by
-	# {$CADDY_SITE_ADDRESS:https://} below instead: an explicit `:80` address
-	# makes Caddy log "listening only on the HTTP port, so no automatic HTTPS
-	# will be applied" and skip TLS entirely, which is exactly the plain-HTTP
-	# behaviour the test stack needs, with no separate toggle required.
+	# No `auto_https` directive here on purpose: its argument must be one of
+	# off/disable_redirects/disable_certs/ignore_loaded_certs — "on" is not a
+	# legal value (`caddy validate` rejects it), because fully-on IS the
+	# default and is spelled by omitting the directive, not by naming it.
+	# Test-vs-production mode is switched by {$CADDY_SITE_ADDRESS:https://}
+	# below instead: an explicit `:80` address makes Caddy log "listening
+	# only on the HTTP port, so no automatic HTTPS will be applied" and skip
+	# TLS entirely, which is exactly the plain-HTTP behaviour the test stack
+	# needs, with no separate toggle required.
 
 	# Before issuing a certificate for a hostname, ask the application whether
 	# it is a real workspace. Without this, on-demand TLS issues certificates
@@ -25,31 +25,48 @@
 	root * /var/www/html/public
 	encode zstd gzip
 
-	# Reachable only on the internal :2020 listener below.
-	handle /_caddy/ask {
-		respond 404
-	}
+	# `route` (not bare top-level `handle` blocks) because the Caddyfile
+	# adapter re-sorts top-level `handle` blocks by path-matcher specificity,
+	# not by the order they're written — with bare handles, `/build/*`
+	# (longer literal prefix) was tried BEFORE the dotfile refusal below, so
+	# `/build/.secret` fell through to file_server and was served. `route`
+	# disables that re-sorting and runs these in exactly the order written.
+	route {
+		# Never serve a dotfile: neither one directly under public/ (e.g. a
+		# stray .env, .git, .DS_Store, editor swapfile) nor one nested under
+		# a subdirectory such as /build/.secret. Must come before every other
+		# handler that can reach file_server, including @build below.
+		@dotfile path */.* /.*
+		handle @dotfile {
+			respond 404
+		}
 
-	# Reverb's WebSocket and server API. Paths verified in the package source:
-	# GET /app/{appKey} and /apps/{appId}/*. Nothing in this application's
-	# routes is defined under either prefix.
-	handle /app/* {
-		reverse_proxy reverb:8080
-	}
-	handle /apps/* {
-		reverse_proxy reverb:8080
-	}
+		# Reachable only on the internal :2020 listener below.
+		handle /_caddy/ask {
+			respond 404
+		}
 
-	# Content-hashed filenames: safe to cache hard, and they never collide.
-	@build path /build/*
-	handle @build {
-		header Cache-Control "public, max-age=31536000, immutable"
-		file_server
-	}
+		# Reverb's WebSocket and server API. Paths verified in the package
+		# source: GET /app/{appKey} and /apps/{appId}/*. Nothing in this
+		# application's routes is defined under either prefix.
+		handle /app/* {
+			reverse_proxy reverb:8080
+		}
+		handle /apps/* {
+			reverse_proxy reverb:8080
+		}
 
-	handle {
-		php_fastcgi app:9000
-		file_server
+		# Content-hashed filenames: safe to cache hard, and they never collide.
+		@build path /build/*
+		handle @build {
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+
+		handle {
+			php_fastcgi app:9000
+			file_server
+		}
 	}
 }
 
@@ -58,12 +75,23 @@
 # both need plain HTTP, which the public site stops being once auto_https is on.
 :2020 {
 	root * /var/www/html/public
-	@internal path /_caddy/ask /health
-	handle @internal {
-		php_fastcgi app:9000
-	}
-	handle {
-		respond 404
+	route {
+		# Same dotfile refusal as the public site (see (app) above), kept
+		# ahead of @internal for consistency even though the whitelist below
+		# already excludes any dotfile path — belt and suspenders on a
+		# listener that talks to the same public/ root.
+		@dotfile path */.* /.*
+		handle @dotfile {
+			respond 404
+		}
+
+		@internal path /_caddy/ask /health
+		handle @internal {
+			php_fastcgi app:9000
+		}
+		handle {
+			respond 404
+		}
 	}
 }
 

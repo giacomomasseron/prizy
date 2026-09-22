@@ -44,7 +44,6 @@ APP_DEBUG=false
 APP_URL=http://localhost:${HTTP_PORT}
 APP_BASE_DOMAIN=localhost
 HTTP_PORT=${HTTP_PORT}
-CADDY_AUTO_HTTPS=off
 CADDY_SITE_ADDRESS=:80
 HTTPS_PORT=18443
 # Match .env.production.example: this app's session/cache/queue stores are
@@ -280,6 +279,17 @@ if compose exec -T web sh -c \
 else
     fail "Caddy can reach the certificate gate internally"
 fi
+
+# A dotfile that ends up inside public/ (a stray .git, .DS_Store, an editor
+# swapfile) must never be served verbatim. nginx had an explicit `deny all`
+# for this; the Caddyfile's dotfile refusal is what replaces it.
+compose exec -T web sh -c 'echo secret > /var/www/html/public/.probe' >/dev/null 2>&1
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/.probe")" = "404" ]; then
+    pass "a dotfile under public/ is refused, not served"
+else
+    fail "a dotfile under public/ is refused, not served"
+fi
+compose exec -T web sh -c 'rm -f /var/www/html/public/.probe' >/dev/null 2>&1 || true
 
 log "Background roles run without blocking the deploy"
 for svc in worker scheduler; do
