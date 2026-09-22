@@ -1,0 +1,72 @@
+{
+	admin off
+	email {$ACME_EMAIL:admin@localhost}
+
+	# No `auto_https {$CADDY_AUTO_HTTPS:...}` directive here on purpose: the
+	# directive's argument must be one of off/disable_redirects/disable_certs/
+	# ignore_loaded_certs — "on" is not a legal value (`caddy validate` rejects
+	# it), because fully-on IS the default and is spelled by omitting the
+	# directive, not by naming it. Test-vs-production mode is switched by
+	# {$CADDY_SITE_ADDRESS:https://} below instead: an explicit `:80` address
+	# makes Caddy log "listening only on the HTTP port, so no automatic HTTPS
+	# will be applied" and skip TLS entirely, which is exactly the plain-HTTP
+	# behaviour the test stack needs, with no separate toggle required.
+
+	# Before issuing a certificate for a hostname, ask the application whether
+	# it is a real workspace. Without this, on-demand TLS issues certificates
+	# for any hostname anyone points at this box.
+	on_demand_tls {
+		ask http://127.0.0.1:2020/_caddy/ask
+	}
+}
+
+# The routing every site shares.
+(app) {
+	root * /var/www/html/public
+	encode zstd gzip
+
+	# Reachable only on the internal :2020 listener below.
+	handle /_caddy/ask {
+		respond 404
+	}
+
+	# Reverb's WebSocket and server API. Paths verified in the package source:
+	# GET /app/{appKey} and /apps/{appId}/*. Nothing in this application's
+	# routes is defined under either prefix.
+	handle /app/* {
+		reverse_proxy reverb:8080
+	}
+	handle /apps/* {
+		reverse_proxy reverb:8080
+	}
+
+	# Content-hashed filenames: safe to cache hard, and they never collide.
+	@build path /build/*
+	handle @build {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	handle {
+		php_fastcgi app:9000
+		file_server
+	}
+}
+
+# Internal only — never published, so nothing outside this container reaches it.
+# This is what `ask` above talks to, and what the container healthcheck probes:
+# both need plain HTTP, which the public site stops being once auto_https is on.
+:2020 {
+	root * /var/www/html/public
+	@internal path /_caddy/ask /health
+	handle @internal {
+		php_fastcgi app:9000
+	}
+	handle {
+		respond 404
+	}
+}
+
+{$CADDY_SITE_ADDRESS:https://} {
+	import app
+}

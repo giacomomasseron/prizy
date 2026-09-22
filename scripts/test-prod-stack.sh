@@ -44,6 +44,9 @@ APP_DEBUG=false
 APP_URL=http://localhost:${HTTP_PORT}
 APP_BASE_DOMAIN=localhost
 HTTP_PORT=${HTTP_PORT}
+CADDY_AUTO_HTTPS=off
+CADDY_SITE_ADDRESS=:80
+HTTPS_PORT=18443
 # Match .env.production.example: this app's session/cache/queue stores are
 # Redis by design — there is no sessions table migration, so leaving these
 # unset falls back to Laravel's own SESSION_DRIVER=database default and 500s
@@ -191,13 +194,13 @@ else
     fail "the app container reports healthy"
 fi
 
-log "nginx serves the application"
+log "Caddy serves the application"
 base="http://localhost:${HTTP_PORT}"
 
 if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/up")" = "200" ]; then
-    pass "/up returns 200 through nginx"
+    pass "/up returns 200 through Caddy"
 else
-    fail "/up returns 200 through nginx"
+    fail "/up returns 200 through Caddy"
 fi
 
 # /up is a framework-level route and proves only that Laravel can answer a
@@ -220,10 +223,10 @@ else
 fi
 
 # Prove manifest/asset parity between the two images: pull a real hashed
-# filename out of the app image's Vite manifest and confirm nginx serves that
+# filename out of the app image's Vite manifest and confirm Caddy serves that
 # exact file at 200. This is the skew Dockerfile.prod's web stage comment
 # warns about (app and web built from different asset sets); it does NOT
-# prove nginx serves statics itself rather than proxying to fpm — this
+# prove Caddy serves statics itself rather than proxying to fpm — this
 # assertion would pass identically either way, as long as the bytes at
 # build/$asset eventually come back with a 200.
 asset=$(compose exec -T app sh -c \
@@ -258,6 +261,24 @@ if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'web healthy')
     pass "the web container reports healthy"
 else
     fail "the web container reports healthy"
+fi
+
+# The certificate gate must not be reachable from outside. Caddy asks it on an
+# unpublished :2020 listener; if it answers on the public site, anyone can
+# enumerate which hostnames are workspaces.
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/_caddy/ask?domain=localhost")" = "404" ]; then
+    pass "/_caddy/ask is not reachable from outside"
+else
+    fail "/_caddy/ask is not reachable from outside"
+fi
+
+# ...but Caddy itself must be able to reach it, or on-demand TLS fails closed
+# and every workspace subdomain goes dark.
+if compose exec -T web sh -c \
+        'wget -qO- "http://127.0.0.1:2020/_caddy/ask?domain=localhost" >/dev/null 2>&1'; then
+    pass "Caddy can reach the certificate gate internally"
+else
+    fail "Caddy can reach the certificate gate internally"
 fi
 
 log "Background roles run without blocking the deploy"

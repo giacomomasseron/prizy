@@ -111,7 +111,19 @@ services:
     image: prizy/web:${PRIZY_VERSION:-local}
     restart: unless-stopped
     ports:
-      - "${HTTP_PORT:-8080}:80"
+      # Published on loopback only in a test; a real install publishes 80 and
+      # 443 so ACME's HTTP challenge and normal traffic both arrive.
+      - "${HTTP_BIND:-0.0.0.0}:${HTTP_PORT:-80}:80"
+      - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443"
+    environment:
+      CADDY_AUTO_HTTPS: ${CADDY_AUTO_HTTPS:-on}
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-https://}
+      ACME_EMAIL: ${ACME_EMAIL:-admin@localhost}
+    volumes:
+      # Losing this means re-issuing every workspace's certificate, and
+      # Let's Encrypt rate-limits that.
+      - caddydata:/data
+      - caddyconfig:/config
     depends_on:
       app:
         condition: service_healthy
@@ -180,3 +192,5 @@ volumes:
   pgdata:
   redisdata:
   storage:
+  caddydata:
+  caddyconfig:
