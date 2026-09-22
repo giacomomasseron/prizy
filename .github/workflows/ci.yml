@@ -88,9 +88,12 @@ jobs:
         run: bash scripts/test-install.sh
 
       # Run through Docker so CI needs no shellcheck install and matches what a
-      # developer runs locally.
+      # developer runs locally. -x follows sourced files (test-install.sh
+      # sources install.sh) so linting one script in isolation — a narrower
+      # CI step, an editor plugin, a pre-commit hook — gives the same result
+      # as linting them together, instead of raising false SC1091/SC2034s.
       - name: Shellcheck every script
         run: |
-          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable \
+          docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x \
             scripts/install.sh scripts/test-install.sh \
             scripts/test-prod-image.sh scripts/test-prod-stack.sh
