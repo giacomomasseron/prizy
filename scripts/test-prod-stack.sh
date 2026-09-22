@@ -430,6 +430,29 @@ log "On-demand TLS actually activates, and still gates on a real workspace (C1)"
 # it recreates the `web` container in a different mode and nothing after it
 # depends on :80 test mode again.
 
+# Before touching test-mode issuance at all: the SHIPPED Caddyfile, in
+# PRODUCTION shape — no `-e` flags, which is exactly what makes this
+# production shape, since every real deploy runs with CADDY_TEST_ISSUER
+# unset. Runs against the built image, not the file on disk, so it covers
+# what actually ships rather than a copy that could silently drift from
+# what got baked into the image. This is the assertion the previous fix
+# wave was missing: `local_certs {$CADDY_LOCAL_CERTS_HOSTS:placeholder}`
+# passed every existing check here (the handshake assertions below use the
+# internal CA by design) while still emitting a global `internal` issuer
+# for every real deploy, because `local_certs` silently discards the
+# argument. Both halves matter — ACME must be present, `internal` must not.
+shipped_adapt="$(docker run --rm --entrypoint caddy prizy/web:local adapt --config /etc/caddy/Caddyfile 2>/dev/null)" || true
+if grep -q '"module":"acme"' <<<"$shipped_adapt"; then
+    pass "the shipped Caddyfile (production shape) issues via ACME"
+else
+    fail "the shipped Caddyfile (production shape) issues via ACME"
+fi
+if ! grep -q '"module":"internal"' <<<"$shipped_adapt"; then
+    pass "the shipped Caddyfile (production shape) never falls back to the internal CA"
+else
+    fail "the shipped Caddyfile (production shape) never falls back to the internal CA"
+fi
+
 # A real workspace, inserted directly by SQL: Workspace::factory() pulls in
 # fakerphp/faker, which is require-dev only and absent from the production
 # image (--no-dev), so the factory cannot run inside this stack.
@@ -438,13 +461,19 @@ compose exec -T postgres psql -U prizy -d prizy -c \
     >/dev/null 2>&1
 
 # Switch the throwaway env to real TLS mode: blank CADDY_SITE_ADDRESS so the
-# compose default (https://) applies, and scope Caddy's internal CA to just
-# the workspace hostname this section tests, via CADDY_LOCAL_CERTS_HOSTS (see
-# docker/prod/Caddyfile and docker-compose.prod.yml). `ask` is untouched —
-# both hostnames below are still gated by the real application and its
-# database, only the ISSUER is swapped for one that needs no network.
+# compose default (https://) applies, and set CADDY_TEST_ISSUER=local_certs
+# to inject Caddy's internal CA as the issuer (see docker/prod/Caddyfile and
+# docker-compose.prod.yml). This is GLOBAL, not scoped to the one workspace
+# hostname tested below — `local_certs` takes no arguments, so there is no
+# way to scope it to just edge-test.localhost, and there never was (the
+# previous per-hostname argument was silently discarded; that was the bug
+# this wave fixes). It's acceptable here because this stack serves only its
+# own throwaway hostnames on ports nothing else reaches, and `ask` is
+# untouched — both hostnames below are still gated by the real application
+# and its database, only the ISSUER is swapped for one that needs no
+# network.
 sed -i 's/^CADDY_SITE_ADDRESS=:80$/CADDY_SITE_ADDRESS=/' "$ENV_FILE"
-echo "CADDY_LOCAL_CERTS_HOSTS=edge-test.localhost" >> "$ENV_FILE"
+echo "CADDY_TEST_ISSUER=local_certs" >> "$ENV_FILE"
 compose up -d --force-recreate --no-deps web >/dev/null 2>&1
 
 web_tls_ready=0

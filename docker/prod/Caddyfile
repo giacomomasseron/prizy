@@ -20,13 +20,22 @@
 	}
 
 	# Test-only: substitute Caddy's own internal CA (self-signed, no network
-	# call) for real ACME issuance, but only for the space-separated hostnames
-	# named here — `ask` above still gates every one of them, unchanged. This
-	# is what lets scripts/test-prod-stack.sh prove on-demand TLS actually
-	# activates, offline, in seconds. No real deploy ever sets this variable,
-	# so the inert placeholder default (a hostname nothing ever requests)
-	# means `local_certs` never applies in production.
-	local_certs {$CADDY_LOCAL_CERTS_HOSTS:caddy-local-certs-test-only.invalid}
+	# call) for real ACME issuance. `local_certs` is a bare global option,
+	# registered with Caddy's parseOptTrue — it takes NO arguments, and
+	# silently discards any it is given. Scoping it to a hostname via an
+	# argument (the previous shape of this line) does nothing: `caddy adapt`
+	# still emits a single global `internal` issuer no matter what string
+	# follows `local_certs`, and every deploy that never even sets the
+	# variable gets the same broken result. What has to be substituted is
+	# therefore the DIRECTIVE ITSELF, not a parameter of it, so this line is
+	# the whole placeholder and its default is empty: absent or empty
+	# $CADDY_TEST_ISSUER expands to nothing, no `local_certs` (or any other)
+	# directive appears here at all, and Caddy falls back to its built-in
+	# ACME issuers — the real deploy path. scripts/test-prod-stack.sh sets
+	# CADDY_TEST_ISSUER=local_certs to inject the directive and prove
+	# on-demand TLS activates, offline, in seconds; `ask` above still gates
+	# issuance in that mode too, unchanged.
+	{$CADDY_TEST_ISSUER:}
 }
 
 # The routing every site shares.

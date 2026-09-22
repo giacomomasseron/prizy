@@ -122,14 +122,20 @@ services:
       # the UDP mapping every browser that takes it up burns a failed QUIC
       # attempt before falling back to HTTP/2.
       - "${HTTPS_BIND:-0.0.0.0}:${HTTPS_PORT:-443}:443/udp"
-    # List form, not `KEY: value` mapping, for one reason: CADDY_LOCAL_CERTS_HOSTS
-    # below needs to reach the container OMITTED — not merely empty — when
-    # unset, and only the bare `- VARNAME` form does that (`KEY: ${VARNAME:-}`
-    # always sets the container's env var, to an empty string when the host
-    # value is absent; Caddy's own `{$VAR:default}` placeholder only applies
-    # its default when the variable is truly absent, not when it is present
-    # and empty). The other two keep explicit `=` values; mixing forms in one
-    # `environment:` list is fine, only mixing list and mapping syntax is not.
+    # List form, not `KEY: value` mapping: CADDY_TEST_ISSUER (below) is a
+    # bare `- VARNAME` entry, which is the only form that can leave the
+    # container's env var OMITTED rather than merely empty when the host
+    # doesn't set it. That distinction no longer changes anything here:
+    # docker/prod/Caddyfile now substitutes the whole `local_certs`
+    # directive TEXT, not an argument to it, with an empty default — so an
+    # omitted and an empty CADDY_TEST_ISSUER adapt identically (verified:
+    # both leave no directive in place, and Caddy falls back to its
+    # built-in ACME issuers). Unlike the old value-placeholder shape this
+    # replaced, where a present-but-empty variable and a truly absent one
+    # really could differ, the bare form here is no longer load-bearing —
+    # it's kept for consistency with the variable it replaces. The other
+    # two keep explicit `=` values; mixing forms in one `environment:` list
+    # is fine, only mixing list and mapping syntax is not.
     environment:
       - CADDY_SITE_ADDRESS=${CADDY_SITE_ADDRESS:-https://}
       # No fallback: an empty value would still need to become SOME string to
@@ -139,10 +145,12 @@ services:
       # failing every certificate request instead of loudly failing the
       # deploy. See .env.production.example for the operator-facing text.
       - ACME_EMAIL=${ACME_EMAIL:?ACME_EMAIL is required (a real, deliverable address for the ACME account)}
-      # Test-only, see docker/prod/Caddyfile. Bare on purpose (see the note
-      # above this block) — no real deploy ever sets this variable, so it
-      # must reach the container OMITTED, not as an empty string.
-      - CADDY_LOCAL_CERTS_HOSTS
+      # Test-only, see docker/prod/Caddyfile. Injects the whole `local_certs`
+      # directive — `local_certs` takes no arguments, so this can't scope it
+      # by passing one, it can only make the directive exist or not. Bare on
+      # purpose (see the note above this block), though omitted and empty
+      # now behave the same either way; no real deploy sets this variable.
+      - CADDY_TEST_ISSUER
     volumes:
       # Losing this means re-issuing every workspace's certificate, and
       # Let's Encrypt rate-limits that.
