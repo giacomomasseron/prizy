@@ -613,6 +613,84 @@ check_dns() {
     fi
 }
 
+compose_cmd() {
+    printf 'docker compose -f docker-compose.prod.yml'
+    if [ "$OPT_WITH_REALTIME" -eq 1 ]; then
+        printf ' --profile realtime'
+    fi
+}
+
+deploy() {
+    step 7 "Build and start"
+
+    # VITE_* are baked into the JS bundle at BUILD time, so they must be in the
+    # build's environment, not the container's. They are read from .env for the
+    # server side, but the browser side can only come through here. Without
+    # --with-realtime they stay unset, which is what keeps the frontend polling.
+    local build_env=()
+    if [ "$OPT_WITH_REALTIME" -eq 1 ]; then
+        local reverb_key
+        if [ "$OPT_DRY_RUN" -eq 1 ]; then
+            reverb_key="<generated>"
+        else
+            reverb_key="$(grep '^REVERB_APP_KEY=' "$SOURCE_DIR/.env" | head -n1 | cut -d= -f2-)"
+            [ -n "$reverb_key" ] || die "--with-realtime needs REVERB_APP_KEY in .env, which configuration should have generated"
+        fi
+        build_env=(
+            "VITE_REVERB_APP_KEY=$reverb_key"
+            "VITE_REVERB_HOST=$OPT_DOMAIN"
+            "VITE_REVERB_PORT=$OPT_HTTPS_PORT"
+            "VITE_REVERB_SCHEME=https"
+        )
+        info "real-time enabled: compiling the WebSocket client for $OPT_DOMAIN"
+    fi
+
+    info "building the production image (this takes a few minutes on first install)"
+    # ${build_env[*]} is deliberate word-splitting of KEY=VALUE pairs into
+    # separate words for `env`, not array-into-string interpolation; safe
+    # unquoted here because every value is domain/port/hex with no spaces.
+    run sh -c "cd '$SOURCE_DIR' && env ${build_env[*]} $(compose_cmd) build"
+
+    # `up -d --wait` is the whole deploy: the one-shot migrate service runs
+    # before app/web start, and every long-running service has a real health
+    # probe, so this returns only once the stack is genuinely serving.
+    info "starting the stack (migrate runs first, then app and web)"
+    run sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"
+}
+
+report() {
+    step 8 "Ready"
+
+    if [ "$OPT_DRY_RUN" -eq 0 ]; then
+        local health=""
+        health="$(curl -fsS --max-time 10 "http://127.0.0.1:${OPT_HTTP_PORT}/health" 2>/dev/null || echo '')"
+        if [ -n "$health" ]; then
+            info "the application answers on the edge"
+        else
+            warn "the stack started but /health did not answer yet; give it a moment and check"
+            warn "  cd $SOURCE_DIR && $(compose_cmd) ps"
+        fi
+    fi
+
+    # /signup and NOT the bare domain: routes/web.php:19 serves / through the
+    # tenant middleware with no exemption, and the tenant finder resolves no
+    # tenant when the Host equals APP_BASE_DOMAIN, so https://<domain>/ raises
+    # NoCurrentTenant and answers 500. /signup is exempt (routes/web.php:25).
+    # The first thing an operator sees must not be a stack trace.
+    printf '\n\033[0;32mPrizy is installed.\033[0m\n\n'
+    printf '    Open \033[1mhttps://%s/signup\033[0m and create your first workspace.\n\n' "$OPT_DOMAIN"
+    printf '    Source and configuration: %s\n' "$SOURCE_DIR"
+    printf '    Logs:    cd %s && %s logs -f\n' "$SOURCE_DIR" "$(compose_cmd)"
+    printf '    Upgrade: re-run this installer\n\n'
+
+    if [ "$OPT_MAIL" = "log" ]; then
+        warn "mail is set to 'log' — no email leaves this machine. See --mail=smtp."
+    fi
+    if [ "$OPT_WITH_REALTIME" -eq 0 ]; then
+        info "real-time is off; the interface polls. Re-run with --with-realtime to enable it."
+    fi
+}
+
 main() {
     parse_args "$@"
     preflight
@@ -621,6 +699,8 @@ main() {
     fetch_source
     configure
     check_dns
+    deploy
+    report
 }
 
 # Only run when executed, never when sourced — this is what makes the library

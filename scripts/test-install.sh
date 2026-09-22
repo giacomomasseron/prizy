@@ -435,6 +435,49 @@ else
 fi
 rm -rf "$GEN_TMP"
 
+log "The full --dry-run path"
+full_dry="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com \
+    --mail=log --source-path "$(dirname "$0")/.." 2>&1 || true)"
+
+if printf '%s' "$full_dry" | grep -q 'docker compose'; then
+    pass "--dry-run reaches the deploy step"
+else
+    fail "--dry-run reaches the deploy step"
+fi
+if printf '%s' "$full_dry" | grep -q 'migrate'; then
+    pass "--dry-run runs migrations as part of the deploy"
+else
+    fail "--dry-run runs migrations as part of the deploy"
+fi
+if printf '%s' "$full_dry" | grep -q 'https://example.com/signup'; then
+    pass "the closing instruction names /signup"
+else
+    fail "the closing instruction names /signup"
+fi
+if printf '%s' "$full_dry" | grep -qE 'https://example\.com/?$'; then
+    fail "the closing instruction never points at the bare domain (it 500s)"
+else
+    pass "the closing instruction never points at the bare domain (it 500s)"
+fi
+
+realtime_dry="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com \
+    --mail=log --with-realtime --source-path "$(dirname "$0")/.." 2>&1 || true)"
+if printf '%s' "$realtime_dry" | grep -q 'VITE_REVERB_APP_KEY'; then
+    pass "--with-realtime passes VITE_REVERB_APP_KEY into the build"
+else
+    fail "--with-realtime passes VITE_REVERB_APP_KEY into the build"
+fi
+if printf '%s' "$realtime_dry" | grep -q 'realtime'; then
+    pass "--with-realtime selects the realtime compose profile"
+else
+    fail "--with-realtime selects the realtime compose profile"
+fi
+if printf '%s' "$full_dry" | grep -q 'VITE_REVERB_APP_KEY'; then
+    fail "without --with-realtime no VITE_* value is compiled in"
+else
+    pass "without --with-realtime no VITE_* value is compiled in"
+fi
+
 echo
 if [ "$FAILED" -eq 0 ]; then
     printf '\033[0;32mInstaller unit tests passed\033[0m\n'
