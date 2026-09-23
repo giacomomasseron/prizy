@@ -507,6 +507,44 @@ preflight() {
     if [ "$free_kb" -lt 20000000 ]; then
         warn "only $((free_kb / 1024 / 1024)) GB free on /; 20 GB is the minimum"
     fi
+
+    ensure_prerequisites
+}
+
+# Installs the tools this run needs that a minimal image may not have:
+#   openssl  every generated secret (always);
+#   curl     fetching Docker's install script (only when Docker is missing);
+#   git      cloning the source (only without --source-path).
+# Installed rather than demanded, like Docker itself: the promise is a fresh
+# box. The package names are the same on every supported family.
+#
+# Here, in preflight, because each one used to fail late and misleadingly:
+# without curl, `curl | sh` fed sh an empty script and the Docker step
+# "succeeded" with nothing installed; without git, the clone step told the
+# operator the repository was private.
+ensure_prerequisites() {
+    local needed=(openssl) missing=() tool
+    command -v docker >/dev/null 2>&1 || needed+=(curl)
+    [ -n "$OPT_SOURCE_PATH" ] || needed+=(git)
+    for tool in "${needed[@]}"; do
+        command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+    done
+    [ "${#missing[@]}" -gt 0 ] || return 0
+
+    info "installing missing tools: ${missing[*]}"
+    # ca-certificates with them on Debian: a minimal image lacks it as often
+    # as it lacks curl, and curl without it cannot fetch anything over https.
+    case "$OS_FAMILY" in
+        debian) run apt-get update -q && run apt-get install -y -q ca-certificates "${missing[@]}" ;;
+        rhel)   run dnf install -y -q "${missing[@]}" ;;
+        *)      warn "cannot install ${missing[*]} on this distribution; a real run would stop earlier" ;;
+    esac || die "could not install ${missing[*]} with the package manager (see its output above). Install them yourself and re-run."
+
+    [ "$OPT_DRY_RUN" -eq 0 ] || return 0
+    for tool in "${missing[@]}"; do
+        command -v "$tool" >/dev/null 2>&1 || \
+            die "$tool is still missing after installing it. Install $tool yourself and re-run."
+    done
 }
 
 # Checks the installed docker is new enough, and tells the two failures apart.
@@ -548,13 +586,14 @@ ensure_docker() {
         check_docker_version
     else
         info "installing docker via get.docker.com"
-        run sh -c 'curl -fsSL https://get.docker.com | sh'
-        if ! run command -v docker >/dev/null 2>&1 && [ "$OPT_DRY_RUN" -eq 0 ]; then
-            # The convenience script does not cover every RHEL derivative.
-            case "$OS_FAMILY" in
-                debian) run apt-get update && run apt-get install -y docker.io docker-compose-plugin ;;
-                rhel)   run dnf install -y docker docker-compose-plugin ;;
-            esac
+        # bash with pipefail, not sh: a pipeline reports its LAST command's
+        # status, so a failed download handed sh an empty script, sh ran it,
+        # and the step "succeeded" with no Docker installed.
+        if ! run bash -c 'set -o pipefail; curl -fsSL https://get.docker.com | sh'; then
+            warn "the get.docker.com script failed; trying the distribution's packages instead"
+        fi
+        if [ "$OPT_DRY_RUN" -eq 0 ] && ! command -v docker >/dev/null 2>&1; then
+            install_docker_from_packages
         fi
         run systemctl enable --now docker
         # The fallback above can land docker.io 20.x on an older Debian, so the
@@ -568,6 +607,42 @@ ensure_docker() {
     if [ "$OPT_DRY_RUN" -eq 0 ] && ! docker compose version >/dev/null 2>&1; then
         die "docker compose v2 is required (the 'docker compose' subcommand, not docker-compose)"
     fi
+}
+
+# The fallback for when get.docker.com installed nothing. No package name
+# works everywhere, so each family gets the names it actually ships (checked
+# against the live repositories on 2026-09-23):
+#   - docker-compose-plugin exists only in Docker's own repositories;
+#   - Ubuntu 22.04 and 24.04 ship the compose v2 plugin as docker-compose-v2;
+#   - Debian 13 ships it as docker-compose. Debian 12's docker-compose is the
+#     v1 Python tool and its docker.io is 20.10; the checks after this step
+#     refuse both by name, which is the most this fallback can do there;
+#   - RHEL and its rebuilds ship no Docker at all, so it comes from Docker's
+#     CentOS repository, the one Docker documents for them.
+# Whatever still fails stops here with what to do, rather than with a raw
+# package-manager error and no ERROR line.
+install_docker_from_packages() {
+    local manual="Install Docker Engine 24 or newer with the compose plugin (https://docs.docker.com/engine/install/), then re-run this installer."
+    case "$OS_FAMILY" in
+        debian)
+            local compose_pkg="docker-compose-v2"
+            run apt-get update -q || die "apt-get update failed, so Docker could not be installed. $manual"
+            apt-cache show docker-compose-v2 >/dev/null 2>&1 || compose_pkg="docker-compose"
+            info "installing docker.io and $compose_pkg from the distribution"
+            run apt-get install -y docker.io "$compose_pkg" || \
+                die "could not install docker.io and $compose_pkg. $manual"
+            ;;
+        rhel)
+            info "installing Docker CE from Docker's CentOS repository"
+            { run dnf install -y dnf-plugins-core \
+                && run dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo \
+                && run dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin; } || \
+                die "could not install Docker CE from Docker's repository. $manual"
+            ;;
+        *)
+            die "Docker could not be installed on this distribution. $manual"
+            ;;
+    esac
 }
 
 ensure_layout() {
@@ -729,12 +804,19 @@ fetch_source() {
 
     # The remote is empty as of 2026-09-22, so this is the path most likely to
     # fail on a real box. Say why, rather than letting a raw git error land.
+    #
+    # git's own last line goes into the message, because "private" is only
+    # one reason a read fails: DNS, a proxy or a firewall read the same, and
+    # blaming the repository for those sent the operator the wrong way.
+    # GIT_TERMINAL_PROMPT=0 because a private repository over https otherwise
+    # asks for a username on the terminal, and the installer sits there.
     info "cloning $REPO_URL at $OPT_REF"
     if [ "$OPT_DRY_RUN" -eq 0 ]; then
-        if ! git ls-remote --heads "$REPO_URL" >/dev/null 2>&1; then
-            die "cannot read $REPO_URL. If the repository is private or not yet published, install from a local checkout instead: --source-path /path/to/prizy"
+        local git_err
+        if ! git_err="$(GIT_TERMINAL_PROMPT=0 git ls-remote --heads "$REPO_URL" 2>&1 >/dev/null)"; then
+            die "cannot read $REPO_URL (git said: ${git_err##*$'\n'}). If the repository is private or not yet published, install from a local checkout instead: --source-path /path/to/prizy"
         fi
-        if ! git ls-remote --exit-code "$REPO_URL" "$OPT_REF" >/dev/null 2>&1; then
+        if ! GIT_TERMINAL_PROMPT=0 git ls-remote --exit-code "$REPO_URL" "$OPT_REF" >/dev/null 2>&1; then
             die "$REPO_URL has no ref named '$OPT_REF'. Pass an existing tag or branch with --ref, or use --source-path."
         fi
     fi
@@ -754,14 +836,19 @@ SMTP_PASSWORD=""
 # shellcheck disable=SC2034
 SMTP_ENCRYPTION=""
 
-# prompt_for <var> <question> [default] [empty-is-an-answer]
+# prompt_for <var> <question> [default] [empty-is-an-answer] [secret]
 #
 # The fourth argument marks a setting whose empty value is a real answer rather
 # than a missing one, so --yes accepts it: .env.production.example documents
 # empty MAIL_USERNAME/MAIL_PASSWORD as the auth-less-relay case, and without
 # this an unattended run could not express it.
+#
+# The fifth marks a secret: nothing typed is echoed, and a default is shown as
+# a fixed mask instead of itself. A secret's default is the live SMTP password
+# on every re-run, and everything printed from the Layout step on is also
+# written to the install log — the file an operator pastes into an issue.
 prompt_for() {
-    local var="$1" question="$2" default="${3:-}" allow_empty="${4:-0}" answer=""
+    local var="$1" question="$2" default="${3:-}" allow_empty="${4:-0}" secret="${5:-0}" answer=""
     if [ "$OPT_YES" -eq 1 ]; then
         if [ -z "$default" ] && [ "$allow_empty" -eq 0 ]; then
             die "--yes was given but $var has no value and no default; set PRIZY_$var (see --help, Environment)"
@@ -769,7 +856,26 @@ prompt_for() {
         printf -v "$var" '%s' "$default"
         return 0
     fi
-    if [ -n "$default" ]; then
+    if [ "$secret" -eq 1 ]; then
+        # Printed rather than left to `read -p`, as in ask_value: read -p shows
+        # nothing when stdin is not a terminal, and a mask nobody can see is a
+        # mask nobody can check. Eight asterisks whatever the length, so the
+        # mask does not give the length away either.
+        if [ -n "$default" ]; then
+            printf '    %s [********]: ' "$question" >&2
+        else
+            printf '    %s: ' "$question" >&2
+        fi
+        # -s: nothing typed is echoed — nor is Enter, hence the newline after.
+        # IFS= keeps edge whitespace, so undotenvable_reason refuses it out
+        # loud; read's default trimming quietly saved a different password.
+        if ! IFS= read -r -s answer && [ -z "$answer" ]; then
+            printf '\n' >&2
+            die "no answer for '$question' (input closed)"
+        fi
+        printf '\n' >&2
+        answer="${answer:-$default}"
+    elif [ -n "$default" ]; then
         read -r -p "    $question [$default]: " answer
         answer="${answer:-$default}"
     else
@@ -778,7 +884,7 @@ prompt_for() {
     printf -v "$var" '%s' "$answer"
 }
 
-# prompt_dotenvable <var> <question> <default> <empty-is-an-answer> <env-key>
+# prompt_dotenvable <var> <question> <default> <empty-is-an-answer> <env-key> [secret]
 #
 # prompt_for, plus the check that the answer is one the .env can carry back out
 # unchanged — the same check write_env_file makes, run where the operator can
@@ -791,9 +897,9 @@ prompt_for() {
 # survivable: write_env_file dies before it writes anything, so a fresh install
 # that hit it stopped at step 5 of 8 with no .env on disk at all.
 prompt_dotenvable() {
-    local var="$1" question="$2" default="${3:-}" allow_empty="${4:-0}" env_key="$5" reason
+    local var="$1" question="$2" default="${3:-}" allow_empty="${4:-0}" env_key="$5" secret="${6:-0}" reason
     while true; do
-        prompt_for "$var" "$question" "$default" "$allow_empty"
+        prompt_for "$var" "$question" "$default" "$allow_empty" "$secret"
         reason="$(undotenvable_reason "${!var}")"
         [ -n "$reason" ] || return 0
         [ "$OPT_YES" -eq 1 ] && die "PRIZY_$var $reason. Choose a value without it, or unset PRIZY_$var and write $env_key into $SOURCE_DIR/.env by hand — a value this installer would refuse is never offered back as a prompt default and never overwritten by an empty answer, so later runs leave a hand-written one alone."
@@ -871,7 +977,7 @@ collect_mail_settings() {
             prompt_dotenvable SMTP_HOST "SMTP host" "${PRIZY_SMTP_HOST:-$cur_host}" 0 MAIL_HOST
             prompt_dotenvable SMTP_PORT "SMTP port" "${PRIZY_SMTP_PORT:-${cur_port:-587}}" 0 MAIL_PORT
             prompt_dotenvable SMTP_USERNAME "SMTP username" "${PRIZY_SMTP_USERNAME:-$cur_user}" 1 MAIL_USERNAME
-            prompt_dotenvable SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-$cur_pass}" 1 MAIL_PASSWORD
+            prompt_dotenvable SMTP_PASSWORD "SMTP password" "${PRIZY_SMTP_PASSWORD:-$cur_pass}" 1 MAIL_PASSWORD 1
             # Not a dotenv value: mail_scheme_for maps this answer to one of
             # three fixed strings and dies on anything else.
             prompt_for SMTP_ENCRYPTION "SMTP encryption (tls/ssl/none)" "${PRIZY_SMTP_ENCRYPTION:-${cur_enc:-tls}}"

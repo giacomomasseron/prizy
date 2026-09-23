@@ -1371,6 +1371,268 @@ else
     fail "with no settings and no terminal, the installer stops before doing anything (exit $bare_rc: $bare_out)"
 fi
 
+log "The SMTP password is never shown"
+# A re-run with the live password in the install's .env and Enter pressed at
+# every question. The password question prints its own prompt (see
+# prompt_for), so this output is everything it shows — the same text that
+# lands in the install log. The password may appear exactly once: on the
+# KEPT line this test prints itself.
+PW_ROOT="$(mktemp -d -p "$TMP")"
+mkdir -p "$PW_ROOT/source"
+printf 'MAIL_HOST=smtp.example.org\nMAIL_PORT=587\nMAIL_USERNAME=prizy\nMAIL_PASSWORD=Tr0ub4dor-horse\nMAIL_SCHEME=smtp\n' \
+    > "$PW_ROOT/source/.env"
+# ask_smtp <prizy-root> <keystrokes> [PRIZY_SMTP_PASSWORD]
+ask_smtp() {
+    (
+        unset PRIZY_SMTP_HOST PRIZY_SMTP_PORT PRIZY_SMTP_USERNAME PRIZY_SMTP_ENCRYPTION
+        PRIZY_SMTP_PASSWORD="${3:-}"
+        PRIZY_ROOT="$1"; SOURCE_DIR="$1/source"
+        OPT_MAIL="smtp"; OPT_YES=0; OPT_DRY_RUN=0
+        collect_mail_settings
+        # SC2031: read in the same subshell collect_mail_settings set it in.
+        # shellcheck disable=SC2031
+        printf '\nKEPT %s\n' "$SMTP_PASSWORD"
+    ) <<< "$2" 2>&1
+}
+count_of() { printf '%s' "$2" | grep -o -- "$1" | wc -l | tr -d ' '; }
+
+pw_out="$(ask_smtp "$PW_ROOT" $'\n\n\n\n\n')" || true
+assert_eq "Enter at the password question keeps the live password" \
+    "KEPT Tr0ub4dor-horse" "$(last_line "$pw_out")"
+if printf '%s' "$pw_out" | grep -qF 'SMTP password [********]: ' \
+    && [ "$(count_of 'Tr0ub4dor-horse' "$pw_out")" -eq 1 ]; then
+    pass "a re-run shows the live password as a mask, never as itself"
+else
+    fail "a re-run shows the live password as a mask, never as itself (got: $pw_out)"
+fi
+
+pwenv_out="$(ask_smtp "$PW_ROOT/none" $'smtp.example.org\n\n\n\n\n' 'Env-Secret-9')" || true
+if [ "$(last_line "$pwenv_out")" = "KEPT Env-Secret-9" ] \
+    && [ "$(count_of 'Env-Secret-9' "$pwenv_out")" -eq 1 ]; then
+    pass "a password from PRIZY_SMTP_PASSWORD is masked too"
+else
+    fail "a password from PRIZY_SMTP_PASSWORD is masked too (got: $pwenv_out)"
+fi
+
+# read's default word splitting trimmed edge whitespace, quietly saving a
+# different password than the one typed. Kept whole, it is refused out loud
+# by the same rule every other SMTP value follows.
+ws_out="$(ask_smtp "$PW_ROOT/none" $'smtp.example.org\n587\nprizy\n lead-space\nGood-Pass-1\ntls\n')" || true
+if [ "$(last_line "$ws_out")" = "KEPT Good-Pass-1" ] \
+    && printf '%s' "$ws_out" | grep -q 'MAIL_PASSWORD cannot contain whitespace'; then
+    pass "a typed password with edge whitespace is refused, not trimmed"
+else
+    fail "a typed password with edge whitespace is refused, not trimmed (got: $ws_out)"
+fi
+
+# Echo is the terminal's doing, so only a terminal can show it: `script` runs
+# the question on a pseudo-terminal whose echo is on unless read -s turns it
+# off. The keystrokes arrive after a pause, once the question is waiting — a
+# slow machine can only make this fail, never pass wrongly.
+install_abs="$(cd "$(dirname "$INSTALL_SH")" && pwd)/install.sh"
+if script --version 2>/dev/null | grep -q util-linux; then
+    PTY_SH="$TMP/typed-password.sh"
+    # SC2016: these lines are a script for the inner bash; its $1 and $SMTP_PASSWORD.
+    # shellcheck disable=SC2016
+    printf '%s\n' 'source "$1"' 'OPT_YES=0' 'prompt_for SMTP_PASSWORD "SMTP password" "" 1 1' \
+        'printf "got=%s\n" "$SMTP_PASSWORD"' > "$PTY_SH"
+    pty_out="$({ sleep 2; printf 'Typed-Secret-7\n'; } \
+        | script -qec "bash '$PTY_SH' '$install_abs'" /dev/null 2>&1 | tr -d '\r')" || true
+    if printf '%s' "$pty_out" | grep -q 'got=Typed-Secret-7' \
+        && [ "$(count_of 'Typed-Secret-7' "$pty_out")" -eq 1 ]; then
+        pass "a typed SMTP password is not echoed to the terminal"
+    else
+        fail "a typed SMTP password is not echoed to the terminal (got: $pty_out)"
+    fi
+else
+    skip "a typed SMTP password is not echoed to the terminal (needs util-linux script)"
+fi
+
+log "Missing curl, git and openssl are installed before anything needs them"
+# new_fake_bin <present-tool>...
+# A directory to use as the WHOLE PATH: stub apt-get and dnf that append their
+# arguments to <dir>/calls and, on `install`, make each named tool appear the
+# way a real package manager would — curl, git and openssl as no-ops, docker.io
+# and docker-ce as a docker that reports 27.3.1. STUB_PM_FAIL makes them fail;
+# STUB_PM_FAIL_ON=<subcommand> fails that one only; STUB_PM_NOOP makes install
+# succeed without installing anything.
+new_fake_bin() {
+    local dir t
+    dir="$(mktemp -d -p "$TMP")"
+    for t in "$@"; do
+        printf '#!/bin/sh\nexit 0\n' > "$dir/$t"
+        chmod +x "$dir/$t"
+    done
+    # SC2016: the stub's own $1, expanded when the stub runs.
+    # shellcheck disable=SC2016
+    printf '#!/bin/sh\ncase "$1" in version) echo 27.3.1 ;; esac\nexit 0\n' > "$dir/.docker-when-installed"
+    chmod +x "$dir/.docker-when-installed"
+    for t in apt-get dnf; do
+        cat > "$dir/$t" <<STUB
+#!/bin/sh
+echo "$t \$*" >> "$dir/calls"
+[ -z "\${STUB_PM_FAIL:-}" ] || exit 100
+[ "\${STUB_PM_FAIL_ON:-}" != "\$1" ] || exit 100
+[ "\$1" = install ] || exit 0
+[ -z "\${STUB_PM_NOOP:-}" ] || exit 0
+for pkg in "\$@"; do
+    case "\$pkg" in
+        curl|git|openssl) printf '#!/bin/sh\nexit 0\n' > "$dir/\$pkg"; /bin/chmod +x "$dir/\$pkg" ;;
+        docker.io|docker-ce) /bin/cp "$dir/.docker-when-installed" "$dir/docker" ;;
+    esac
+done
+STUB
+        chmod +x "$dir/$t"
+    done
+    printf '%s' "$dir"
+}
+calls_of() { [ -f "$1/calls" ] && paste -sd'|' "$1/calls" || printf 'none'; }
+
+# SC2030/SC2031: PATH is replaced inside each subshell only, which is the point.
+# shellcheck disable=SC2030,SC2031
+{
+pre_bin="$(new_fake_bin)"; pre_rc=0
+pre_out="$( ( PATH="$pre_bin"; OS_FAMILY=debian; OPT_SOURCE_PATH=""; OPT_DRY_RUN=0; ensure_prerequisites ) 2>&1 )" || pre_rc=$?
+assert_eq "a bare Debian box gets openssl, curl and git (and CA certificates) before anything needs them" \
+    "0 apt-get update -q|apt-get install -y -q ca-certificates openssl curl git" "$pre_rc $(calls_of "$pre_bin")"
+
+pre_bin="$(new_fake_bin docker openssl)"
+( PATH="$pre_bin"; OS_FAMILY=debian; OPT_SOURCE_PATH="/some/checkout"; OPT_DRY_RUN=0; ensure_prerequisites ) >/dev/null 2>&1 || true
+assert_eq "curl is not needed when Docker is present, nor git with --source-path" \
+    "none" "$(calls_of "$pre_bin")"
+
+pre_bin="$(new_fake_bin docker)"
+( PATH="$pre_bin"; OS_FAMILY=rhel; OPT_SOURCE_PATH=""; OPT_DRY_RUN=0; ensure_prerequisites ) >/dev/null 2>&1 || true
+assert_eq "the RHEL family installs them with dnf" \
+    "dnf install -y -q openssl git" "$(calls_of "$pre_bin")"
+
+pre_bin="$(new_fake_bin)"; pre_rc=0
+pre_out="$( ( PATH="$pre_bin"; STUB_PM_FAIL=1; export STUB_PM_FAIL; OS_FAMILY=debian; OPT_SOURCE_PATH=""; OPT_DRY_RUN=0
+    ensure_prerequisites ) 2>&1 )" || pre_rc=$?
+if [ "$pre_rc" -ne 0 ] && printf '%s' "$pre_out" | grep -q 'ERROR: could not install openssl curl git'; then
+    pass "a package manager that fails stops the run with what to do"
+else
+    fail "a package manager that fails stops the run with what to do (exit $pre_rc: $pre_out)"
+fi
+
+pre_bin="$(new_fake_bin)"; pre_rc=0
+pre_out="$( ( PATH="$pre_bin"; STUB_PM_NOOP=1; export STUB_PM_NOOP; OS_FAMILY=debian; OPT_SOURCE_PATH=""; OPT_DRY_RUN=0
+    ensure_prerequisites ) 2>&1 )" || pre_rc=$?
+if [ "$pre_rc" -ne 0 ] && printf '%s' "$pre_out" | grep -q 'still missing after installing it'; then
+    pass "a tool the package manager did not actually install is caught"
+else
+    fail "a tool the package manager did not actually install is caught (exit $pre_rc: $pre_out)"
+fi
+
+pre_bin="$(new_fake_bin)"
+pre_out="$( ( PATH="$pre_bin"; OS_FAMILY=debian; OPT_SOURCE_PATH=""; OPT_DRY_RUN=1; ensure_prerequisites ) 2>&1 )" || true
+if [ "$(calls_of "$pre_bin")" = "none" ] \
+    && printf '%s' "$pre_out" | grep -q 'DRY-RUN: apt-get install -y -q ca-certificates openssl curl git'; then
+    pass "--dry-run names the tools it would install and installs none"
+else
+    fail "--dry-run names the tools it would install and installs none (calls: $(calls_of "$pre_bin"); $pre_out)"
+fi
+
+# Through preflight, which is what a real run calls: the check has to be
+# wired in, not just correct. Dry-run, so the root check is skipped.
+pre_bin="$(new_fake_bin)"
+for tool in uname awk df; do ln -s "$(command -v "$tool")" "$pre_bin/$tool"; done
+pre_out="$( ( PATH="$pre_bin"; OPT_SOURCE_PATH=""; OPT_DRY_RUN=1; preflight ) 2>&1 )" || true
+if printf '%s' "$pre_out" | grep -q 'installing missing tools: openssl curl git'; then
+    pass "preflight installs the missing tools"
+else
+    fail "preflight installs the missing tools (got: $pre_out)"
+fi
+
+log "Installing Docker: a failed download is noticed, and the fallback installs real packages"
+# new_docker_bin: a fake PATH where get.docker.com cannot be fetched (curl
+# fails the way it does with no DNS), systemctl is a no-op, and apt-cache
+# knows docker-compose-v2 unless STUB_NO_V2 is set — Debian 13 does not.
+new_docker_bin() {
+    local dir tool
+    dir="$(new_fake_bin)"
+    for tool in bash sh sort head; do ln -s "$(command -v "$tool")" "$dir/$tool"; done
+    printf '#!/bin/sh\necho "curl: (6) Could not resolve host: get.docker.com" >&2\nexit 6\n' > "$dir/curl"
+    printf '#!/bin/sh\nexit 0\n' > "$dir/systemctl"
+    # SC2016: read by the stub at run time, from the environment it inherits.
+    # shellcheck disable=SC2016
+    printf '#!/bin/sh\n[ -z "${STUB_NO_V2:-}" ]\n' > "$dir/apt-cache"
+    chmod +x "$dir/curl" "$dir/systemctl" "$dir/apt-cache"
+    printf '%s' "$dir"
+}
+
+dk_bin="$(new_docker_bin)"; dk_rc=0
+dk_out="$( ( PATH="$dk_bin"; OS_FAMILY=debian; OPT_DRY_RUN=0; ensure_docker ) 2>&1 )" || dk_rc=$?
+if [ "$dk_rc" -eq 0 ] && printf '%s' "$dk_out" | grep -q 'the get.docker.com script failed'; then
+    pass "a get.docker.com download that fails is reported, not taken for success"
+else
+    fail "a get.docker.com download that fails is reported, not taken for success (exit $dk_rc: $dk_out)"
+fi
+assert_eq "on Ubuntu the fallback installs docker.io with docker-compose-v2" \
+    "apt-get update -q|apt-get install -y docker.io docker-compose-v2" "$(calls_of "$dk_bin")"
+
+dk_bin="$(new_docker_bin)"
+( PATH="$dk_bin"; STUB_NO_V2=1; export STUB_NO_V2; OS_FAMILY=debian; OPT_DRY_RUN=0; ensure_docker ) >/dev/null 2>&1 || true
+assert_eq "without docker-compose-v2 (Debian 13) the fallback installs docker-compose" \
+    "apt-get update -q|apt-get install -y docker.io docker-compose" "$(calls_of "$dk_bin")"
+
+dk_bin="$(new_docker_bin)"
+( PATH="$dk_bin"; OS_FAMILY=rhel; OPT_DRY_RUN=0; ensure_docker ) >/dev/null 2>&1 || true
+assert_eq "on the RHEL family the fallback installs Docker CE from Docker's repository" \
+    "dnf install -y dnf-plugins-core|dnf config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo|dnf install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin" \
+    "$(calls_of "$dk_bin")"
+
+}
+
+# The two fallback failures run in a fresh bash, not a subshell of this file.
+# Inside $(...) or to the left of ||, bash switches errexit OFF — verified: in
+# a subshell here, a failed `apt-get update` with its die removed carried on
+# to the NEXT die, whose message this test then accepted. A real run has
+# errexit on and would have exited raw at the update, with no ERROR line.
+# A fresh process sources install.sh's own `set -euo pipefail` and behaves
+# exactly like the installer.
+# fallback_fails_at <apt-get subcommand>: ensure_docker as a real run does it,
+# with get.docker.com unreachable and apt-get failing at that subcommand.
+fallback_fails_at() {
+    local bin; bin="$(new_docker_bin)"
+    STUB_PM_FAIL_ON="$1" PATH="$bin" \
+        bash -c 'source "$1"; OS_FAMILY=debian; OPT_DRY_RUN=0; ensure_docker' _ "$install_abs" 2>&1
+}
+for failing_step in update install; do
+    fb_rc=0
+    fb_out="$(fallback_fails_at "$failing_step")" || fb_rc=$?
+    if [ "$fb_rc" -ne 0 ] && printf '%s' "$fb_out" | grep -q 'ERROR: .*Install Docker Engine 24 or newer'; then
+        pass "a fallback whose apt-get $failing_step fails stops with what to do, not a raw exit"
+    else
+        fail "a fallback whose apt-get $failing_step fails stops with what to do, not a raw exit (exit $fb_rc: $fb_out)"
+    fi
+done
+
+log "A clone that cannot read the repository says what git said"
+GITERR_ROOT="$(mktemp -d -p "$TMP")"
+GITERR_BIN="$(mktemp -d -p "$TMP")"
+cat > "$GITERR_BIN/git" <<'STUB'
+#!/bin/sh
+echo "GIT_TERMINAL_PROMPT=${GIT_TERMINAL_PROMPT:-unset}" >> "$(dirname "$0")/calls"
+echo "fatal: unable to access 'https://example.invalid/prizy.git/': Could not resolve host: example.invalid" >&2
+exit 128
+STUB
+chmod +x "$GITERR_BIN/git"
+gerr_rc=0
+# shellcheck disable=SC2030,SC2031
+gerr_out="$( ( PATH="$GITERR_BIN:$PATH"; PRIZY_ROOT="$GITERR_ROOT"; SOURCE_DIR="$GITERR_ROOT/source"
+    OPT_SOURCE_PATH=""; OPT_REF="main"; OPT_DRY_RUN=0; fetch_source ) 2>&1 )" || gerr_rc=$?
+if [ "$gerr_rc" -ne 0 ] && printf '%s' "$gerr_out" | grep -q 'git said: fatal: .*Could not resolve host'; then
+    pass "an unreadable repository is reported with git's own reason"
+else
+    fail "an unreadable repository is reported with git's own reason (exit $gerr_rc: $gerr_out)"
+fi
+if grep -q 'GIT_TERMINAL_PROMPT=0' "$GITERR_BIN/calls" 2>/dev/null; then
+    pass "git is told never to ask for credentials on the terminal"
+else
+    fail "git is told never to ask for credentials on the terminal"
+fi
+
 echo
 if [ "$SKIPPED" -gt 0 ]; then
     printf '\033[0;33m%d check(s) skipped — see the skip lines above\033[0m\n' "$SKIPPED"
