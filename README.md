@@ -50,13 +50,6 @@ Both sides share the same foundation:
 
 If you don't need a helpdesk, turn it off for the workspace.
 
-## Self-hosted or cloud
-
-- **Self-hosted: free.** Run Prizy on your own server with a single installer
-  script, and your data stays on your machine. See [Self-hosting](#self-hosting).
-- **Prizy Cloud: subscription.** We host, upgrade and operate Prizy for you.
-  Get started at **[prizy.dev](https://prizy.dev)**.
-
 ## Development
 
 **One command starts the whole development environment:**
@@ -168,6 +161,7 @@ troubleshooting a blank page. For how the app is built, see
 
 ## Self-hosting
 
+Prizy is free to run on your own server, and your data stays there.
 `scripts/install.sh` takes a fresh **Debian/Ubuntu or RHEL** server to a running
 Prizy with automatic HTTPS. It checks the machine, installs Docker and any other
 missing tools, generates every secret, builds the image and starts the stack.
@@ -220,8 +214,6 @@ missing.
 
 `bash install.sh --help` lists every flag and variable. The full guide is
 at **[docs.prizy.dev](https://docs.prizy.dev/)**.
-
-If you'd rather not run a server, [Prizy Cloud](https://prizy.dev) runs it for you.
 
 ## Built with
 
