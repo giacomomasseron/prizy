@@ -1,99 +1,182 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+<h1 align="center">Prizy</h1>
 
 <p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+  <strong>Linear + Zendesk, together in one workspace.</strong><br>
+  The issue tracker your engineers want and the helpdesk your support team needs,<br>
+  sharing one set of people, one permission model and one source of truth.
 </p>
 
-## Local development
+<p align="center">
+  <a href="https://prizy.dev"><strong>Website</strong></a> ·
+  <a href="https://docs.prizy.dev/"><strong>Documentation</strong></a> ·
+  <a href="#self-hosting">Self-host for free</a> ·
+  <a href="#development">Start developing</a>
+</p>
 
-Prizy runs across a **container/host split**: PHP (`artisan`, `composer`) and the
-backing services run in Docker, while the JS toolchain (`vite`, `npm`) runs on the
-host. The `composer dev` scripts orchestrate both from a single command.
+---
 
-### Prerequisites
+## Why Prizy
 
-- Docker + Docker Compose
-- Node (with `npm`) on the host
+Most teams run Linear (or Jira) for engineering and Zendesk (or Intercom) for
+support, and they pay for the gap between the two: tickets pasted into issues by
+hand, customers chased manually when a fix ships, and two sets of users and
+permissions to keep in sync.
 
-### First-time setup
+Prizy is **both tools in one app**. Tickets and issues live in the same
+workspace, next to each other. When a customer reports a bug, the agent links
+the ticket to an engineering issue. Developers see it under **Escalations**, the
+customer's portal shows that engineering is working on it, and support reports
+count how many tickets needed engineering. Nobody copies and pastes, no sync job
+runs between two tools, and nobody needs a second login.
+
+| Build: the Linear side | Support: the Zendesk side |
+| --- | --- |
+| Issues with statuses, priorities, labels, assignees and blockers | Shared ticket desk with filters, saved views and internal notes |
+| Cycles, projects, milestones and a roadmap | SLA policies with business hours and breach tracking |
+| Releases with a generated changelog | CSAT ratings, by email or right in the portal |
+| Comments with @mentions and emoji reactions | Help Center: a public knowledge base with search, article versions and translations |
+| Notifications inbox | Customer portal: magic-link sign-in, submit and follow requests |
+| Tracker analytics | Support reporting: agents, SLA, channels, saved reports, CSV export |
+| GitHub and Slack integrations | Contacts |
+
+Both sides share the same foundation:
+
+- every workspace lives on its own subdomain, and Postgres row-level security
+  keeps each workspace's data isolated from the others;
+- roles, plus *developer* and *agent* flags, show each person the side they work
+  on;
+- a versioned REST API (`/v1`) with API tokens;
+- a full workspace export.
+
+If you don't need a helpdesk, turn it off for the workspace.
+
+## Self-hosted or cloud
+
+- **Self-hosted: free.** Run Prizy on your own server with a single installer
+  script, and your data stays on your machine. See [Self-hosting](#self-hosting).
+- **Prizy Cloud: subscription.** We host, upgrade and operate Prizy for you.
+  Get started at **[prizy.dev](https://prizy.dev)**.
+
+## Development
+
+**One command starts the whole development environment:**
 
 ```bash
-docker compose up -d --build          # build the app image + start app, postgres, redis
-docker compose exec app composer install
-docker compose exec app cp -n .env.example .env
-docker compose exec app php artisan key:generate
-docker compose exec app php artisan migrate
-docker compose exec app php artisan db:seed --class="Database\Seeders\SmokeSeeder"
-npm install                           # on the host
+composer dev
 ```
 
-### First login
+`composer dev` does the following:
 
-Prizy resolves the current workspace from the request **subdomain**
-(`APP_BASE_DOMAIN=localhost`), so the app is served per workspace at
-`http://<slug>.localhost:8001` — **not** at the bare `http://localhost:8001/`,
-which resolves no tenant and returns `NoCurrentTenant`.
+1. starts the app, PostgreSQL and Redis in Docker and waits until the database
+   is healthy;
+2. runs the migrations and seeds a demo workspace;
+3. runs the queue worker, the live log tail and Vite with hot reload side by side
+   in one terminal.
 
-The `SmokeSeeder` above creates a ready-to-use workspace:
+When it's up, open **http://smoke.localhost:8001** and sign in as
+`smoke@example.com` / `password123`. Press **Ctrl-C once** to stop everything.
+The containers stay up, so the next start is fast.
 
-- **URL:** http://smoke.localhost:8001/
-- **Login:** `smoke@example.com` / `password123` (owner + developer)
+You don't need to run migrations, start a queue worker or open another terminal
+for Vite. `composer dev` does all of it. Running it again is safe: it applies
+any pending migrations, and the demo seed is idempotent.
 
-To create your own workspace instead, open http://localhost:8001/signup (the
-signup route is the one host exempt from tenant resolution). Browsers resolve
-`*.localhost` to loopback automatically — no `/etc/hosts` edits needed.
+### Before the first run
 
-### Day-to-day
+You need **Docker** (with Compose) and **Node + npm** on the host, plus
+**Composer**. Composer is only used to launch the scripts, so any PHP version on
+the host works; the app itself runs on PHP 8.5 inside the container.
+
+After cloning, run this once:
 
 ```bash
-composer dev        # everyday loop
-composer dev:full   # + real-time & search stack
+cp .env.example .env                                   # Compose reads it at startup
+docker compose build                                   # the dev image
+docker compose run --rm app composer install           # PHP dependencies, in the container
+docker compose run --rm app php artisan key:generate
+npm install                                            # JS dependencies, on the host
 ```
 
-`composer dev` brings up the core containers (`app`, `postgres`, `redis`) detached,
-then runs three foreground processes under one terminal — press **Ctrl-C once** to
-stop all three (the containers stay up between sessions):
+If your user id isn't 1000, change the `UID`/`GID` build args in
+`docker-compose.yml` before building, so files the container writes stay yours.
 
-| Process        | Runs in   | What it does                                  |
-| -------------- | --------- | --------------------------------------------- |
+### What's running
+
+| Process        | Runs in   | What it does                                     |
+| -------------- | --------- | ------------------------------------------------ |
 | `queue:listen` | container | processes queued jobs (`QUEUE_CONNECTION=redis`) |
-| `pail`         | container | live tail of the application log              |
-| `vite`         | host      | asset dev server with HMR                     |
+| `pail`         | container | live tail of the application log                 |
+| `vite`         | host      | asset dev server with HMR                        |
 
-Because `composer dev` does not start Reverb, its queue worker runs with
-`BROADCAST_CONNECTION=log` (broadcast payloads go to the log instead of a live
-websocket; the client falls back to polling). Use `composer dev:full` when you
-want real websocket broadcasting.
+`composer dev` keeps things light. It doesn't start WebSockets: broadcasts go to
+the log and the UI falls back to polling. If you need the full real-time and
+search stack, run this instead:
 
-`composer dev:full` instead starts the `full` compose profile — adding **Reverb**
-(websockets), **Horizon**, and **Meilisearch** — and runs only `pail` + `vite` in the
-foreground, since Horizon owns the queue in that profile.
+```bash
+composer dev:full   # + Reverb (WebSockets), Horizon and Meilisearch
+```
 
-### Service ports
+In that mode Horizon owns the queue, so only `pail` and `vite` run in the
+foreground.
 
-| Service         | URL / port              | Started by            |
-| --------------- | ----------------------- | --------------------- |
-| App (web)       | http://localhost:8001   | `dev`, `dev:full`     |
-| Vite (HMR)      | http://localhost:5173   | `dev`, `dev:full`     |
-| PostgreSQL      | `localhost:5433`        | `dev`, `dev:full`     |
-| Redis           | `localhost:6380`        | `dev`, `dev:full`     |
-| Reverb          | `localhost:8080`        | `dev:full`            |
-| Meilisearch     | http://localhost:7700   | `dev:full`            |
+| Service     | URL / port            | Started by        |
+| ----------- | --------------------- | ----------------- |
+| App (web)   | http://localhost:8001 | `dev`, `dev:full` |
+| Vite (HMR)  | http://localhost:5173 | `dev`, `dev:full` |
+| PostgreSQL  | `localhost:5433`      | `dev`, `dev:full` |
+| Redis       | `localhost:6380`      | `dev`, `dev:full` |
+| Reverb      | `localhost:8080`      | `dev:full`        |
+| Meilisearch | http://localhost:7700 | `dev:full`        |
 
-> **Note:** run `artisan`/`composer` through `docker compose exec app …`, not on the
-> host — `DB_HOST=postgres` and `REDIS_HOST=redis` only resolve inside the Docker
+### Demo logins
+
+Prizy picks the workspace from the **subdomain**, so the app runs at
+`http://<slug>.localhost:8001` and not at the bare `localhost:8001`. Browsers
+resolve `*.localhost` to your machine automatically, so you don't need to edit
+`/etc/hosts`.
+
+The seeded workspace is at **http://smoke.localhost:8001**. All passwords are
+`password123`.
+
+| Account                  | Sees                                      |
+| ------------------------ | ----------------------------------------- |
+| `smoke@example.com`      | everything (owner, developer)             |
+| `member@example.com`     | the issue tracker (developer, no support) |
+| `agent-maya@example.com` | the support desk (agent, not developer)   |
+
+To create a workspace of your own, go to http://localhost:8001/signup.
+
+### Tests
+
+```bash
+docker compose exec app php artisan test   # Pest: unit + feature
+npm test                                   # Vitest
+npm run test:e2e                           # Playwright, against a running `composer dev`
+```
+
+> `composer dev` and `composer dev:full` run on the host. Run every other
+> `artisan` or `composer` command through `docker compose exec app …`, because
+> `DB_HOST=postgres` and `REDIS_HOST=redis` only resolve inside the Docker
 > network.
+
+More detail is in [`docs/RUNNING.md`](docs/RUNNING.md), including
+troubleshooting a blank page. For how the app is built, see
+[`docs/multi-tenancy.md`](docs/multi-tenancy.md) and
+[`docs/roles.md`](docs/roles.md).
 
 ## Self-hosting
 
-`scripts/install.sh` takes a fresh Debian/Ubuntu or RHEL box to a running,
-TLS-terminated Prizy. It has to run **on that box, as root**, so the first step
-is getting a copy of this repository onto it. The repository has no published
-remote yet, so today that means copying a checkout across and installing from
-it:
+`scripts/install.sh` takes a fresh **Debian/Ubuntu or RHEL** server to a running
+Prizy with automatic HTTPS. It checks the machine, installs Docker, generates
+every secret, builds the image and starts the stack. When it's done, it prints
+`https://<domain>/signup`, where you create your first workspace.
+
+First, point **both `example.com` and `*.example.com`** at the server. Every
+workspace gets its own subdomain, and certificates are issued per hostname on
+first request.
+
+The installer must run **on the server, as root**. The repository has no public
+remote yet, so copy a checkout across and install from it:
 
 ```bash
 scp -r . root@your-server:/opt/prizy-src
@@ -102,103 +185,44 @@ ssh root@your-server 'bash /opt/prizy-src/scripts/install.sh \
     --source-path /opt/prizy-src'
 ```
 
-Once the repository is published, drop `--source-path` and the installer clones
-it instead — `--ref <tag|branch>` picks what to clone (default `main`).
+Once the repository is published, drop `--source-path` and the installer will
+clone it instead. `--ref <tag|branch>` picks what to clone (default `main`). The
+checkout's own `.env` is never carried over: the installer generates a fresh
+production one, so a laptop's `APP_DEBUG=true` and `APP_KEY` can't end up on a
+server.
 
-Point both `A example.com` and `A *.example.com` at the machine first — every
-workspace lives at its own subdomain, and certificates are issued per hostname
-on first request.
+- **Upgrading:** re-run the same command. It backs up `.env` to
+  `/data/prizy/backups`, fills in only the keys that are missing or empty, then
+  rebuilds and migrates. It never overwrites an existing value.
+- **Real-time:** `--with-realtime` adds WebSockets (Reverb). Without it, the UI
+  polls.
+- **Evaluating:** `--mail=log` sends no email, so portal magic-link sign-in,
+  email verification, invitations and CSAT requests won't work.
+- **Previewing:** `--dry-run` prints the plan and changes nothing.
+- **Unattended installs:** every flag and prompt has a `PRIZY_*` environment
+  variable. Add `--yes` to drive the install from a config-management tool with
+  no terminal.
+- **SMTP passwords:** the installer refuses a value that contains `$`,
+  whitespace, or a leading or trailing quote, because Compose's dotenv parser
+  would silently change it. Leave that setting empty and write it into
+  `/data/prizy/source/.env` by hand. Later re-runs will leave it alone.
 
-The installer checks the machine, installs Docker, writes `/data/prizy/source`,
-generates every secret, builds the image and brings the stack up. It finishes by
-printing `https://<domain>/signup`, where you create the first workspace. A
-checkout's own `.env` is never imported: the installer deletes it after the copy
-and generates a production one, so a laptop's `APP_DEBUG=true` and `APP_KEY`
-cannot follow the source onto a server.
+`bash scripts/install.sh --help` lists every flag and variable. The full guide is
+at **[docs.prizy.dev](https://docs.prizy.dev/)**.
 
-Re-running the same command is the upgrade path. It backs up `.env` to
-`/data/prizy/backups`, fills only keys that are missing or empty — an existing
-value is never overwritten — then rebuilds and migrates.
+If you'd rather not run a server, [Prizy Cloud](https://prizy.dev) runs it for you.
 
-Useful flags: `--with-realtime` to run Reverb and compile the WebSocket client
-into the bundle (without it the interface polls), `--mail=log` for an evaluation
-install that sends no email, and `--dry-run` to see the plan without touching
-anything. `--help` lists them all.
+## Built with
 
-### Unattended installs
+Laravel 13 on PHP 8.5 · PostgreSQL 16 with row-level security · Redis ·
+React 19 + TypeScript · Tailwind CSS v4 · Vite · Reverb (WebSockets) ·
+Meilisearch (optional)
 
-Every prompt and every required flag has a `PRIZY_*` environment variable behind
-it, so a config management tool can drive the whole install with `--yes` and no
-terminal:
+## Links
 
-```bash
-ssh root@your-server 'PRIZY_DOMAIN=example.com PRIZY_EMAIL=ops@example.com \
-    PRIZY_MAIL=smtp PRIZY_SMTP_HOST=smtp.example.com PRIZY_SMTP_PORT=587 \
-    PRIZY_SMTP_USERNAME=postmaster PRIZY_SMTP_PASSWORD=... \
-    PRIZY_SMTP_ENCRYPTION=tls \
-    bash /opt/prizy-src/scripts/install.sh --yes --source-path /opt/prizy-src'
-```
-
-Only `PRIZY_SMTP_HOST` is required under `--mail=smtp`; leave the username and
-password unset for a relay that needs no authentication. On a re-run, any SMTP
-setting you do not supply keeps the value already in the install's `.env`.
-`--help` lists every variable.
-
-An SMTP value cannot contain `$`, whitespace, or a leading or trailing quote.
-The `.env` is read by Compose's dotenv parser, which would expand, trim or
-unquote them and hand the application a different credential, so the installer
-refuses such a value rather than writing it: interactively it explains why and
-asks again, and under `--yes` it stops. If a password needs one of them, leave
-that setting empty and write it into `/data/prizy/source/.env` by hand — the
-installer never offers back a value it would refuse as a prompt default, and an
-empty answer never overwrites a `MAIL_*` key, so later re-runs leave it alone.
-
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
-```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
-```
-
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+- Website: **https://prizy.dev**
+- Documentation: **https://docs.prizy.dev/**
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Prizy is open-source software licensed under the [MIT license](LICENSE).
