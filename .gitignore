@@ -36,3 +36,7 @@ Thumbs.db
 # filo (call tracer): local enable marker + traces
 .filo-on
 .filo/
+
+# superpowers plugin: specs, plans, design refs and subagent reports
+/docs/superpowers/
+/.superpowers/
