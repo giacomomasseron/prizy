@@ -343,12 +343,16 @@ SMTP_ENCRYPTION="tls"
 
 log "An invalid SMTP encryption answer is refused, not written"
 SMTP_ENCRYPTION="rot13"
+# The message, not just the exit: with its die removed this still exited
+# non-zero — from `mail_scheme: unbound variable` a few lines later — so an
+# exit-code check could not tell the refusal from a crash.
 invalid_enc_rc=0
-( write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example" ) >/dev/null 2>&1 || invalid_enc_rc=$?
-if [ "$invalid_enc_rc" -ne 0 ]; then
+invalid_enc_out="$( ( write_env_file "$GEN_TMP/.env" "$GEN_TMP/.env.production.example" ) 2>&1 )" || invalid_enc_rc=$?
+if [ "$invalid_enc_rc" -ne 0 ] \
+    && printf '%s' "$invalid_enc_out" | grep -qF "ERROR: SMTP encryption must be tls, ssl or none (got 'rot13')"; then
     pass "an invalid SMTP encryption answer is refused"
 else
-    fail "an invalid SMTP encryption answer is refused"
+    fail "an invalid SMTP encryption answer is refused (exit $invalid_enc_rc: $invalid_enc_out)"
 fi
 SMTP_ENCRYPTION="tls"
 
@@ -1591,20 +1595,22 @@ assert_eq "on the RHEL family the fallback installs Docker CE from Docker's repo
 # errexit on and would have exited raw at the update, with no ERROR line.
 # A fresh process sources install.sh's own `set -euo pipefail` and behaves
 # exactly like the installer.
-# fallback_fails_at <apt-get subcommand>: ensure_docker as a real run does it,
-# with get.docker.com unreachable and apt-get failing at that subcommand.
+# fallback_fails_at <family> <subcommand>: ensure_docker as a real run does
+# it, with get.docker.com unreachable and the family's package manager
+# failing at that subcommand.
 fallback_fails_at() {
     local bin; bin="$(new_docker_bin)"
-    STUB_PM_FAIL_ON="$1" PATH="$bin" \
-        bash -c 'source "$1"; OS_FAMILY=debian; OPT_DRY_RUN=0; ensure_docker' _ "$install_abs" 2>&1
+    STUB_PM_FAIL_ON="$2" PATH="$bin" \
+        bash -c 'source "$1"; OS_FAMILY="$2"; OPT_DRY_RUN=0; ensure_docker' _ "$install_abs" "$1" 2>&1
 }
-for failing_step in update install; do
+for failing in "debian update" "debian install" "rhel install"; do
     fb_rc=0
-    fb_out="$(fallback_fails_at "$failing_step")" || fb_rc=$?
+    # shellcheck disable=SC2086  # "family subcommand", split on purpose
+    fb_out="$(fallback_fails_at $failing)" || fb_rc=$?
     if [ "$fb_rc" -ne 0 ] && printf '%s' "$fb_out" | grep -q 'ERROR: .*Install Docker Engine 24 or newer'; then
-        pass "a fallback whose apt-get $failing_step fails stops with what to do, not a raw exit"
+        pass "a $failing failure in the fallback stops with what to do, not a raw exit"
     else
-        fail "a fallback whose apt-get $failing_step fails stops with what to do, not a raw exit (exit $fb_rc: $fb_out)"
+        fail "a $failing failure in the fallback stops with what to do, not a raw exit (exit $fb_rc: $fb_out)"
     fi
 done
 
@@ -1631,6 +1637,283 @@ if grep -q 'GIT_TERMINAL_PROMPT=0' "$GITERR_BIN/calls" 2>/dev/null; then
     pass "git is told never to ask for credentials on the terminal"
 else
     fail "git is told never to ask for credentials on the terminal"
+fi
+
+log "Every refusal ends in an ERROR line that says why, in a real run's conditions"
+# Each case runs in a fresh process, errexit on, exactly as the installer
+# does. A refusal whose die went missing then falls through to a raw exit or
+# to some later message — and goes red here, where an in-process check would
+# have accepted any non-zero exit (see the SMTP encryption case above: with
+# its die removed it still exited non-zero, from an unbound variable).
+#
+# Every command runs under a 60-second timeout, and 124 counts as a failure: a
+# refusal that stops refusing can also stop ending — with the unknown-option
+# die removed, parse_args loops forever on the same argument, and without the
+# timeout that hung the suite instead of failing it.
+# refuses <description> <expected ERROR text> <command>...  (a command, not a function)
+refuses() {
+    local description="$1" expected="$2" rc=0 out
+    shift 2
+    out="$(timeout 60 "$@" 2>&1)" || rc=$?
+    if [ "$rc" -ne 0 ] && [ "$rc" -ne 124 ] && printf '%s' "$out" | grep -qF -- "ERROR: $expected"; then
+        pass "$description"
+    else
+        fail "$description (exit $rc: $out)"
+    fi
+}
+
+refuses "an unknown option is refused" \
+    "unknown option: --domian" bash "$INSTALL_SH" --domian example.com
+refuses "a --mail other than smtp or log is refused" \
+    "--mail must be 'smtp' or 'log' (got 'sendmail')" \
+    bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=sendmail
+refuses "a --source-path that does not exist is refused" \
+    "--source-path '$TMP/nowhere' is not a directory" \
+    bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log --source-path "$TMP/nowhere"
+refuses "a --source-path that is not a Prizy checkout is refused" \
+    "--source-path '$TMP' does not look like a Prizy checkout (no docker-compose.prod.yml)" \
+    bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log --source-path "$TMP"
+refuses "--yes --mail=smtp with no SMTP host anywhere is refused, naming the variable" \
+    "--yes was given but SMTP_HOST has no value and no default; set PRIZY_SMTP_HOST" \
+    env -u PRIZY_SMTP_HOST bash -c "source '$install_abs'; OPT_YES=1; OPT_MAIL=smtp; OPT_DRY_RUN=0
+        SOURCE_DIR=/nonexistent; collect_mail_settings"
+refuses "an empty SMTP host typed at the question is refused" \
+    "--mail=smtp needs an SMTP host" \
+    bash -c "source '$install_abs'; OPT_YES=0; OPT_MAIL=smtp; OPT_DRY_RUN=0
+        SOURCE_DIR=/nonexistent; collect_mail_settings" <<< $'\n\n\n\n\n'
+refuses "closing input at the SMTP password question stops the run" \
+    "no answer for 'SMTP password' (input closed)" \
+    bash -c "source '$install_abs'; OPT_YES=0; prompt_for SMTP_PASSWORD 'SMTP password' '' 1 1" < /dev/null
+
+# git answers ls-remote --heads (the repository is readable) but has no such
+# ref: the operator asked for a tag or branch that does not exist.
+NOREF_BIN="$(mktemp -d -p "$TMP")"
+cat > "$NOREF_BIN/git" <<'STUB'
+#!/bin/sh
+case "$*" in *--exit-code*) exit 2 ;; esac
+exit 0
+STUB
+chmod +x "$NOREF_BIN/git"
+NOREF_ROOT="$(mktemp -d -p "$TMP")"
+# SC2031: PATH is changed for that one process only, which is the point.
+# shellcheck disable=SC2031
+refuses "a --ref the repository does not have is refused, naming it" \
+    "https://example.invalid/prizy.git has no ref named 'v9.9'. Pass an existing tag or branch with --ref" \
+    env PATH="$NOREF_BIN:$PATH" PRIZY_REPO_URL=https://example.invalid/prizy.git bash -c "source '$install_abs'; PRIZY_ROOT='$NOREF_ROOT'; SOURCE_DIR='$NOREF_ROOT/source'
+        OPT_SOURCE_PATH=''; OPT_REF=v9.9; OPT_DRY_RUN=0; fetch_source"
+
+log "End to end: a real install, then an upgrade, each in its own process"
+# Every other check in this file calls the installer's functions from inside
+# this file — and inside $(...) or to the left of ||, bash switches errexit
+# OFF. A real run has it ON, so any command that fails without a die stops
+# the real install, silently, part-way through. Nothing in-process can see
+# that. This can: main() end to end and NOT dry, in a fresh bash, as root as
+# far as `id` knows, with stand-ins only for what would touch this machine —
+# docker, systemctl, the package managers, git, DNS and the public-IP lookup —
+# and PRIZY_ROOT in a temp directory.
+if [ -r /etc/os-release ] && [ "$(detect_os_family < /etc/os-release)" != unsupported ]; then
+E2E_DIR="$(mktemp -d -p "$TMP")"
+E2E_BIN="$E2E_DIR/bin"; E2E_SRC="$E2E_DIR/checkout"
+mkdir -p "$E2E_BIN" "$E2E_SRC"
+
+# A checkout needs only what the installer reads from it; the image build
+# that would use the rest is docker's, and docker is a stand-in. The .env is a
+# developer's, which must not be imported.
+cp "$(dirname "$0")/../docker-compose.prod.yml" "$(dirname "$0")/../.env.production.example" "$E2E_SRC/"
+printf 'APP_ENV=local\nAPP_DEBUG=true\nAPP_KEY=base64:developer-key\nREDIS_PASSWORD=null\n' > "$E2E_SRC/.env"
+
+# docker records where and how it was called; the rest either answer the
+# one question the installer asks them or record that they were called at
+# all, which on this path they must not be.
+cat > "$E2E_BIN/docker" <<STUB
+#!/bin/sh
+echo "\$PWD|\$*" >> "$E2E_DIR/docker-calls"
+case "\$*" in
+    version*)                echo 27.3.1 ;;
+    "compose version")       [ -z "\${STUB_NO_COMPOSE:-}" ] || exit 1 ;;
+    *" build")               echo "VITE_REVERB_APP_KEY=\${VITE_REVERB_APP_KEY:-}" >> "$E2E_DIR/build-env" ;;
+esac
+exit 0
+STUB
+cat > "$E2E_BIN/id" <<STUB
+#!/bin/sh
+[ "\$1" = -u ] && { echo "\${STUB_UID:-0}"; exit 0; }
+exec $(command -v id) "\$@"
+STUB
+cat > "$E2E_BIN/uname" <<STUB
+#!/bin/sh
+[ "\$1" = -m ] && [ -n "\${STUB_ARCH:-}" ] && { echo "\$STUB_ARCH"; exit 0; }
+exec $(command -v uname) "\$@"
+STUB
+cat > "$E2E_BIN/getent" <<'STUB'
+#!/bin/sh
+[ -z "${STUB_DNS_DOWN:-}" ] || exit 2
+case "$2" in *prizy.example.com) echo "203.0.113.10    STREAM $2"; exit 0 ;; esac
+exit 2
+STUB
+cat > "$E2E_BIN/curl" <<STUB
+#!/bin/sh
+case "\$*" in *api.ipify.org*) echo 203.0.113.10; exit 0 ;; esac
+echo "curl \$*" >> "$E2E_DIR/forbidden-calls"; exit 1
+STUB
+printf '#!/bin/sh\nexit 0\n' > "$E2E_BIN/systemctl"
+for tool in apt-get dnf git; do
+    printf '#!/bin/sh\necho "%s $*" >> "%s/forbidden-calls"\nexit 1\n' "$tool" "$E2E_DIR" > "$E2E_BIN/$tool"
+done
+chmod +x "$E2E_BIN"/*
+
+# e2e_install <prizy-root> [VAR=value]... [-- extra flags]
+# The documented unattended command, run the way an operator runs it.
+e2e_install() {
+    local root="$1"; shift
+    local assignments=()
+    while [ $# -gt 0 ] && [ "$1" != -- ]; do assignments+=("$1"); shift; done
+    [ "${1:-}" != -- ] || shift
+    # SC2031: the stand-ins go first on PATH for the installer's process only.
+    # shellcheck disable=SC2031
+    env PRIZY_ROOT="$root" PATH="$E2E_BIN:$PATH" "${assignments[@]}" \
+        bash "$INSTALL_SH" --yes --domain prizy.example.com --email ops@example.com \
+        --mail=smtp --source-path "$E2E_SRC" "$@" < /dev/null 2>&1
+}
+env_of() { grep "^$1=" "$2" 2>/dev/null | tail -n1 | cut -d= -f2- || true; }
+
+E2E_ROOT="$E2E_DIR/prizy"
+first_rc=0
+first_out="$(e2e_install "$E2E_ROOT" PRIZY_SMTP_HOST=smtp.example.org \
+    PRIZY_SMTP_USERNAME=prizy PRIZY_SMTP_PASSWORD=S3cret-e2e)" || first_rc=$?
+if [ "$first_rc" -eq 0 ] && printf '%s' "$first_out" | grep -q 'Prizy is installed' \
+    && printf '%s' "$first_out" | grep -q 'https://prizy.example.com/signup'; then
+    pass "a fresh install runs every step to the end"
+else
+    fail "a fresh install runs every step to the end (exit $first_rc: $first_out)"
+fi
+
+E2E_ENV="$E2E_ROOT/source/.env"
+assert_eq "it writes a production .env for the domain, readable by root only" \
+    "600 production false https://prizy.example.com prizy.example.com ops@example.com" \
+    "$(stat -c %a "$E2E_ENV" 2>/dev/null) $(env_of APP_ENV "$E2E_ENV") $(env_of APP_DEBUG "$E2E_ENV") $(env_of APP_URL "$E2E_ENV") $(env_of APP_BASE_DOMAIN "$E2E_ENV") $(env_of ACME_EMAIL "$E2E_ENV")"
+assert_eq "it writes the SMTP settings it was given" \
+    "smtp smtp.example.org prizy S3cret-e2e" \
+    "$(env_of MAIL_MAILER "$E2E_ENV") $(env_of MAIL_HOST "$E2E_ENV") $(env_of MAIL_USERNAME "$E2E_ENV") $(env_of MAIL_PASSWORD "$E2E_ENV")"
+
+weak_secrets=""
+for key in "${SECRET_KEYS[@]}"; do
+    value="$(env_of "$key" "$E2E_ENV")"
+    case "$value" in ''|null|base64:developer-key) weak_secrets="$weak_secrets $key" ;; esac
+done
+assert_eq "every secret is generated, none carried over from the checkout" "" "$weak_secrets"
+
+assert_eq "it builds and then starts the stack, from the source directory" \
+    "$E2E_ROOT/source|compose -f docker-compose.prod.yml build
+$E2E_ROOT/source|compose -f docker-compose.prod.yml up -d --wait" \
+    "$(grep -E 'compose -f docker-compose.prod.yml (build|up)' "$E2E_DIR/docker-calls")"
+assert_eq "a --source-path install with Docker present runs no package manager, git or download" \
+    "none" "$(cat "$E2E_DIR/forbidden-calls" 2>/dev/null || echo none)"
+assert_eq "the install directory is root-only" "700" "$(stat -c %a "$E2E_ROOT" 2>/dev/null)"
+e2e_logs=("$E2E_ROOT"/install-*.log)
+if [ "${#e2e_logs[@]}" -eq 1 ] && grep -q '==> \[8\] Ready' "${e2e_logs[0]}" \
+    && ! grep -q 'S3cret-e2e' "${e2e_logs[0]}"; then
+    pass "the run is logged to the end, without the SMTP password"
+else
+    fail "the run is logged to the end, without the SMTP password (logs: ${e2e_logs[*]})"
+fi
+
+# The upgrade: the same command again, with none of the PRIZY_SMTP_* this
+# time — an operator re-running from their shell history.
+first_env="$(cat "$E2E_ENV")"
+: > "$E2E_DIR/docker-calls"
+second_rc=0
+second_out="$(e2e_install "$E2E_ROOT")" || second_rc=$?
+if [ "$second_rc" -eq 0 ] && printf '%s' "$second_out" | grep -q 'Prizy is installed'; then
+    pass "re-running the same command upgrades to the end"
+else
+    fail "re-running the same command upgrades to the end (exit $second_rc: $second_out)"
+fi
+changed_secrets=""
+for key in "${SECRET_KEYS[@]}"; do
+    [ "$(printf '%s\n' "$first_env" | grep "^$key=" | tail -n1)" = "$(grep "^$key=" "$E2E_ENV" | tail -n1)" ] \
+        || changed_secrets="$changed_secrets $key"
+done
+assert_eq "an upgrade keeps every secret" "" "$changed_secrets"
+assert_eq "an upgrade keeps the SMTP settings when none are given again" \
+    "smtp.example.org prizy S3cret-e2e" \
+    "$(env_of MAIL_HOST "$E2E_ENV") $(env_of MAIL_USERNAME "$E2E_ENV") $(env_of MAIL_PASSWORD "$E2E_ENV")"
+e2e_backups=("$E2E_ROOT"/backups/.env-*)
+if [ "${#e2e_backups[@]}" -eq 1 ] && [ "$(cat "${e2e_backups[0]}")" = "$first_env" ]; then
+    pass "an upgrade backs up the .env it replaces"
+else
+    fail "an upgrade backs up the .env it replaces (backups: ${e2e_backups[*]})"
+fi
+if grep -q 'compose -f docker-compose.prod.yml up -d --wait' "$E2E_DIR/docker-calls"; then
+    pass "an upgrade rebuilds and restarts the stack"
+else
+    fail "an upgrade rebuilds and restarts the stack"
+fi
+
+# DNS that is not ready is a warning by default (operators install while it
+# propagates) and fatal only under --require-dns — which must then stop
+# before anything is built.
+dns_rc=0
+dns_out="$(e2e_install "$E2E_DIR/dns-down" STUB_DNS_DOWN=1 PRIZY_SMTP_HOST=smtp.example.org)" || dns_rc=$?
+if [ "$dns_rc" -eq 0 ] && printf '%s' "$dns_out" | grep -q 'does not resolve' \
+    && printf '%s' "$dns_out" | grep -q 'Prizy is installed'; then
+    pass "DNS that is not ready yet is a warning, and the install still finishes"
+else
+    fail "DNS that is not ready yet is a warning, and the install still finishes (exit $dns_rc: $dns_out)"
+fi
+: > "$E2E_DIR/docker-calls"
+dns_rc=0
+dns_out="$(e2e_install "$E2E_DIR/dns-strict" STUB_DNS_DOWN=1 PRIZY_SMTP_HOST=smtp.example.org -- --require-dns)" || dns_rc=$?
+if [ "$dns_rc" -ne 0 ] && printf '%s' "$dns_out" | grep -q 'ERROR: DNS is not ready and --require-dns was given' \
+    && ! grep -q ' build' "$E2E_DIR/docker-calls"; then
+    pass "--require-dns stops before building when DNS is not ready"
+else
+    fail "--require-dns stops before building when DNS is not ready (exit $dns_rc: $dns_out)"
+fi
+
+# --with-realtime compiles the Reverb key into the JS bundle at BUILD time, so
+# the real key has to reach `docker compose build`. --dry-run passes a
+# placeholder instead, so only a real run can check the key is the one the
+# .env holds.
+rt_root="$E2E_DIR/realtime"
+: > "$E2E_DIR/docker-calls"; : > "$E2E_DIR/build-env"
+rt_rc=0
+rt_out="$(e2e_install "$rt_root" PRIZY_SMTP_HOST=smtp.example.org -- --with-realtime)" || rt_rc=$?
+rt_key="$(env_of REVERB_APP_KEY "$rt_root/source/.env")"
+if [ "$rt_rc" -eq 0 ] && [ -n "$rt_key" ] \
+    && [ "$(cat "$E2E_DIR/build-env")" = "VITE_REVERB_APP_KEY=$rt_key" ] \
+    && [ "$(env_of BROADCAST_CONNECTION "$rt_root/source/.env")" = reverb ] \
+    && grep -q 'compose -f docker-compose.prod.yml --profile realtime up -d --wait' "$E2E_DIR/docker-calls"; then
+    pass "--with-realtime builds the bundle with the install's own Reverb key and starts Reverb"
+else
+    fail "--with-realtime builds the bundle with the install's own Reverb key and starts Reverb (exit $rt_rc; key '$rt_key'; build env '$(cat "$E2E_DIR/build-env")'; $rt_out)"
+fi
+
+# The machine refusals run in this sandbox too, not bare: if one of them
+# stopped refusing, the run would go on to install — here into a temp
+# directory against stand-ins, anywhere else onto the machine running the
+# tests.
+# e2e_refuses <description> <expected ERROR text> <e2e_install args>...
+e2e_refuses() {
+    local description="$1" expected="$2" rc=0 out
+    shift 2
+    : > "$E2E_DIR/docker-calls"
+    out="$(e2e_install "$@")" || rc=$?
+    if [ "$rc" -ne 0 ] && printf '%s' "$out" | grep -qF "ERROR: $expected" \
+        && ! grep -q ' build' "$E2E_DIR/docker-calls"; then
+        pass "$description"
+    else
+        fail "$description (exit $rc: $out)"
+    fi
+}
+e2e_refuses "a non-root run stops before touching anything" \
+    "this installer must run as root" "$E2E_DIR/not-root" STUB_UID=1000 PRIZY_SMTP_HOST=smtp.example.org
+e2e_refuses "an unsupported CPU architecture stops the run" \
+    "unsupported architecture: riscv64" "$E2E_DIR/riscv" STUB_ARCH=riscv64 PRIZY_SMTP_HOST=smtp.example.org
+e2e_refuses "a Docker without the compose v2 plugin stops the run before building" \
+    "docker compose v2 is required" "$E2E_DIR/no-compose" STUB_NO_COMPOSE=1 PRIZY_SMTP_HOST=smtp.example.org
+else
+    skip "end to end install (needs a Debian- or RHEL-family /etc/os-release)"
 fi
 
 echo
