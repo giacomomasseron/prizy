@@ -87,9 +87,10 @@ You need **Docker** (with Compose) and **Node + npm** on the host, plus
 **Composer**. Composer is only used to launch the scripts, so any PHP version on
 the host works; the app itself runs on PHP 8.5 inside the container.
 
-After cloning, run this once:
+Then, once:
 
 ```bash
+git clone https://github.com/giacomomasseron/prizy.git && cd prizy
 cp .env.example .env                                   # Compose reads it at startup
 docker compose build                                   # the dev image
 docker compose run --rm app composer install           # PHP dependencies, in the container
@@ -97,8 +98,9 @@ docker compose run --rm app php artisan key:generate
 npm install                                            # JS dependencies, on the host
 ```
 
-If your user id isn't 1000, change the `UID`/`GID` build args in
-`docker-compose.yml` before building, so files the container writes stay yours.
+If your user id isn't 1000, build with
+`docker compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)"`
+instead, so files the container writes stay yours.
 
 ### What's running
 
@@ -167,38 +169,42 @@ troubleshooting a blank page. For how the app is built, see
 ## Self-hosting
 
 `scripts/install.sh` takes a fresh **Debian/Ubuntu or RHEL** server to a running
-Prizy with automatic HTTPS. It checks the machine, installs Docker, generates
-every secret, builds the image and starts the stack. When it's done, it prints
-`https://<domain>/signup`, where you create your first workspace.
+Prizy with automatic HTTPS. It checks the machine, installs Docker and any other
+missing tools, generates every secret, builds the image and starts the stack.
+When it's done, it prints `https://<domain>/signup`, where you create your first
+workspace.
 
 First, point **both `example.com` and `*.example.com`** at the server. Every
 workspace gets its own subdomain, and certificates are issued per hostname on
 first request.
 
-The installer must run **on the server, as root**. The repository has no public
-remote yet, so copy a checkout across and install from it:
+Then, **on the server as root**, download the installer from the
+[latest release](https://github.com/giacomomasseron/prizy/releases/latest) and
+run it with that release's tag:
 
 ```bash
-scp -r . root@your-server:/opt/prizy-src
-ssh -t root@your-server 'bash /opt/prizy-src/scripts/install.sh --source-path /opt/prizy-src'
+curl -fsSL https://raw.githubusercontent.com/giacomomasseron/prizy/v0.0.1/scripts/install.sh -o install.sh
+bash install.sh --ref v0.0.1
 ```
 
 It asks for your domain, the email address Let's Encrypt should use, and
-whether to send email over SMTP or not at all. To skip the questions, pass
-`--domain example.com --email ops@example.com --mail=smtp`. Keep the `-t`:
-without a terminal the installer can't ask anything, so it stops and names the
-flags it's missing.
+whether to send email over SMTP or not at all, then clones that release into
+`/data/prizy/source`. To skip the questions, pass `--domain example.com --email
+ops@example.com --mail=smtp`. Over ssh, connect with `ssh -t`: without a
+terminal the installer can't ask anything, so it stops and names the flags it's
+missing.
 
-Once the repository is published, drop `--source-path` and the installer will
-clone it instead. `--ref <tag|branch>` picks what to clone (default `main`). The
-checkout's own `.env` is never carried over: the installer generates a fresh
-production one, so a laptop's `APP_DEBUG=true` and `APP_KEY` can't end up on a
-server.
-
-- **Upgrading:** re-run the same command and press Enter to keep each current
-  answer. It backs up `.env` to `/data/prizy/backups`, fills in only the keys
-  that are missing or empty, then rebuilds and migrates. It never overwrites an
-  existing value.
+- **Upgrading:** download the new release's `install.sh` and run it with the new
+  tag, for example `bash install.sh --ref v0.0.2`. Press Enter to keep each
+  current answer. It backs up `.env` to `/data/prizy/backups`, fills in only the
+  keys that are missing or empty, then rebuilds and migrates. It never
+  overwrites an existing value.
+- **Unreleased changes:** copy a checkout to the server and pass
+  `--source-path` instead of `--ref`, for example `scp -r . root@your-server:/opt/prizy-src`
+  and then `bash /opt/prizy-src/scripts/install.sh --source-path /opt/prizy-src`.
+  The checkout's own `.env` is never carried over: the installer generates a
+  fresh production one, so a laptop's `APP_DEBUG=true` and `APP_KEY` can't end
+  up on a server.
 - **Real-time:** `--with-realtime` adds WebSockets (Reverb). Without it, the UI
   polls.
 - **Evaluating:** `--mail=log` sends no email, so portal magic-link sign-in,
@@ -212,7 +218,7 @@ server.
   would silently change it. Leave that setting empty and write it into
   `/data/prizy/source/.env` by hand. Later re-runs will leave it alone.
 
-`bash scripts/install.sh --help` lists every flag and variable. The full guide is
+`bash install.sh --help` lists every flag and variable. The full guide is
 at **[docs.prizy.dev](https://docs.prizy.dev/)**.
 
 If you'd rather not run a server, [Prizy Cloud](https://prizy.dev) runs it for you.
