@@ -10,17 +10,42 @@ jobs:
       - name: Prepare env file
         run: cp .env.example .env
 
+      # SpaShellTest renders app.blade.php, and its @vite needs a built
+      # manifest: public/build is gitignored, so a fresh checkout has none.
+      # First, on the host, so a type error fails the run in a minute rather
+      # than after the image build.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Build frontend assets
+        run: npm ci --no-audit --no-fund && npm run build
+
+      # The dev image creates a user matching the host's, so files it writes
+      # into the bind-mounted checkout stay the runner's. The compose file
+      # defaults to 1000, which the runner's user need not be — and a
+      # container user that cannot write the checkout cannot create vendor/.
       - name: Build app image
-        run: docker compose build app
+        run: docker compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)" app
+
+      # Before `up`, not after: the app service runs `php artisan serve`,
+      # which exits at once without vendor/, so a later `exec` finds no
+      # container to run in. `run` starts postgres and redis first, as
+      # depends_on says. The token keeps Composer's GitHub downloads out of
+      # the unauthenticated API rate limit.
+      - name: Install dependencies
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
+        run: docker compose run --rm -T -e COMPOSER_AUTH app composer install --no-interaction --prefer-dist
+
+      # Also before `up`: the container reads .env as its environment when it
+      # starts, so a key written afterwards never reaches it.
+      - name: Generate app key
+        run: docker compose run --rm -T app php artisan key:generate
 
       - name: Start core services (app + postgres + redis)
-        run: docker compose up -d
-
-      - name: Install dependencies
-        run: docker compose exec -T app composer install --no-interaction --prefer-dist
-
-      - name: Generate app key
-        run: docker compose exec -T app php artisan key:generate
+        run: docker compose up -d --wait
 
       - name: Create test database and grant app role privileges
         run: |
