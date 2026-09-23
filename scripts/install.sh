@@ -65,6 +65,13 @@ validate_email() {
     printf '%s' "${1:-}" | grep -qE '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$'
 }
 
+validate_mail_choice() {
+    case "${1:-}" in
+        smtp|log) return 0 ;;
+        *)        return 1 ;;
+    esac
+}
+
 # Hex for everything except APP_KEY, which Laravel requires as base64: + 32
 # raw bytes. Hex matters: a password containing $ or # would be re-read by
 # Compose's dotenv parser as an interpolation or a comment.
@@ -220,9 +227,14 @@ usage() {
     cat <<'USAGE'
 Prizy self-hosted installer.
 
-  bash install.sh --domain example.com --email ops@example.com
+  bash install.sh
+  bash install.sh --domain example.com --email ops@example.com --mail=smtp
 
-Required:
+Run from a terminal, it asks for any of --domain, --email and --mail that you
+leave out; on a re-run, Enter keeps what the install already has. Under --yes,
+or with no terminal to ask on (ssh without -t, a pipe, cron), they are required.
+
+Settings (asked for when omitted):
   --domain <domain>      Base domain. Workspaces live at <slug>.<domain>, so
                          both `A example.com` and `A *.example.com` must point
                          at this machine.
@@ -230,7 +242,7 @@ Required:
                          real and deliverable; @example.com and @localhost are
                          refused by the CA.
 
-Mail (required decision):
+Mail (a decision, asked for when omitted):
   --mail=smtp            Prompt for SMTP settings.
   --mail=log             Write mail to the log instead of sending it. Contact
                          portal magic-link sign-in, email verification,
@@ -315,16 +327,144 @@ parse_args() {
         die "--ref and --source-path are mutually exclusive; pick where the source comes from"
     [ -z "$OPT_REF" ] && [ -z "$OPT_SOURCE_PATH" ] && OPT_REF="main"
 
-    validate_domain "$OPT_DOMAIN" || \
+    # Only what was given is checked here. A setting left out is not an error
+    # yet: resolve_required asks for it, or refuses when nobody can answer.
+    # A value that WAS given and is wrong still stops the run — the operator
+    # said something specific, so guessing past it would be worse than asking.
+    if [ -n "$OPT_DOMAIN" ] && ! validate_domain "$OPT_DOMAIN"; then
         die "--domain must be a domain with at least two labels, e.g. example.com (got '${OPT_DOMAIN}')"
-    validate_email "$OPT_EMAIL" || \
+    fi
+    if [ -n "$OPT_EMAIL" ] && ! validate_email "$OPT_EMAIL"; then
         die "--email must be a real deliverable address, e.g. ops@example.com (got '${OPT_EMAIL}')"
+    fi
+    if [ -n "$OPT_MAIL" ] && ! validate_mail_choice "$OPT_MAIL"; then
+        die "--mail must be 'smtp' or 'log' (got '$OPT_MAIL')"
+    fi
+}
 
-    case "$OPT_MAIL" in
-        smtp|log) ;;
-        "")  die "mail is a required decision: pass --mail=smtp or --mail=log (see --help)" ;;
-        *)   die "--mail must be 'smtp' or 'log' (got '$OPT_MAIL')" ;;
-    esac
+# True when a person is at a terminal to answer questions. Its own function so
+# the test suite, which has no terminal, can stand one in.
+#
+# Standard input and not /dev/tty: under `curl … | bash` stdin is the script
+# itself, and reading answers from it would eat the installer's own source.
+is_interactive() {
+    [ -t 0 ]
+}
+
+# ask_value <var> <question> <validator> <complaint> [default]
+#
+# Asks until <validator> accepts the answer, then assigns it to <var>. Enter
+# takes the default, and the default goes through the same validator as a
+# typed answer does.
+#
+# The prompt is printed rather than left to `read -p`, which prints nothing at
+# all when stdin is not a terminal — and a question nobody can see reads as a
+# hung installer.
+ask_value() {
+    local var="$1" question="$2" validator="$3" complaint="$4" default="${5:-}" answer
+    while true; do
+        if [ -n "$default" ]; then
+            printf '    %s [%s]: ' "$question" "$default" >&2
+        else
+            printf '    %s: ' "$question" >&2
+        fi
+        # read fails at end of input (Ctrl-D, a closed pipe). Without this the
+        # loop below would ask the same question forever. A final line with no
+        # newline still counts as an answer; only a truly empty read stops.
+        if ! IFS= read -r answer && [ -z "$answer" ]; then
+            printf '\n' >&2
+            die "no answer for '$question' (input closed)"
+        fi
+        answer="$(_dotenv_trim "$answer")"
+        answer="${answer:-$default}"
+        if "$validator" "$answer"; then
+            printf -v "$var" '%s' "$answer"
+            return 0
+        fi
+        warn "$complaint"
+    done
+}
+
+# Where fetch_source parks the install's .env for the duration of a
+# --source-path copy. A file here means a run was interrupted mid-copy.
+parked_env_path() {
+    printf '%s/.env-parked-during-copy' "$PRIZY_ROOT"
+}
+
+# The .env a re-run should take its defaults from. Normally the install's own.
+# After a run interrupted mid-copy, the parked file IS that .env, and the one
+# in $SOURCE_DIR came from the checkout — the same rule fetch_source applies.
+current_env_file() {
+    local parked; parked="$(parked_env_path)"
+    if [ -f "$parked" ]; then
+        printf '%s' "$parked"
+    else
+        printf '%s' "$SOURCE_DIR/.env"
+    fi
+}
+
+# Asks for whichever of --domain, --email and --mail parse_args was not given,
+# so `bash install.sh` with nothing after it is a complete first command.
+#
+# Under --yes, or with no terminal to ask on, a missing setting stays fatal,
+# and every missing one is named at once rather than one per attempt.
+#
+# On a re-run, each question offers what the install's .env already holds, so
+# an upgrade is Enter three times. A stored value is only offered if it passes
+# the same validator as a typed answer, so Enter can never accept something the
+# matching flag would have refused.
+resolve_required() {
+    local missing=()
+    [ -n "$OPT_DOMAIN" ] || missing+=("--domain")
+    [ -n "$OPT_EMAIL" ]  || missing+=("--email")
+    [ -n "$OPT_MAIL" ]   || missing+=("--mail=smtp|log")
+    [ "${#missing[@]}" -gt 0 ] || return 0
+
+    if [ "$OPT_YES" -eq 1 ]; then
+        die "missing ${missing[*]}. --yes never asks: pass them as flags or set PRIZY_DOMAIN, PRIZY_EMAIL and PRIZY_MAIL (see --help)"
+    fi
+    if ! is_interactive; then
+        die "missing ${missing[*]}. Pass them as flags (see --help), or run the installer in a terminal to be asked for them; over ssh, that means ssh -t"
+    fi
+
+    local env_file current
+    env_file="$(current_env_file)"
+
+    printf '\nPrizy self-hosted installer\n\n'
+    printf 'A few answers before anything is installed. Each one can also be passed\n'
+    printf 'as a flag; see --help.\n'
+
+    if [ -z "$OPT_DOMAIN" ]; then
+        current="$(env_value_of APP_BASE_DOMAIN "$env_file")"
+        validate_domain "$current" || current=""
+        printf '\n'
+        info "Workspaces live at <name>.<domain>, so point both <domain> and"
+        info "*.<domain> at this server."
+        ask_value OPT_DOMAIN "Domain" validate_domain \
+            "enter a lowercase domain with at least two labels, e.g. example.com" "$current"
+    fi
+
+    if [ -z "$OPT_EMAIL" ]; then
+        current="$(env_value_of ACME_EMAIL "$env_file")"
+        validate_email "$current" || current=""
+        printf '\n'
+        info "Let's Encrypt sends certificate notices to this address. It must be"
+        info "real: @example.com and @localhost are refused."
+        ask_value OPT_EMAIL "Let's Encrypt email" validate_email \
+            "enter a real, deliverable address, e.g. ops@yourcompany.com" "$current"
+    fi
+
+    if [ -z "$OPT_MAIL" ]; then
+        current="$(env_value_of MAIL_MAILER "$env_file")"
+        validate_mail_choice "$current" || current=""
+        printf '\n'
+        info "smtp  send email through your SMTP server (its settings are asked"
+        info "      during configuration)"
+        info "log   send no email: portal sign-in links, email verification,"
+        info "      invitations and CSAT requests will not work"
+        ask_value OPT_MAIL "Email delivery (smtp/log)" validate_mail_choice \
+            "answer smtp or log" "$current"
+    fi
 }
 
 preflight() {
@@ -502,7 +642,8 @@ fetch_source() {
     # with no --source-path at all, and that arm never looked here — leaving
     # configure to generate a fresh password against the live database, the
     # same loss by another door.
-    local parked="$PRIZY_ROOT/.env-parked-during-copy" had_env=0
+    local parked had_env=0
+    parked="$(parked_env_path)"
     ENV_PARKED_PATH="$parked"
     # One handler, four registrations. Verified on bash 5.2.21 that the EXIT
     # trap alone already runs when an untrapped SIGTERM arrives, so the three
@@ -1080,6 +1221,7 @@ report() {
 
 main() {
     parse_args "$@"
+    resolve_required
     preflight
     ensure_docker
     ensure_layout

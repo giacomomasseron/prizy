@@ -1195,6 +1195,182 @@ else
     pass "without --with-realtime no VITE_* value is compiled in"
 fi
 
+log "A missing --domain, --email or --mail is asked for, not required"
+# The suite has no terminal, so is_interactive is stood in for wherever "a
+# person is answering" is the case under test — and left real where "nobody
+# can answer" is. Every case runs in a subshell: resolve_required assigns the
+# OPT_* globals and die() exits.
+ASK_ROOT="$(mktemp -d -p "$TMP")"
+
+# ask_as_person <keystrokes> [prizy-root]
+# Runs resolve_required as a person at a terminal typing <keystrokes> (exact
+# bytes, so a test can end input without a newline). ASK_DOMAIN, ASK_EMAIL,
+# ASK_MAIL and ASK_YES stand for what came from flags. The last line of output
+# is "RESULT <domain> <email> <mail>" when it returns.
+ask_as_person() {
+    local keys="$1" root="${2:-$ASK_ROOT/fresh}"
+    printf '%s' "$keys" | (
+        is_interactive() { return 0; }
+        PRIZY_ROOT="$root"; SOURCE_DIR="$root/source"
+        OPT_DOMAIN="${ASK_DOMAIN:-}"; OPT_EMAIL="${ASK_EMAIL:-}"
+        OPT_MAIL="${ASK_MAIL:-}"; OPT_YES="${ASK_YES:-0}"
+        resolve_required
+        printf '\nRESULT %s %s %s\n' "$OPT_DOMAIN" "$OPT_EMAIL" "$OPT_MAIL"
+    ) 2>&1
+}
+last_line() { printf '%s\n' "$1" | tail -n1; }
+
+ask_rc=0
+ask_out="$(ask_as_person $'example.com\nops@example.com\nlog\n')" || ask_rc=$?
+assert_eq "with no settings given, all three are asked for and taken" \
+    "0 RESULT example.com ops@example.com log" "$ask_rc $(last_line "$ask_out")"
+# `read -p` prints its prompt only when stdin is a terminal, so a regression to
+# it would leave these questions invisible — to this suite, and to anyone who
+# runs the installer over plain ssh.
+if printf '%s' "$ask_out" | grep -q 'Domain: ' && printf '%s' "$ask_out" | grep -q "Let's Encrypt email: " \
+    && printf '%s' "$ask_out" | grep -q 'Email delivery (smtp/log): '; then
+    pass "every question prints its prompt"
+else
+    fail "every question prints its prompt (got: $ask_out)"
+fi
+
+ask_out="$(ask_as_person $'localhost\nexample.com\nnope\nops@example.com\nemail\nsmtp\n')" || true
+assert_eq "an answer the flag would refuse is asked again, not accepted" \
+    "RESULT example.com ops@example.com smtp" "$(last_line "$ask_out")"
+if printf '%s' "$ask_out" | grep -q 'enter a lowercase domain' \
+    && printf '%s' "$ask_out" | grep -q 'enter a real, deliverable address' \
+    && printf '%s' "$ask_out" | grep -q 'answer smtp or log'; then
+    pass "a refused answer says what a valid one looks like"
+else
+    fail "a refused answer says what a valid one looks like (got: $ask_out)"
+fi
+
+ask_out="$(ask_as_person $'example.com\nops@example.com\nlog')" || true
+assert_eq "a last answer with no trailing newline still counts" \
+    "RESULT example.com ops@example.com log" "$(last_line "$ask_out")"
+
+# End of input must stop the install. Without the check, read fails on every
+# pass and the same question is asked forever, so this runs under a timeout:
+# 124 would mean the loop spun.
+# SC2016: the single quotes are the point — $1 and $2 belong to the inner bash.
+eof_rc=0
+# shellcheck disable=SC2016
+eof_out="$(timeout 10 bash -c 'source "$1"; is_interactive() { return 0; }
+    PRIZY_ROOT="$2"; SOURCE_DIR="$2/source"; resolve_required' _ "$INSTALL_SH" "$ASK_ROOT/fresh" \
+    < /dev/null 2>&1)" || eof_rc=$?
+if [ "$eof_rc" -ne 0 ] && [ "$eof_rc" -ne 124 ] && printf '%s' "$eof_out" | grep -q 'input closed'; then
+    pass "end of input stops the install instead of asking forever"
+else
+    fail "end of input stops the install instead of asking forever (exit $eof_rc: $eof_out)"
+fi
+
+ask_out="$(ASK_DOMAIN=example.com ASK_MAIL=log ask_as_person $'ops@example.com\n')" || true
+if [ "$(last_line "$ask_out")" = "RESULT example.com ops@example.com log" ] \
+    && ! printf '%s' "$ask_out" | grep -q 'Domain' \
+    && ! printf '%s' "$ask_out" | grep -q 'Email delivery'; then
+    pass "only the settings left out are asked for"
+else
+    fail "only the settings left out are asked for (got: $ask_out)"
+fi
+
+ask_out="$(ASK_DOMAIN=example.com ASK_EMAIL=ops@example.com ASK_MAIL=log ask_as_person 'unread')" || true
+if [ "$(last_line "$ask_out")" = "RESULT example.com ops@example.com log" ] \
+    && ! printf '%s' "$ask_out" | grep -q 'A few answers'; then
+    pass "with every setting given, nothing is asked"
+else
+    fail "with every setting given, nothing is asked (got: $ask_out)"
+fi
+
+yes_rc=0
+yes_out="$(ASK_YES=1 ask_as_person $'example.com\nops@example.com\nlog\n')" || yes_rc=$?
+if [ "$yes_rc" -ne 0 ] && printf '%s' "$yes_out" | grep -qF 'missing --domain --email --mail=smtp|log' \
+    && ! printf '%s' "$yes_out" | grep -q 'Domain: '; then
+    pass "--yes never asks: every missing setting is named and the run stops"
+else
+    fail "--yes never asks: every missing setting is named and the run stops (exit $yes_rc: $yes_out)"
+fi
+
+# The REAL is_interactive this time. Answers are waiting on stdin, so a
+# missing terminal check would read them and succeed; refusing is the only
+# way to pass.
+tty_rc=0
+tty_out="$( (
+    PRIZY_ROOT="$ASK_ROOT/fresh"; SOURCE_DIR="$ASK_ROOT/fresh/source"
+    OPT_DOMAIN=""; OPT_EMAIL=""; OPT_MAIL=""; OPT_YES=0
+    resolve_required
+) <<< $'example.com\nops@example.com\nlog' 2>&1)" || tty_rc=$?
+if [ "$tty_rc" -ne 0 ] && printf '%s' "$tty_out" | grep -q 'ssh -t'; then
+    pass "with no terminal to ask on, a missing setting stops the run and says how to be asked"
+else
+    fail "with no terminal to ask on, a missing setting stops the run and says how to be asked (exit $tty_rc: $tty_out)"
+fi
+
+log "A re-run offers what the install already has"
+RERUN_ROOT="$ASK_ROOT/rerun"
+mkdir -p "$RERUN_ROOT/source"
+printf 'APP_BASE_DOMAIN=prizy.example.org\nACME_EMAIL=ops@example.org\nMAIL_MAILER=smtp\n' \
+    > "$RERUN_ROOT/source/.env"
+ask_out="$(ask_as_person $'\n\n\n' "$RERUN_ROOT")" || true
+assert_eq "Enter three times keeps the installed domain, email and mail choice" \
+    "RESULT prizy.example.org ops@example.org smtp" "$(last_line "$ask_out")"
+if printf '%s' "$ask_out" | grep -qF 'Domain [prizy.example.org]: '; then
+    pass "the installed value is shown as the default"
+else
+    fail "the installed value is shown as the default (got: $ask_out)"
+fi
+
+# After a run interrupted mid-copy, $SOURCE_DIR/.env is the CHECKOUT's and the
+# parked file is the install's (see fetch_source). Defaults come from the
+# install's, or an operator pressing Enter would switch domains.
+PARKED_ROOT="$ASK_ROOT/parked"
+mkdir -p "$PARKED_ROOT/source"
+printf 'APP_BASE_DOMAIN=checkout.example.org\nACME_EMAIL=dev@example.org\nMAIL_MAILER=log\n' \
+    > "$PARKED_ROOT/source/.env"
+printf 'APP_BASE_DOMAIN=live.example.org\nACME_EMAIL=ops@example.org\nMAIL_MAILER=smtp\n' \
+    > "$PARKED_ROOT/.env-parked-during-copy"
+ask_out="$(ask_as_person $'\n\n\n' "$PARKED_ROOT")" || true
+assert_eq "after an interrupted copy, defaults come from the parked .env, not the checkout's" \
+    "RESULT live.example.org ops@example.org smtp" "$(last_line "$ask_out")"
+
+# MAIL_MAILER=array is a real Laravel mailer, just not an answer this question
+# takes; localhost is what a development .env carries.
+ODD_ROOT="$ASK_ROOT/odd"
+mkdir -p "$ODD_ROOT/source"
+printf 'APP_BASE_DOMAIN=localhost\nACME_EMAIL=\nMAIL_MAILER=array\n' > "$ODD_ROOT/source/.env"
+ask_out="$(ask_as_person $'example.com\nops@example.com\nlog\n' "$ODD_ROOT")" || true
+if [ "$(last_line "$ask_out")" = "RESULT example.com ops@example.com log" ] \
+    && ! printf '%s' "$ask_out" | grep -qF '[localhost]' \
+    && ! printf '%s' "$ask_out" | grep -qF '[array]'; then
+    pass "a stored value the flag would refuse is never offered as a default"
+else
+    fail "a stored value the flag would refuse is never offered as a default (got: $ask_out)"
+fi
+
+log "The questions are wired into the installer itself"
+# Through main, in a fresh process, so no OPT_* left over from the cases
+# above can pre-answer a question. The answer has to reach the configuration
+# step, not just be asked for.
+main_rc=0
+# shellcheck disable=SC2016
+main_out="$(PRIZY_ROOT="$ASK_ROOT/main" bash -c 'source "$1"; shift; is_interactive() { return 0; }; main "$@"' \
+    _ "$INSTALL_SH" --dry-run --source-path "$(dirname "$0")/.." \
+    <<< $'example.com\nops@example.com\nlog' 2>&1)" || main_rc=$?
+if [ "$main_rc" -eq 0 ] && printf '%s' "$main_out" | grep -q 'Domain: ' \
+    && printf '%s' "$main_out" | grep -q 'would write .*/.env for example.com'; then
+    pass "bash install.sh with no settings asks, then installs with the answers"
+else
+    fail "bash install.sh with no settings asks, then installs with the answers (exit $main_rc: $main_out)"
+fi
+
+bare_rc=0
+bare_out="$(bash "$INSTALL_SH" --dry-run < /dev/null 2>&1)" || bare_rc=$?
+if [ "$bare_rc" -ne 0 ] && printf '%s' "$bare_out" | grep -qF 'missing --domain --email --mail=smtp|log' \
+    && ! printf '%s' "$bare_out" | grep -q 'Preflight'; then
+    pass "with no settings and no terminal, the installer stops before doing anything"
+else
+    fail "with no settings and no terminal, the installer stops before doing anything (exit $bare_rc: $bare_out)"
+fi
+
 echo
 if [ "$SKIPPED" -gt 0 ]; then
     printf '\033[0;33m%d check(s) skipped — see the skip lines above\033[0m\n' "$SKIPPED"

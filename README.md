@@ -180,10 +180,14 @@ remote yet, so copy a checkout across and install from it:
 
 ```bash
 scp -r . root@your-server:/opt/prizy-src
-ssh root@your-server 'bash /opt/prizy-src/scripts/install.sh \
-    --domain example.com --email ops@example.com --mail=smtp \
-    --source-path /opt/prizy-src'
+ssh -t root@your-server 'bash /opt/prizy-src/scripts/install.sh --source-path /opt/prizy-src'
 ```
+
+It asks for your domain, the email address Let's Encrypt should use, and
+whether to send email over SMTP or not at all. To skip the questions, pass
+`--domain example.com --email ops@example.com --mail=smtp`. Keep the `-t`:
+without a terminal the installer can't ask anything, so it stops and names the
+flags it's missing.
 
 Once the repository is published, drop `--source-path` and the installer will
 clone it instead. `--ref <tag|branch>` picks what to clone (default `main`). The
@@ -191,9 +195,10 @@ checkout's own `.env` is never carried over: the installer generates a fresh
 production one, so a laptop's `APP_DEBUG=true` and `APP_KEY` can't end up on a
 server.
 
-- **Upgrading:** re-run the same command. It backs up `.env` to
-  `/data/prizy/backups`, fills in only the keys that are missing or empty, then
-  rebuilds and migrates. It never overwrites an existing value.
+- **Upgrading:** re-run the same command and press Enter to keep each current
+  answer. It backs up `.env` to `/data/prizy/backups`, fills in only the keys
+  that are missing or empty, then rebuilds and migrates. It never overwrites an
+  existing value.
 - **Real-time:** `--with-realtime` adds WebSockets (Reverb). Without it, the UI
   polls.
 - **Evaluating:** `--mail=log` sends no email, so portal magic-link sign-in,
