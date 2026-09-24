@@ -40,3 +40,6 @@ Thumbs.db
 # superpowers plugin: specs, plans, design refs and subagent reports
 /docs/superpowers/
 /.superpowers/
+
+# Internal product requirements: kept locally, never published
+/PRD.md
