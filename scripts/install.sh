@@ -1339,7 +1339,9 @@ main() {
 }
 
 # Only run when executed, never when sourced — this is what makes the library
-# above unit-testable.
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+# above unit-testable. Piped into bash (`curl … | bash`) there is no script
+# file and BASH_SOURCE is empty; that is an execution too, and without the
+# `:-` default set -u would kill the run here before main ever started.
+if [ -z "${BASH_SOURCE[0]:-}" ] || [ "${BASH_SOURCE[0]}" = "$0" ]; then
     main "$@"
 fi

@@ -1069,6 +1069,17 @@ for prizy_var in PRIZY_DOMAIN PRIZY_EMAIL PRIZY_MAIL PRIZY_SMTP_HOST PRIZY_SMTP_
 done
 assert_eq "--help names every PRIZY_* variable the installer reads" "" "$missing_env_docs"
 
+log "Piped into bash, the way curl | bash runs it"
+# Read from stdin there is no script file, so BASH_SOURCE is empty. The entry
+# guard must still call main, not trip set -u on BASH_SOURCE[0] and exit 1.
+piped_rc=0
+piped_out="$(bash -s -- --help < "$INSTALL_SH" 2>&1)" || piped_rc=$?
+if [ "$piped_rc" -eq 0 ] && printf '%s' "$piped_out" | grep -q 'Prizy self-hosted installer'; then
+    pass "piped into bash, --help prints the usage"
+else
+    fail "piped into bash, --help prints the usage (exit $piped_rc: $piped_out)"
+fi
+
 log "Docker: a stopped daemon is not an old daemon"
 # `docker version --format '{{.Server.Version}}'` asks the daemon, so a stopped
 # daemon prints nothing and exits non-zero. The old `|| echo 0` turned that into
