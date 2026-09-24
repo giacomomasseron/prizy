@@ -1,8 +1,8 @@
 # Roles & Permissions — Prizy
 
-Prizy splits a workspace user's permissions into **two independent axes**, exactly
-as defined in `PRD.md` §3.1.1 and the `users` table in `schema.sql`
-(`admin_level`, `is_developer`, `is_agent`). This is **not** a single flat list of
+Prizy splits a workspace user's permissions into **two independent axes**, stored
+as the `admin_level`, `is_developer` and `is_agent` columns of the `users` table
+in `schema.sql`. This is **not** a single flat list of
 roles — the administrative level and the module capabilities are orthogonal.
 
 ## Axis 1 — Administrative level (`admin_level`)
