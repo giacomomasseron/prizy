@@ -15,10 +15,12 @@ function renderLogin() {
     );
 }
 
-it('renders the redesigned login (Sign in button + Request access link + fields)', () => {
+it('renders the redesigned login (Sign in button + Create a workspace link + fields)', () => {
     renderLogin();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Request access/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Create a workspace/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', 'https://prizy.dev/privacy');
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', 'https://prizy.dev/terms');
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
 });
