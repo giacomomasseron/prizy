@@ -1,4 +1,4 @@
-<h1 align="center">Prizy</h1>
+<h1 align="center"><img src="docs/images/logo.svg" width="36" height="36" alt="" align="absmiddle"> Prizy</h1>
 
 <p align="center">
   <strong>Linear + Zendesk, together in one workspace.</strong><br>
