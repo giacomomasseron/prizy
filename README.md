@@ -172,27 +172,33 @@ First, point **both `example.com` and `*.example.com`** at the server. Every
 workspace gets its own subdomain, and certificates are issued per hostname on
 first request.
 
-Then, **on the server as root**, download the installer from the
-[latest release](https://github.com/giacomomasseron/prizy/releases/latest) and
-run it with that release's tag:
+Then, **on the server as root**, run:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/giacomomasseron/prizy/v0.0.1/scripts/install.sh -o install.sh
-bash install.sh --ref v0.0.1
+curl -fsSL https://prizy.dev/install.sh | bash
 ```
 
-It asks for your domain, the email address Let's Encrypt should use, and
-whether to send email over SMTP or not at all, then clones that release into
-`/data/prizy/source`. To skip the questions, pass `--domain example.com --email
-ops@example.com --mail=smtp`. Over ssh, connect with `ssh -t`: without a
-terminal the installer can't ask anything, so it stops and names the flags it's
-missing.
+It installs the [latest release](https://github.com/giacomomasseron/prizy/releases/latest).
+First it asks for your domain, the email address Let's Encrypt should use, and
+whether to send email over SMTP or not at all. Then it clones that release into
+`/data/prizy/source`. If you're not root, pipe it to `sudo bash` instead. To skip
+the questions, pass the answers after `bash -s --`:
 
-- **Upgrading:** download the new release's `install.sh` and run it with the new
-  tag, for example `bash install.sh --ref v0.0.2`. Press Enter to keep each
-  current answer. It backs up `.env` to `/data/prizy/backups`, fills in only the
-  keys that are missing or empty, then rebuilds and migrates. It never
-  overwrites an existing value.
+```bash
+curl -fsSL https://prizy.dev/install.sh | bash -s -- --domain example.com --email ops@example.com --mail=smtp
+```
+
+Over ssh, connect with `ssh -t`: without a terminal the installer can't ask
+anything, so it stops and names the flags it's missing. To read the installer
+before you run it, download it first with
+`curl -fsSL https://prizy.dev/install.sh -o install.sh`, then run
+`bash install.sh`.
+
+- **Upgrading:** run the same command again. It moves to the latest release;
+  press Enter to keep each current answer. It backs up `.env` to
+  `/data/prizy/backups`, fills in only the keys that are missing or empty, then
+  rebuilds and migrates. It never overwrites an existing value. To install a
+  particular release instead, add `--ref v0.0.2`.
 - **Unreleased changes:** copy a checkout to the server and pass
   `--source-path` instead of `--ref`, for example `scp -r . root@your-server:/opt/prizy-src`
   and then `bash /opt/prizy-src/scripts/install.sh --source-path /opt/prizy-src`.
@@ -212,8 +218,8 @@ missing.
   would silently change it. Leave that setting empty and write it into
   `/data/prizy/source/.env` by hand. Later re-runs will leave it alone.
 
-`bash install.sh --help` lists every flag and variable. The full guide is
-at **[docs.prizy.dev](https://docs.prizy.dev/)**.
+`--help` lists every flag and variable. The full guide is at
+**[docs.prizy.dev](https://docs.prizy.dev/)**.
 
 ## Built with
 

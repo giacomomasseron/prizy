@@ -1354,9 +1354,13 @@ log "The questions are wired into the installer itself"
 # Through main, in a fresh process, so no OPT_* left over from the cases
 # above can pre-answer a question. The answer has to reach the configuration
 # step, not just be asked for.
+#
+# Under setsid, here and below: main asks on /dev/tty when stdin is not a
+# terminal, so a suite run from a developer's terminal would otherwise put
+# these questions to the developer and wait.
 main_rc=0
 # shellcheck disable=SC2016
-main_out="$(PRIZY_ROOT="$ASK_ROOT/main" bash -c 'source "$1"; shift; is_interactive() { return 0; }; main "$@"' \
+main_out="$(PRIZY_ROOT="$ASK_ROOT/main" timeout 60 setsid -w bash -c 'source "$1"; shift; is_interactive() { return 0; }; main "$@"' \
     _ "$INSTALL_SH" --dry-run --source-path "$(dirname "$0")/.." \
     <<< $'example.com\nops@example.com\nlog' 2>&1)" || main_rc=$?
 if [ "$main_rc" -eq 0 ] && printf '%s' "$main_out" | grep -q 'Domain: ' \
@@ -1367,12 +1371,61 @@ else
 fi
 
 bare_rc=0
-bare_out="$(bash "$INSTALL_SH" --dry-run < /dev/null 2>&1)" || bare_rc=$?
+bare_out="$(timeout 60 setsid -w bash "$INSTALL_SH" --dry-run < /dev/null 2>&1)" || bare_rc=$?
 if [ "$bare_rc" -ne 0 ] && printf '%s' "$bare_out" | grep -qF 'missing --domain --email --mail=smtp|log' \
     && ! printf '%s' "$bare_out" | grep -q 'Preflight'; then
     pass "with no settings and no terminal, the installer stops before doing anything"
 else
     fail "with no settings and no terminal, the installer stops before doing anything (exit $bare_rc: $bare_out)"
+fi
+
+log "Piped into bash, the way the README installs it"
+# `curl -fsSL https://prizy.dev/install.sh | bash` has bash read the installer
+# from its stdin, where BASH_SOURCE is empty and $0 is "bash". The guard at the
+# bottom of the file must still tell that apart from being sourced.
+pipe_rc=0
+# SC2002: a pipe, exactly as curl hands one over; a file on stdin is not the same.
+# shellcheck disable=SC2002
+pipe_out="$(cat "$INSTALL_SH" | bash -s -- --help 2>&1)" || pipe_rc=$?
+if [ "$pipe_rc" -eq 0 ] && printf '%s' "$pipe_out" | grep -q '^Settings (asked for when omitted):$'; then
+    pass "piped into bash, the installer runs"
+else
+    fail "piped into bash, the installer runs (exit $pipe_rc: $pipe_out)"
+fi
+
+# With no terminal at all — `ssh host 'curl … | bash'` without -t, cron — nobody
+# can answer, and the script's own source on stdin must not be read as answers.
+# setsid takes away the controlling terminal, so /dev/tty cannot be opened here
+# even when the suite itself runs in one.
+nopty_rc=0
+# shellcheck disable=SC2002
+nopty_out="$(cat "$INSTALL_SH" | timeout 60 setsid -w bash -s -- --dry-run 2>&1)" || nopty_rc=$?
+if [ "$nopty_rc" -ne 0 ] && [ "$nopty_rc" -ne 124 ] \
+    && printf '%s' "$nopty_out" | grep -qF 'missing --domain --email --mail=smtp|log' \
+    && ! printf '%s' "$nopty_out" | grep -q 'Preflight'; then
+    pass "piped with no terminal, a missing setting stops the run and names the flags"
+else
+    fail "piped with no terminal, a missing setting stops the run and names the flags (exit $nopty_rc: $nopty_out)"
+fi
+
+# In a terminal, the questions are asked and answered there although stdin is
+# the script. `script` gives the pipeline a terminal the way an ssh -t session
+# does; the answers are typed once the first question is waiting.
+if script --version 2>/dev/null | grep -q util-linux; then
+    pipe_abs="$(cd "$(dirname "$INSTALL_SH")" && pwd)/install.sh"
+    repo_abs="$(cd "$(dirname "$INSTALL_SH")/.." && pwd)"
+    typed_rc=0
+    typed_out="$({ sleep 2; printf 'example.com\nops@example.com\nlog\n'; } \
+        | timeout 60 script -qec "cat '$pipe_abs' | PRIZY_ROOT='$ASK_ROOT/piped' bash -s -- --dry-run --source-path '$repo_abs'" /dev/null 2>&1 \
+        | tr -d '\r')" || typed_rc=$?
+    if [ "$typed_rc" -eq 0 ] && printf '%s' "$typed_out" | grep -q 'Domain: ' \
+        && printf '%s' "$typed_out" | grep -q 'would write .*/.env for example.com'; then
+        pass "piped in a terminal, the questions are asked and answered there"
+    else
+        fail "piped in a terminal, the questions are asked and answered there (exit $typed_rc: $typed_out)"
+    fi
+else
+    skip "piped in a terminal, the questions are asked and answered there (needs util-linux script)"
 fi
 
 log "The SMTP password is never shown"
@@ -1614,6 +1667,74 @@ for failing in "debian update" "debian install" "rhel install"; do
     fi
 done
 
+log "With no --ref, the newest release is installed"
+# `git ls-remote --tags --refs` output. By text, v0.9.0 sorts after v0.10.0;
+# a pre-release, or a tag that is not a version at all, is not a release.
+rel_tags=$'1111\trefs/tags/v0.9.0\n2222\trefs/tags/v0.10.0\n3333\trefs/tags/v0.2.5\n4444\trefs/tags/v1.0.0-rc.1\n5555\trefs/tags/nightly\n'
+assert_eq "the latest release is the highest vX.Y.Z tag, by version and not by text" \
+    "v0.10.0" "$(printf '%s' "$rel_tags" | latest_release_tag || true)"
+assert_eq "a repository with no vX.Y.Z tag has no latest release" \
+    "" "$(printf '5555\trefs/tags/nightly\n4444\trefs/tags/v1.0.0-rc.1\n' | latest_release_tag || true)"
+
+# A real repository, read through file:// the way the installer reads GitHub:
+# main is ahead of the newest release, and a pre-release sits on main's tip.
+REL_DIR="$(mktemp -d -p "$TMP")"
+REL_REPO="$REL_DIR/origin"
+git init -q -b main "$REL_REPO"
+rel_commit() {
+    printf '%s\n' "$1" > "$REL_REPO/version.txt"
+    git -C "$REL_REPO" add version.txt
+    git -C "$REL_REPO" -c user.name=test -c user.email=test@example.com commit -q -m "$1"
+}
+rel_commit 0.9.0;      git -C "$REL_REPO" tag v0.9.0
+rel_commit 0.10.0;     git -C "$REL_REPO" tag v0.10.0
+rel_commit unreleased; git -C "$REL_REPO" tag v1.0.0-rc.1
+
+# rel_fetch <prizy-root> <install.sh args>...
+# parse_args and then fetch_source, not dry, the way main runs them.
+rel_fetch() {
+    local root="$1"; shift
+    # SC2030/SC2031: every assignment belongs to this subshell alone.
+    # shellcheck disable=SC2030,SC2031
+    ( PRIZY_ROOT="$root"; SOURCE_DIR="$root/source"; REPO_URL="file://$REL_REPO"
+      OPT_REF=""; OPT_SOURCE_PATH=""; OPT_DRY_RUN=0
+      parse_args "$@"
+      fetch_source ) 2>&1
+}
+rel_root="$REL_DIR/prizy"
+rel_fetch "$rel_root" --domain example.com --email ops@example.com --mail=log >/dev/null || true
+assert_eq "with no --ref, the newest release is cloned: not main, not a pre-release" \
+    "0.10.0" "$(cat "$rel_root/source/version.txt" 2>/dev/null || true)"
+
+# Re-running is the upgrade path: the same command, once a newer release is
+# out, moves the existing checkout to it — and not to main, which is ahead.
+rel_commit 0.11.0;       git -C "$REL_REPO" tag v0.11.0
+rel_commit unreleased-2
+rel_fetch "$rel_root" --domain example.com --email ops@example.com --mail=log >/dev/null || true
+assert_eq "re-run with no --ref, an existing checkout moves to the newest release" \
+    "0.11.0" "$(cat "$rel_root/source/version.txt" 2>/dev/null || true)"
+
+rel_fetch "$REL_DIR/pinned" --domain example.com --email ops@example.com --mail=log --ref v0.9.0 >/dev/null || true
+assert_eq "an explicit --ref still wins over the newest release" \
+    "0.9.0" "$(cat "$REL_DIR/pinned/source/version.txt" 2>/dev/null || true)"
+
+# --dry-run changes nothing and, like the clone checks it skips, reads no
+# repository: the plan names the release rather than looking it up.
+DRYREL_BIN="$(mktemp -d -p "$TMP")"
+printf '#!/bin/sh\necho "git $*" >> "%s/calls"\nexit 0\n' "$DRYREL_BIN" > "$DRYREL_BIN/git"
+chmod +x "$DRYREL_BIN/git"
+# SC2031: PATH is changed for that one process only, which is the point.
+# shellcheck disable=SC2031
+dryrel_out="$(PATH="$DRYREL_BIN:$PATH" PRIZY_ROOT="$(mktemp -d -p "$TMP")" PRIZY_REPO_URL=https://example.invalid/prizy.git \
+    bash "$INSTALL_SH" --dry-run \
+    --domain example.com --email ops@example.com --mail=log 2>&1)" || true
+if printf '%s' "$dryrel_out" | grep -qF 'cloning https://example.invalid/prizy.git at <latest release>' \
+    && [ ! -e "$DRYREL_BIN/calls" ]; then
+    pass "--dry-run with no --ref names the latest release without reading the repository"
+else
+    fail "--dry-run with no --ref names the latest release without reading the repository (git calls: $(cat "$DRYREL_BIN/calls" 2>/dev/null || echo none); $dryrel_out)"
+fi
+
 log "A clone that cannot read the repository says what git said"
 GITERR_ROOT="$(mktemp -d -p "$TMP")"
 GITERR_BIN="$(mktemp -d -p "$TMP")"
@@ -1637,6 +1758,20 @@ if grep -q 'GIT_TERMINAL_PROMPT=0' "$GITERR_BIN/calls" 2>/dev/null; then
     pass "git is told never to ask for credentials on the terminal"
 else
     fail "git is told never to ask for credentials on the terminal"
+fi
+
+# With no --ref, looking up the latest release is the first read, so it is
+# the one that has to carry git's reason — and not ask for credentials either.
+: > "$GITERR_BIN/calls"
+gerr_rc=0
+# shellcheck disable=SC2030,SC2031
+gerr_out="$( ( PATH="$GITERR_BIN:$PATH"; PRIZY_ROOT="$GITERR_ROOT"; SOURCE_DIR="$GITERR_ROOT/source"
+    OPT_SOURCE_PATH=""; OPT_REF=""; OPT_DRY_RUN=0; fetch_source ) 2>&1 )" || gerr_rc=$?
+if [ "$gerr_rc" -ne 0 ] && printf '%s' "$gerr_out" | grep -q 'git said: fatal: .*Could not resolve host' \
+    && ! grep -q 'GIT_TERMINAL_PROMPT=unset' "$GITERR_BIN/calls"; then
+    pass "with no --ref, an unreadable repository is reported with git's own reason"
+else
+    fail "with no --ref, an unreadable repository is reported with git's own reason (exit $gerr_rc: $gerr_out; $(cat "$GITERR_BIN/calls"))"
 fi
 
 log "Every refusal ends in an ERROR line that says why, in a real run's conditions"
@@ -1684,6 +1819,15 @@ refuses "an empty SMTP host typed at the question is refused" \
 refuses "closing input at the SMTP password question stops the run" \
     "no answer for 'SMTP password' (input closed)" \
     bash -c "source '$install_abs'; OPT_YES=0; prompt_for SMTP_PASSWORD 'SMTP password' '' 1 1" < /dev/null
+# The other SMTP questions used to end the run silently here: read fails at
+# end of input, and errexit stopped the installer with no ERROR line at all —
+# which is what `… | bash -s -- --mail=smtp` does with no terminal to ask on.
+refuses "closing input at an SMTP question stops the run, saying so" \
+    "no answer for 'SMTP host' (input closed)" \
+    bash -c "source '$install_abs'; OPT_YES=0; prompt_for SMTP_HOST 'SMTP host'" < /dev/null
+refuses "closing input at an SMTP question with a default stops the run, saying so" \
+    "no answer for 'SMTP port' (input closed)" \
+    bash -c "source '$install_abs'; OPT_YES=0; prompt_for SMTP_PORT 'SMTP port' 587" < /dev/null
 
 # git answers ls-remote --heads (the repository is readable) but has no such
 # ref: the operator asked for a tag or branch that does not exist.
@@ -1701,6 +1845,17 @@ refuses "a --ref the repository does not have is refused, naming it" \
     "https://example.invalid/prizy.git has no ref named 'v9.9'. Pass an existing tag or branch with --ref" \
     env PATH="$NOREF_BIN:$PATH" PRIZY_REPO_URL=https://example.invalid/prizy.git bash -c "source '$install_abs'; PRIZY_ROOT='$NOREF_ROOT'; SOURCE_DIR='$NOREF_ROOT/source'
         OPT_SOURCE_PATH=''; OPT_REF=v9.9; OPT_DRY_RUN=0; fetch_source"
+
+# A readable repository with tags, none of them a release.
+NOREL_REPO="$(mktemp -d -p "$TMP")/origin"
+git init -q -b main "$NOREL_REPO"
+git -C "$NOREL_REPO" -c user.name=test -c user.email=test@example.com commit -q --allow-empty -m initial
+git -C "$NOREL_REPO" tag v1.0.0-rc.1
+NOREL_ROOT="$(mktemp -d -p "$TMP")"
+refuses "with no --ref and no release in the repository, the run stops and says what to pass" \
+    "file://$NOREL_REPO has no release tag (vX.Y.Z) to install. Pass --ref" \
+    env PRIZY_REPO_URL="file://$NOREL_REPO" bash -c "source '$install_abs'; PRIZY_ROOT='$NOREL_ROOT'; SOURCE_DIR='$NOREL_ROOT/source'
+        OPT_SOURCE_PATH=''; OPT_REF=''; OPT_DRY_RUN=0; fetch_source"
 
 log "End to end: a real install, then an upgrade, each in its own process"
 # Every other check in this file calls the installer's functions from inside
@@ -1887,6 +2042,29 @@ if [ "$rt_rc" -eq 0 ] && [ -n "$rt_key" ] \
     pass "--with-realtime builds the bundle with the install's own Reverb key and starts Reverb"
 else
     fail "--with-realtime builds the bundle with the install's own Reverb key and starts Reverb (exit $rt_rc; key '$rt_key'; build env '$(cat "$E2E_DIR/build-env")'; $rt_out)"
+fi
+
+# The README's one-liner, end to end and not dry: piped into bash in a
+# terminal, the settings passed through `bash -s --`, and the SMTP settings —
+# password included — asked for and typed at that terminal.
+if script --version 2>/dev/null | grep -q util-linux; then
+    piped_root="$E2E_DIR/piped"
+    piped_rc=0
+    # SC2031: the stand-ins go first on PATH for the installer's process only.
+    # shellcheck disable=SC2031
+    piped_out="$({ sleep 2; printf 'smtp.typed.example\n2525\ntyped-user\nTyped-Pass-3\ntls\n'; } \
+        | timeout 120 script -qec "cat '$install_abs' | env PRIZY_ROOT='$piped_root' PATH='$E2E_BIN:$PATH' bash -s -- --domain prizy.example.com --email ops@example.com --mail=smtp --source-path '$E2E_SRC'" /dev/null 2>&1 \
+        | tr -d '\r')" || piped_rc=$?
+    if [ "$piped_rc" -eq 0 ] && printf '%s' "$piped_out" | grep -q 'Prizy is installed'; then
+        pass "piped into bash in a terminal, a real install runs to the end"
+    else
+        fail "piped into bash in a terminal, a real install runs to the end (exit $piped_rc: $piped_out)"
+    fi
+    assert_eq "piped into bash, the SMTP settings typed at the terminal are the ones written" \
+        "smtp.typed.example 2525 typed-user Typed-Pass-3 smtp" \
+        "$(env_of MAIL_HOST "$piped_root/source/.env") $(env_of MAIL_PORT "$piped_root/source/.env") $(env_of MAIL_USERNAME "$piped_root/source/.env") $(env_of MAIL_PASSWORD "$piped_root/source/.env") $(env_of MAIL_SCHEME "$piped_root/source/.env")"
+else
+    skip "piped into bash in a terminal, a real install runs to the end (needs util-linux script)"
 fi
 
 # The machine refusals run in this sandbox too, not bare: if one of them

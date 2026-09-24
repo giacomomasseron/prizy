@@ -4,6 +4,7 @@
 # Takes a fresh Debian/Ubuntu or RHEL box to a running, TLS-terminated Prizy.
 # Re-running it is the upgrade path.
 #
+#   curl -fsSL https://prizy.dev/install.sh | bash
 #   bash scripts/install.sh --domain example.com --email ops@example.com
 #
 # This file is split in two. Everything above `main` is pure: no network, no
@@ -53,6 +54,22 @@ detect_os_family() {
 # compare, because lexically "9.9" sorts after "24".
 version_gte() {
     [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]
+}
+
+# Reads `git ls-remote --tags --refs` output on stdin and prints the newest
+# release: the highest vX.Y.Z tag in version order. A pre-release (v1.0.0-rc.1)
+# or any other tag is not a release. Prints nothing when there is none, and
+# always exits 0, so a caller's $(...) cannot trip errexit on an empty answer.
+latest_release_tag() {
+    local ref tags=()
+    while read -r _ ref; do
+        ref="${ref#refs/tags/}"
+        if [[ "$ref" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            tags+=("$ref")
+        fi
+    done
+    [ "${#tags[@]}" -gt 0 ] || return 0
+    printf '%s\n' "${tags[@]}" | sort -V | tail -n1
 }
 
 # At least two labels: a single label like `localhost` cannot hold a workspace
@@ -227,12 +244,14 @@ usage() {
     cat <<'USAGE'
 Prizy self-hosted installer.
 
-  bash install.sh
+  curl -fsSL https://prizy.dev/install.sh | bash
+  curl -fsSL https://prizy.dev/install.sh | bash -s -- --mail=smtp
   bash install.sh --domain example.com --email ops@example.com --mail=smtp
 
-Run from a terminal, it asks for any of --domain, --email and --mail that you
-leave out; on a re-run, Enter keeps what the install already has. Under --yes,
-or with no terminal to ask on (ssh without -t, a pipe, cron), they are required.
+Run in a terminal, piped from curl or not, it asks for any of --domain, --email
+and --mail that you leave out; on a re-run, Enter keeps what the install already
+has. Under --yes, or with no terminal to ask on (ssh without -t, cron), they
+are required. Piped, flags go after `bash -s --`.
 
 Settings (asked for when omitted):
   --domain <domain>      Base domain. Workspaces live at <slug>.<domain>, so
@@ -249,7 +268,8 @@ Mail (a decision, asked for when omitted):
                          invitations and CSAT requests will not work.
 
 Source:
-  --ref <tag|branch>     Clone the repository at this ref (default: main).
+  --ref <tag|branch>     Clone the repository at this ref (default: the latest
+                         release, its newest vX.Y.Z tag).
   --source-path <dir>    Install from a local directory instead of cloning.
 
 Options:
@@ -325,7 +345,8 @@ parse_args() {
 
     [ -n "$OPT_REF" ] && [ -n "$OPT_SOURCE_PATH" ] && \
         die "--ref and --source-path are mutually exclusive; pick where the source comes from"
-    [ -z "$OPT_REF" ] && [ -z "$OPT_SOURCE_PATH" ] && OPT_REF="main"
+    # Neither given: OPT_REF stays empty, and fetch_source installs the latest
+    # release. Looked up there, after preflight has made sure git exists.
 
     # Only what was given is checked here. A setting left out is not an error
     # yet: resolve_required asks for it, or refuses when nobody can answer.
@@ -342,13 +363,30 @@ parse_args() {
     fi
 }
 
+# The descriptor every question reads its answer from: standard input, unless
+# open_prompt_input finds the terminal somewhere else.
+PROMPT_FD=0
+
+# Under `curl … | bash`, stdin is the script itself, and by the time main runs
+# bash has read it to the end, so an answer read there is no answer at all.
+# The terminal the pipeline runs in is still /dev/tty, and the questions are
+# asked on that instead. With no controlling terminal (ssh without -t, cron,
+# CI) the open fails and PROMPT_FD stays on stdin, where is_interactive then
+# finds nobody to ask.
+open_prompt_input() {
+    [ -t 0 ] && return 0
+    local fd
+    # The failed open's own message is noise: the refusal that follows says
+    # what matters, and how to get asked.
+    if { exec {fd}</dev/tty; } 2>/dev/null; then
+        PROMPT_FD="$fd"
+    fi
+}
+
 # True when a person is at a terminal to answer questions. Its own function so
 # the test suite, which has no terminal, can stand one in.
-#
-# Standard input and not /dev/tty: under `curl … | bash` stdin is the script
-# itself, and reading answers from it would eat the installer's own source.
 is_interactive() {
-    [ -t 0 ]
+    [ -t "$PROMPT_FD" ]
 }
 
 # ask_value <var> <question> <validator> <complaint> [default]
@@ -371,7 +409,7 @@ ask_value() {
         # read fails at end of input (Ctrl-D, a closed pipe). Without this the
         # loop below would ask the same question forever. A final line with no
         # newline still counts as an answer; only a truly empty read stops.
-        if ! IFS= read -r answer && [ -z "$answer" ]; then
+        if ! IFS= read -r -u "$PROMPT_FD" answer && [ -z "$answer" ]; then
             printf '\n' >&2
             die "no answer for '$question' (input closed)"
         fi
@@ -699,6 +737,20 @@ restore_parked_env() {
     return "$rc"
 }
 
+# Sets OPT_REF to the latest release in $REPO_URL. From its tags and not from
+# GitHub's API, so PRIZY_REPO_URL can point at anything git can read. git's
+# own last line goes into the refusal for the same reason as the clone's below.
+resolve_latest_release() {
+    local listing
+    if ! listing="$(GIT_TERMINAL_PROMPT=0 git ls-remote --tags --refs "$REPO_URL" 2>&1)"; then
+        die "cannot read $REPO_URL (git said: ${listing##*$'\n'}). If the repository is private or not yet published, install from a local checkout instead: --source-path /path/to/prizy"
+    fi
+    OPT_REF="$(printf '%s\n' "$listing" | latest_release_tag)"
+    [ -n "$OPT_REF" ] || \
+        die "$REPO_URL has no release tag (vX.Y.Z) to install. Pass --ref with the branch or tag to install, or use --source-path."
+    info "latest release: $OPT_REF"
+}
+
 fetch_source() {
     step 4 "Source"
 
@@ -795,6 +847,18 @@ fetch_source() {
     # way: the file is back, or there was never one to restore.
     ENV_PARKED_PATH=""
 
+    # No --ref: the latest release, so `curl … | bash` installs what was
+    # released rather than whatever main holds, and the same command re-run
+    # later upgrades to the next one. --dry-run reads no repository, as the
+    # clone checks below skip theirs, so its plan names the release instead.
+    if [ -z "$OPT_REF" ]; then
+        if [ "$OPT_DRY_RUN" -eq 1 ]; then
+            OPT_REF="<latest release>"
+        else
+            resolve_latest_release
+        fi
+    fi
+
     if [ -d "$SOURCE_DIR/.git" ]; then
         info "updating existing checkout to $OPT_REF"
         run git -C "$SOURCE_DIR" fetch --depth 1 origin "$OPT_REF"
@@ -869,17 +933,22 @@ prompt_for() {
         # -s: nothing typed is echoed — nor is Enter, hence the newline after.
         # IFS= keeps edge whitespace, so undotenvable_reason refuses it out
         # loud; read's default trimming quietly saved a different password.
-        if ! IFS= read -r -s answer && [ -z "$answer" ]; then
+        if ! IFS= read -r -s -u "$PROMPT_FD" answer && [ -z "$answer" ]; then
             printf '\n' >&2
             die "no answer for '$question' (input closed)"
         fi
         printf '\n' >&2
         answer="${answer:-$default}"
-    elif [ -n "$default" ]; then
-        read -r -p "    $question [$default]: " answer
-        answer="${answer:-$default}"
     else
-        read -r -p "    $question: " answer
+        local shown="    $question: "
+        [ -z "$default" ] || shown="    $question [$default]: "
+        # read fails at end of input, as in ask_value. Unchecked, errexit
+        # ended the whole run right here with no ERROR line to say why.
+        if ! read -r -u "$PROMPT_FD" -p "$shown" answer && [ -z "$answer" ]; then
+            printf '\n' >&2
+            die "no answer for '$question' (input closed)"
+        fi
+        answer="${answer:-$default}"
     fi
     printf -v "$var" '%s' "$answer"
 }
@@ -1327,6 +1396,7 @@ report() {
 
 main() {
     parse_args "$@"
+    open_prompt_input
     resolve_required
     preflight
     ensure_docker
@@ -1340,6 +1410,11 @@ main() {
 
 # Only run when executed, never when sourced — this is what makes the library
 # above unit-testable.
-if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+#
+# Piped into bash (`curl … | bash`), the script has no file: BASH_SOURCE is
+# empty, and under set -u a bare ${BASH_SOURCE[0]} stopped the run right here.
+# A sourced script always has a name there, even one read through a pipe
+# (`source <(…)` gives /dev/fd/63), so an empty BASH_SOURCE means executed.
+if [ -z "${BASH_SOURCE[0]:-}" ] || [ "${BASH_SOURCE[0]}" = "$0" ]; then
     main "$@"
 fi
