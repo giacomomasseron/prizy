@@ -8,6 +8,7 @@
     "require": {
         "php": "^8.3",
         "dedoc/scramble": "^0.13.30",
+        "giacomomasseron/php-clean-architecture": "^2.0.2",
         "laravel/framework": "^13.8",
         "laravel/reverb": "^1.10",
         "laravel/scout": "^11.3",
@@ -21,7 +22,6 @@
         "fakerphp/faker": "^1.23",
         "giacomomasseron/filo": "^1.2",
         "giacomomasseron/laravel-models-generator": "^3.0",
-        "giacomomasseron/php-clean-architecture": "^0.0.2",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
         "laravel/pint": "^1.27",
