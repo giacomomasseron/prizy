@@ -198,7 +198,7 @@ before you run it, download it first with
   press Enter to keep each current answer. It backs up `.env` to
   `/data/prizy/backups`, fills in only the keys that are missing or empty, then
   rebuilds and migrates. It never overwrites an existing value. To install a
-  particular release instead, add `--ref v0.0.2`.
+  particular release instead, add `--ref v0.0.1`.
 - **Unreleased changes:** copy a checkout to the server and pass
   `--source-path` instead of `--ref`, for example `scp -r . root@your-server:/opt/prizy-src`
   and then `bash /opt/prizy-src/scripts/install.sh --source-path /opt/prizy-src`.
