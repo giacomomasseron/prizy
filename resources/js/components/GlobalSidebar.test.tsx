@@ -31,6 +31,9 @@ describe('GlobalSidebar', () => {
         // tracker-gated block commits, instead of racing the still-loading first render.
         expect(await screen.findByText('Workspace')).toBeInTheDocument();
         expect(screen.getByText('My Teams')).toBeInTheDocument();
+        const wsBtn = screen.getByRole('button', { name: /Workspace/ });
+        expect(wsBtn.style.color).toBe('');
+        expect(wsBtn.className).toContain('hover:text-fg2');
         expect(screen.getByRole('link', { name: /My Issues/ })).toBeInTheDocument();
         // Scoped to the Workspace <nav> — "Issues" is also a substring of "My Issues" (Support bridge), so an
         // unscoped query is ambiguous; the Workspace section's own <nav> disambiguates it.
@@ -136,5 +139,31 @@ describe('GlobalSidebar', () => {
         renderSidebar('owner', false);
         await screen.findByText('Support bridge');
         expect(screen.queryByRole('link', { name: /Knowledge base/ })).toBeNull();
+    });
+    it('v2 shell: brand mark + display wordmark, ink New-issue pill', async () => {
+        const { container } = renderSidebar();
+        expect(await screen.findByText('Prizy')).toHaveStyle({ fontFamily: 'var(--font-display)' });
+        expect(container.querySelector('[aria-hidden="true"]')?.textContent).toBe('P');
+        const newIssue = await screen.findByRole('button', { name: /New issue/ });
+        expect(newIssue.style.borderRadius).toBe('var(--radius-pill)');
+        expect(newIssue.style.background).toBe('');           // colours are classes so hover can fire
+        expect(newIssue.className).toContain('bg-fg');
+        expect(newIssue.className).toContain('hover:bg-accent');
+    });
+    it('section labels are sentence case, not uppercase', async () => {
+        renderSidebar();
+        const label = await screen.findByText('Support bridge');
+        expect(label.style.textTransform).toBe('');
+        expect(label.style.fontSize).toBe('12.5px');
+    });
+    it('inactive nav rows have no inline background so the hover class fires; the active row is a panel card', async () => {
+        renderSidebar();
+        const nav = within(await screen.findByRole('navigation'));
+        const issues = nav.getByRole('link', { name: /^Issues/ }) as HTMLElement; // MemoryRouter is at "/" → active
+        expect(issues.style.background).toBe('var(--panel)');
+        expect(issues.style.fontWeight).toBe('700');
+        const projects = nav.getByRole('link', { name: /Projects/ }) as HTMLElement;
+        expect(projects.style.background).toBe('');
+        expect(projects.className).toContain('hover:bg-hover');
     });
 });

@@ -120,7 +120,7 @@ export default function IntegrationsSettingsPage() {
                         </div>
                         <div style={{ display: 'flex', marginTop: 14 }}>
                             <button type="button" data-testid={`connect-${d.id}`} onClick={() => setOpenDrawer(d.id as 'slack' | 'github')}
-                                style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: '#fff', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Connect</button>
+                                style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Connect</button>
                         </div>
                     </div>
                 ))}

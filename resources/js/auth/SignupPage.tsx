@@ -38,7 +38,7 @@ export default function SignupPage() {
                         {errors[field]?.map((m) => <p key={m} className="text-sm text-red">{m}</p>)}
                     </div>
                 ))}
-                <button type="submit" className="w-full rounded bg-accent py-1.5 text-white">Create</button>
+                <button type="submit" className="w-full rounded bg-accent py-1.5 text-on-accent">Create</button>
             </form>
         </div>
     );

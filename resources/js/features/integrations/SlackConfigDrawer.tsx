@@ -61,7 +61,7 @@ export function SlackConfigDrawer({ open, onClose }: { open: boolean; onClose():
                     <input type="checkbox" aria-label="Slack active" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active
                 </label>
                 <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={onSave} className="rounded bg-accent px-3 py-1 text-sm text-white">Save</button>
+                    <button type="button" onClick={onSave} className="rounded bg-accent px-3 py-1 text-sm text-on-accent">Save</button>
                     <button type="button" onClick={onTest} className="rounded border border-border px-3 py-1 text-sm">Send test</button>
                     {msg && <span className="text-sm text-green">{msg}</span>}
                     {error && <span className="text-sm text-red">{error}</span>}

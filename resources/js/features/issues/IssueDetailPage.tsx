@@ -336,7 +336,7 @@ export default function IssueDetailPage() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
                             {data.support_ticket && (
                                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9 }}>
-                                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>↩</span>
+                                    <span style={{ width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, flexShrink: 0 }}>↩</span>
                                     <div style={{ fontSize: 12, color: 'var(--fg3)', lineHeight: 1.5 }}>
                                         Auto-linked from support ticket <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent)' }}>{data.support_ticket.ref}</span> — customer context synced
                                     </div>

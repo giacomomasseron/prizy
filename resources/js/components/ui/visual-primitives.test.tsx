@@ -47,13 +47,13 @@ describe('StatusIcon', () => {
   it('backlog has dashed border', () => {
     render(<StatusIcon status="backlog" />);
     const el = screen.getByLabelText('backlog') as HTMLElement;
-    expect(el.style.border).toBe('1.6px dashed var(--fg3)');
+    expect(el.style.border).toBe('2px dashed var(--fg3)');
   });
 
   it('todo has solid border', () => {
     render(<StatusIcon status="todo" />);
     const el = screen.getByLabelText('todo') as HTMLElement;
-    expect(el.style.border).toBe('1.6px solid var(--fg3)');
+    expect(el.style.border).toBe('2px solid var(--fg3)');
   });
 
   it('done textContent is checkmark', () => {
@@ -73,11 +73,16 @@ describe('StatusIcon', () => {
     expect(el.style.background).toContain('var(--amber)');
   });
 
-  it('in_review background contains conic-gradient with blue', () => {
+  it('in_review background contains conic-gradient with green', () => {
     render(<StatusIcon status="in_review" />);
     const el = screen.getByLabelText('in_review') as HTMLElement;
     expect(el.style.background).toContain('conic-gradient');
-    expect(el.style.background).toContain('var(--blue)');
+    expect(el.style.background).toContain('var(--green)');
+  });
+
+  it('done uses the on-accent colour for its check (contrast in dark)', () => {
+    render(<StatusIcon status="done" />);
+    expect((screen.getByLabelText('done') as HTMLElement).style.color).toBe('var(--on-accent)');
   });
 });
 
@@ -89,21 +94,21 @@ describe('PriorityIcon', () => {
     expect(screen.getByLabelText(priority)).toBeInTheDocument();
   });
 
-  it('urgent shows ! with amber background', () => {
+  it('urgent shows ! on a red square', () => {
     render(<PriorityIcon priority="urgent" />);
     const el = screen.getByLabelText('urgent');
     expect(el.textContent).toBe('!');
-    expect(el).toHaveStyle({ background: 'var(--amber)' });
+    expect(el).toHaveStyle({ background: 'var(--red)' });
   });
 
   it('high priority has more filled bars than low priority', () => {
     const { container: highContainer } = render(<PriorityIcon priority="high" />);
     const highBars = Array.from(highContainer.querySelectorAll('[aria-label="high"] > span')) as HTMLElement[];
-    const highFilled = highBars.filter(b => b.style.background === 'var(--fg2)');
+    const highFilled = highBars.filter(b => b.style.background === 'var(--fg)');
 
     const { container: lowContainer } = render(<PriorityIcon priority="low" />);
     const lowBars = Array.from(lowContainer.querySelectorAll('[aria-label="low"] > span')) as HTMLElement[];
-    const lowFilled = lowBars.filter(b => b.style.background === 'var(--fg2)');
+    const lowFilled = lowBars.filter(b => b.style.background === 'var(--fg)');
 
     expect(highFilled).toHaveLength(3);
     expect(lowFilled).toHaveLength(1);

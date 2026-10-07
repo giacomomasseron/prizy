@@ -150,7 +150,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
 
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
-                    <span style={{ width: 20, height: 20, borderRadius: 6, background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1, flexShrink: 0 }}>+</span>
+                    <span style={{ width: 20, height: 20, borderRadius: 6, background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, lineHeight: 1, flexShrink: 0 }}>+</span>
                     <span style={{ fontWeight: 600, fontSize: 14.5, color: 'var(--fg)' }}>New issue</span>
                     {singleTeam ? (
                         selectedTeam && <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>{selectedTeam.name}</span>
@@ -306,7 +306,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                         Create more
                     </button>
                     <button type="button" aria-label="Create issue" onClick={() => void submit(false)} disabled={!canSubmit}
-                        style={{ border: 'none', background: 'var(--accent)', color: '#fff', padding: '9px 16px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'default', opacity: canSubmit ? 1 : 0.5, fontFamily: 'inherit' }}>
+                        style={{ border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '9px 16px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'default', opacity: canSubmit ? 1 : 0.5, fontFamily: 'inherit' }}>
                         Create issue
                     </button>
                 </div>

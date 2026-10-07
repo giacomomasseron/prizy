@@ -43,7 +43,7 @@ export default function CyclesPage() {
                 <span data-testid="cycles-count" style={{ fontSize: 12.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{items.length}</span>
                 {canDevelop && (
                     <button type="button" onClick={() => navigate(`/create?tab=cycle&team=${id}`)}
-                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}>New cycle</button>
+                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}>New cycle</button>
                 )}
             </div>
             {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5, marginTop: 8 }}>{error}</div>}

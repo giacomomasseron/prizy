@@ -93,7 +93,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
                             type="button"
                             onClick={submit}
                             disabled={!canSend}
-                            style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 8, border: 'none', background: canSend ? accent : 'var(--border2)', color: '#fff', fontSize: 12.5, fontWeight: 600, cursor: canSend ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
+                            style={{ marginLeft: 'auto', padding: '7px 16px', borderRadius: 8, border: 'none', background: canSend ? accent : 'var(--border2)', color: 'var(--on-sup)', fontSize: 12.5, fontWeight: 600, cursor: canSend ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
                         >
                             {sendLabel}
                         </button>

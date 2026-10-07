@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from 'react';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     variant?: 'primary' | 'secondary' | 'ghost';
@@ -6,28 +6,31 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
     children: ReactNode;
 }
 
-const BASE: React.CSSProperties = {
+const BASE: CSSProperties = {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    borderRadius: 9,
+    borderRadius: 'var(--radius-pill)',
+    borderWidth: 'var(--line)',
+    borderStyle: 'solid',
     cursor: 'pointer',
     fontFamily: 'inherit',
-    fontWeight: 500,
+    fontWeight: 700,
     lineHeight: 1,
-    transition: 'background .12s, border-color .12s, opacity .12s',
+    transition: 'background .12s, border-color .12s, color .12s, opacity .12s',
 };
 
-const SIZE_STYLES: Record<string, React.CSSProperties> = {
-    sm: { padding: '5px 10px', fontSize: 12 },
-    md: { padding: '7px 13px', fontSize: 13 },
+const SIZE_STYLES: Record<NonNullable<ButtonProps['size']>, CSSProperties> = {
+    sm: { padding: '6px 13px', fontSize: 13 },
+    md: { padding: '9px 16px', fontSize: 14 },
 };
 
-const VARIANT_STYLES: Record<string, React.CSSProperties> = {
-    primary:   { background: 'var(--accent)', color: '#fff', border: '1px solid transparent' },
-    secondary: { color: 'var(--fg)', border: '1px solid var(--border)' },
-    ghost:     { color: 'var(--fg)', border: '1px solid transparent' },
+// Colours live in classes so hover can change them (an inline background would beat `hover:`).
+const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
+    primary: 'border-transparent bg-fg text-bg enabled:hover:bg-accent',
+    secondary: 'border-border2 bg-transparent text-fg enabled:hover:border-fg',
+    ghost: 'border-transparent bg-transparent text-fg enabled:hover:bg-hover',
 };
 
 export function Button({ variant = 'primary', size = 'md', style, className, children, ...rest }: ButtonProps) {
@@ -35,11 +38,10 @@ export function Button({ variant = 'primary', size = 'md', style, className, chi
         <button
             type="button"
             {...rest}
-            className={`hover:bg-hover ${className ?? ''}`}
+            className={`${VARIANT_CLASSES[variant]} ${className ?? ''}`}
             style={{
                 ...BASE,
                 ...SIZE_STYLES[size],
-                ...VARIANT_STYLES[variant],
                 ...(rest.disabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}),
                 ...style,
             }}

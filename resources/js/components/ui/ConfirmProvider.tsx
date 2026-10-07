@@ -62,7 +62,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                                 data-testid="confirm-dialog-confirm"
                                 autoFocus
                                 onClick={() => settle(true)}
-                                style={opts.danger ? { background: 'var(--red)', borderColor: 'transparent' } : undefined}
+                                style={opts.danger ? { background: 'var(--red)', color: 'var(--on-accent)' } : undefined}
                             >
                                 {opts.confirmLabel ?? 'Confirm'}
                             </Button>

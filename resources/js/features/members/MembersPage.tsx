@@ -141,7 +141,7 @@ export default function MembersPage() {
                     onClick={() => setInviteOpen(true)}
                     style={{
                         background: 'var(--accent)',
-                        color: '#fff',
+                        color: 'var(--on-accent)',
                         border: 'none',
                         borderRadius: 9,
                         padding: '9px 15px',

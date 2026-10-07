@@ -75,7 +75,7 @@ export default function BusinessHoursSettingsPage() {
                 <button
                     type="button"
                     onClick={openCreate}
-                    style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: '#fff', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                    style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
                 >
                     New schedule
                 </button>

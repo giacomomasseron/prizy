@@ -11,7 +11,7 @@ export interface DrawerProps {
     children: ReactNode;
 }
 
-export function Drawer({ open, onClose, side = 'right', width = 480, label, children }: DrawerProps) {
+export function Drawer({ open, onClose, side = 'right', width = 520, label, children }: DrawerProps) {
     const panelRef = useRef<HTMLDivElement>(null);
     useOverlayEscape(onClose, open);
     useFocusTrap(panelRef, open);
@@ -20,7 +20,7 @@ export function Drawer({ open, onClose, side = 'right', width = 480, label, chil
 
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', justifyContent: side === 'right' ? 'flex-end' : 'flex-start' }}>
-            <div onClick={onClose} style={{ flex: 1, background: 'rgba(0,0,0,.4)', animation: 'prizy-fade .15s ease' }} />
+            <div onClick={onClose} style={{ flex: 1, background: 'var(--backdrop)', animation: 'prizy-fade .15s ease' }} />
             <div
                 ref={panelRef}
                 role="dialog"
@@ -28,8 +28,8 @@ export function Drawer({ open, onClose, side = 'right', width = 480, label, chil
                 aria-label={label ?? 'Panel'}
                 tabIndex={-1}
                 style={{ width, maxWidth: '92vw', height: '100%', background: 'var(--panel)', outline: 'none',
-                    borderLeft: side === 'right' ? '1px solid var(--border)' : undefined,
-                    borderRight: side === 'left' ? '1px solid var(--border)' : undefined,
+                    borderLeft: side === 'right' ? 'var(--line) solid var(--border)' : undefined,
+                    borderRight: side === 'left' ? 'var(--line) solid var(--border)' : undefined,
                     boxShadow: side === 'right' ? '-24px 0 48px rgba(0,0,0,.32)' : '24px 0 48px rgba(0,0,0,.32)',
                     display: 'flex', flexDirection: 'column', animation: 'prizy-slide .2s cubic-bezier(.2,.8,.2,1)', overflowY: 'auto' }}
             >

@@ -164,7 +164,7 @@ export default function SettingsLayout() {
                     <div
                         style={{
                             width: 22, height: 22, borderRadius: 6,
-                            background: 'var(--accent)', color: '#fff',
+                            background: 'var(--accent)', color: 'var(--on-accent)',
                             fontWeight: 700, fontSize: 13,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                             flexShrink: 0,

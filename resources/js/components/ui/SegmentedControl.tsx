@@ -19,8 +19,8 @@ export function SegmentedControl<T extends string = string>({
             style={{
                 display: 'inline-flex',
                 background: 'var(--bg2)',
-                border: '1px solid var(--border)',
-                borderRadius: 10,
+                border: 'var(--line) solid var(--border)',
+                borderRadius: 'var(--radius-pill)',
                 padding: 3,
                 gap: 2,
             }}
@@ -33,16 +33,16 @@ export function SegmentedControl<T extends string = string>({
                         type="button"
                         onClick={() => onChange(opt.value)}
                         style={{
-                            padding: '4px 13px',
-                            borderRadius: 6,
+                            padding: '6px 14px',
+                            borderRadius: 'var(--radius-pill)',
                             border: 'none',
                             cursor: 'pointer',
-                            fontSize: 12,
+                            fontSize: 13,
                             fontFamily: 'inherit',
-                            fontWeight: 500,
+                            fontWeight: 700,
                             background: active ? 'var(--panel)' : 'transparent',
                             color: active ? 'var(--fg)' : 'var(--fg2)',
-                            boxShadow: active ? '0 1px 2px rgba(0,0,0,.18)' : 'none',
+                            boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
                             transition: 'background .1s, color .1s',
                         }}
                     >

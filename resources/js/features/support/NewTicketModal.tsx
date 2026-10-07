@@ -115,7 +115,7 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                             <Input aria-label="Contact phone" placeholder="Phone (optional)" value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} />
                             {contactError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{contactError}</div>}
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button type="button" aria-label="Create contact" disabled={createContact.isPending || ncName.trim() === '' || ncEmail.trim() === ''} onClick={saveContact} style={{ background: 'var(--sup)', color: '#fff', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: (createContact.isPending || ncName.trim() === '' || ncEmail.trim() === '') ? 0.5 : 1 }}>Create contact</button>
+                                <button type="button" aria-label="Create contact" disabled={createContact.isPending || ncName.trim() === '' || ncEmail.trim() === ''} onClick={saveContact} style={{ background: 'var(--sup)', color: 'var(--on-sup)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: (createContact.isPending || ncName.trim() === '' || ncEmail.trim() === '') ? 0.5 : 1 }}>Create contact</button>
                                 <button type="button" onClick={() => setShowNewContact(false)} style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
                             </div>
                         </div>
@@ -146,7 +146,7 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                         onClick={submit}
                         disabled={!canCreate}
                         aria-label="Create ticket"
-                        style={{ background: 'var(--sup)', color: '#fff', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, fontFamily: 'inherit' }}
+                        style={{ background: 'var(--sup)', color: 'var(--on-sup)', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, fontFamily: 'inherit' }}
                     >
                         Create ticket
                     </button>

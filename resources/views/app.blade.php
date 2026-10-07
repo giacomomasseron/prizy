@@ -8,7 +8,7 @@
     (function(){
         var t=null;
         try{t=localStorage.getItem('prizy-theme');}catch(e){}
-        document.documentElement.dataset.theme=(t==='light')?'light':'dark';
+        document.documentElement.dataset.theme=(t==='dark')?'dark':'light';
     })();
     </script>
     @fonts

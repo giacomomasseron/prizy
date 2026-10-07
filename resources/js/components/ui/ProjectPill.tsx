@@ -9,15 +9,16 @@ export function ProjectPill({ name, color }: ProjectPillProps) {
             style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 6,
-                fontSize: 11.5,
+                gap: 7,
+                fontSize: 13,
+                fontWeight: 700,
                 color: 'var(--fg2)',
             }}
         >
             <span
                 style={{
-                    width: 9,
-                    height: 9,
+                    width: 10,
+                    height: 10,
                     borderRadius: 3,
                     background: color,
                     flexShrink: 0,

@@ -23,7 +23,7 @@ export default function TeamsSettingsPage() {
                     </p>
                 </div>
                 <button type="button" onClick={() => setCreateOpen(true)}
-                    style={{ background: 'var(--accent)', color: '#fff', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                    style={{ background: 'var(--accent)', color: 'var(--on-accent)', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}>
                     Create team
                 </button>
             </div>

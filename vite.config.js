@@ -10,7 +10,8 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/main.tsx'],
             refresh: true,
             fonts: [
-                bunny('Instrument Sans', { weights: [400, 500, 600] }),
+                bunny('Figtree', { weights: [400, 500, 600, 700] }),
+                bunny('Bricolage Grotesque', { weights: [500, 700, 800] }),
                 bunny('JetBrains Mono', { weights: [400, 500, 600] }),
             ],
         }),

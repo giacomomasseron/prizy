@@ -7,12 +7,13 @@ export function Kbd({ children }: KbdProps) {
         <kbd
             style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 10.5,
-                color: 'var(--fg3)',
-                background: 'var(--bg)',
-                border: '1px solid var(--border2)',
-                borderRadius: 4,
-                padding: '1px 5px',
+                fontSize: 11,
+                color: 'inherit',
+                opacity: 0.7,
+                background: 'transparent',
+                border: '1px solid currentColor',
+                borderRadius: 'var(--radius-pill)',
+                padding: '0 6px',
                 display: 'inline-block',
                 lineHeight: '1.5',
             }}

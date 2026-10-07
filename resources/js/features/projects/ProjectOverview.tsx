@@ -109,7 +109,7 @@ export default function ProjectOverview() {
                         <form onSubmit={submitMs} style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
                             <input value={msName} onChange={(e) => setMsName(e.target.value)} placeholder="Milestone name" aria-label="Milestone name" style={{ flex: 1, border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 8, padding: '6px 9px', color: 'var(--fg)', fontSize: 12.5 }} />
                             <input type="date" value={msDate} onChange={(e) => setMsDate(e.target.value)} aria-label="Milestone target date" style={{ border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 8, padding: '6px', color: 'var(--fg)', fontSize: 12.5 }} />
-                            <button type="submit" disabled={createMs.isPending} style={{ background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '0 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Add</button>
+                            <button type="submit" disabled={createMs.isPending} style={{ background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, padding: '0 12px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer' }}>Add</button>
                         </form>
                     )}
                     {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{error}</div>}

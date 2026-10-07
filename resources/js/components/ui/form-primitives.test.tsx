@@ -5,6 +5,7 @@ import { Button } from './Button';
 import { IconButton } from './IconButton';
 import { Kbd } from './Kbd';
 import { Input } from './Input';
+import { Textarea } from './Textarea';
 import { Switch } from './Switch';
 import { SegmentedControl } from './SegmentedControl';
 import { ThemeToggle } from './ThemeToggle';
@@ -14,28 +15,39 @@ describe('Button', () => {
     render(<Button>Save</Button>);
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument();
   });
-  it('primary variant applies accent background style', () => {
+  it('primary is an ink pill that turns accent on hover (class-driven, no inline background)', () => {
     render(<Button variant="primary">Go</Button>);
-    expect(screen.getByRole('button', { name: 'Go' })).toHaveStyle({ background: 'var(--accent)' });
+    const btn = screen.getByRole('button', { name: 'Go' }) as HTMLElement;
+    expect(btn.style.background).toBe('');
+    expect(btn.className).toContain('bg-fg');
+    expect(btn.className).toContain('text-bg');
+    expect(btn.className).toContain('enabled:hover:bg-accent');
+    expect(btn.style.borderRadius).toBe('var(--radius-pill)');
   });
   it('secondary variant renders', () => {
     render(<Button variant="secondary">Cancel</Button>);
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
   });
-  it('secondary variant has solid border', () => {
+  it('secondary has a border2 outline that darkens on hover', () => {
     render(<Button variant="secondary">Cancel</Button>);
     const btn = screen.getByRole('button', { name: 'Cancel' }) as HTMLElement;
-    expect(btn.style.border).toBe('1px solid var(--border)');
+    expect(btn.style.borderColor).toBe('');
+    expect(btn.className).toContain('border-border2');
+    expect(btn.className).toContain('enabled:hover:border-fg');
   });
   it('ghost variant renders', () => {
     render(<Button variant="ghost">Edit</Button>);
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
-  it('ghost variant has transparent border and hover class', () => {
+  it('ghost has no border colour and a hover fill', () => {
     render(<Button variant="ghost">Edit</Button>);
     const btn = screen.getByRole('button', { name: 'Edit' }) as HTMLElement;
-    expect(btn.style.border).toBe('1px solid transparent');
-    expect(btn.className).toContain('hover:bg-hover');
+    expect(btn.className).toContain('border-transparent');
+    expect(btn.className).toContain('enabled:hover:bg-hover');
+  });
+  it('a caller style still wins (e.g. danger red)', () => {
+    render(<Button variant="primary" style={{ background: 'var(--red)' }}>Delete</Button>);
+    expect(screen.getByRole('button', { name: 'Delete' })).toHaveStyle({ background: 'var(--red)' });
   });
   it('forwards disabled prop', () => {
     render(<Button disabled>Disabled</Button>);
@@ -47,6 +59,13 @@ describe('IconButton', () => {
   it('renders with title as accessible name', () => {
     render(<IconButton title="Close">✕</IconButton>);
     expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+  });
+  it('IconButton is round, has no inline background, and its hover class can fire', () => {
+    render(<IconButton title="Close">✕</IconButton>);
+    const btn = screen.getByRole('button', { name: 'Close' }) as HTMLElement;
+    expect(btn.style.borderRadius).toBe('50%');
+    expect(btn.style.background).toBe('');
+    expect(btn.className).toContain('hover:bg-hover');
   });
 });
 
@@ -61,6 +80,29 @@ describe('Input', () => {
   it('renders input element', () => {
     render(<Input aria-label="Title" placeholder="Enter title…" />);
     expect(screen.getByRole('textbox', { name: 'Title' })).toBeInTheDocument();
+  });
+});
+
+describe('Input/Textarea v2', () => {
+  it('Input is a pill with a 1.5px border2 outline and a visible focus border', () => {
+    render(<Input aria-label="Name" />);
+    const el = screen.getByRole('textbox', { name: 'Name' }) as HTMLElement;
+    expect(el.style.borderRadius).toBe('var(--radius-pill)');
+    expect(el.style.border).toBe('');
+    expect(el.className).toContain('border-border2');
+    expect(el.className).toContain('focus:border-fg');
+  });
+  it('Textarea uses the card radius and the same focus border', () => {
+    render(<Textarea aria-label="Body" />);
+    const el = screen.getByRole('textbox', { name: 'Body' }) as HTMLElement;
+    expect(el.style.borderRadius).toBe('var(--radius-card)');
+    expect(el.className).toContain('focus:border-fg');
+  });
+  it('a caller className is kept alongside the field classes', () => {
+    render(<Input aria-label="X" className="w-40" />);
+    const el = screen.getByRole('textbox', { name: 'X' }) as HTMLElement;
+    expect(el.className).toContain('w-40');
+    expect(el.className).toContain('focus:border-fg');
   });
 });
 
@@ -114,6 +156,13 @@ describe('SegmentedControl', () => {
     render(<SegmentedControl options={[...opts]} value="list" onChange={() => {}} />);
     expect(screen.getByRole('button', { name: 'List' })).toHaveStyle({ background: 'var(--panel)' });
   });
+  it('track and options are pills; active option has a hairline ring', () => {
+    render(<SegmentedControl options={[...opts]} value="list" onChange={() => {}} />);
+    const active = screen.getByRole('button', { name: 'List' }) as HTMLElement;
+    expect(active.style.borderRadius).toBe('var(--radius-pill)');
+    expect(active.style.boxShadow).toBe('0 0 0 1.5px var(--border)');
+    expect((active.parentElement as HTMLElement).style.borderRadius).toBe('var(--radius-pill)');
+  });
   it('inactive option has transparent background', () => {
     render(<SegmentedControl options={[...opts]} value="list" onChange={() => {}} />);
     expect(screen.getByRole('button', { name: 'Board' })).toHaveStyle({ background: 'transparent' });
@@ -135,7 +184,7 @@ describe('ThemeToggle', () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
     await user.click(screen.getByRole('button'));
-    // Defaults to dark (localStorage empty), so one click → light
-    expect(document.documentElement.dataset.theme).toBe('light');
+    // Defaults to light (localStorage empty), so one click → dark
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 });
