@@ -8,7 +8,7 @@
 :root {
   --bg:#fbf6ea; --bg2:#f4ecd8; --panel:#ffffff; --border:#e6dcc4; --border2:#d3c6a6;
   --fg:#1d1a14; --fg2:#4f493d; --fg3:#6e6656; --hover:rgba(29,26,20,.05);
-  --accent:#5b57e0; --accent2:rgba(91,87,224,.12); --on-accent:#ffffff; --hi:#ffe46b;
+  --accent:#5b57e0; --accent2:rgba(91,87,224,.12); --on-accent:#ffffff; --hi:#ffe46b; --on-hi:#1d1a14;
   --red:#d93a3f; --amber:#a8691c; --green:#3a8f4d; --blue:#3f74d6; --teal:#2f8f88;
   --sup:#3a8f4d; --sup2:rgba(58,143,77,.14); --on-sup:#ffffff;
   --note:#a8691c; --note2:rgba(168,105,28,.12);
@@ -17,7 +17,7 @@
 :root[data-theme="dark"] {
   --bg:#16140f; --bg2:#1e1b15; --panel:#25221b; --border:#332e25; --border2:#4a4335;
   --fg:#f6f0e2; --fg2:#cbc2ae; --fg3:#a69d89; --hover:rgba(255,248,230,.06);
-  --accent:#8f8cf6; --accent2:rgba(143,140,246,.16); --on-accent:#16140f; --hi:#f5d84f;
+  --accent:#8f8cf6; --accent2:rgba(143,140,246,.16); --on-accent:#16140f; --hi:#f5d84f; --on-hi:#1d1a14;
   --red:#ef6b6b; --amber:#e5aa4c; --green:#5fbf7a; --blue:#7ea6f2; --teal:#4fb8af;
   --sup:#5fbf7a; --sup2:rgba(95,191,122,.16); --on-sup:#16140f;
   --note:#e5aa4c; --note2:rgba(229,170,76,.14);
@@ -44,7 +44,7 @@
   --color-amber: var(--amber);     --color-green: var(--green);
   --color-blue: var(--blue);       --color-teal: var(--teal);
   --color-hi: var(--hi);           --color-on-accent: var(--on-accent);
-  --color-on-sup: var(--on-sup);
+  --color-on-sup: var(--on-sup);   --color-on-hi: var(--on-hi);
 }
 
 /* Highlighter behind display titles (v2). */

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { Outlet, useMatch } from 'react-router-dom';
 import { useRealtimeNotifications } from '../features/notifications/useRealtime';
 import CommandPalette from '../features/search/CommandPalette';
@@ -96,8 +96,9 @@ export default function AppLayout() {
                 </button>
             )}
 
-            {/* ── Main content (zoom = user text-size preference from the toolbar) ── */}
-            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg)', overflow: 'auto', zoom: scale }}>
+            {/* ── Main content (zoom = user text-size preference from the toolbar).
+                 --nav-inset lets page headers clear the floating Expand-sidebar button. ── */}
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, background: 'var(--bg)', overflow: 'auto', zoom: scale, '--nav-inset': navHidden ? '48px' : '0px' } as CSSProperties}>
                 <Outlet />
             </main>
 

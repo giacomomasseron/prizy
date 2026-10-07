@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { PageHeader } from './PageHeader';
 
 describe('PageHeader', () => {
+    it('pads its left edge by --nav-inset so the collapsed-sidebar button never covers the title', () => {
+        const { container } = render(<PageHeader title="X" />);
+        expect((container.querySelector('header') as HTMLElement).style.padding).toBe('0 24px 0 calc(24px + var(--nav-inset, 0px))');
+    });
     it('renders the title as a highlighted display h1', () => {
         render(<PageHeader title="Issues" />);
         const h1 = screen.getByRole('heading', { level: 1, name: 'Issues' });

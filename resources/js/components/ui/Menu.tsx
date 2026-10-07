@@ -18,6 +18,8 @@ export interface MenuProps {
     /** Show a filter input at the top that narrows items by label (case-insensitive). */
     searchable?: boolean;
     searchPlaceholder?: string;
+    /** Stretch the trigger wrapper to fill its flex row (property editors on the issue page). */
+    fullWidth?: boolean;
 }
 
 // Where the popover sits relative to the trigger. `*-end` right-aligns the
@@ -28,7 +30,7 @@ const PLACEMENT_STYLE: Record<NonNullable<MenuProps['placement']>, React.CSSProp
     'top-start': { bottom: '100%', left: 0, marginBottom: 4 },
 };
 
-export function Menu({ trigger, items, placement = 'bottom-start', searchable = false, searchPlaceholder = 'Search…' }: MenuProps) {
+export function Menu({ trigger, items, placement = 'bottom-start', searchable = false, searchPlaceholder = 'Search…', fullWidth = false }: MenuProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const containerRef = useRef<HTMLDivElement>(null);
@@ -121,7 +123,7 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
     }
 
     return (
-        <div ref={containerRef} style={{ position: 'relative', display: 'inline-block' }}>
+        <div ref={containerRef} style={fullWidth ? { position: 'relative', display: 'block', flex: 1, minWidth: 0 } : { position: 'relative', display: 'inline-block' }}>
             {triggerWithClick}
             {open && (
                 <div ref={menuRef} role="menu" style={popoverStyle} onKeyDown={onMenuKeyDown}>

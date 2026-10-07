@@ -74,6 +74,15 @@ describe('AppLayout sidebar', () => {
         expect(expand.className).toContain('hover:border-fg');
     });
 
+    it('exposes --nav-inset on <main>: 0px expanded, 48px collapsed', async () => {
+        const user = userEvent.setup();
+        const { container } = renderLayout();
+        const main = container.querySelector('main') as HTMLElement;
+        expect(main.style.getPropertyValue('--nav-inset')).toBe('0px');
+        await user.click(await screen.findByRole('button', { name: 'Collapse sidebar' }));
+        expect(main.style.getPropertyValue('--nav-inset')).toBe('48px');
+    });
+
     it('renders workspace name "Prizy"', () => {
         renderLayout();
         expect(screen.getByText('Prizy')).toBeInTheDocument();
