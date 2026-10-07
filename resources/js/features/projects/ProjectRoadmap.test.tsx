@@ -39,4 +39,13 @@ describe('ProjectRoadmap', () => {
         renderView([]);
         expect(await screen.findByText('No milestones in this state.')).toBeInTheDocument();
     });
+    it('v2: highlighted title, ink chips and a dashed timeline of cards', async () => {
+        renderView();
+        await screen.findByText('Beta Launch');
+        expect(screen.getByRole('heading', { level: 1, name: 'Roadmap' }).querySelector('span.hl')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'All' }).className).toContain('bg-fg');
+        expect(screen.getByTestId('roadmap-spine').style.borderLeft).toBe('2px dashed var(--border2)');
+        const card = screen.getByText('Beta Launch').parentElement!.parentElement as HTMLElement;
+        expect(card.style.borderRadius).toBe('var(--radius-card)');
+    });
 });
