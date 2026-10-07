@@ -167,4 +167,28 @@ describe('CreateIssueDrawer', () => {
         expect(onClose).not.toHaveBeenCalled();
         await waitFor(() => expect(titleInput.value).toBe(''));
     });
+
+    it('v2: chips are ink-filled when active and hover via classes when not', () => {
+        mount({});
+        const todo = screen.getByRole('button', { name: 'Status Todo' });
+        const backlog = screen.getByRole('button', { name: 'Status Backlog' });
+        expect(todo).toHaveAttribute('aria-pressed', 'true');
+        expect(todo.className).toContain('bg-fg');
+        expect(backlog.className).toContain('hover:border-fg');
+        expect(backlog.style.background).toBe('');
+    });
+
+    it('v2: footer uses the shared pill Buttons; the assignee trigger hovers via classes', () => {
+        mount({});
+        expect(screen.getByRole('button', { name: 'Create issue' }).className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: 'Create more' }).className).toContain('enabled:hover:border-fg');
+        const who = screen.getByRole('button', { name: 'Issue assignee' });
+        expect(who.style.borderColor).toBe('');
+        expect(who.className).toContain('hover:border-fg');
+    });
+
+    it('v2: the title field uses the display font', () => {
+        mount({});
+        expect((screen.getByLabelText(/Issue title/i) as HTMLInputElement).style.fontFamily).toBe('var(--font-display)');
+    });
 });
