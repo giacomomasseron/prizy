@@ -11,9 +11,10 @@ const issue = {
 };
 const addCommentMutate = vi.fn();
 let overrideIssue: typeof issue | null = null;
+let loadingIssue = false;
 
 vi.mock('./hooks', () => ({
-    useIssue: () => ({ data: overrideIssue ?? issue, isLoading: false }),
+    useIssue: () => (loadingIssue ? { data: undefined, isLoading: true } : { data: overrideIssue ?? issue, isLoading: false }),
     useIssueLabels: () => ({ data: { items: [] } }),
     useActivities: () => ({ data: { items: [{ id: 'a1', user_id: 'u2', type: 'created', to_value: null, created_at: new Date().toISOString() }] } }),
     useComments: () => ({ data: { items: [{ id: 'c1', user_id: 'u2', body: 'Confirmed on staging.', created_at: new Date().toISOString(), reactions: [] }] } }),
@@ -63,5 +64,27 @@ describe('PeekDrawer', () => {
         expect(screen.queryByText(/Escalated from Support/)).not.toBeInTheDocument();
         expect(screen.queryByText(/Auto-linked from support ticket/)).not.toBeInTheDocument();
         overrideIssue = null;
+    });
+    it('v2: keeps a Close button in the header while the issue is loading', () => {
+        loadingIssue = true;
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByRole('button', { name: 'Close' })).toBeInTheDocument();
+        expect(screen.getByText('Loading…')).toBeInTheDocument();
+        loadingIssue = false;
+    });
+    it('v2: section headings are display-font h2s and multi-line text keeps its line breaks', () => {
+        overrideIssue = { ...issue, description: 'Line one\nLine two' } as unknown as typeof issue;
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByRole('heading', { level: 2, name: 'Description' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText(/Line one/).style.whiteSpace).toBe('pre-wrap');
+        expect(screen.getByText('Confirmed on staging.').style.whiteSpace).toBe('pre-wrap');
+        overrideIssue = null;
+    });
+    it('v2: the Open full page link is a pill whose hover lives in classes', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        const link = screen.getByRole('link', { name: /Open full page/ });
+        expect(link.style.borderColor).toBe('');
+        expect(link.style.borderRadius).toBe('var(--radius-pill)');
+        expect(link.className).toContain('hover:border-fg');
     });
 });
