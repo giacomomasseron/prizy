@@ -2,17 +2,12 @@ import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { useUpdateIssue } from './hooks';
+import { PRIORITY_LABELS } from './issueMeta';
 import type { Issue, IssuePriority } from '../../lib/types';
 
 export const PRIORITIES: IssuePriority[] = ['no_priority', 'urgent', 'high', 'medium', 'low'];
 
-export const PRIORITY_LABELS: Record<IssuePriority, string> = {
-    no_priority: 'No Priority',
-    urgent: 'Urgent',
-    high: 'High',
-    medium: 'Medium',
-    low: 'Low',
-};
+export { PRIORITY_LABELS };
 
 const triggerStyle: CSSProperties = {
     display: 'inline-flex',

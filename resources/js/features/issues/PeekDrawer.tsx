@@ -17,13 +17,8 @@ import { useMembers } from '../members/hooks';
 import { useMe } from '../../auth/useAuth';
 import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
+import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
 
-const STATUS_LABELS: Record<string, string> = {
-    backlog: 'Backlog', todo: 'Todo', in_progress: 'In Progress', in_review: 'In Review', done: 'Done', cancelled: 'Cancelled',
-};
-const PRIORITY_LABELS: Record<string, string> = {
-    no_priority: 'No priority', urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low',
-};
 const sectionLabel: React.CSSProperties = {
     fontSize: 11, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--fg3)', marginBottom: 10,
 };

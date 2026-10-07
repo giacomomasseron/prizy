@@ -12,6 +12,7 @@ import { useReleases } from '../releases/hooks';
 import { useMembers } from '../members/hooks';
 import { useLabels } from '../labels/hooks';
 import { useCreateIssue } from './hooks';
+import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
 import type { IssueStatus, IssuePriority } from '../../lib/types';
 
 export interface CreateIssueDrawerProps {
@@ -20,21 +21,12 @@ export interface CreateIssueDrawerProps {
     onClose(): void;
 }
 
-// New-issue statuses (Done excluded — you don't file a new issue as done).
-const STATUS_OPTIONS: Array<{ label: string; value: IssueStatus }> = [
-    { label: 'Backlog', value: 'backlog' },
-    { label: 'Todo', value: 'todo' },
-    { label: 'In Progress', value: 'in_progress' },
-    { label: 'In Review', value: 'in_review' },
-];
+// New-issue statuses (Done and Cancelled excluded — you don't file a new issue as done).
+const NEW_ISSUE_STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review'];
+const STATUS_OPTIONS = NEW_ISSUE_STATUSES.map((value) => ({ value, label: STATUS_LABELS[value] }));
 
-const PRIORITY_OPTIONS: Array<{ label: string; value: IssuePriority }> = [
-    { label: 'Urgent', value: 'urgent' },
-    { label: 'High', value: 'high' },
-    { label: 'Medium', value: 'medium' },
-    { label: 'Low', value: 'low' },
-    { label: 'No priority', value: 'no_priority' },
-];
+const NEW_ISSUE_PRIORITIES: IssuePriority[] = ['urgent', 'high', 'medium', 'low', 'no_priority'];
+const PRIORITY_OPTIONS = NEW_ISSUE_PRIORITIES.map((value) => ({ value, label: PRIORITY_LABELS[value] }));
 
 // The design's chip: bordered pill, accent when selected (matches Prizy Create.dc.html).
 function chipStyle(active: boolean): CSSProperties {

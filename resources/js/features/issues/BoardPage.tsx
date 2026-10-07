@@ -8,20 +8,13 @@ import { FilterBar } from '../views/FilterBar';
 import { paramsToFilters } from '../views/filters';
 import { IssuesHeader } from './IssuesHeader';
 import { useIssueDrawers } from './useIssueDrawers';
+import { STATUS_LABELS } from './issueMeta';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
 import { LabelChip } from '../../components/ui/LabelChip';
 import { ProjectPill } from '../../components/ui/ProjectPill';
 import { avatarFor } from '../../lib/avatarFor';
-
-const STATUS_LABELS: Partial<Record<IssueStatus, string>> = {
-    backlog:     'Backlog',
-    todo:        'Todo',
-    in_progress: 'In Progress',
-    in_review:   'In Review',
-    done:        'Done',
-};
 
 interface CardProps {
     issue: Issue;

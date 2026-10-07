@@ -6,17 +6,8 @@ import { FilterBar } from '../views/FilterBar';
 import { paramsToFilters } from '../views/filters';
 import { IssuesHeader } from './IssuesHeader';
 import { IssueRow } from './IssueRow';
+import { STATUS_LABELS } from './issueMeta';
 import { StatusIcon } from '../../components/ui/StatusIcon';
-import type { IssueStatus } from '../../lib/types';
-
-const STATUS_LABELS: Record<IssueStatus, string> = {
-    in_progress: 'In Progress',
-    in_review:   'In Review',
-    todo:        'Todo',
-    backlog:     'Backlog',
-    done:        'Done',
-    cancelled:   'Cancelled',
-};
 
 export default function IssueListPage() {
     const [searchParams] = useSearchParams();

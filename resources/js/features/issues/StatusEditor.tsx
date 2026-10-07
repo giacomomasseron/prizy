@@ -2,16 +2,11 @@ import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { STATUSES, useTransitionStatus } from './hooks';
-import type { Issue, IssueStatus } from '../../lib/types';
+import { STATUS_LABELS } from './issueMeta';
+import type { Issue } from '../../lib/types';
 
-export const STATUS_LABELS: Record<IssueStatus, string> = {
-    backlog: 'Backlog',
-    todo: 'Todo',
-    in_progress: 'In Progress',
-    in_review: 'In Review',
-    done: 'Done',
-    cancelled: 'Cancelled',
-};
+// Re-exported: releases/ReleaseDetailPage imports STATUS_LABELS from here.
+export { STATUS_LABELS };
 
 const triggerStyle: CSSProperties = {
     display: 'inline-flex',
