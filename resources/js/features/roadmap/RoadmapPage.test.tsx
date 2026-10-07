@@ -70,4 +70,26 @@ describe('RoadmapPage', () => {
         // Milestone marker is present
         expect(screen.getByTestId('ms-m1')).toBeInTheDocument();
     });
+
+    it('v2: page header h1 "Roadmap", pill bars without a drop shadow, Unscheduled pills', async () => {
+        renderPage();
+        const h1 = await screen.findByRole('heading', { level: 1, name: 'Roadmap' });
+        expect(h1.closest('header')).not.toBeNull();
+        const bar = await screen.findByTestId('bar-p1');
+        expect(bar.style.borderRadius).toBe('var(--radius-pill)');
+        expect(bar.style.boxShadow).toBe('');
+        const pill = screen.getByRole('link', { name: 'Research spike' });
+        expect(pill.className).toContain('hover:border-fg');
+        expect(pill.style.borderRadius).toBe('var(--radius-pill)');
+    });
+
+    it('v2: with only unscheduled projects there is no empty timeline card', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: [unscheduled] }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+        renderPage();
+        expect(await screen.findByText('Unscheduled')).toBeInTheDocument();
+        expect(screen.queryByTestId(/^bar-/)).toBeNull();
+        expect(screen.queryByText('Jul')).toBeNull();
+    });
 });
