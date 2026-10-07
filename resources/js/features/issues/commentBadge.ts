@@ -13,9 +13,9 @@ export function commentBadge(
 }
 
 export const badgeCss = (variant: CommentBadgeVariant): CSSProperties => ({
-    fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 20, letterSpacing: '.02em',
+    fontSize: 10.5, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', letterSpacing: '.02em',
     color: variant === 'support' ? 'var(--green)' : 'var(--fg2)',
-    background: variant === 'support' ? 'rgba(75,171,102,.14)' : 'var(--hover)',
+    background: variant === 'support' ? 'var(--sup2)' : 'var(--hover)',
 });
 
 export const badgeLabel = (variant: CommentBadgeVariant): string =>

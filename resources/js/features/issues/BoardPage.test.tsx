@@ -116,4 +116,35 @@ describe('BoardPage', () => {
     // justDragged.current = true; the next call to guardedCardClick() returns
     // early and resets the flag. Full @dnd-kit pointer-drag simulation in jsdom
     // is unreliable, so the drag branch is not exercised here.
+
+    it('v2: columns keep a drop area even when empty', () => {
+        mountBoard();
+        expect(screen.getByTestId('col-backlog').style.minHeight).toBe('240px');
+    });
+
+    it('v2: cards hover via classes, not JS handlers', () => {
+        mountBoard();
+        const card = screen.getByTestId('card-c1');
+        fireEvent.mouseEnter(card);
+        expect(card.style.borderColor).toBe('');
+        expect(card.className).toContain('hover:border-fg');
+    });
+
+    it('v2: a card with many labels wraps its bottom row', () => {
+        mountBoard();
+        const bottom = screen.getByTestId('card-c1').lastElementChild as HTMLElement;
+        expect(bottom.style.flexWrap).toBe('wrap');
+    });
+
+    it('v2: column "+" is a round icon button named after the status', () => {
+        mountBoard();
+        expect(screen.getByRole('button', { name: 'Create Todo issue' }).style.borderRadius).toBe('50%');
+    });
+
+    it('v2: the board row stretches columns to full height and never shrinks inside <main>', () => {
+        mountBoard();
+        const row = screen.getByTestId('col-backlog').parentElement as HTMLElement;
+        expect(row.style.alignItems).toBe('');
+        expect(row.style.flexShrink).toBe('0');
+    });
 });

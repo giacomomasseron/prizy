@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -24,7 +24,8 @@ vi.mock('./hooks', () => ({
     }),
     useComments: vi.fn().mockReturnValue({ data: { items: [] } }),
     useActivities: vi.fn().mockReturnValue({ data: { items: [] } }),
-    useAddComment: () => ({ mutateAsync: vi.fn() }),
+    // vi.fn() so per-test overrides via vi.mocked(...).mockReturnValue() work (composer tests)
+    useAddComment: vi.fn().mockReturnValue({ mutateAsync: vi.fn() }),
     useToggleReaction: () => ({ mutate: vi.fn() }),
     useIssueLabels: () => ({ data: { items: [] } }),
     useSetIssueLabels: () => ({ mutateAsync: vi.fn() }),
@@ -315,5 +316,201 @@ describe('PriorityEditor', () => {
         render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
 
         expect(screen.queryByRole('button', { name: /change priority/i })).not.toBeInTheDocument();
+    });
+});
+
+// ── v2 property editors ─────────────────────────────────────────────────────
+
+describe('property editors (v2)', () => {
+    const NAMES = ['Change status', 'Change priority', 'Edit assignee', 'Edit project', 'Edit release', 'Edit labels', 'Edit cycle'];
+
+    it('developer: every trigger fills its row, hovers via classes and ends with a caret', () => {
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        for (const name of NAMES) {
+            const btn = screen.getByRole('button', { name });
+            expect(btn.style.width, name).toBe('100%');
+            expect(btn.style.background, name).toBe('');
+            expect(btn.className, name).toContain('hover:bg-hover');
+            expect(btn.textContent, name).toContain('▾');
+            expect((btn.parentElement as HTMLElement).style.display, name).toBe('block');
+        }
+    });
+
+    it('non-developer: values are plain text with no caret', () => {
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: false, admin_level: 'member' } } as any);
+        const { container } = render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        expect(container.textContent).not.toContain('▾');
+        for (const name of NAMES) expect(screen.queryByRole('button', { name })).toBeNull();
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+    });
+});
+
+// ── v2 issue page ───────────────────────────────────────────────────────────
+
+describe('IssueDetailPage v2 layout', () => {
+    const dev = () => vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+    const renderPage = () => render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+
+    it('breadcrumb: an "Issues" link to / and the identifier — never the raw team id', () => {
+        dev();
+        renderPage();
+        expect(screen.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/');
+        expect(screen.getByText('PRZ-1')).toBeInTheDocument();
+        expect(screen.queryByText(/team1/)).toBeNull();
+    });
+
+    it('shows status and priority pills above the title (plus the editors in the card)', () => {
+        dev();
+        renderPage();
+        expect(screen.getAllByText('Todo')).toHaveLength(2);
+        expect(screen.getAllByText('Medium')).toHaveLength(2);
+    });
+
+    it('developer title: editable heading carrying the highlighter', () => {
+        dev();
+        renderPage();
+        const h = screen.getByRole('heading', { level: 1 });
+        expect(h.getAttribute('contenteditable')).toBe('true');
+        expect(h.className).toContain('hl');
+    });
+
+    it('non-developer title: a plain h1 with a highlighted span; description keeps line breaks', () => {
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: false, admin_level: 'member' } } as any);
+        renderPage();
+        const h = screen.getByRole('heading', { level: 1 });
+        expect(h.tagName).toBe('H1');
+        expect(h.querySelector('span.hl')?.textContent).toBe('Test Issue');
+        expect(screen.getByText('Desc').style.whiteSpace).toBe('pre-wrap');
+        dev();
+    });
+
+    it('clearing the title and leaving it restores the saved title without saving', () => {
+        const spy = vi.fn();
+        vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: spy } as any);
+        dev();
+        renderPage();
+        const title = screen.getByRole('heading', { level: 1 });
+        title.textContent = '';
+        fireEvent.blur(title);
+        expect(title.textContent).toBe('Test Issue');
+        expect(spy).not.toHaveBeenCalled();
+        vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('the activity rail heading reads "Activity"', () => {
+        dev();
+        renderPage();
+        expect(screen.getByRole('heading', { name: 'Activity' })).toBeInTheDocument();
+        expect(screen.queryByText('Activity log')).toBeNull();
+    });
+
+    it('escalation card has the ink border + offset shadow', () => {
+        dev();
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false, isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: { id: 'tk1', ref: 'TKT-9', subject: 'Login is broken', customer: 'Acme Corp', plan: 'Pro' },
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
+        renderPage();
+        const card = screen.getByText(/Escalated from Support/).parentElement as HTMLElement;
+        expect(card.style.boxShadow).toBe('var(--pop-shadow)');
+        expect(card.style.border).toBe('var(--line) solid var(--fg)');
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false, isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: null,
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
+    });
+
+    it('composer: ⌘/Ctrl+Enter posts the trimmed comment; plain Enter adds a newline; blank never posts', async () => {
+        const spy = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: false } as any);
+        dev();
+        const user = userEvent.setup();
+        renderPage();
+        const box = screen.getByLabelText(/Leave a comment/i) as HTMLTextAreaElement;
+        expect(box.tagName).toBe('TEXTAREA');
+
+        await user.type(box, '   ');
+        await user.keyboard('{Control>}{Enter}{/Control}');
+        expect(spy).not.toHaveBeenCalled();
+
+        await user.clear(box);
+        await user.type(box, 'First');
+        await user.keyboard('{Enter}');
+        expect(spy).not.toHaveBeenCalled();
+        await user.keyboard('{Control>}{Enter}{/Control}');
+        expect(spy).toHaveBeenLastCalledWith('First');
+        await waitFor(() => expect(box).toHaveValue(''));
+
+        await user.type(box, 'Second');
+        await user.keyboard('{Meta>}{Enter}{/Meta}');
+        expect(spy).toHaveBeenLastCalledWith('Second');
+        expect(spy).toHaveBeenCalledTimes(2);
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('composer: ⌘/Ctrl+Enter does nothing while a post is in flight', async () => {
+        const spy = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: true } as any);
+        dev();
+        const user = userEvent.setup();
+        renderPage();
+        await user.type(screen.getByLabelText(/Leave a comment/i), 'x');
+        await user.keyboard('{Control>}{Enter}{/Control}');
+        expect(spy).not.toHaveBeenCalled();
+        expect(screen.getByRole('button', { name: /^Comment$/ })).toBeDisabled();
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('composer: a failed post shows an error and keeps the draft', async () => {
+        const spy = vi.fn().mockRejectedValue(new Error('boom'));
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: false } as any);
+        dev();
+        const user = userEvent.setup();
+        renderPage();
+        const box = screen.getByLabelText(/Leave a comment/i);
+        await user.type(box, 'Hello');
+        await user.keyboard('{Control>}{Enter}{/Control}');
+        expect(await screen.findByText('Failed to post comment.')).toBeInTheDocument();
+        expect(box).toHaveValue('Hello');
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('composer: two quick ⌘/Ctrl+Enter presses post once', async () => {
+        const spy = vi.fn(() => new Promise(() => {}));   // stays in flight
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: false } as any);
+        dev();
+        const user = userEvent.setup();
+        renderPage();
+        await user.type(screen.getByLabelText(/Leave a comment/i), 'Once');
+        await user.keyboard('{Control>}{Enter}{/Control}{Control>}{Enter}{/Control}');
+        expect(spy).toHaveBeenCalledTimes(1);
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('title: a changed title saves once; an unchanged one does not', () => {
+        const spy = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: spy } as any);
+        dev();
+        renderPage();
+        const title = screen.getByRole('heading', { level: 1 });
+        fireEvent.blur(title);
+        expect(spy).not.toHaveBeenCalled();
+        title.textContent = 'Renamed issue';
+        fireEvent.blur(title);
+        expect(spy).toHaveBeenCalledWith({ title: 'Renamed issue' });
+        vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: vi.fn() } as any);
     });
 });

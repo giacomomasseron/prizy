@@ -1,24 +1,10 @@
-import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { LabelChip } from '../../components/ui/LabelChip';
 import { useIssueLabels, useSetIssueLabels } from './hooks';
 import { useLabels } from '../labels/hooks';
 import { toggleExclusive } from '../labels/labelGroups';
+import { EDITOR_TRIGGER_CLASSES, caretStyle, editorTriggerStyle, editorValueStyle } from './issueStyles';
 import type { Issue } from '../../lib/types';
-
-const triggerStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    background: 'none',
-    border: 'none',
-    padding: '2px 6px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-};
 
 interface Props {
     issue: Issue;
@@ -37,24 +23,16 @@ export function LabelsEditor({ issue, canDevelop }: Props) {
 
     const display =
         currentItems.length > 0 ? (
-            <span
-                style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}
-            >
+            <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', minWidth: 0 }}>
                 {currentItems.map((l) => (
                     <LabelChip key={l.id} name={l.name} color={l.color} />
                 ))}
             </span>
         ) : (
-            <span style={{ fontSize: 13, color: 'var(--fg3)' }}>No labels</span>
+            <span style={{ color: 'var(--fg3)' }}>No labels</span>
         );
 
-    if (!canDevelop) {
-        return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', fontSize: 13 }}>
-                {display}
-            </span>
-        );
-    }
+    if (!canDevelop) return <span style={editorValueStyle}>{display}</span>;
 
     const all = allLabels.data?.items ?? [];
     const items = all.map((l) => ({
@@ -79,9 +57,11 @@ export function LabelsEditor({ issue, canDevelop }: Props) {
 
     return (
         <Menu
+            fullWidth
             trigger={
-                <button type="button" aria-label="Edit labels" style={triggerStyle}>
+                <button type="button" aria-label="Edit labels" className={EDITOR_TRIGGER_CLASSES} style={editorTriggerStyle}>
                     {display}
+                    <span aria-hidden="true" style={caretStyle}>▾</span>
                 </button>
             }
             items={items}

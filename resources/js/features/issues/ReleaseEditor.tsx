@@ -1,22 +1,8 @@
-import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { useUpdateIssue } from './hooks';
 import { useReleases } from '../releases/hooks';
+import { EDITOR_TRIGGER_CLASSES, caretStyle, editorTriggerStyle, editorValueStyle } from './issueStyles';
 import type { Issue } from '../../lib/types';
-
-const triggerStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    background: 'none',
-    border: 'none',
-    padding: '2px 6px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-};
 
 interface Props {
     issue: Issue;
@@ -31,22 +17,12 @@ export function ReleaseEditor({ issue, canDevelop }: Props) {
     const currentRelease = issue.release ?? null;
 
     const display = currentRelease ? (
-        <span style={{ fontSize: 13, color: 'var(--fg)' }}>
-            ⛴ {currentRelease.name}{currentRelease.shipped_at ? ' ✓' : ''}
-        </span>
+        <span>⛴ {currentRelease.name}{currentRelease.shipped_at ? ' ✓' : ''}</span>
     ) : (
-        <span style={{ fontSize: 13, color: 'var(--fg3)' }}>No release</span>
+        <span style={{ color: 'var(--fg3)' }}>No release</span>
     );
 
-    if (!canDevelop) {
-        return (
-            <span
-                style={{ display: 'inline-flex', alignItems: 'center', fontSize: 13, color: 'var(--fg)' }}
-            >
-                {display}
-            </span>
-        );
-    }
+    if (!canDevelop) return <span style={editorValueStyle}>{display}</span>;
 
     const items = [
         {
@@ -63,9 +39,11 @@ export function ReleaseEditor({ issue, canDevelop }: Props) {
 
     return (
         <Menu
+            fullWidth
             trigger={
-                <button type="button" aria-label="Edit release" style={triggerStyle}>
+                <button type="button" aria-label="Edit release" className={EDITOR_TRIGGER_CLASSES} style={editorTriggerStyle}>
                     {display}
+                    <span aria-hidden="true" style={caretStyle}>▾</span>
                 </button>
             }
             items={items}

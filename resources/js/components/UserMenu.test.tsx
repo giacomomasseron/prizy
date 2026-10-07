@@ -47,4 +47,10 @@ describe('UserMenu', () => {
         await user.click(screen.getByTestId('toolbar-user-menu-trigger'));
         expect(await screen.findByRole('menuitem', { name: 'Integrations' })).toBeInTheDocument();
     });
+
+    it('compact trigger shows a 34px avatar (matches the v2 toolbar controls)', () => {
+        renderMenu('compact');
+        const avatar = screen.getByTestId('toolbar-user-menu-trigger').firstElementChild as HTMLElement;
+        expect(avatar.style.width).toBe('34px');
+    });
 });

@@ -25,7 +25,7 @@ export const sectionBtn: CSSProperties = {
 export const countStyle: CSSProperties = { fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' };
 
 /** Attention badge (unread, counts that need action): yellow pill, ink text. */
-export const hiBadge: CSSProperties = { fontSize: 12, fontWeight: 700, color: '#1d1a14', background: 'var(--hi)', borderRadius: 'var(--radius-pill)', padding: '0 8px' };
+export const hiBadge: CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--on-hi)', background: 'var(--hi)', borderRadius: 'var(--radius-pill)', padding: '0 8px' };
 
 /** Small outlined tag ("Agent", "Public", "Soon"). */
 export const tagBadge: CSSProperties = { fontSize: 10.5, fontWeight: 700, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 'var(--radius-pill)', padding: '0 7px' };

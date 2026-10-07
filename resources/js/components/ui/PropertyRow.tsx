@@ -2,11 +2,12 @@ import type { CSSProperties } from 'react';
 
 export interface PropertyRowProps {
     label: string;
+    /** Label column width in px (default 96). */
+    labelWidth?: number;
     children: React.ReactNode;
 }
 
 const labelStyle: CSSProperties = {
-    width: 96,
     flexShrink: 0,
     fontSize: 13,
     color: 'var(--fg3)',
@@ -21,10 +22,10 @@ const rowStyle: CSSProperties = {
     padding: '9px 12px',
 };
 
-export function PropertyRow({ label, children }: PropertyRowProps) {
+export function PropertyRow({ label, labelWidth = 96, children }: PropertyRowProps) {
     return (
         <div style={rowStyle}>
-            <span style={labelStyle}>{label}</span>
+            <span style={{ ...labelStyle, width: labelWidth }}>{label}</span>
             {children}
         </div>
     );

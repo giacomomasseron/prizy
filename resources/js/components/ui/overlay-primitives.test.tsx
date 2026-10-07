@@ -256,6 +256,15 @@ describe('nested overlay Escape (Drawer under Modal)', () => {
 });
 
 describe('v2 overlay styling', () => {
+  it('Menu wrapper is inline by default; fullWidth stretches it to fill a flex row', () => {
+    const { container, unmount } = render(<Menu trigger={<button type="button">Open</button>} items={[]} />);
+    expect((container.firstElementChild as HTMLElement).style.display).toBe('inline-block');
+    unmount();
+    const r = render(<Menu fullWidth trigger={<button type="button">Open</button>} items={[]} />);
+    const wrap = r.container.firstElementChild as HTMLElement;
+    expect(wrap.style.display).toBe('block');
+    expect(wrap.style.flex).toContain('1');
+  });
   it('Menu popover has the ink border + offset shadow; items carry hover/focus classes and no inline background', async () => {
     const user = userEvent.setup();
     render(<Menu trigger={<button type="button">Open</button>} items={[{ key: 'a', label: 'Alpha', onActivate: () => {} }]} />);

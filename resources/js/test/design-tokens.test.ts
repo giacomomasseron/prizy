@@ -23,7 +23,7 @@ function propsOf(selector: string): string[][] {
 }
 
 const PALETTE = ['--bg', '--bg2', '--panel', '--border', '--border2', '--fg', '--fg2', '--fg3', '--hover',
-    '--accent', '--accent2', '--on-accent', '--hi', '--red', '--amber', '--green', '--blue', '--teal',
+    '--accent', '--accent2', '--on-accent', '--hi', '--on-hi', '--red', '--amber', '--green', '--blue', '--teal',
     '--sup', '--sup2', '--on-sup', '--note', '--note2', '--backdrop'];
 
 describe('design tokens (app.css)', () => {
@@ -52,6 +52,11 @@ describe('design tokens (app.css)', () => {
             expect(css).toContain(t);
         }
     });
+    it('--on-hi is ink in both themes (the highlighter is yellow in both) and has a utility', () => {
+        expect(css.match(/--on-hi:#1d1a14;/g)).toHaveLength(2);
+        expect(css).toContain('--color-on-hi: var(--on-hi)');
+    });
+
     it('maps colours and fonts into @theme inline', () => {
         expect(css).toContain('@theme inline');
         for (const t of ['--color-bg: var(--bg)', '--color-accent: var(--accent)', '--color-hover: var(--hover)', '--color-hi: var(--hi)', '--color-on-accent: var(--on-accent)', '--color-on-sup: var(--on-sup)']) {

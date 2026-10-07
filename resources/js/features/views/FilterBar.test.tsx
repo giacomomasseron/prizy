@@ -88,3 +88,38 @@ describe('FilterBar filters', () => {
         expect(screen.getByTestId('qs').textContent).not.toContain('status=todo');
     });
 });
+
+describe('FilterBar v2 styling', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('active filter pills use the highlighter classes (no inline fill)', () => {
+        renderBar('/?status=todo');
+        const pill = screen.getByRole('button', { name: 'Remove Status filter' }).parentElement as HTMLElement;
+        expect(pill.className).toContain('bg-hi');
+        expect(pill.className).toContain('text-on-hi');
+        expect(pill.style.background).toBe('');
+    });
+
+    it('toolbar pills and popover items hover via classes; popovers are ink cards', async () => {
+        renderBar('/');
+        const add = screen.getByRole('button', { name: '+ Filter' });
+        expect(add.style.borderColor).toBe('');
+        expect(add.className).toContain('hover:border-fg');
+        await userEvent.click(add);
+        const item = screen.getByRole('menuitem', { name: 'Status' });
+        expect(item.style.background).toBe('');
+        expect(item.className).toContain('hover:bg-hover');
+        expect(screen.getByRole('menu').style.boxShadow).toBe('var(--pop-shadow)');
+    });
+
+    it('the Sort pill shows a focus border while its select is focused', () => {
+        renderBar('/');
+        const label = screen.getByLabelText('Sort issues').closest('label') as HTMLElement;
+        expect(label.className).toContain('focus-within:border-fg');
+    });
+});

@@ -26,45 +26,25 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
     return (
         <div
             data-testid="issue-row"
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 11,
-                padding: '8px 22px',
-                borderBottom: '1px solid var(--border)',
-                cursor: 'pointer',
-                background: 'var(--bg)',
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--hover)'; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = 'var(--bg)'; }}
+            // Background, hover and the separator are classes (an inline background would beat
+            // `hover:`); the last row in a group card drops its separator.
+            className="border-b border-border last:border-b-0 bg-transparent hover:bg-hover"
+            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', cursor: 'pointer' }}
             onClick={() => onPeek(issue.id)}
         >
             <PriorityIcon priority={issue.priority} />
             <StatusIcon status={issue.status} size={14} />
 
             {/* Identifier */}
-            <span
-                style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11.5,
-                    color: 'var(--fg3)',
-                    width: 56,
-                    flexShrink: 0,
-                }}
-            >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
                 {issue.identifier ?? issue.id.slice(0, 6).toUpperCase()}
             </span>
 
             {/* Title */}
             <span
                 style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontSize: 13,
-                    color: 'var(--fg)',
+                    flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    fontSize: 15, fontWeight: 600, color: 'var(--fg)',
                 }}
             >
                 {issue.title}
@@ -72,24 +52,13 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
 
             {/* Right cluster */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                {/* support badge: hidden — render null */}
-                {null}
-
                 {(issue.labels ?? []).map((l) => (
                     <LabelChip key={l.id} name={l.name} color={l.color} />
                 ))}
 
                 {project && <ProjectPill name={project.name} color={project.color} />}
 
-                <span
-                    style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 11,
-                        color: 'var(--fg3)',
-                        width: 38,
-                        textAlign: 'right',
-                    }}
-                >
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)', width: 38, textAlign: 'right' }}>
                     {formatRelativeShort(issue.updated_at)}
                 </span>
 

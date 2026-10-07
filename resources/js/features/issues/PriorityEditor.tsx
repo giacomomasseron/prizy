@@ -1,32 +1,13 @@
-import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { useUpdateIssue } from './hooks';
+import { PRIORITY_LABELS } from './issueMeta';
+import { EDITOR_TRIGGER_CLASSES, caretStyle, editorTriggerStyle, editorValueStyle } from './issueStyles';
 import type { Issue, IssuePriority } from '../../lib/types';
 
 export const PRIORITIES: IssuePriority[] = ['no_priority', 'urgent', 'high', 'medium', 'low'];
 
-export const PRIORITY_LABELS: Record<IssuePriority, string> = {
-    no_priority: 'No Priority',
-    urgent: 'Urgent',
-    high: 'High',
-    medium: 'Medium',
-    low: 'Low',
-};
-
-const triggerStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    background: 'none',
-    border: 'none',
-    padding: '2px 6px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-};
+export { PRIORITY_LABELS };
 
 interface Props {
     issue: Issue;
@@ -35,22 +16,22 @@ interface Props {
 
 export function PriorityEditor({ issue, canDevelop }: Props) {
     const update = useUpdateIssue(issue.id);
+    const display = (
+        <>
+            <PriorityIcon priority={issue.priority} />
+            {PRIORITY_LABELS[issue.priority]}
+        </>
+    );
 
-    if (!canDevelop) {
-        return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--fg)' }}>
-                <PriorityIcon priority={issue.priority} />
-                {PRIORITY_LABELS[issue.priority]}
-            </span>
-        );
-    }
+    if (!canDevelop) return <span style={editorValueStyle}>{display}</span>;
 
     return (
         <Menu
+            fullWidth
             trigger={
-                <button type="button" aria-label="Change priority" style={triggerStyle}>
-                    <PriorityIcon priority={issue.priority} />
-                    {PRIORITY_LABELS[issue.priority]}
+                <button type="button" aria-label="Change priority" className={EDITOR_TRIGGER_CLASSES} style={editorTriggerStyle}>
+                    {display}
+                    <span aria-hidden="true" style={caretStyle}>▾</span>
                 </button>
             }
             items={PRIORITIES.map((p) => ({

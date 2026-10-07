@@ -41,7 +41,7 @@ export function UserMenu({ variant = 'full' }: UserMenuProps) {
     ];
 
     const avatar = (
-        <Avatar initials={initials || undefined} color={initials ? avatarColor : undefined} size={variant === 'full' ? 34 : 26} title={userName || 'Me'} />
+        <Avatar initials={initials || undefined} color={initials ? avatarColor : undefined} size={34} title={userName || 'Me'} />
     );
 
     if (variant === 'compact') {

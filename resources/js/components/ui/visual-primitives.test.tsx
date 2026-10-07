@@ -4,6 +4,7 @@ import { Avatar } from './Avatar';
 import { AvatarStack } from './AvatarStack';
 import { LabelChip } from './LabelChip';
 import { PriorityIcon } from './PriorityIcon';
+import { PropertyRow } from './PropertyRow';
 import { ProjectPill } from './ProjectPill';
 import { StatusIcon } from './StatusIcon';
 import { TeamTile } from './TeamTile';
@@ -104,11 +105,11 @@ describe('PriorityIcon', () => {
   it('high priority has more filled bars than low priority', () => {
     const { container: highContainer } = render(<PriorityIcon priority="high" />);
     const highBars = Array.from(highContainer.querySelectorAll('[aria-label="high"] > span')) as HTMLElement[];
-    const highFilled = highBars.filter(b => b.style.background === 'var(--fg)');
+    const highFilled = highBars.filter(b => b.style.background === 'var(--prio-bar, var(--fg))');
 
     const { container: lowContainer } = render(<PriorityIcon priority="low" />);
     const lowBars = Array.from(lowContainer.querySelectorAll('[aria-label="low"] > span')) as HTMLElement[];
-    const lowFilled = lowBars.filter(b => b.style.background === 'var(--fg)');
+    const lowFilled = lowBars.filter(b => b.style.background === 'var(--prio-bar, var(--fg))');
 
     expect(highFilled).toHaveLength(3);
     expect(lowFilled).toHaveLength(1);
@@ -134,5 +135,14 @@ describe('TeamTile', () => {
   it('renders identifier', () => {
     render(<TeamTile identifier="PLT" color="#6d69f2" size={34} />);
     expect(screen.getByText('PLT')).toBeInTheDocument();
+  });
+});
+
+describe('PropertyRow', () => {
+  it('defaults the label column to 96px and accepts a labelWidth', () => {
+    const { rerender } = render(<PropertyRow label="Status"><span>v</span></PropertyRow>);
+    expect(screen.getByText('Status').style.width).toBe('96px');
+    rerender(<PropertyRow label="Status" labelWidth={80}><span>v</span></PropertyRow>);
+    expect(screen.getByText('Status').style.width).toBe('80px');
   });
 });
