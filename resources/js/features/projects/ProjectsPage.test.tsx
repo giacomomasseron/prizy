@@ -208,4 +208,36 @@ describe('ProjectsPage', () => {
         const calledProjects = fetchMock.mock.calls.map((c) => c[0] as string).find((u) => u.includes('/projects'));
         expect(calledProjects).toMatch(/filter(\[|%5B)team_id/);
     });
+
+    it('v2: a page header with the "All projects" h1 and a pill New project button', async () => {
+        renderPage([makeProject()]);
+        const h1 = await screen.findByRole('heading', { level: 1, name: 'All projects' });
+        expect(h1.closest('header')).not.toBeNull();
+        const btn = await screen.findByRole('button', { name: /New project/i });
+        expect(btn.className).toContain('bg-fg');
+    });
+
+    it('v2: rows hover via classes; the delete × turns red on hover', async () => {
+        renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })]);
+        const row = await screen.findByTestId('project-row-p1');
+        expect(row.style.background).toBe('');
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.className).toContain('last:border-b-0');
+        const x = screen.getByRole('button', { name: /Delete Alpha Project/i });
+        expect(x.style.color).toBe('');
+        expect(x.className).toContain('hover:text-red');
+    });
+
+    it('v2: a long project name truncates instead of breaking the row', async () => {
+        renderPage([makeProject({ id: 'p1', name: 'A very long project name that keeps going and going' })]);
+        const name = await screen.findByText('A very long project name that keeps going and going');
+        expect(name.style.textOverflow).toBe('ellipsis');
+        expect(name.style.whiteSpace).toBe('nowrap');
+    });
+
+    it('v2: the empty state is the dashed v2 card', async () => {
+        renderPage([]);
+        const empty = await screen.findByText('No projects yet.');
+        expect(empty.style.border).toBe('var(--line) dashed var(--border2)');
+    });
 });
