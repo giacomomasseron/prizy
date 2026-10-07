@@ -2,11 +2,14 @@ import { useState, type CSSProperties } from 'react';
 
 export const REACTION_EMOJIS = ['👀', '🎯', '🙏', '💯', '✅'];
 
-const pill = (active: boolean): CSSProperties => ({
-    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 20,
-    border: `1px solid ${active ? 'var(--accent)' : 'var(--border2)'}`, background: 'var(--bg2)',
-    fontSize: 11.5, color: 'var(--fg2)', cursor: 'pointer', fontFamily: 'inherit',
-});
+// Border width/style inline; colours are classes so the hover border works.
+const PILL: CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px',
+    borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
+    fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+};
+const pillClasses = (reacted: boolean) =>
+    reacted ? 'border-fg bg-hi text-on-hi' : 'border-border bg-bg2 text-fg2 hover:border-fg';
 
 export function CommentReactions({ reactions, onToggle }: {
     reactions: { emoji: string; count: number; reacted: boolean }[];
@@ -14,19 +17,19 @@ export function CommentReactions({ reactions, onToggle }: {
 }) {
     const [open, setOpen] = useState(false);
     return (
-        <div style={{ display: 'flex', gap: 6, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 6, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
             {reactions.map((r) => (
-                <button key={r.emoji} type="button" onClick={() => onToggle(r.emoji)} style={pill(r.reacted)}>
+                <button key={r.emoji} type="button" onClick={() => onToggle(r.emoji)} className={pillClasses(r.reacted)} style={PILL}>
                     {r.emoji} {r.count}
                 </button>
             ))}
             <button type="button" aria-label="Add reaction" onClick={() => setOpen((o) => !o)}
-                style={{ ...pill(false), color: 'var(--fg3)', padding: '2px 7px' }}>＋</button>
+                className={pillClasses(false)} style={{ ...PILL, padding: '3px 9px' }}>＋</button>
             {open && (
                 <span style={{ display: 'inline-flex', gap: 4 }}>
                     {REACTION_EMOJIS.map((e) => (
                         <button key={e} type="button" aria-label={e} onClick={() => { onToggle(e); setOpen(false); }}
-                            style={{ ...pill(false), padding: '2px 7px' }}>{e}</button>
+                            className={pillClasses(false)} style={{ ...PILL, padding: '3px 9px' }}>{e}</button>
                     ))}
                 </span>
             )}

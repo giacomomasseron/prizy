@@ -16,4 +16,14 @@ describe('CommentReactions', () => {
         fireEvent.click(screen.getByRole('button', { name: '🎯' }));
         expect(onToggle).toHaveBeenCalledWith('🎯');
     });
+
+    it('v2: reacted pills use the highlighter; the rest hover via classes', () => {
+        render(<CommentReactions reactions={[{ emoji: '👀', count: 3, reacted: true }, { emoji: '🎯', count: 1, reacted: false }]} onToggle={vi.fn()} />);
+        const mine = screen.getByRole('button', { name: /👀 3/ });
+        const other = screen.getByRole('button', { name: /🎯 1/ });
+        expect(mine.className).toContain('bg-hi');
+        expect(mine.style.borderColor).toBe('');
+        expect(other.className).toContain('hover:border-fg');
+        expect(other.style.background).toBe('');
+    });
 });
