@@ -27,4 +27,19 @@ describe('ProjectWorkspace', () => {
         renderWorkspace('/projects/p1', false);
         expect(await screen.findByText('Project not found.')).toBeInTheDocument();
     });
+    it('v2: a 64px top bar whose left padding clears the collapsed-sidebar button; content left-aligned', async () => {
+        renderWorkspace('/projects/p1/issues');
+        await screen.findByText('ISSUES VIEW');
+        const bar = screen.getByRole('link', { name: 'Projects' }).parentElement as HTMLElement;
+        expect(bar.style.height).toBe('64px');
+        expect(bar.style.padding).toContain('var(--nav-inset, 0px)');
+        const content = screen.getByText('ISSUES VIEW').parentElement as HTMLElement;
+        expect(content.style.maxWidth).toBe('1120px');
+        expect(content.style.margin).toBe('');
+    });
+    it('v2: no breadcrumb piece is a heading', async () => {
+        renderWorkspace('/projects/p1/issues');
+        await screen.findByText('ISSUES VIEW');
+        expect(screen.queryByRole('heading')).toBeNull();
+    });
 });

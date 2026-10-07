@@ -3,6 +3,8 @@ import { useProject, useProjects, useMilestones } from './hooks';
 import { useIssues } from '../issues/hooks';
 import { SidebarFooter } from '../../components/SidebarFooter';
 import { NAV_ROW_HOVER, countStyle, navRow, sectionLabel } from '../../components/sidebarStyles';
+import { PROJECT_STATUS } from './projectStatus';
+import { ProjectBadge } from './ProjectBadge';
 
 export function ProjectSidebar({ projectId }: { projectId: string }) {
     const project = useProject(projectId);
@@ -16,18 +18,22 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
 
     return (
         <>
-            <Link to="/projects" style={{ ...navRow(false), margin: '0 0 6px', width: 'auto', fontSize: 13 }} className={NAV_ROW_HOVER}>
-                <span style={{ fontSize: 14 }}>←</span> All projects
+            <Link
+                to="/projects"
+                className="border-border2 text-fg2 hover:border-fg hover:text-fg"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 7, alignSelf: 'flex-start', margin: '0 6px 10px', padding: '6px 12px', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', fontSize: 13, fontWeight: 700, textDecoration: 'none' }}
+            >
+                <span aria-hidden="true">←</span> All projects
             </Link>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '6px 16px 14px' }}>
-                <span style={{ width: 32, height: 32, borderRadius: 'var(--radius-row)', background: p?.color ?? 'var(--border2)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 14, fontWeight: 700, flexShrink: 0 }}>{(p?.name ?? '?').slice(0, 1).toUpperCase()}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 12px 16px' }}>
+                <ProjectBadge name={p?.name ?? ''} color={p?.color} size={36} />
                 <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 16, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p?.name ?? 'Loading…'}</div>
-                    <div style={{ fontSize: 11, color: 'var(--fg3)' }}>Project</div>
+                    {/* A div, not a heading: the Overview h1 must be the only heading with the name. */}
+                    <div style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 17, letterSpacing: '-.02em', lineHeight: 1.15, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p?.name ?? 'Loading…'}</div>
+                    <div style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg3)' }}>{p ? (PROJECT_STATUS[p.status]?.label ?? '') : ''}</div>
                 </div>
             </div>
-            <div style={{ height: 1, background: 'var(--border)', margin: '0 12px 8px' }} />
 
             <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <NavLink end to={`/projects/${projectId}`} style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
