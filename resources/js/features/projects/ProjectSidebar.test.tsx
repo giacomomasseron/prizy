@@ -38,4 +38,20 @@ describe('ProjectSidebar', () => {
         const issues = await screen.findByRole('link', { name: /^Issues/ });
         expect(issues).toHaveAttribute('aria-current', 'page');
     });
+    it('v2: the back link is an outlined pill whose hover lives in classes', async () => {
+        renderSidebar();
+        const back = await screen.findByRole('link', { name: /All projects/ });
+        expect(back.style.borderRadius).toBe('var(--radius-pill)');
+        expect(back.style.borderColor).toBe('');
+        expect(back.className).toContain('hover:border-fg');
+    });
+    it('v2: the identity shows a round badge and the project status instead of "Project"', async () => {
+        renderSidebar();
+        expect(await screen.findByText('In Progress')).toBeInTheDocument();
+        expect(screen.queryByText('Project')).toBeNull();
+        const name = screen.getByText('Escalation Engine', { selector: 'div' });
+        const badge = name.parentElement!.previousElementSibling as HTMLElement;
+        expect(badge.style.borderRadius).toBe('50%');
+        expect(badge.textContent).toBe('E');
+    });
 });

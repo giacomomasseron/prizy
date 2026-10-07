@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -20,12 +20,12 @@ const ISSUES: Issue[] = [
 ];
 const ME = { id: 'u1', workspace_id: 'w1', name: 'Alice', email: 'a@e.com', admin_level: 'owner', is_developer: true, is_agent: false, email_digest_frequency: 'off' };
 
-function stubFetch(opts: { issues?: Issue[]; milestones?: Milestone[]; me?: object } = {}) {
+function stubFetch(opts: { issues?: Issue[]; milestones?: Milestone[]; me?: object; project?: Project } = {}) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/v1/me')) return j({ data: opts.me ?? ME });
         if (url.includes('/milestones')) return j({ data: opts.milestones ?? MILESTONES, links: { next: null, prev: null } });
         if (url.includes('/issues')) return j({ data: opts.issues ?? ISSUES, links: { next: null, prev: null } });
-        if (url.includes('/projects/')) return j({ data: PROJECT });
+        if (url.includes('/projects/')) return j({ data: opts.project ?? PROJECT });
         return j({ data: {} });
     }));
 }
@@ -71,5 +71,41 @@ describe('ProjectOverview', () => {
         await screen.findByRole('heading', { name: 'Escalation Engine' });
         expect(screen.queryByRole('button', { name: 'New milestone' })).toBeNull();
         expect(screen.queryByRole('button', { name: /^Delete / })).toBeNull();
+    });
+
+    it('v2: highlighted 40px name, display-font percent, green done segment', async () => {
+        renderView();
+        const h1 = await screen.findByRole('heading', { level: 1, name: 'Escalation Engine' });
+        expect(h1.querySelector('span.hl')?.textContent).toBe('Escalation Engine');
+        expect(h1.style.fontSize).toBe('40px');
+        expect(screen.getByText('50%').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByTestId('seg-done').style.background).toBe('var(--green)');
+    });
+
+    it('v2: Progress and Milestones are card headings; meta values sit in pills', async () => {
+        renderView();
+        expect(await screen.findByRole('heading', { level: 2, name: 'Progress' })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 2, name: 'Milestones' })).toBeInTheDocument();
+        const lead = screen.getByText('Lead').parentElement as HTMLElement;
+        expect(lead.style.borderRadius).toBe('var(--radius-pill)');
+    });
+
+    it('v2: milestone tags use tokens and the form uses the shared pill controls', async () => {
+        renderView();
+        const tags = await screen.findAllByTestId('milestone-tag');
+        expect(tags.find((t) => t.textContent === 'Done')!.style.background).toBe('var(--sup2)');
+        fireEvent.click(screen.getByRole('button', { name: 'New milestone' }));
+        expect(screen.getByLabelText('Milestone name').className).toContain('focus:border-fg');
+        expect(screen.getByRole('button', { name: 'Add' }).className).toContain('bg-fg');
+    });
+
+    it('v2: a sparse project shows "No lead", dashes for dates, and no members or description', async () => {
+        renderView({ project: { ...PROJECT, description: null, lead: null, lead_id: null, start_date: null, target_date: null }, issues: [], milestones: [] });
+        await screen.findByRole('heading', { level: 1, name: 'Escalation Engine' });
+        expect(screen.getByText('No lead')).toBeInTheDocument();
+        expect(screen.getAllByText('—')).toHaveLength(2);
+        expect(screen.queryByTestId('members-stack')).toBeNull();
+        expect(screen.queryByText('Handles escalations automatically.')).toBeNull();
+        expect(screen.getByTestId('progress-empty')).toBeInTheDocument();
     });
 });
