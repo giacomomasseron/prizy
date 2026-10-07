@@ -68,6 +68,15 @@ describe('design tokens (app.css)', () => {
     });
 });
 
+describe('login aside', () => {
+    it('pins dark text tokens inside the login aside (dark backdrop in both themes)', () => {
+        const body = [...css.matchAll(/\.login-aside\s*\{([^}]*)\}/g)].map((m) => m[1]).find((b) => b.includes('--fg:'));
+        expect(body).toBeDefined();
+        expect(body).toContain('--fg:#f6f0e2');
+        expect(body).toMatch(/color:\s*var\(--fg\)/);
+    });
+});
+
 describe('vite.config.js fonts', () => {
     it('self-hosts Figtree, Bricolage Grotesque and JetBrains Mono via bunny()', () => {
         expect(vite).toContain("bunny('Figtree'");

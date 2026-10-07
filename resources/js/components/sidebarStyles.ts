@@ -18,7 +18,7 @@ export function navRow(active: boolean): CSSProperties {
 export const sectionLabel: CSSProperties = { fontSize: 12.5, fontWeight: 700, color: 'var(--fg3)' };
 
 export const sectionBtn: CSSProperties = {
-    ...sectionLabel, border: 'none', background: 'none', cursor: 'pointer', padding: 0,
+    fontSize: 12.5, fontWeight: 700, border: 'none', background: 'none', cursor: 'pointer', padding: 0,
     display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: 'inherit',
 };
 

@@ -14,7 +14,7 @@ export default function TeamsPage() {
                 <h1 className="text-xl font-semibold">Teams</h1>
                 {canManage && (
                     <button type="button" onClick={() => navigate('/settings/teams')}
-                        className="rounded bg-accent px-3 py-1 text-white text-sm">New team</button>
+                        className="rounded bg-accent px-3 py-1 text-on-accent text-sm">New team</button>
                 )}
             </div>
 

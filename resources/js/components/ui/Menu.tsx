@@ -1,3 +1,4 @@
+import { FIELD_CLASSES } from './Input';
 import { cloneElement, useEffect, useRef, useState, type ReactElement } from 'react';
 
 export interface MenuItem {
@@ -133,9 +134,10 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                             placeholder={searchPlaceholder}
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
+                            className={FIELD_CLASSES}
                             style={{
                                 width: '100%', boxSizing: 'border-box', margin: '2px 0 6px',
-                                border: 'var(--line) solid var(--border2)', background: 'var(--bg)', borderRadius: 'var(--radius-pill)',
+                                background: 'var(--bg)', borderRadius: 'var(--radius-pill)',
                                 padding: '7px 12px', color: 'var(--fg)', fontSize: 13.5, fontFamily: 'inherit', outline: 'none',
                             }}
                         />
@@ -174,7 +176,7 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                                 opacity: item.disabled ? 0.5 : 1,
                                 outline: 'none',
                             }}
-                            className="bg-transparent hover:bg-hover focus:bg-accent2"
+                            className="bg-transparent hover:bg-hover focus-visible:bg-accent2"
                             aria-label={item.label}
                         >
                             {item.icon && (

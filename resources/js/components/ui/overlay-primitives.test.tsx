@@ -267,7 +267,8 @@ describe('v2 overlay styling', () => {
     const item = screen.getByRole('menuitem', { name: 'Alpha' }) as HTMLElement;
     expect(item.style.background).toBe('');
     expect(item.className).toContain('hover:bg-hover');
-    expect(item.className).toContain('focus:bg-accent2');
+    expect(item.className).toContain('focus-visible:bg-accent2');
+    expect(item.className).not.toContain(' focus:bg-accent2');
   });
   it('Modal panel uses the modal radius, ink border and warm backdrop', () => {
     render(<Modal open onClose={() => {}} label="M"><p>x</p></Modal>);

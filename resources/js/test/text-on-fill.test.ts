@@ -28,4 +28,15 @@ describe('text on coloured fills', () => {
         }
         expect(offenders).toEqual([]);
     });
+
+    it('no className pairs an accent/sup/red fill class with text-white (use text-on-accent)', () => {
+        const PAIR = /\bbg-(accent|sup|red)\b[^"'`]*\btext-white\b|\btext-white\b[^"'`]*\bbg-(accent|sup|red)\b/;
+        const offenders: string[] = [];
+        for (const file of sourceFiles(ROOT)) {
+            readFileSync(file, 'utf8').split('\n').forEach((l, i) => {
+                if (PAIR.test(l)) offenders.push(`${relative(ROOT, file)}:${i + 1}`);
+            });
+        }
+        expect(offenders).toEqual([]);
+    });
 });

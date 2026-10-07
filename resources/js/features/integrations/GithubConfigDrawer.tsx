@@ -46,7 +46,7 @@ export function GithubConfigDrawer({ open, onClose }: { open: boolean; onClose()
                 </label>
                 <p style={{ marginTop: 12, fontSize: 12, color: 'var(--fg3)' }}>Disconnecting removes the stored config; reconnecting generates a new webhook URL to re-paste in GitHub.</p>
                 <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={onSaveGithub} className="rounded bg-accent px-3 py-1 text-sm text-white">Save GitHub</button>
+                    <button type="button" onClick={onSaveGithub} className="rounded bg-accent px-3 py-1 text-sm text-on-accent">Save GitHub</button>
                     {ghMsg && <span className="text-sm text-green">{ghMsg}</span>}
                     {ghError && <span className="text-sm text-red">{ghError}</span>}
                 </div>

@@ -31,6 +31,9 @@ describe('GlobalSidebar', () => {
         // tracker-gated block commits, instead of racing the still-loading first render.
         expect(await screen.findByText('Workspace')).toBeInTheDocument();
         expect(screen.getByText('My Teams')).toBeInTheDocument();
+        const wsBtn = screen.getByRole('button', { name: /Workspace/ });
+        expect(wsBtn.style.color).toBe('');
+        expect(wsBtn.className).toContain('hover:text-fg2');
         expect(screen.getByRole('link', { name: /My Issues/ })).toBeInTheDocument();
         // Scoped to the Workspace <nav> — "Issues" is also a substring of "My Issues" (Support bridge), so an
         // unscoped query is ambiguous; the Workspace section's own <nav> disambiguates it.

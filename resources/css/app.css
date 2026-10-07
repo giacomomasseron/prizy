@@ -73,6 +73,8 @@ html, body { background: var(--bg); color: var(--fg); }
 .login-row   { animation: login-row 3.4s ease-in-out infinite; }
 .login-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent2); }
 .login-submit:hover:not(:disabled) { filter: brightness(1.08); }
+/* The decorative aside keeps a dark backdrop in both themes, so pin dark-theme text tokens inside it. */
+.login-aside { --fg:#f6f0e2; --fg2:#cbc2ae; --fg3:#a69d89; --border:#332e25; --border2:#4a4335; color: var(--fg); }
 @media (max-width: 900px) { .login-aside { display: none; } }
 
 /* KB article editor preview ("As customers see it") — mirrors the public
