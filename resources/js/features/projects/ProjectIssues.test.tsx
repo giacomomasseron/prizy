@@ -66,4 +66,28 @@ describe('ProjectIssues', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Active' }));
         expect(await screen.findByText('No issues match these filters.')).toBeInTheDocument();
     });
+
+    it('v2: highlighted title, ink chips, and group labels that are not headings', async () => {
+        renderView();
+        await screen.findAllByTestId('issue-row');
+        const h1 = screen.getByRole('heading', { level: 1, name: 'Issues' });
+        expect(h1.querySelector('span.hl')).not.toBeNull();
+        expect(screen.getAllByRole('heading')).toHaveLength(1);
+        expect(screen.getAllByRole('button', { name: 'All' })[0].className).toContain('bg-fg');
+        const active = screen.getByRole('button', { name: 'Active' });
+        expect(active.className).toContain('hover:border-fg');
+        expect(active.style.background).toBe('');
+    });
+
+    it('v2: groups sit in rounded cards', async () => {
+        renderView();
+        const row = (await screen.findAllByTestId('issue-row'))[0];
+        expect((row.parentElement as HTMLElement).style.borderRadius).toBe('18px');
+    });
+
+    it('v2: a project with no issues shows the empty state and no group cards', async () => {
+        renderView([]);
+        expect(await screen.findByText('No issues match these filters.')).toBeInTheDocument();
+        expect(screen.queryByTestId('issue-row')).toBeNull();
+    });
 });
