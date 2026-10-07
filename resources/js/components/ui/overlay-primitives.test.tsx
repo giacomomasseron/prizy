@@ -254,3 +254,32 @@ describe('nested overlay Escape (Drawer under Modal)', () => {
         expect(drawerClose).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('v2 overlay styling', () => {
+  it('Menu popover has the ink border + offset shadow; items carry hover/focus classes and no inline background', async () => {
+    const user = userEvent.setup();
+    render(<Menu trigger={<button type="button">Open</button>} items={[{ key: 'a', label: 'Alpha', onActivate: () => {} }]} />);
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    const menu = screen.getByRole('menu') as HTMLElement;
+    expect(menu.style.border).toBe('var(--line) solid var(--fg)');
+    expect(menu.style.boxShadow).toBe('var(--pop-shadow)');
+    expect(menu.style.borderRadius).toBe('var(--radius-pop)');
+    const item = screen.getByRole('menuitem', { name: 'Alpha' }) as HTMLElement;
+    expect(item.style.background).toBe('');
+    expect(item.className).toContain('hover:bg-hover');
+    expect(item.className).toContain('focus:bg-accent2');
+  });
+  it('Modal panel uses the modal radius, ink border and warm backdrop', () => {
+    render(<Modal open onClose={() => {}} label="M"><p>x</p></Modal>);
+    const panel = screen.getByRole('dialog', { name: 'M' }) as HTMLElement;
+    expect(panel.style.borderRadius).toBe('var(--radius-modal)');
+    expect(panel.style.border).toBe('var(--line) solid var(--fg)');
+    expect((panel.parentElement as HTMLElement).style.background).toBe('var(--backdrop)');
+  });
+  it('Drawer defaults to 520px and uses the warm backdrop', () => {
+    render(<Drawer open onClose={() => {}} label="D"><p>x</p></Drawer>);
+    const panel = screen.getByRole('dialog', { name: 'D' }) as HTMLElement;
+    expect(panel.style.width).toBe('520px');
+    expect((panel.previousElementSibling as HTMLElement).style.background).toBe('var(--backdrop)');
+  });
+});

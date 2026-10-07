@@ -18,7 +18,7 @@ export function Modal({ open, onClose, children, width = 520, label }: ModalProp
     if (!open) return null;
 
     return (
-        <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,.5)', animation: 'prizy-fade .12s ease' }}>
+        <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--backdrop)', animation: 'prizy-fade .12s ease' }}>
             <div
                 ref={panelRef}
                 role="dialog"
@@ -26,7 +26,7 @@ export function Modal({ open, onClose, children, width = 520, label }: ModalProp
                 aria-label={label ?? 'Dialog'}
                 tabIndex={-1}
                 onClick={(e) => e.stopPropagation()}
-                style={{ width, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', outline: 'none', background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 15, boxShadow: '0 24px 64px rgba(0,0,0,.5)', animation: 'prizy-pop .16s cubic-bezier(.2,.8,.2,1)' }}
+                style={{ width, maxWidth: '92vw', maxHeight: '90vh', overflowY: 'auto', outline: 'none', background: 'var(--panel)', border: 'var(--line) solid var(--fg)', borderRadius: 'var(--radius-modal)', boxShadow: '5px 5px 0 var(--fg)', animation: 'prizy-pop .16s cubic-bezier(.2,.8,.2,1)' }}
             >
                 {children}
             </div>

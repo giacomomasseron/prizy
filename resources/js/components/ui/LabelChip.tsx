@@ -9,18 +9,19 @@ export function LabelChip({ name, color }: LabelChipProps) {
             style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 5,
-                padding: '2px 8px',
-                border: '1px solid var(--border2)',
-                borderRadius: 20,
-                fontSize: 11,
+                gap: 6,
+                padding: '2px 10px',
+                border: 'var(--line) solid var(--border)',
+                borderRadius: 'var(--radius-pill)',
+                fontSize: 12.5,
+                fontWeight: 700,
                 color: 'var(--fg2)',
             }}
         >
             <span
                 style={{
-                    width: 6,
-                    height: 6,
+                    width: 7,
+                    height: 7,
                     borderRadius: '50%',
                     background: color,
                     flexShrink: 0,

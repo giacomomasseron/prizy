@@ -74,12 +74,12 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
     const popoverStyle: React.CSSProperties = {
         position: 'absolute',
         zIndex: 30,
-        minWidth: 180,
+        minWidth: 190,
         background: 'var(--panel)',
-        border: '1px solid var(--border2)',
-        borderRadius: 11,
-        boxShadow: '0 8px 32px rgba(0,0,0,.28)',
-        padding: '4px',
+        border: 'var(--line) solid var(--fg)',
+        borderRadius: 'var(--radius-pop)',
+        boxShadow: 'var(--pop-shadow)',
+        padding: 6,
         animation: 'prizy-pop .14s cubic-bezier(.2,.8,.2,1)',
         ...PLACEMENT_STYLE[placement],
     };
@@ -134,9 +134,9 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
                             style={{
-                                width: '100%', boxSizing: 'border-box', margin: '2px 0 4px',
-                                border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 8,
-                                padding: '6px 9px', color: 'var(--fg)', fontSize: 12.5, fontFamily: 'inherit', outline: 'none',
+                                width: '100%', boxSizing: 'border-box', margin: '2px 0 6px',
+                                border: 'var(--line) solid var(--border2)', background: 'var(--bg)', borderRadius: 'var(--radius-pill)',
+                                padding: '7px 12px', color: 'var(--fg)', fontSize: 13.5, fontFamily: 'inherit', outline: 'none',
                             }}
                         />
                     )}
@@ -162,18 +162,19 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                                 alignItems: 'center',
                                 gap: 9,
                                 width: '100%',
-                                padding: '7px 10px',
+                                padding: '8px 10px',
                                 border: 'none',
-                                background: 'none',
-                                borderRadius: 8,
+                                borderRadius: 'var(--radius-row)',
                                 cursor: item.disabled ? 'not-allowed' : 'pointer',
-                                fontSize: 13,
+                                fontSize: 14,
+                                fontWeight: 600,
                                 fontFamily: 'inherit',
                                 textAlign: 'left',
                                 color: item.danger ? 'var(--red)' : 'var(--fg)',
                                 opacity: item.disabled ? 0.5 : 1,
+                                outline: 'none',
                             }}
-                            className="hover:bg-hover"
+                            className="bg-transparent hover:bg-hover focus:bg-accent2"
                             aria-label={item.label}
                         >
                             {item.icon && (
@@ -184,7 +185,7 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                             {item.subtitle ? (
                                 <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                     <span>{item.label}</span>
-                                    <span style={{ fontSize: 11, color: 'var(--fg3)' }}>{item.subtitle}</span>
+                                    <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{item.subtitle}</span>
                                 </span>
                             ) : (
                                 item.label

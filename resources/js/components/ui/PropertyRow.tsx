@@ -8,16 +8,17 @@ export interface PropertyRowProps {
 const labelStyle: CSSProperties = {
     width: 96,
     flexShrink: 0,
-    fontSize: 12,
+    fontSize: 13,
     color: 'var(--fg3)',
-    fontWeight: 500,
+    fontWeight: 600,
 };
 
 const rowStyle: CSSProperties = {
     display: 'flex',
     alignItems: 'center',
     gap: 10,
-    padding: '7px 8px',
+    borderRadius: 'var(--radius-row)',
+    padding: '9px 12px',
 };
 
 export function PropertyRow({ label, children }: PropertyRowProps) {

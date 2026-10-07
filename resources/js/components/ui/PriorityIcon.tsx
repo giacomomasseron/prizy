@@ -16,11 +16,11 @@ export function PriorityIcon({ priority }: PriorityIconProps) {
         return (
             <span
                 style={{
-                    width: 14,
-                    height: 14,
-                    borderRadius: 3,
-                    background: 'var(--amber)',
-                    color: '#161616',
+                    width: 16,
+                    height: 16,
+                    borderRadius: 5,
+                    background: 'var(--red)',
+                    color: 'var(--on-accent)',
                     fontSize: 11,
                     fontWeight: 800,
                     display: 'inline-flex',
@@ -38,7 +38,7 @@ export function PriorityIcon({ priority }: PriorityIconProps) {
     const fill = BAR_FILL[priority];
     return (
         <span
-            style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 2, height: 11, flexShrink: 0 }}
+            style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 2, height: 12, width: 16, justifyContent: 'center', flexShrink: 0 }}
             aria-label={priority}
         >
             {[0, 1, 2].map((i) => (
@@ -48,7 +48,7 @@ export function PriorityIcon({ priority }: PriorityIconProps) {
                         width: 3,
                         borderRadius: 1,
                         height: 4 + i * 3,
-                        background: i < fill ? 'var(--fg2)' : 'var(--border2)',
+                        background: i < fill ? 'var(--fg)' : 'var(--border2)',
                     }}
                 />
             ))}
