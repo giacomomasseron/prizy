@@ -8,9 +8,11 @@ import { useLabels } from '../labels/hooks';
 import { useProjects } from '../projects/hooks';
 import { useTeams } from '../teams/hooks';
 import type { IssueFilters } from '../issues/hooks';
+import { HI_PILL_CLASSES, POP_ITEM_CLASSES, TOOL_PILL_CLASSES, popItemStyle, popoverStyle, toolPillStyle } from '../issues/issueStyles';
 import { BUILTIN_VIEWS, FILTER_FIELDS, type FilterKey, PRESET_PILLS, SORT_OPTIONS, filtersToParams, paramsToFilters } from './filters';
 import { useCreateSavedView, useDeleteSavedView, useSavedViews } from './hooks';
 import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 
 function useFieldOptions() {
@@ -26,45 +28,21 @@ function useFieldOptions() {
     };
 }
 
-// Shared style for toolbar action buttons (Views, + Filter)
-const toolBtnStyle: React.CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    padding: '4px 10px',
-    borderRadius: 8,
-    border: '1px solid var(--border)',
-    background: 'transparent',
-    color: 'var(--fg3)',
-    fontSize: 12,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
+// Active filter / preset pill: border width + style inline; colours come from HI_PILL_CLASSES.
+const hiPillStyle: React.CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 6px 4px 12px',
+    borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
+    fontSize: 13.5, fontWeight: 600,
 };
 
-// Shared popover / dropdown panel style
-const popoverStyle: React.CSSProperties = {
-    position: 'absolute',
-    zIndex: 10,
-    marginTop: 4,
-    borderRadius: 8,
-    border: '1px solid var(--border)',
-    background: 'var(--panel)',
-    boxShadow: '0 4px 16px rgba(0,0,0,.22)',
+// The × inside a pill: transparent on the yellow fill; hover raises opacity (class).
+const pillRemoveStyle: React.CSSProperties = {
+    width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'none', color: 'inherit',
+    cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1, fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 };
 
-// Shared style for items inside a popover
-const menuItemStyle: React.CSSProperties = {
-    display: 'block',
-    width: '100%',
-    padding: '6px 12px',
-    textAlign: 'left',
-    background: 'none',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: 13,
-    fontFamily: 'inherit',
-    color: 'var(--fg)',
-};
+const popNote: React.CSSProperties = { padding: '8px 10px', color: 'var(--fg3)', fontSize: 13, margin: 0 };
 
 export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -143,22 +121,15 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const available = FILTER_FIELDS.filter((f) => !editableShown.includes(f.key));
 
     return (
-        <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            gap: 8,
-            padding: '6px 22px',
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg)',
-        }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8, padding: '4px 26px 18px' }}>
             {/* Views dropdown */}
             <div style={{ position: 'relative' }}>
                 <button
                     type="button"
                     aria-label="Views"
                     onClick={() => setViewsOpen((o) => !o)}
-                    style={toolBtnStyle}
+                    className={TOOL_PILL_CLASSES}
+                    style={toolPillStyle}
                 >
                     Views ▾
                 </button>
@@ -170,24 +141,25 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                 type="button"
                                 role="menuitem"
                                 onClick={() => { applyFilters(v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {})); setViewsOpen(false); }}
-                                style={menuItemStyle}
-                                className="hover:bg-hover"
+                                className={POP_ITEM_CLASSES}
+                                style={popItemStyle}
                             >
                                 {v.label}
                             </button>
                         ))}
-                        <div style={{ margin: '4px 0', borderTop: '1px solid var(--border)' }} />
+                        <div style={{ margin: '4px 6px', borderTop: '1px solid var(--border)' }} />
                         {savedViews.data?.items.map((view) => (
                             <div
                                 key={view.id}
-                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '2px 6px 2px 12px' }}
                                 className="hover:bg-hover"
+                                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderRadius: 'var(--radius-row)', paddingRight: 4 }}
                             >
                                 <button
                                     type="button"
                                     role="menuitem"
                                     onClick={() => applySavedView(view)}
-                                    style={{ ...menuItemStyle, padding: '4px 0', flex: 1 }}
+                                    className="bg-transparent focus-visible:bg-accent2"
+                                    style={{ ...popItemStyle, flex: 1 }}
                                 >
                                     {view.name}
                                 </button>
@@ -204,33 +176,29 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                 )}
                             </div>
                         ))}
-                        {(savedViews.data?.items.length ?? 0) === 0 && (
-                            <p style={{ padding: '6px 12px', color: 'var(--fg3)', fontSize: 13, margin: 0 }}>No saved views</p>
-                        )}
+                        {(savedViews.data?.items.length ?? 0) === 0 && <p style={popNote}>No saved views</p>}
                     </div>
                 )}
             </div>
 
             {/* + Filter dropdown */}
             <div style={{ position: 'relative' }}>
-                <button type="button" onClick={() => setAddOpen((o) => !o)} style={toolBtnStyle}>+ Filter</button>
+                <button type="button" onClick={() => setAddOpen((o) => !o)} className={TOOL_PILL_CLASSES} style={toolPillStyle}>+ Filter</button>
                 {addOpen && (
-                    <div role="menu" style={{ ...popoverStyle, width: 160 }}>
+                    <div role="menu" style={{ ...popoverStyle, width: 170 }}>
                         {available.map((f) => (
                             <button
                                 key={f.key}
                                 type="button"
                                 role="menuitem"
                                 onClick={() => { setOpenPill(f.key); setAddOpen(false); }}
-                                style={menuItemStyle}
-                                className="hover:bg-hover"
+                                className={POP_ITEM_CLASSES}
+                                style={popItemStyle}
                             >
                                 {f.label}
                             </button>
                         ))}
-                        {available.length === 0 && (
-                            <p style={{ padding: '6px 12px', color: 'var(--fg3)', fontSize: 13, margin: 0 }}>All added</p>
-                        )}
+                        {available.length === 0 && <p style={popNote}>All added</p>}
                     </div>
                 )}
             </div>
@@ -243,18 +211,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                 const opts = optionsFor(key);
                 return (
                     <div key={key} style={{ position: 'relative' }}>
-                        <span style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            padding: '3px 6px 3px 9px',
-                            borderRadius: 7,
-                            background: 'var(--accent2)',
-                            color: 'var(--accent)',
-                            fontSize: 11.5,
-                            fontWeight: 600,
-                            border: 'none',
-                        }}>
+                        <span className={HI_PILL_CLASSES} style={hiPillStyle}>
                             <button
                                 type="button"
                                 onClick={() => setOpenPill((p) => (p === key ? null : key))}
@@ -266,32 +223,21 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                 type="button"
                                 aria-label={`Remove ${field.label} filter`}
                                 onClick={() => { setFilter(key, null); setOpenPill(null); }}
-                                style={{ color: 'var(--accent)', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                                className="opacity-70 hover:opacity-100"
+                                style={pillRemoveStyle}
                             >
                                 ×
                             </button>
                         </span>
                         {openPill === key && (
-                            <div style={{
-                                position: 'absolute',
-                                zIndex: 10,
-                                marginTop: 4,
-                                maxHeight: 224,
-                                width: 192,
-                                overflow: 'auto',
-                                borderRadius: 8,
-                                border: '1px solid var(--border)',
-                                background: 'var(--panel)',
-                                padding: 8,
-                                boxShadow: '0 4px 16px rgba(0,0,0,.22)',
-                            }}>
+                            <div style={{ ...popoverStyle, width: 192, maxHeight: 224, overflow: 'auto', padding: 8 }}>
                                 {opts.map((o) => (
-                                    <label key={o.value} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 0', fontSize: 13, color: 'var(--fg)', cursor: 'pointer' }}>
+                                    <label key={o.value} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px', fontSize: 13.5, color: 'var(--fg)', cursor: 'pointer' }}>
                                         <input type="checkbox" aria-label={o.label} checked={selected.includes(o.value)} onChange={() => toggleValue(key, o.value)} />
                                         {o.label}
                                     </label>
                                 ))}
-                                {opts.length === 0 && <p style={{ color: 'var(--fg3)', fontSize: 13, margin: 0 }}>No options</p>}
+                                {opts.length === 0 && <p style={{ ...popNote, padding: '4px 2px' }}>No options</p>}
                             </div>
                         )}
                     </div>
@@ -300,23 +246,14 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
 
             {/* Preset (built-in) active pills — e.g. My Issues, Active Cycle */}
             {presetActive.map((key) => (
-                <span key={key} style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '3px 6px 3px 9px',
-                    borderRadius: 7,
-                    background: 'var(--hover)',
-                    color: 'var(--fg2)',
-                    fontSize: 11.5,
-                    fontWeight: 500,
-                }}>
+                <span key={key} className={HI_PILL_CLASSES} style={hiPillStyle}>
                     {PRESET_PILLS[key]((filters as Record<string, string>)[key])}
                     <button
                         type="button"
                         aria-label={`Remove ${key === 'assignee_id' ? 'Assigned to me' : key === 'cycle_id' ? 'Active cycle' : key} filter`}
                         onClick={() => setFilter(key, null)}
-                        style={{ color: 'var(--fg2)', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                        className="opacity-70 hover:opacity-100"
+                        style={pillRemoveStyle}
                     >
                         ×
                     </button>
@@ -324,13 +261,13 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
             ))}
 
             {/* Sort — keeps native select for behavior preservation */}
-            <label style={{ marginLeft: 'auto', ...toolBtnStyle }}>
+            <label className={TOOL_PILL_CLASSES} style={{ ...toolPillStyle, marginLeft: 'auto', cursor: 'default' }}>
                 Sort
                 <select
                     aria-label="Sort issues"
                     value={filters.sort ?? ''}
                     onChange={(e) => setFilter('sort', e.target.value || null)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--fg3)', fontSize: 12, cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--fg)', fontSize: 13.5, fontWeight: 600, cursor: 'pointer', outline: 'none', fontFamily: 'inherit' }}
                 >
                     <option value="">Default</option>
                     {SORT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -341,7 +278,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
             {canDevelop && (
                 savingView ? (
                     <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
-                        <input
+                        <Input
                             autoFocus
                             aria-label="View name"
                             value={newViewName}
@@ -351,17 +288,17 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                 if (e.key === 'Escape') { setSavingView(false); setNewViewName(''); }
                             }}
                             placeholder="View name"
-                            style={{ border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 7, padding: '4px 8px', color: 'var(--fg)', fontSize: 12 }}
+                            style={{ width: 180, padding: '6px 13px', fontSize: 13.5 }}
                         />
                         <Button variant="primary" size="sm" onClick={submitView} disabled={createView.isPending || !newViewName.trim()}>Save</Button>
                         <Button variant="ghost" size="sm" onClick={() => { setSavingView(false); setNewViewName(''); }}>Cancel</Button>
                     </span>
                 ) : (
-                    <Button variant="ghost" size="sm" onClick={() => setSavingView(true)}>Save view</Button>
+                    <Button variant="secondary" size="sm" onClick={() => setSavingView(true)}>Save view</Button>
                 )
             )}
 
-            {error && <span style={{ color: 'var(--red)', fontSize: 12 }}>{error}</span>}
+            {error && <span style={{ color: 'var(--red)', fontSize: 13 }}>{error}</span>}
         </div>
     );
 }
