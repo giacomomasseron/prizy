@@ -52,7 +52,8 @@ export default function ProjectsPage() {
                 )}
 
                 {rows.length > 0 && (
-                    <div style={{ ...cardStyle, borderRadius: 18, overflow: 'hidden' }}>
+                    <div style={{ ...cardStyle, borderRadius: 18, overflowX: 'auto' }}>
+                        <div style={{ minWidth: 942 }}>
                         <div style={{ display: 'grid', gridTemplateColumns: COL, gap: 11, padding: '12px 20px', background: 'var(--bg2)', borderBottom: 'var(--line) solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--fg3)' }}>
                             <span>Project</span>
                             <span>Status</span>
@@ -118,6 +119,7 @@ export default function ProjectsPage() {
                                 </div>
                             );
                         })}
+                        </div>
                     </div>
                 )}
 

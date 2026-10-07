@@ -90,6 +90,7 @@ describe('RoadmapPage', () => {
         renderPage();
         expect(await screen.findByText('Unscheduled')).toBeInTheDocument();
         expect(screen.queryByTestId(/^bar-/)).toBeNull();
-        expect(screen.queryByText('Jul')).toBeNull();
+        const thisMonth = new Date().toLocaleString('en-US', { month: 'short' });
+        expect(screen.queryByText(thisMonth)).toBeNull();
     });
 });

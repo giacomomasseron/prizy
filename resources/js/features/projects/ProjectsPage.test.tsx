@@ -240,4 +240,14 @@ describe('ProjectsPage', () => {
         const empty = await screen.findByText('No projects yet.');
         expect(empty.style.border).toBe('var(--line) dashed var(--border2)');
     });
+
+    it('v2: the table scrolls sideways instead of clipping columns on narrow screens', async () => {
+        renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })]);
+        const row = await screen.findByTestId('project-row-p1');
+        const inner = row.parentElement as HTMLElement;
+        const card = inner.parentElement as HTMLElement;
+        expect(inner.style.minWidth).toBe('942px');
+        expect(card.style.overflowX).toBe('auto');
+        expect(card.style.overflow).not.toBe('hidden');
+    });
 });

@@ -16,8 +16,8 @@ export default function ProjectWorkspace() {
     const location = useLocation();
     const p = project.data;
 
-    if (project.isLoading) return <p style={{ margin: 0, padding: '24px 34px', fontSize: 15, color: 'var(--fg3)' }}>Loading…</p>;
-    if (!p) return <p style={{ margin: 0, padding: '24px 34px', fontSize: 15, color: 'var(--fg2)' }}>Project not found.</p>;
+    if (project.isLoading) return <p style={{ margin: 0, padding: '24px 34px 24px calc(34px + var(--nav-inset, 0px))', fontSize: 15, color: 'var(--fg3)' }}>Loading…</p>;
+    if (!p) return <p style={{ margin: 0, padding: '24px 34px 24px calc(34px + var(--nav-inset, 0px))', fontSize: 15, color: 'var(--fg2)' }}>Project not found.</p>;
 
     return (
         <>
@@ -28,8 +28,8 @@ export default function ProjectWorkspace() {
                     Projects
                 </Link>
                 <span aria-hidden="true" style={sep}>/</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', minWidth: 0 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} />{p.name}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
                 </span>
                 <span aria-hidden="true" style={sep}>/</span>
                 <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg2)', whiteSpace: 'nowrap' }}>{viewLabel(location.pathname)}</span>

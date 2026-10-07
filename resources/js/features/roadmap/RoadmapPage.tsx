@@ -10,7 +10,7 @@ export default function RoadmapPage() {
     const roadmap = useRoadmap();
     const projects = useMemo(() => roadmap.data ?? [], [roadmap.data]);
     const win = useMemo(() => computeWindow(projects, new Date()), [projects]);
-    if (roadmap.isLoading) return <p style={{ margin: 0, padding: '24px 26px', fontSize: 15, color: 'var(--fg3)' }}>Loading…</p>;
+    if (roadmap.isLoading) return <p style={{ margin: 0, padding: '24px 26px 24px calc(26px + var(--nav-inset, 0px))', fontSize: 15, color: 'var(--fg3)' }}>Loading…</p>;
     const scheduled = projects.filter(isScheduled);
     const unscheduled = projects.filter((p) => !isScheduled(p));
     const period = win.months.length ? `${win.months[0].label}–${win.months[win.months.length - 1].label} ${win.end.getFullYear()}` : '';

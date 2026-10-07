@@ -42,4 +42,17 @@ describe('ProjectWorkspace', () => {
         await screen.findByText('ISSUES VIEW');
         expect(screen.queryByRole('heading')).toBeNull();
     });
+
+    it('v2: the not-found message clears the collapsed-sidebar button', async () => {
+        renderWorkspace('/projects/p1', false);
+        const msg = await screen.findByText('Project not found.');
+        expect(msg.style.padding).toContain('var(--nav-inset, 0px)');
+    });
+
+    it('v2: a long project name in the breadcrumb truncates with an ellipsis', async () => {
+        renderWorkspace('/projects/p1/issues');
+        const name = await screen.findByText('Escalation Engine');
+        expect(name.style.textOverflow).toBe('ellipsis');
+        expect((name.parentElement as HTMLElement).style.overflow).toBe('hidden');
+    });
 });
