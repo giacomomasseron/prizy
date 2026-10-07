@@ -139,4 +139,24 @@ describe('IssuesHeader', () => {
         expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
         expect(screen.getByTestId('user-menu-stub')).toBeInTheDocument();
     });
+
+    // ── v2 header ──
+    it('renders the v2 page header: an h1 "Issues"', () => {
+        wrap(<IssuesHeader view="list" />);
+        expect(screen.getByRole('heading', { level: 1, name: 'Issues' })).toBeInTheDocument();
+    });
+
+    it('search, theme and text-size controls hover via classes (no inline colours)', () => {
+        wrap(<IssuesHeader view="list" />);
+        const search = screen.getByText('Search').closest('button')!;
+        expect(search.style.borderColor).toBe('');
+        expect(search.className).toContain('hover:border-fg');
+        const theme = screen.getByRole('button', { name: 'Toggle theme' });
+        expect(theme.style.borderColor).toBe('');
+        expect(theme.style.borderRadius).toBe('50%');
+        expect(theme.className).toContain('hover:border-border2');
+        const inc = screen.getByRole('button', { name: 'Increase text size' });
+        expect(inc.style.background).toBe('');
+        expect(inc.className).toContain('enabled:hover:bg-hover');
+    });
 });

@@ -1,5 +1,6 @@
-import { useState, type CSSProperties, type JSX } from 'react';
+import type { CSSProperties, JSX } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { PageHeader } from '../../components/PageHeader';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Kbd } from '../../components/ui/Kbd';
 import { UserMenu } from '../../components/UserMenu';
@@ -16,15 +17,14 @@ const VIEW_OPTIONS = [
     { label: 'Board', value: 'board' as const },
 ];
 
-// A−/⟲/A+ button styling, mirroring the mockup's fontBtnCss (enabled/disabled states).
+// A−/⟲/A+ buttons (mockup fontBtnCss). No inline background: hover is the FONT_BTN_CLASSES class.
 function fontBtnStyle(enabled: boolean, size: number): CSSProperties {
     return {
         border: 'none',
-        background: 'transparent',
         color: enabled ? 'var(--fg2)' : 'var(--fg3)',
         width: 26,
         height: 24,
-        borderRadius: 6,
+        borderRadius: 'var(--radius-pill)',
         cursor: enabled ? 'pointer' : 'default',
         fontSize: size,
         lineHeight: 1,
@@ -37,13 +37,19 @@ function fontBtnStyle(enabled: boolean, size: number): CSSProperties {
         fontWeight: 600,
     };
 }
+const FONT_BTN_CLASSES = 'bg-transparent enabled:hover:bg-hover';
+
+// 34px round toolbar button: border width/style inline, colours in classes so hover works.
+const roundBtn: CSSProperties = {
+    width: 34, height: 34, borderRadius: '50%', borderWidth: 'var(--line)', borderStyle: 'solid',
+    cursor: 'pointer', fontSize: 14, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0, fontFamily: 'inherit', padding: 0,
+};
 
 export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
     const navigate = useNavigate();
     const { scale, step, reset, canDecrease, canIncrease, canReset } = useFontScale();
     const { theme, toggle: toggleTheme } = useTheme();
-    const [searchHover, setSearchHover] = useState(false);
-    const [themeHover, setThemeHover] = useState(false);
 
     function handleNav(value: 'list' | 'board') {
         if (value === 'list') navigate('/', { replace: true });
@@ -55,134 +61,90 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
     }
 
     return (
-        <div
-            style={{
-                height: 49,
-                borderBottom: '1px solid var(--border)',
-                padding: '0 16px 0 22px',
-                gap: 12,
-                display: 'flex',
-                alignItems: 'center',
-                flexShrink: 0,
-            }}
+        <PageHeader
+            title="Issues"
+            actions={
+                <>
+                    {/* Notifications bell + dropdown */}
+                    <NotificationBell />
+
+                    {/* Text-size control — zooms the main content region (persisted) */}
+                    <div
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 2, padding: 3,
+                            border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-pill)',
+                            background: 'var(--panel)',
+                        }}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => step(-1)}
+                            disabled={!canDecrease}
+                            title="Decrease text size"
+                            aria-label="Decrease text size"
+                            className={FONT_BTN_CLASSES}
+                            style={fontBtnStyle(canDecrease, 12)}
+                        >
+                            A−
+                        </button>
+                        <button
+                            type="button"
+                            onClick={reset}
+                            disabled={!canReset}
+                            title={canReset ? `Reset text size (now ${Math.round(scale * 100)}%)` : 'Text size 100%'}
+                            aria-label="Reset text size"
+                            className={FONT_BTN_CLASSES}
+                            style={fontBtnStyle(canReset, 12.5)}
+                        >
+                            ⟲
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => step(1)}
+                            disabled={!canIncrease}
+                            title="Increase text size"
+                            aria-label="Increase text size"
+                            className={FONT_BTN_CLASSES}
+                            style={fontBtnStyle(canIncrease, 13.5)}
+                        >
+                            A+
+                        </button>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={handleSearch}
+                        className="border-border bg-panel text-fg2 hover:border-fg"
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px 7px 14px',
+                            borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
+                            fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+                        }}
+                    >
+                        <span style={{ fontSize: 13 }}>⌕</span>
+                        Search
+                        <Kbd>⌘K</Kbd>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={toggleTheme}
+                        title="Toggle theme"
+                        aria-label="Toggle theme"
+                        className="border-border bg-panel text-fg2 hover:border-border2"
+                        style={roundBtn}
+                    >
+                        {theme === 'dark' ? '☾' : '☀'}
+                    </button>
+
+                    {/* User avatar → account menu */}
+                    <UserMenu variant="compact" />
+                </>
+            }
         >
-            <div
-                style={{
-                    fontWeight: 600,
-                    fontSize: 14,
-                    letterSpacing: '-.01em',
-                    color: 'var(--fg)',
-                }}
-            >
-                Issues
+            <div style={{ marginLeft: 4 }}>
+                <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={handleNav} />
             </div>
-
-            <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={handleNav} />
-
-            <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* Notifications bell + dropdown */}
-                <NotificationBell />
-
-                {/* Text-size control — zooms the main content region (persisted) */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 2,
-                        padding: 2,
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        background: 'var(--bg2)',
-                    }}
-                >
-                    <button
-                        type="button"
-                        onClick={() => step(-1)}
-                        disabled={!canDecrease}
-                        title="Decrease text size"
-                        aria-label="Decrease text size"
-                        style={fontBtnStyle(canDecrease, 12)}
-                    >
-                        A−
-                    </button>
-                    <button
-                        type="button"
-                        onClick={reset}
-                        disabled={!canReset}
-                        title={canReset ? `Reset text size (now ${Math.round(scale * 100)}%)` : 'Text size 100%'}
-                        aria-label="Reset text size"
-                        style={fontBtnStyle(canReset, 12.5)}
-                    >
-                        ⟲
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => step(1)}
-                        disabled={!canIncrease}
-                        title="Increase text size"
-                        aria-label="Increase text size"
-                        style={fontBtnStyle(canIncrease, 13.5)}
-                    >
-                        A+
-                    </button>
-                </div>
-
-                <button
-                    type="button"
-                    onClick={handleSearch}
-                    onMouseEnter={() => setSearchHover(true)}
-                    onMouseLeave={() => setSearchHover(false)}
-                    style={{
-                        border: '1px solid',
-                        borderColor: searchHover ? 'var(--border2)' : 'var(--border)',
-                        borderRadius: 8,
-                        padding: '5px 8px 5px 10px',
-                        background: 'transparent',
-                        color: 'var(--fg2)',
-                        fontSize: 12,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4,
-                        fontFamily: 'inherit',
-                    }}
-                >
-                    <span style={{ fontSize: 13 }}>⌕</span>
-                    Search
-                    <Kbd>⌘K</Kbd>
-                </button>
-
-                {/* Theme toggle (bordered, matches the mockup header) */}
-                <button
-                    type="button"
-                    onClick={toggleTheme}
-                    onMouseEnter={() => setThemeHover(true)}
-                    onMouseLeave={() => setThemeHover(false)}
-                    title="Toggle theme"
-                    aria-label="Toggle theme"
-                    style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 8,
-                        border: '1px solid',
-                        borderColor: themeHover ? 'var(--border2)' : 'var(--border)',
-                        background: 'transparent',
-                        color: 'var(--fg2)',
-                        cursor: 'pointer',
-                        fontSize: 14,
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        fontFamily: 'inherit',
-                    }}
-                >
-                    {theme === 'dark' ? '☾' : '☀'}
-                </button>
-
-                {/* User avatar → account menu */}
-                <UserMenu variant="compact" />
-            </div>
-        </div>
+        </PageHeader>
     );
 }

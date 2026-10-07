@@ -128,4 +128,16 @@ describe('NotificationBell', () => {
         expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument();
         expect(screen.getByTitle('Jane Doe')).toBeInTheDocument();
     });
+
+    it('v2 trigger: 34px round, colours via classes (hover works), accent while open', () => {
+        wrap();
+        const bell = screen.getByRole('button', { name: 'Notifications' });
+        expect(bell.style.borderRadius).toBe('50%');
+        expect(bell.style.width).toBe('34px');
+        expect(bell.style.borderColor).toBe('');
+        expect(bell.className).toContain('hover:border-border2');
+        fireEvent.click(bell);
+        expect(bell.className).toContain('border-accent');
+        expect(bell.className).toContain('bg-accent2');
+    });
 });

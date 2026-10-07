@@ -17,7 +17,6 @@ import type { AppNotification } from '../../lib/types';
 export function NotificationBell() {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
-    const [hover, setHover] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
 
     const unread = useUnreadCount();
@@ -52,15 +51,12 @@ export function NotificationBell() {
                 aria-label="Notifications"
                 title="Notifications"
                 onClick={() => setOpen((o) => !o)}
-                onMouseEnter={() => setHover(true)}
-                onMouseLeave={() => setHover(false)}
+                className={open ? 'border-accent bg-accent2 text-fg' : 'border-border bg-panel text-fg2 hover:border-border2'}
                 style={{
-                    position: 'relative', width: 30, height: 30, borderRadius: 8,
-                    border: '1px solid',
-                    borderColor: open ? 'var(--accent)' : hover ? 'var(--border2)' : 'var(--border)',
-                    background: open ? 'var(--accent2)' : 'transparent', color: 'var(--fg2)',
+                    position: 'relative', width: 34, height: 34, borderRadius: '50%',
+                    borderWidth: 'var(--line)', borderStyle: 'solid',
                     cursor: 'pointer', fontSize: 14, display: 'inline-flex', alignItems: 'center',
-                    justifyContent: 'center', fontFamily: 'inherit', flexShrink: 0,
+                    justifyContent: 'center', fontFamily: 'inherit', flexShrink: 0, padding: 0,
                 }}
             >
                 <span aria-hidden="true" style={{ fontSize: 14, lineHeight: 1 }}>◔</span>
