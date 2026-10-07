@@ -63,6 +63,7 @@ export default function IssueDetailPage() {
     const [prUrl, setPrUrl]     = useState('');
     const [error, setError]     = useState('');
     const titleRef = useRef<HTMLSpanElement>(null);
+    const posting = useRef(false);
 
     const canDevelop = canDevelopFor(me.data);
 
@@ -102,9 +103,17 @@ export default function IssueDetailPage() {
 
     async function postComment() {
         const body = comment.trim();
-        if (!body || addComment.isPending) return;
-        await addComment.mutateAsync(body);
-        setComment('');
+        if (!body || posting.current || addComment.isPending) return;
+        posting.current = true;
+        setError('');
+        try {
+            await addComment.mutateAsync(body);
+            setComment('');
+        } catch (e) {
+            setError(e instanceof ApiError ? e.detail : 'Failed to post comment.');
+        } finally {
+            posting.current = false;
+        }
     }
 
     function submitComment(e: React.FormEvent) {

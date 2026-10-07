@@ -473,4 +473,44 @@ describe('IssueDetailPage v2 layout', () => {
         expect(screen.getByRole('button', { name: /^Comment$/ })).toBeDisabled();
         vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
     });
+
+    it('composer: a failed post shows an error and keeps the draft', async () => {
+        const spy = vi.fn().mockRejectedValue(new Error('boom'));
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: false } as any);
+        dev();
+        const user = userEvent.setup();
+        renderPage();
+        const box = screen.getByLabelText(/Leave a comment/i);
+        await user.type(box, 'Hello');
+        await user.keyboard('{Control>}{Enter}{/Control}');
+        expect(await screen.findByText('Failed to post comment.')).toBeInTheDocument();
+        expect(box).toHaveValue('Hello');
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('composer: two quick ⌘/Ctrl+Enter presses post once', async () => {
+        const spy = vi.fn(() => new Promise(() => {}));   // stays in flight
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: false } as any);
+        dev();
+        const user = userEvent.setup();
+        renderPage();
+        await user.type(screen.getByLabelText(/Leave a comment/i), 'Once');
+        await user.keyboard('{Control>}{Enter}{/Control}{Control>}{Enter}{/Control}');
+        expect(spy).toHaveBeenCalledTimes(1);
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
+
+    it('title: a changed title saves once; an unchanged one does not', () => {
+        const spy = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: spy } as any);
+        dev();
+        renderPage();
+        const title = screen.getByRole('heading', { level: 1 });
+        fireEvent.blur(title);
+        expect(spy).not.toHaveBeenCalled();
+        title.textContent = 'Renamed issue';
+        fireEvent.blur(title);
+        expect(spy).toHaveBeenCalledWith({ title: 'Renamed issue' });
+        vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: vi.fn() } as any);
+    });
 });

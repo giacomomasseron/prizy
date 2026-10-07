@@ -145,7 +145,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                             placement="bottom-start"
                             trigger={
                                 <button type="button" aria-label="Issue team" className={chipClasses(false)}
-                                    style={{ ...chipStyle, padding: '4px 11px', fontSize: 12.5 }}>
+                                    style={{ ...chipStyle, padding: '4px 11px', fontSize: 12.5, ...(teamId ? {} : { color: 'var(--fg3)' }) }}>
                                     {selectedTeam?.name ?? 'Select team…'}
                                 </button>
                             }

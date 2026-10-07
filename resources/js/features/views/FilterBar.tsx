@@ -261,7 +261,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
             ))}
 
             {/* Sort — keeps native select for behavior preservation */}
-            <label className={TOOL_PILL_CLASSES} style={{ ...toolPillStyle, marginLeft: 'auto', cursor: 'default' }}>
+            <label className={`${TOOL_PILL_CLASSES} focus-within:border-fg`} style={{ ...toolPillStyle, marginLeft: 'auto', cursor: 'default' }}>
                 Sort
                 <select
                     aria-label="Sort issues"

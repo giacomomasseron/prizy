@@ -140,4 +140,11 @@ describe('BoardPage', () => {
         mountBoard();
         expect(screen.getByRole('button', { name: 'Create Todo issue' }).style.borderRadius).toBe('50%');
     });
+
+    it('v2: the board row stretches columns to full height and never shrinks inside <main>', () => {
+        mountBoard();
+        const row = screen.getByTestId('col-backlog').parentElement as HTMLElement;
+        expect(row.style.alignItems).toBe('');
+        expect(row.style.flexShrink).toBe('0');
+    });
 });

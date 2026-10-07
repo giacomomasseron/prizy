@@ -116,4 +116,10 @@ describe('FilterBar v2 styling', () => {
         expect(item.className).toContain('hover:bg-hover');
         expect(screen.getByRole('menu').style.boxShadow).toBe('var(--pop-shadow)');
     });
+
+    it('the Sort pill shows a focus border while its select is focused', () => {
+        renderBar('/');
+        const label = screen.getByLabelText('Sort issues').closest('label') as HTMLElement;
+        expect(label.className).toContain('focus-within:border-fg');
+    });
 });

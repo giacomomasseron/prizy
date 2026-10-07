@@ -25,7 +25,7 @@ describe('issueStyles', () => {
     it('carries the colours and hovers as classes', () => {
         expect(TOOL_PILL_CLASSES).toBe('border-border bg-panel text-fg2 hover:border-fg');
         expect(HI_PILL_CLASSES).toBe('border-fg bg-hi text-on-hi');
-        expect(chipClasses(true)).toBe('border-fg bg-fg text-bg');
+        expect(chipClasses(true)).toBe('border-fg bg-fg text-bg [--prio-bar:var(--bg)]');
         expect(chipClasses(false)).toBe('border-border bg-panel text-fg2 hover:border-fg');
         expect(POP_ITEM_CLASSES).toBe('bg-transparent hover:bg-hover focus-visible:bg-accent2');
         expect(EDITOR_TRIGGER_CLASSES).toBe('bg-transparent hover:bg-hover');

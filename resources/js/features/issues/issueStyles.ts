@@ -25,14 +25,14 @@ export const TOOL_PILL_CLASSES = 'border-border bg-panel text-fg2 hover:border-f
 /** Active filter / preset pill: highlighter fill with ink text in both themes. */
 export const HI_PILL_CLASSES = 'border-fg bg-hi text-on-hi';
 
-/** New-issue composer chip. Active = ink-filled. */
+/** New-issue composer chip. Active = ink-filled; priority bars switch to the ground colour so they stay visible. */
 export const chipStyle: CSSProperties = {
     display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 13px',
     borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
     fontSize: 13.5, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: 'pointer',
 };
 export function chipClasses(active: boolean): string {
-    return active ? 'border-fg bg-fg text-bg' : 'border-border bg-panel text-fg2 hover:border-fg';
+    return active ? 'border-fg bg-fg text-bg [--prio-bar:var(--bg)]' : 'border-border bg-panel text-fg2 hover:border-fg';
 }
 
 /** FilterBar popover card (same look as the Menu primitive). */

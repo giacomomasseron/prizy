@@ -191,4 +191,11 @@ describe('CreateIssueDrawer', () => {
         mount({});
         expect((screen.getByLabelText(/Issue title/i) as HTMLInputElement).style.fontFamily).toBe('var(--font-display)');
     });
+
+    it('v2: the selected priority chip re-colours its bars so they stay visible on the ink fill', () => {
+        mount({});
+        fireEvent.click(screen.getByRole('button', { name: 'Priority High' }));
+        expect(screen.getByRole('button', { name: 'Priority High' }).className).toContain('[--prio-bar:var(--bg)]');
+        expect(screen.getByRole('button', { name: 'Priority Low' }).className).not.toContain('--prio-bar');
+    });
 });

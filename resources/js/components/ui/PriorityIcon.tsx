@@ -48,7 +48,7 @@ export function PriorityIcon({ priority }: PriorityIconProps) {
                         width: 3,
                         borderRadius: 1,
                         height: 4 + i * 3,
-                        background: i < fill ? 'var(--fg)' : 'var(--border2)',
+                        background: i < fill ? 'var(--prio-bar, var(--fg))' : 'var(--border2)',
                     }}
                 />
             ))}

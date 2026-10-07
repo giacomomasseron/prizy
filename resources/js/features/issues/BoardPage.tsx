@@ -170,7 +170,7 @@ export default function BoardPage() {
             <IssuesHeader view="board" />
             <FilterBar viewType="board" />
             <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-                <div style={{ display: 'flex', gap: 18, padding: '4px 26px 26px', overflowX: 'auto', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', gap: 18, padding: '4px 26px 26px', overflowX: 'auto', flexShrink: 0 }}>
                     {BOARD_STATUSES.map((status) => (
                         <Column
                             key={status}

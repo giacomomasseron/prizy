@@ -105,11 +105,11 @@ describe('PriorityIcon', () => {
   it('high priority has more filled bars than low priority', () => {
     const { container: highContainer } = render(<PriorityIcon priority="high" />);
     const highBars = Array.from(highContainer.querySelectorAll('[aria-label="high"] > span')) as HTMLElement[];
-    const highFilled = highBars.filter(b => b.style.background === 'var(--fg)');
+    const highFilled = highBars.filter(b => b.style.background === 'var(--prio-bar, var(--fg))');
 
     const { container: lowContainer } = render(<PriorityIcon priority="low" />);
     const lowBars = Array.from(lowContainer.querySelectorAll('[aria-label="low"] > span')) as HTMLElement[];
-    const lowFilled = lowBars.filter(b => b.style.background === 'var(--fg)');
+    const lowFilled = lowBars.filter(b => b.style.background === 'var(--prio-bar, var(--fg))');
 
     expect(highFilled).toHaveLength(3);
     expect(lowFilled).toHaveLength(1);
