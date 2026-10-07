@@ -103,6 +103,15 @@ describe('IssueRow', () => {
         );
         expect(screen.getByText('Alpha')).toBeInTheDocument();
     });
+
+    it('v2: hovers via classes (no inline background, no JS handler) and drops the last row border', () => {
+        renderRow();
+        const row = screen.getByTestId('issue-row');
+        fireEvent.mouseEnter(row);
+        expect(row.style.background).toBe('');
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.className).toContain('last:border-b-0');
+    });
 });
 
 describe('formatRelativeShort', () => {

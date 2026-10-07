@@ -88,3 +88,61 @@ it('renders issue titles from the API', async () => {
 
     await waitFor(() => expect(screen.getByText('Build login')).toBeInTheDocument());
 });
+
+// ---------------------------------------------------------------------------
+// v2 states: group cards, empty messages, request failure
+// ---------------------------------------------------------------------------
+
+describe('IssueListPage v2 states', () => {
+    const page = (items: unknown[]) => ({ data: items, links: { next: null, prev: null }, meta: { per_page: 25 } });
+    type Res = { ok: boolean; status: number; body: unknown };
+
+    function stub(issues: Res) {
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+            let res: Res = { ok: true, status: 200, body: page([]) };
+            if (url.includes('/me')) res = { ok: true, status: 200, body: { data: { id: 'u1', is_developer: false, admin_level: 'member' } } };
+            else if (url.includes('/issues')) res = issues;
+            return Promise.resolve({ ok: res.ok, status: res.status, headers: { get: () => 'application/json' }, json: async () => res.body });
+        }));
+    }
+    function renderAt(path: string) {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        return render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={[path]}><IssueListPage /></MemoryRouter>
+            </QueryClientProvider>,
+        );
+    }
+    const empty: Res = { ok: true, status: 200, body: page([]) };
+
+    it('says "No issues match these filters." when a filter is set and nothing comes back', async () => {
+        stub(empty);
+        renderAt('/?status=todo');
+        expect(await screen.findByText('No issues match these filters.')).toBeInTheDocument();
+        expect(screen.queryByText('No issues yet.')).toBeNull();
+    });
+
+    it('says "No issues yet." when no filter is set (sort alone is not a filter)', async () => {
+        stub(empty);
+        renderAt('/?sort=title');
+        expect(await screen.findByText('No issues yet.')).toBeInTheDocument();
+    });
+
+    it('shows neither empty message when the request fails', async () => {
+        stub({ ok: false, status: 500, body: { title: 'Error', detail: 'boom' } });
+        renderAt('/');
+        await waitFor(() => expect(screen.queryByText('Loading…')).toBeNull());
+        expect(screen.queryByText('No issues yet.')).toBeNull();
+        expect(screen.queryByText('No issues match these filters.')).toBeNull();
+    });
+
+    it('renders each status group as a card with a round "+" button', async () => {
+        stub({ ok: true, status: 200, body: page([{ id: 'i1', title: 'Build login', status: 'todo', priority: 'high', assignee_id: null, labels: [], updated_at: '2026-07-04T00:00:00Z' }]) });
+        renderAt('/');
+        await screen.findByText('Build login');
+        expect(screen.getByRole('button', { name: 'Create Todo issue' }).style.borderRadius).toBe('50%');
+        const card = screen.getByTestId('issue-row').parentElement as HTMLElement;
+        expect(card.style.borderRadius).toBe('var(--radius-card)');
+        expect(card.style.overflow).toBe('hidden');
+    });
+});
