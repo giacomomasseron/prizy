@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setTheme, useTheme } from './theme';
 
 describe('useTheme', () => {
@@ -14,9 +14,30 @@ describe('useTheme', () => {
         document.documentElement.removeAttribute('data-theme');
     });
 
-    it('defaults to dark', () => {
-        const { result } = renderHook(() => useTheme());
-        expect(result.current.theme).toBe('dark');
+    it('defaults to light when nothing is stored (fresh module load)', async () => {
+        localStorage.clear();
+        vi.resetModules();
+        const fresh = await import('./theme');
+        const { result } = renderHook(() => fresh.useTheme());
+        expect(result.current.theme).toBe('light');
+    });
+
+    it('honours a stored "dark" on load, and treats any other stored value as light', async () => {
+        localStorage.setItem('prizy-theme', 'dark');
+        vi.resetModules();
+        const dark = await import('./theme');
+        expect(renderHook(() => dark.useTheme()).result.current.theme).toBe('dark');
+
+        localStorage.setItem('prizy-theme', 'sepia');
+        vi.resetModules();
+        const odd = await import('./theme');
+        expect(renderHook(() => odd.useTheme()).result.current.theme).toBe('light');
+    });
+
+    it('a storage event that removes the key (newValue null) switches to light', () => {
+        const { result } = renderHook(() => useTheme()); // store is 'dark' from beforeEach
+        act(() => { window.dispatchEvent(new StorageEvent('storage', { key: 'prizy-theme', newValue: null })); });
+        expect(result.current.theme).toBe('light');
     });
 
     it('reflects light when module store is in light state', () => {

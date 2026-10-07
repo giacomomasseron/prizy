@@ -3,8 +3,9 @@ import { useSyncExternalStore } from 'react';
 export type Theme = 'dark' | 'light';
 const STORAGE_KEY = 'prizy-theme';
 
+function parseTheme(v: string | null): Theme { return v === 'dark' ? 'dark' : 'light'; }
 function readStored(): Theme {
-    try { return localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark'; } catch { return 'dark'; }
+    try { return parseTheme(localStorage.getItem(STORAGE_KEY)); } catch { return 'light'; }
 }
 function applyDomTheme(t: Theme): void { document.documentElement.dataset.theme = t; }
 
@@ -22,7 +23,7 @@ function subscribe(cb: () => void): () => void {
 }
 function onStorage(e: StorageEvent): void {
     if (e.key !== STORAGE_KEY) return;
-    const next: Theme = e.newValue === 'light' ? 'light' : 'dark';
+    const next: Theme = parseTheme(e.newValue);
     if (next !== current) { current = next; applyDomTheme(next); emit(); } // update WITHOUT re-persisting
 }
 function getSnapshot(): Theme { return current; }

@@ -135,7 +135,7 @@ describe('ThemeToggle', () => {
     const user = userEvent.setup();
     render(<ThemeToggle />);
     await user.click(screen.getByRole('button'));
-    // Defaults to dark (localStorage empty), so one click → light
-    expect(document.documentElement.dataset.theme).toBe('light');
+    // Defaults to light (localStorage empty), so one click → dark
+    expect(document.documentElement.dataset.theme).toBe('dark');
   });
 });

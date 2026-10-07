@@ -3,22 +3,36 @@
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 
+/* ── Theme palette (Prizy v2 "warm"). Light is the default; dark via :root[data-theme="dark"].
+      Every palette token MUST be declared in BOTH blocks — test/design-tokens.test.ts enforces parity. ── */
 :root {
-  --bg:#0b0b0d; --bg2:#111114; --panel:#151519; --border:#232327; --border2:#31313a;
-  --fg:#eeeef1; --fg2:#a8a8b2; --fg3:#8b8b95; --hover:rgba(255,255,255,.06);
-  --accent:#6d69f2; --accent2:rgba(109,105,242,.16);
-  --red:#eb5757; --amber:#e0a13a; --green:#4bab66; --blue:#5b8def; --teal:#3aa8a0;
+  --bg:#fbf6ea; --bg2:#f4ecd8; --panel:#ffffff; --border:#e6dcc4; --border2:#d3c6a6;
+  --fg:#1d1a14; --fg2:#4f493d; --fg3:#6e6656; --hover:rgba(29,26,20,.05);
+  --accent:#5b57e0; --accent2:rgba(91,87,224,.12); --on-accent:#ffffff; --hi:#ffe46b;
+  --red:#d93a3f; --amber:#a8691c; --green:#3a8f4d; --blue:#3f74d6; --teal:#2f8f88;
+  --sup:#3a8f4d; --sup2:rgba(58,143,77,.14); --on-sup:#ffffff;
+  --note:#a8691c; --note2:rgba(168,105,28,.12);
+  --backdrop:rgba(29,26,20,.32);
 }
-:root[data-theme="light"] {
-  --bg:#fbfbfa; --bg2:#f2f2f0; --panel:#ffffff; --border:#e9e8e5; --border2:#dcdbd7;
-  --fg:#1b1b19; --fg2:#66665f; --fg3:#a2a29a; --hover:rgba(0,0,0,.05);
-  --accent:#5b57e0; --accent2:rgba(91,87,224,.12);
-  --red:#d93a3f; --amber:#c07f27; --green:#3a8f4d; --blue:#3f74d6; --teal:#2f8f88;
+:root[data-theme="dark"] {
+  --bg:#16140f; --bg2:#1e1b15; --panel:#25221b; --border:#332e25; --border2:#4a4335;
+  --fg:#f6f0e2; --fg2:#cbc2ae; --fg3:#a69d89; --hover:rgba(255,248,230,.06);
+  --accent:#8f8cf6; --accent2:rgba(143,140,246,.16); --on-accent:#16140f; --hi:#f5d84f;
+  --red:#ef6b6b; --amber:#e5aa4c; --green:#5fbf7a; --blue:#7ea6f2; --teal:#4fb8af;
+  --sup:#5fbf7a; --sup2:rgba(95,191,122,.16); --on-sup:#16140f;
+  --note:#e5aa4c; --note2:rgba(229,170,76,.14);
+  --backdrop:rgba(0,0,0,.5);
+}
+/* Shape tokens — theme-independent. */
+:root {
+  --radius-pill:999px; --radius-row:12px; --radius-pop:16px; --radius-card:18px; --radius-modal:20px;
+  --line:1.5px; --pop-shadow:4px 4px 0 var(--fg);
 }
 
 @theme inline {
-  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   --color-bg: var(--bg);           --color-bg2: var(--bg2);
@@ -29,6 +43,15 @@
   --color-accent2: var(--accent2); --color-red: var(--red);
   --color-amber: var(--amber);     --color-green: var(--green);
   --color-blue: var(--blue);       --color-teal: var(--teal);
+  --color-hi: var(--hi);           --color-on-accent: var(--on-accent);
+  --color-on-sup: var(--on-sup);
+}
+
+/* Highlighter behind display titles (v2). */
+.hl {
+  background: linear-gradient(transparent 55%, var(--hi) 55%, var(--hi) 92%, transparent 92%);
+  padding: 0 4px; margin: 0 -4px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 
 html, body { background: var(--bg); color: var(--fg); }
@@ -51,11 +74,6 @@ html, body { background: var(--bg); color: var(--fg); }
 .login-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent2); }
 .login-submit:hover:not(:disabled) { filter: brightness(1.08); }
 @media (max-width: 900px) { .login-aside { display: none; } }
-
-/* ── Support desk (agent workspace) — additive; no base-token changes ── */
-:root {
-  --sup:#3aa76d; --sup2:rgba(58,167,109,.15); --note:#e0a13a; --note2:rgba(224,161,58,.12);
-}
 
 /* KB article editor preview ("As customers see it") — mirrors the public
    help-center article body styling (resources/views/help/layout.blade.php's

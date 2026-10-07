@@ -1,57 +1,27 @@
 import { expect, test } from '@playwright/test';
 
-test('theme toggle persists across reload and changes computed background', async ({ page }) => {
+test('theme defaults to light, toggles to dark, and persists across reloads', async ({ page }) => {
     test.setTimeout(60_000);
-
-    // Start on issues list (pre-authenticated via storageState)
     await page.goto('/');
 
-    // 2. Assert initial theme is dark (data-theme attribute on <html>)
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-
-    // 3. Record background-color in dark mode (main element bg: var(--bg) = #0b0b0d)
-    const mainDark = await page.locator('html').evaluate((el) =>
-        getComputedStyle(el).getPropertyValue('--bg').trim(),
-    );
-    expect(mainDark).toBe('#0b0b0d');
-
-    // 3b. Assert the body is ACTUALLY PAINTED with the dark background color
-    // This will fail if Fix 1 (html,body{background:var(--bg)}) regresses.
-    const bodyBgDark = await page.evaluate(() =>
-        getComputedStyle(document.body).backgroundColor,
-    );
-    // #0b0b0d = rgb(11, 11, 13)
-    expect(bodyBgDark).toBe('rgb(11, 11, 13)');
-
-    // 4. Click the theme toggle in the sidebar
-    await page.getByRole('button', { name: /switch to light theme/i }).click();
-
-    // 5. Assert data-theme flipped to light
+    // Light is the default (nothing stored in the storageState).
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    expect(await page.locator('html').evaluate((el) => getComputedStyle(el).getPropertyValue('--bg').trim())).toBe('#fbf6ea');
+    // The body is actually painted with the token (guards html,body{background:var(--bg)}).
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(251, 246, 234)');
 
-    // 6. Assert --bg CSS var changed to light value
-    const mainLight = await page.locator('html').evaluate((el) =>
-        getComputedStyle(el).getPropertyValue('--bg').trim(),
-    );
-    expect(mainLight).toBe('#fbfbfa');
-
-    // 6b. Assert the body is ACTUALLY PAINTED with the light background color
-    // This will fail if Fix 1 (html,body{background:var(--bg)}) regresses.
-    const bodyBgLight = await page.evaluate(() =>
-        getComputedStyle(document.body).backgroundColor,
-    );
-    // #fbfbfa = rgb(251, 251, 250)
-    expect(bodyBgLight).toBe('rgb(251, 251, 250)');
-
-    // 7. Reload — theme must persist (no-flash script reads localStorage)
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
-
-    // 8. Toggle back to dark
     await page.getByRole('button', { name: /switch to dark theme/i }).click();
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+    expect(await page.locator('html').evaluate((el) => getComputedStyle(el).getPropertyValue('--bg').trim())).toBe('#16140f');
+    expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(22, 20, 15)');
+
     await page.reload();
     await page.waitForLoadState('networkidle');
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+
+    await page.getByRole('button', { name: /switch to light theme/i }).click();
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
+    await page.reload();
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
 });
