@@ -1,23 +1,25 @@
 import type { TextareaHTMLAttributes } from 'react';
+import { FIELD_CLASSES } from './Input';
 
 export type TextareaProps = TextareaHTMLAttributes<HTMLTextAreaElement>;
 
-export function Textarea({ style, ...rest }: TextareaProps) {
+export function Textarea({ style, className, ...rest }: TextareaProps) {
     return (
         <textarea
             {...rest}
+            className={`${FIELD_CLASSES} ${className ?? ''}`}
             style={{
                 background: 'var(--panel)',
-                border: '1px solid var(--border)',
-                borderRadius: 9,
+                borderRadius: 'var(--radius-card)',
                 color: 'var(--fg)',
-                fontSize: 13,
-                padding: '8px 10px',
+                fontSize: 14,
+                padding: '12px 14px',
                 fontFamily: 'inherit',
                 outline: 'none',
                 width: '100%',
                 boxSizing: 'border-box',
                 resize: 'vertical',
+                transition: 'border-color .12s',
                 ...style,
             }}
         />
