@@ -303,7 +303,7 @@ export default function SearchPage() {
                                     padding: '3px 9px',
                                     fontSize: 12,
                                     background: 'var(--accent)',
-                                    color: '#fff',
+                                    color: 'var(--on-accent)',
                                     cursor: 'pointer',
                                     fontFamily: 'inherit',
                                 }}

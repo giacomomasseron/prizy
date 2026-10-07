@@ -52,7 +52,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
         <>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 12px 11px' }}>
-                <div style={{ width: 23, height: 23, borderRadius: 6, background: 'var(--accent)', color: '#fff', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>P</div>
+                <div style={{ width: 23, height: 23, borderRadius: 6, background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>P</div>
                 <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-.01em' }}>Prizy</span>
                 <button type="button" title="Collapse sidebar" aria-label="Collapse sidebar" onClick={onCollapse} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--fg2)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer', fontSize: 15 }} className="hover:bg-hover">◧</button>
                 <button type="button" title="Search (⌘K)" aria-label="Search" onClick={openSearch} style={{ border: 'none', background: 'none', color: 'var(--fg2)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer', fontSize: 15 }} className="hover:bg-hover">⌕</button>
@@ -62,7 +62,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
             {canDevelop && (
                 <div style={{ padding: '0 10px 10px' }}>
                     <button type="button" onClick={() => openCreate()} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }} className="hover:border-border2">
-                        <span style={{ width: 16, height: 16, borderRadius: 5, background: 'var(--accent)', color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>+</span>
+                        <span style={{ width: 16, height: 16, borderRadius: 5, background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>+</span>
                         New issue<span style={{ marginLeft: 'auto' }}><Kbd>C</Kbd></span>
                     </button>
                 </div>

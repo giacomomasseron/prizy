@@ -116,7 +116,7 @@ function SuccessCard({ name, tab, teamId, onCreateAnother }: SuccessCardProps) {
                     height: 52,
                     borderRadius: '50%',
                     background: 'var(--accent)',
-                    color: '#fff',
+                    color: 'var(--on-accent)',
                     fontSize: 26,
                     display: 'flex',
                     alignItems: 'center',

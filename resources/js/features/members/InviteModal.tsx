@@ -259,7 +259,7 @@ export function InviteModal({ open, onClose }: Props) {
                         disabled={disabled || invite.isPending}
                         style={{
                             background: 'var(--accent)',
-                            color: '#fff',
+                            color: 'var(--on-accent)',
                             border: 'none',
                             borderRadius: 9,
                             padding: '8px 15px',

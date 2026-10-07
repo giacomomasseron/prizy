@@ -162,7 +162,7 @@ export function SlaPolicyModal({ open, policy, onClose }: SlaPolicyModalProps) {
                         disabled={!canSubmit}
                         style={{
                             background: 'var(--accent)',
-                            color: '#fff',
+                            color: 'var(--on-accent)',
                             borderRadius: 9,
                             padding: '8px 15px',
                             fontSize: 12.5,

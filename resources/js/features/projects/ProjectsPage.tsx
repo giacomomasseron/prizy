@@ -45,7 +45,7 @@ export default function ProjectsPage() {
                     <button
                         type="button"
                         onClick={() => navigate('/create?tab=project')}
-                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}
+                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: 'var(--on-accent)', padding: '8px 14px', borderRadius: 8, fontSize: 12.5, fontWeight: 600, border: 'none', cursor: 'pointer' }}
                     >
                         New project
                     </button>

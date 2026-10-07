@@ -71,7 +71,7 @@ export default function LabelsSettingsPage() {
                 </div>
                 {canDevelop && (
                     <button type="button" onClick={() => { setError(''); setOpen((o) => !o); }}
-                        style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: '#fff', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
+                        style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}>
                         New label
                     </button>
                 )}
@@ -86,7 +86,7 @@ export default function LabelsSettingsPage() {
                             style={{ width: 180, border: '1px solid var(--border)', background: 'var(--bg2)', borderRadius: 9, padding: '9px 12px', color: 'var(--fg)', fontSize: 13.5, outline: 'none' }} />
                         <datalist id="label-groups">{existingGroups.map((g) => <option key={g} value={g} />)}</datalist>
                         <button type="submit" disabled={create.isPending}
-                            style={{ border: 'none', background: 'var(--accent)', color: '#fff', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', opacity: create.isPending ? 0.5 : 1 }}>
+                            style={{ border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', opacity: create.isPending ? 0.5 : 1 }}>
                             Add label
                         </button>
                     </div>

@@ -69,7 +69,7 @@ export function NotificationBell() {
                         data-testid="notif-bell-badge"
                         style={{
                             position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px',
-                            borderRadius: 20, background: 'var(--accent)', color: '#fff', fontSize: 9.5, fontWeight: 700,
+                            borderRadius: 20, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: 9.5, fontWeight: 700,
                             fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             border: '2px solid var(--bg)',
                         }}

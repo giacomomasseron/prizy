@@ -65,7 +65,7 @@ export default function ReleasesPage() {
                     <button
                         type="button"
                         onClick={() => setShowNew(true)}
-                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: '#fff', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                        style={{ marginLeft: 'auto', background: 'var(--accent)', color: 'var(--on-accent)', border: 'none', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                     >
                         + New release
                     </button>

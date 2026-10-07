@@ -57,7 +57,7 @@ export function NewReleaseModal({ open, onClose }: { open: boolean; onClose(): v
                         type="button"
                         onClick={submit}
                         disabled={!canCreate}
-                        style={{ background: 'var(--accent)', color: '#fff', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, fontFamily: 'inherit' }}
+                        style={{ background: 'var(--accent)', color: 'var(--on-accent)', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, fontFamily: 'inherit' }}
                     >
                         Create release
                     </button>

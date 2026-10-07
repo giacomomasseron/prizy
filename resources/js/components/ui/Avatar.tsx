@@ -35,7 +35,7 @@ export function Avatar({ initials, color, size = 20, title }: AvatarProps) {
             style={{
                 ...base,
                 background: color ?? 'var(--accent)',
-                color: '#fff',
+                color: color ? '#fff' : 'var(--on-accent)',
                 fontSize: size * 0.4,
                 fontWeight: 600,
             }}
