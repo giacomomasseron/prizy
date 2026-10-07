@@ -41,7 +41,7 @@ export function UserMenu({ variant = 'full' }: UserMenuProps) {
     ];
 
     const avatar = (
-        <Avatar initials={initials || undefined} color={initials ? avatarColor : undefined} size={26} title={userName || 'Me'} />
+        <Avatar initials={initials || undefined} color={initials ? avatarColor : undefined} size={variant === 'full' ? 34 : 26} title={userName || 'Me'} />
     );
 
     if (variant === 'compact') {
@@ -75,16 +75,16 @@ export function UserMenu({ variant = 'full' }: UserMenuProps) {
                     type="button"
                     data-testid="user-menu-trigger"
                     style={{
-                        flex: 1, display: 'flex', alignItems: 'center', gap: 9, minWidth: 0,
-                        background: 'none', border: 'none', cursor: 'pointer', borderRadius: 7,
-                        padding: '3px 4px', fontFamily: 'inherit', textAlign: 'left',
+                        flex: 1, display: 'flex', alignItems: 'center', gap: 10, minWidth: 0,
+                        border: 'none', cursor: 'pointer', borderRadius: 'var(--radius-row)',
+                        padding: '4px 6px', fontFamily: 'inherit', textAlign: 'left',
                     }}
-                    className="hover:bg-hover"
+                    className="bg-transparent hover:bg-hover"
                 >
                     {avatar}
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 12.5, fontWeight: 500, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName || 'Loading…'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--fg3)' }}>Prizy workspace</div>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName || 'Loading…'}</div>
+                        <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>Prizy workspace</div>
                     </div>
                 </button>
             }

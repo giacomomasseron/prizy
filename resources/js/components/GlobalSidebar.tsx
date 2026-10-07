@@ -7,7 +7,9 @@ import { useIssues } from '../features/issues/hooks';
 import { useUnreadCount } from '../features/notifications/hooks';
 import { useTeams } from '../features/teams/hooks';
 import { SidebarFooter } from './SidebarFooter';
+import { BrandMark } from './ui/BrandMark';
 import { Kbd } from './ui/Kbd';
+import { NAV_ROW_HOVER, countStyle, hiBadge, navRow, sectionBtn, sectionLabel, tagBadge } from './sidebarStyles';
 
 function persistedBool(key: string, def: boolean): boolean {
     try { const v = localStorage.getItem(key); return v === null ? def : v === '1'; } catch { return def; }
@@ -17,9 +19,6 @@ function persistedExp(): Record<string, boolean> {
     try { return JSON.parse(localStorage.getItem('prizy-nav-teamexp') || '{}'); } catch { return {}; }
 }
 
-const rowStyle = (active: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '6px 9px', borderRadius: 7, border: 'none', background: active ? 'var(--hover)' : 'transparent', color: active ? 'var(--fg)' : 'var(--fg2)', fontSize: 12.8, fontWeight: 500, fontFamily: 'inherit', textDecoration: 'none', cursor: 'pointer', textAlign: 'left' });
-const sectionBtn: CSSProperties = { border: 'none', background: 'none', color: 'var(--fg3)', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', cursor: 'pointer', padding: 0, display: 'inline-flex', alignItems: 'center', gap: 5, fontFamily: 'inherit' };
-const countStyle: CSSProperties = { fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' };
 const caret = (open: boolean): CSSProperties => ({ fontSize: 7, display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none' });
 const box = (c: string): CSSProperties => ({ width: 12, height: 12, borderRadius: 3, background: c, display: 'inline-block' });
 
@@ -51,60 +50,59 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     return (
         <>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '13px 12px 11px' }}>
-                <div style={{ width: 23, height: 23, borderRadius: 6, background: 'var(--accent)', color: 'var(--on-accent)', fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>P</div>
-                <span style={{ fontWeight: 600, fontSize: 14, letterSpacing: '-.01em' }}>Prizy</span>
-                <button type="button" title="Collapse sidebar" aria-label="Collapse sidebar" onClick={onCollapse} style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--fg2)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer', fontSize: 15 }} className="hover:bg-hover">◧</button>
-                <button type="button" title="Search (⌘K)" aria-label="Search" onClick={openSearch} style={{ border: 'none', background: 'none', color: 'var(--fg2)', width: 28, height: 28, borderRadius: 7, cursor: 'pointer', fontSize: 15 }} className="hover:bg-hover">⌕</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 12px 18px' }}>
+                <BrandMark />
+                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 21, letterSpacing: '-.03em' }}>Prizy</span>
+                <button type="button" title="Collapse sidebar" aria-label="Collapse sidebar" onClick={onCollapse} style={{ marginLeft: 'auto', border: 'none', color: 'var(--fg2)', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 15 }} className="bg-transparent hover:bg-hover">◧</button>
+                <button type="button" title="Search (⌘K)" aria-label="Search" onClick={openSearch} style={{ border: 'none', color: 'var(--fg2)', width: 30, height: 30, borderRadius: '50%', cursor: 'pointer', fontSize: 16 }} className="bg-transparent hover:bg-hover">⌕</button>
             </div>
 
             {/* New issue */}
             {canDevelop && (
-                <div style={{ padding: '0 10px 10px' }}>
-                    <button type="button" onClick={() => openCreate()} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 9, padding: '7px 10px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' }} className="hover:border-border2">
-                        <span style={{ width: 16, height: 16, borderRadius: 5, background: 'var(--accent)', color: 'var(--on-accent)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>+</span>
-                        New issue<span style={{ marginLeft: 'auto' }}><Kbd>C</Kbd></span>
+                <div style={{ padding: '0 6px 16px' }}>
+                    <button type="button" onClick={() => openCreate()} className="bg-fg text-bg hover:bg-accent" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '10px 14px', borderRadius: 'var(--radius-pill)', border: 'none', fontSize: 14.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', transition: 'background .12s' }}>
+                        + New issue<Kbd>C</Kbd>
                     </button>
                 </div>
             )}
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 {/* Support bridge — mirrors Prizy.dc.html: My Issues · Escalations · Inbox · Support inbox */}
-                <div style={{ padding: '14px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' }}>Support bridge</div>
+                <div style={{ ...sectionLabel, padding: '6px 18px 6px' }}>Support bridge</div>
                 <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {showTracker && (
-                        <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={() => rowStyle(false)} className="hover:bg-hover">
+                        <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={() => navRow(false)} className={NAV_ROW_HOVER}>
                             <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
                             <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
                         </NavLink>
                     )}
                     {showTracker && (
-                        <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...rowStyle(false), opacity: 0.5, cursor: 'default' }}>
+                        <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...navRow(false), opacity: 0.5, cursor: 'default' }}>
                             <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
-                            <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Soon</span>
+                            <span style={tagBadge}>Soon</span>
                         </button>
                     )}
                     {/* Inbox → notifications (design folds this into the Support bridge with the ◔ glyph) */}
-                    <NavLink to="/notifications" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')} aria-label="Inbox">
+                    <NavLink to="/notifications" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)} aria-label="Inbox">
                         <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Inbox</span>
-                        {unreadCount > 0 && <span data-testid="inbox-badge" style={{ fontSize: 10, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px' }}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+                        {unreadCount > 0 && <span data-testid="inbox-badge" style={hiBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
                     </NavLink>
                     {/* Support inbox → agent desk (design: outlined-square glyph + "Agent" badge); agent-gated so non-agents get no dead /support link */}
                     {canWorkHelpdesk(me.data) && (
                         <>
-                            <NavLink to="/support" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                            <NavLink to="/support" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                 <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>
                                 <span style={{ flex: 1 }}>Support inbox</span>
-                                <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Agent</span>
+                                <span style={tagBadge}>Agent</span>
                             </NavLink>
-                            <NavLink to="/support/kb" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                            <NavLink to="/support/kb" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                 <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>📚</span>
                                 <span style={{ flex: 1 }}>Knowledge base</span>
                             </NavLink>
-                            <a href="/help" target="_blank" rel="noreferrer" style={rowStyle(false)} className="hover:bg-hover">
+                            <a href="/help" target="_blank" rel="noreferrer" style={navRow(false)} className={NAV_ROW_HOVER}>
                                 <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◎</span>
                                 <span style={{ flex: 1 }}>Help center</span>
-                                <span style={{ fontSize: 9.5, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 4, padding: '1px 5px' }}>Public</span>
+                                <span style={tagBadge}>Public</span>
                             </a>
                         </>
                     )}
@@ -118,21 +116,21 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         </div>
                         {workspaceOpen && (
                             <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <NavLink to="/" end style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <NavLink to="/" end style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
                                     <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
                                 </NavLink>
-                                <NavLink to="/projects" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <NavLink to="/projects" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
                                     <span style={{ flex: 1 }}>Projects</span>
                                 </NavLink>
-                                <NavLink to="/roadmap" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <NavLink to="/roadmap" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
                                 </NavLink>
-                                <NavLink to="/analytics" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <NavLink to="/analytics" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◫</span><span style={{ flex: 1 }}>Analytics</span>
                                 </NavLink>
-                                <NavLink to="/releases" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => (isActive ? '' : 'hover:bg-hover')}>
+                                <NavLink to="/releases" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>⛴</span><span style={{ flex: 1 }}>Releases</span>
                                 </NavLink>
                             </nav>
@@ -153,7 +151,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                                     const expanded = !!teamExp[t.id];
                                     return (
                                         <div key={t.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={expanded} style={rowStyle(false)} className="hover:bg-hover">
+                                            <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={expanded} style={navRow(false)} className={NAV_ROW_HOVER}>
                                                 <span aria-hidden="true" style={{ width: 12, ...caret(expanded), justifyContent: 'center', display: 'inline-flex' }}>▶</span>
                                                 <span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: t.color, display: 'inline-block' }} /></span>
                                                 <span style={{ flex: 1, textAlign: 'left' }}>{t.name}</span>
@@ -161,9 +159,9 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                                             </button>
                                             {expanded && (
                                                 <div data-testid={`team-links-${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 20 }}>
-                                                    <Link to={`/?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
-                                                    <Link to={`/teams/${t.id}/cycles`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
-                                                    <Link to={`/projects?team_id=${t.id}`} style={{ ...rowStyle(false), padding: '5px 9px', fontSize: 12.4 }} className="hover:bg-hover"><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
+                                                    <Link to={`/?team_id=${t.id}`} style={{ ...navRow(false), padding: '6px 12px', fontSize: 13.5 }} className={NAV_ROW_HOVER}><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
+                                                    <Link to={`/teams/${t.id}/cycles`} style={{ ...navRow(false), padding: '6px 12px', fontSize: 13.5 }} className={NAV_ROW_HOVER}><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
+                                                    <Link to={`/projects?team_id=${t.id}`} style={{ ...navRow(false), padding: '6px 12px', fontSize: 13.5 }} className={NAV_ROW_HOVER}><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
                                                 </div>
                                             )}
                                         </div>

@@ -56,13 +56,14 @@ export default function AppLayout() {
             {!navHidden && (
                 <aside
                     style={{
-                        width: 238,
+                        width: 240,
                         flexShrink: 0,
                         background: 'var(--bg2)',
-                        borderRight: '1px solid var(--border)',
                         display: 'flex',
                         flexDirection: 'column',
                         overflow: 'hidden',
+                        padding: '18px 8px 12px',
+                        boxSizing: 'border-box',
                     }}
                 >
                     {projectMatch ? <ProjectSidebar projectId={projectMatch.params.id!} /> : <GlobalSidebar onCollapse={collapse} />}
@@ -79,16 +80,16 @@ export default function AppLayout() {
                         top: 10,
                         left: 10,
                         zIndex: 40,
-                        border: '1px solid var(--border)',
+                        border: 'var(--line) solid var(--border2)',
                         background: 'var(--panel)',
                         color: 'var(--fg2)',
-                        width: 30,
-                        height: 30,
-                        borderRadius: 8,
+                        width: 34,
+                        height: 34,
+                        borderRadius: '50%',
                         cursor: 'pointer',
                         fontSize: 16,
                     }}
-                    className="hover:border-border2"
+                    className="hover:border-fg"
                 >
                     ◧
                 </button>
