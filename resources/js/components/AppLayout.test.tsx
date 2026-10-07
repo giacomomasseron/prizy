@@ -69,6 +69,9 @@ describe('AppLayout sidebar', () => {
         expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
         const expand = screen.getByRole('button', { name: 'Expand sidebar' }) as HTMLElement;
         expect(expand.style.borderRadius).toBe('50%');
+        expect(expand.style.borderColor).toBe('');
+        expect(expand.className).toContain('border-border2');
+        expect(expand.className).toContain('hover:border-fg');
     });
 
     it('renders workspace name "Prizy"', () => {

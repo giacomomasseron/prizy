@@ -80,7 +80,8 @@ export default function AppLayout() {
                         top: 10,
                         left: 10,
                         zIndex: 40,
-                        border: 'var(--line) solid var(--border2)',
+                        borderWidth: 'var(--line)',
+                        borderStyle: 'solid',
                         background: 'var(--panel)',
                         color: 'var(--fg2)',
                         width: 34,
@@ -89,7 +90,7 @@ export default function AppLayout() {
                         cursor: 'pointer',
                         fontSize: 16,
                     }}
-                    className="hover:border-fg"
+                    className="border-border2 hover:border-fg"
                 >
                     ◧
                 </button>
