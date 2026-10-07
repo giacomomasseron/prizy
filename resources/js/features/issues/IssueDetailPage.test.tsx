@@ -317,3 +317,30 @@ describe('PriorityEditor', () => {
         expect(screen.queryByRole('button', { name: /change priority/i })).not.toBeInTheDocument();
     });
 });
+
+// ── v2 property editors ─────────────────────────────────────────────────────
+
+describe('property editors (v2)', () => {
+    const NAMES = ['Change status', 'Change priority', 'Edit assignee', 'Edit project', 'Edit release', 'Edit labels', 'Edit cycle'];
+
+    it('developer: every trigger fills its row, hovers via classes and ends with a caret', () => {
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        for (const name of NAMES) {
+            const btn = screen.getByRole('button', { name });
+            expect(btn.style.width, name).toBe('100%');
+            expect(btn.style.background, name).toBe('');
+            expect(btn.className, name).toContain('hover:bg-hover');
+            expect(btn.textContent, name).toContain('▾');
+            expect((btn.parentElement as HTMLElement).style.display, name).toBe('block');
+        }
+    });
+
+    it('non-developer: values are plain text with no caret', () => {
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: false, admin_level: 'member' } } as any);
+        const { container } = render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        expect(container.textContent).not.toContain('▾');
+        for (const name of NAMES) expect(screen.queryByRole('button', { name })).toBeNull();
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+    });
+});

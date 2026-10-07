@@ -1,24 +1,10 @@
-import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { useAssignIssue } from './hooks';
 import { useMembers } from '../members/hooks';
+import { EDITOR_TRIGGER_CLASSES, caretStyle, editorTriggerStyle, editorValueStyle } from './issueStyles';
 import type { Issue } from '../../lib/types';
-
-const triggerStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    background: 'none',
-    border: 'none',
-    padding: '2px 6px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-};
 
 interface Props {
     issue: Issue;
@@ -32,26 +18,12 @@ export function AssigneeEditor({ issue, canDevelop }: Props) {
 
     const display = (
         <>
-            <Avatar initials={av.initials || undefined} color={av.color} size={16} />
+            <Avatar initials={av.initials || undefined} color={av.color} size={20} />
             <span>{issue.assignee?.name ?? 'Unassigned'}</span>
         </>
     );
 
-    if (!canDevelop) {
-        return (
-            <span
-                style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    fontSize: 13,
-                    color: 'var(--fg)',
-                }}
-            >
-                {display}
-            </span>
-        );
-    }
+    if (!canDevelop) return <span style={editorValueStyle}>{display}</span>;
 
     const memberList = members.data ?? [];
 
@@ -75,9 +47,11 @@ export function AssigneeEditor({ issue, canDevelop }: Props) {
 
     return (
         <Menu
+            fullWidth
             trigger={
-                <button type="button" aria-label="Edit assignee" style={triggerStyle}>
+                <button type="button" aria-label="Edit assignee" className={EDITOR_TRIGGER_CLASSES} style={editorTriggerStyle}>
                     {display}
+                    <span aria-hidden="true" style={caretStyle}>▾</span>
                 </button>
             }
             items={items}

@@ -1,23 +1,9 @@
-import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { ProjectPill } from '../../components/ui/ProjectPill';
 import { useUpdateIssue } from './hooks';
 import { useProjects } from '../projects/hooks';
+import { EDITOR_TRIGGER_CLASSES, caretStyle, editorTriggerStyle, editorValueStyle } from './issueStyles';
 import type { Issue } from '../../lib/types';
-
-const triggerStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    background: 'none',
-    border: 'none',
-    padding: '2px 6px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-};
 
 interface Props {
     issue: Issue;
@@ -34,18 +20,10 @@ export function ProjectEditor({ issue, canDevelop }: Props) {
     const display = currentProject ? (
         <ProjectPill name={currentProject.name} color={currentProject.color} />
     ) : (
-        <span style={{ fontSize: 13, color: 'var(--fg3)' }}>No project</span>
+        <span style={{ color: 'var(--fg3)' }}>No project</span>
     );
 
-    if (!canDevelop) {
-        return (
-            <span
-                style={{ display: 'inline-flex', alignItems: 'center', fontSize: 13, color: 'var(--fg)' }}
-            >
-                {display}
-            </span>
-        );
-    }
+    if (!canDevelop) return <span style={editorValueStyle}>{display}</span>;
 
     const items = [
         {
@@ -63,9 +41,11 @@ export function ProjectEditor({ issue, canDevelop }: Props) {
 
     return (
         <Menu
+            fullWidth
             trigger={
-                <button type="button" aria-label="Edit project" style={triggerStyle}>
+                <button type="button" aria-label="Edit project" className={EDITOR_TRIGGER_CLASSES} style={editorTriggerStyle}>
                     {display}
+                    <span aria-hidden="true" style={caretStyle}>▾</span>
                 </button>
             }
             items={items}

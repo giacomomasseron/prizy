@@ -1,22 +1,8 @@
-import type { CSSProperties } from 'react';
 import { Menu } from '../../components/ui/Menu';
 import { useUpdateIssue } from './hooks';
 import { useCycles } from '../teams/hooks';
+import { EDITOR_TRIGGER_CLASSES, caretStyle, editorTriggerStyle, editorValueStyle } from './issueStyles';
 import type { Issue } from '../../lib/types';
-
-const triggerStyle: CSSProperties = {
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 6,
-    fontSize: 13,
-    background: 'none',
-    border: 'none',
-    padding: '2px 6px',
-    borderRadius: 6,
-    cursor: 'pointer',
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-};
 
 interface Props {
     issue: Issue;
@@ -31,20 +17,12 @@ export function CycleEditor({ issue, canDevelop }: Props) {
     const currentCycle = issue.cycle ?? null;
 
     const display = currentCycle ? (
-        <span style={{ fontSize: 13, color: 'var(--fg)' }}>{currentCycle.name}</span>
+        <span>{currentCycle.name}</span>
     ) : (
-        <span style={{ fontSize: 13, color: 'var(--fg3)' }}>No cycle</span>
+        <span style={{ color: 'var(--fg3)' }}>No cycle</span>
     );
 
-    if (!canDevelop) {
-        return (
-            <span
-                style={{ display: 'inline-flex', alignItems: 'center', fontSize: 13, color: 'var(--fg)' }}
-            >
-                {display}
-            </span>
-        );
-    }
+    if (!canDevelop) return <span style={editorValueStyle}>{display}</span>;
 
     const items = [
         {
@@ -61,9 +39,11 @@ export function CycleEditor({ issue, canDevelop }: Props) {
 
     return (
         <Menu
+            fullWidth
             trigger={
-                <button type="button" aria-label="Edit cycle" style={triggerStyle}>
+                <button type="button" aria-label="Edit cycle" className={EDITOR_TRIGGER_CLASSES} style={editorTriggerStyle}>
                     {display}
+                    <span aria-hidden="true" style={caretStyle}>▾</span>
                 </button>
             }
             items={items}
