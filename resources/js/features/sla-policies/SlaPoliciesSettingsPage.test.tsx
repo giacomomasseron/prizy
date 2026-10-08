@@ -89,4 +89,21 @@ describe('SlaPoliciesSettingsPage', () => {
         expect(screen.getByText(/no sla policies yet/i)).toBeInTheDocument();
         policiesData = POLICIES; // restore for subsequent tests
     });
+
+    it('v2: highlighted title, pill Edit button and hover rows with a red-hover delete', () => {
+        policiesData = POLICIES;
+        render(<SlaPoliciesSettingsPage />);
+        expect(screen.getByRole('heading', { level: 1, name: 'SLA policies' }).querySelector('.hl')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'New policy' }).className).toContain('bg-fg');
+        expect(screen.getByTestId('edit-1').style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByTestId('sla-policy-row-1').className).toContain('hover:bg-hover');
+        expect(screen.getByTestId('delete-1').className).toContain('hover:text-red');
+    });
+
+    it('v2: the empty state is the dashed box', () => {
+        policiesData = [];
+        render(<SlaPoliciesSettingsPage />);
+        expect(screen.getByText(/no sla policies yet/i).style.border).toBe('var(--line) dashed var(--border2)');
+        policiesData = POLICIES;
+    });
 });

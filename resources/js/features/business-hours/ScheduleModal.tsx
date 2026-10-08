@@ -1,10 +1,12 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal } from '../../components/ui/Modal';
-import { Input } from '../../components/ui/Input';
+import { FIELD_CLASSES, Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 import { WeeklyEditor } from './WeeklyEditor';
 import { useCreateSchedule, useUpdateSchedule } from './hooks';
 import { ApiError } from '../../lib/apiClient';
 import type { Schedule, ScheduleInterval } from '../../lib/types';
+import { fieldLabel, modalBody, modalFooter, modalHeader, modalTitle, selectStyle } from '../settings/settingsStyles';
 
 const TIMEZONES = [
     'UTC',
@@ -15,8 +17,6 @@ const TIMEZONES = [
     'Asia/Tokyo',
     'Australia/Sydney',
 ];
-
-const fieldLabel: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--fg3)', fontWeight: 500, marginBottom: 6 };
 
 export interface ScheduleModalProps {
     open: boolean;
@@ -65,9 +65,11 @@ export function ScheduleModal({ open, schedule, onClose }: ScheduleModalProps) {
 
     return (
         <Modal open={open} onClose={onClose} width={560} label={isEditing ? 'Edit schedule' : 'New schedule'}>
-            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{isEditing ? 'Edit schedule' : 'New schedule'}</h2>
+            <div style={modalHeader}>
+                <h2 style={modalTitle}>{isEditing ? 'Edit schedule' : 'New schedule'}</h2>
+            </div>
 
+            <div style={modalBody}>
                 <div>
                     <label htmlFor="schedule-name" style={fieldLabel}>Name</label>
                     <Input
@@ -88,16 +90,8 @@ export function ScheduleModal({ open, schedule, onClose }: ScheduleModalProps) {
                         aria-label="Timezone"
                         value={timezone}
                         onChange={(e) => setTimezone(e.target.value)}
-                        style={{
-                            width: '100%',
-                            background: 'var(--panel)',
-                            border: '1px solid var(--border)',
-                            borderRadius: 9,
-                            color: 'var(--fg)',
-                            fontSize: 13,
-                            padding: '6px 10px',
-                            fontFamily: 'inherit',
-                        }}
+                        className={FIELD_CLASSES}
+                        style={{ ...selectStyle, width: '100%' }}
                     >
                         {timezoneOptions.map((tz) => (
                             <option key={tz} value={tz}>{tz}</option>
@@ -111,35 +105,13 @@ export function ScheduleModal({ open, schedule, onClose }: ScheduleModalProps) {
                 </div>
 
                 {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+            </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={submit}
-                        disabled={!canSubmit}
-                        style={{
-                            background: 'var(--accent)',
-                            color: 'var(--on-accent)',
-                            borderRadius: 9,
-                            padding: '8px 15px',
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            border: 'none',
-                            cursor: canSubmit ? 'pointer' : 'not-allowed',
-                            opacity: canSubmit ? 1 : 0.5,
-                            fontFamily: 'inherit',
-                        }}
-                    >
-                        {isEditing ? 'Save changes' : 'Create schedule'}
-                    </button>
-                </div>
+            <div style={modalFooter}>
+                <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+                <Button size="sm" onClick={submit} disabled={!canSubmit}>
+                    {isEditing ? 'Save changes' : 'Create schedule'}
+                </Button>
             </div>
         </Modal>
     );

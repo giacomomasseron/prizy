@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { useSchedules, useDeleteSchedule } from './hooks';
 import { ScheduleModal } from './ScheduleModal';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { Button } from '../../components/ui/Button';
 import { ApiError } from '../../lib/apiClient';
 import type { Schedule } from '../../lib/types';
+import { DELETE_X_CLASSES, deleteXStyle, emptyState } from '../projects/projectStyles';
+import { ROW_CLASSES, listCard, pageFrame, pageLead, pageTitle, titleRow } from '../settings/settingsStyles';
 
 const DAY_ABBR = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -64,57 +67,50 @@ export default function BusinessHoursSettingsPage() {
     }
 
     return (
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 30px 80px', width: '100%' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 6 }}>
+        <div style={pageFrame}>
+            <div style={titleRow}>
                 <div>
-                    <h1 style={{ margin: 0, fontSize: 21, fontWeight: 600, letterSpacing: '-.02em' }}>Business hours</h1>
-                    <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--fg2)', maxWidth: 600 }}>
+                    <h1 style={pageTitle}><span className="hl">Business hours</span></h1>
+                    <p style={pageLead}>
                         Schedules define when your team is available and are used to calculate SLA due dates.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={openCreate}
-                    style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '9px 15px', borderRadius: 9, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
-                >
+                <Button onClick={openCreate} style={{ marginLeft: 'auto', flexShrink: 0 }}>
                     New schedule
-                </button>
+                </Button>
             </div>
 
             {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red)' }}>{error}</p>}
 
             {schedulesQ.isLoading && <p style={{ color: 'var(--fg3)' }}>Loading…</p>}
             {!schedulesQ.isLoading && schedules.length === 0 && (
-                <p style={{ color: 'var(--fg3)', fontSize: 13, marginTop: 20 }}>No schedules yet.</p>
+                <div style={{ ...emptyState, marginTop: 20 }}>No schedules yet.</div>
             )}
 
             {schedules.length > 0 && (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden', marginTop: 20 }}>
+                <div style={{ ...listCard, marginTop: 20 }}>
                     {schedules.map((s) => (
                         <div
                             key={s.id}
                             data-testid={`schedule-row-${s.id}`}
-                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}
+                            className={ROW_CLASSES}
+                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}
                         >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <span style={{ fontSize: 13.5, fontWeight: 500 }}>{s.name}</span>
-                                <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{s.timezone} · {summarizeIntervals(s)}</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)' }}>{s.name}</span>
+                                <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{s.timezone} · {summarizeIntervals(s)}</span>
                             </div>
                             <span style={{ flex: 1 }} />
-                            <button
-                                type="button"
-                                data-testid={`edit-${s.id}`}
-                                onClick={() => openEdit(s)}
-                                style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}
-                            >
+                            <Button variant="secondary" size="sm" data-testid={`edit-${s.id}`} onClick={() => openEdit(s)}>
                                 Edit
-                            </button>
+                            </Button>
                             <button
                                 type="button"
                                 title="Delete"
                                 data-testid={`delete-${s.id}`}
                                 onClick={() => remove(s)}
-                                style={{ border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', width: 24, height: 24, borderRadius: 6, fontSize: 15, lineHeight: 1 }}
+                                className={DELETE_X_CLASSES}
+                                style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
                             >
                                 ×
                             </button>

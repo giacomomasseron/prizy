@@ -77,4 +77,21 @@ describe('BusinessHoursSettingsPage', () => {
         expect(screen.getByText(/no schedules yet/i)).toBeInTheDocument();
         schedulesData = SCHEDULES; // restore for subsequent tests
     });
+
+    it('v2: highlighted title, pill Edit button and hover rows with a red-hover delete', () => {
+        schedulesData = SCHEDULES;
+        render(<BusinessHoursSettingsPage />);
+        expect(screen.getByRole('heading', { level: 1, name: 'Business hours' }).querySelector('.hl')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'New schedule' }).className).toContain('bg-fg');
+        expect(screen.getByTestId('edit-1').style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByTestId('schedule-row-1').className).toContain('hover:bg-hover');
+        expect(screen.getByTestId('delete-1').className).toContain('hover:text-red');
+    });
+
+    it('v2: the empty state is the dashed box', () => {
+        schedulesData = [];
+        render(<BusinessHoursSettingsPage />);
+        expect(screen.getByText(/no schedules yet/i).style.border).toBe('var(--line) dashed var(--border2)');
+        schedulesData = SCHEDULES;
+    });
 });

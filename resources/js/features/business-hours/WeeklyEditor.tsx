@@ -1,4 +1,6 @@
 import type { ScheduleInterval } from '../../lib/types';
+import { FIELD_CLASSES } from '../../components/ui/Input';
+import { checkboxStyle, timeInputStyle } from '../settings/settingsStyles';
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -29,20 +31,22 @@ export function WeeklyEditor({ value, onChange }: WeeklyEditorProps) {
     }
 
     return (
-        <div className="flex flex-col gap-2">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {DAY_NAMES.map((dayName, dayOfWeek) => {
                 const interval = byDay.get(dayOfWeek);
                 const isOpen = interval !== undefined;
+                const timeStyle = { ...timeInputStyle, opacity: isOpen ? 1 : 0.5 };
                 return (
-                    <div key={dayName} className="flex items-center gap-3">
-                        <label className="flex items-center gap-2">
+                    <div key={dayName} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 8, width: 130, cursor: 'pointer' }}>
                             <input
                                 type="checkbox"
                                 aria-label={`${dayName} open`}
                                 checked={isOpen}
                                 onChange={(e) => updateDay(dayOfWeek, e.target.checked ? {} : null)}
+                                style={checkboxStyle}
                             />
-                            <span className="w-24">{dayName}</span>
+                            <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)' }}>{dayName}</span>
                         </label>
                         <input
                             type="time"
@@ -50,14 +54,18 @@ export function WeeklyEditor({ value, onChange }: WeeklyEditorProps) {
                             value={interval?.opens_at ?? DEFAULT_OPENS}
                             disabled={!isOpen}
                             onChange={(e) => updateDay(dayOfWeek, { opens_at: e.target.value })}
+                            className={FIELD_CLASSES}
+                            style={timeStyle}
                         />
-                        <span>to</span>
+                        <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>to</span>
                         <input
                             type="time"
                             aria-label={`${dayName} closes`}
                             value={interval?.closes_at ?? DEFAULT_CLOSES}
                             disabled={!isOpen}
                             onChange={(e) => updateDay(dayOfWeek, { closes_at: e.target.value })}
+                            className={FIELD_CLASSES}
+                            style={timeStyle}
                         />
                     </div>
                 );
