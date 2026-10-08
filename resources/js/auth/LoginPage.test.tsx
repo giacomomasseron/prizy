@@ -1,3 +1,5 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -8,7 +10,7 @@ afterEach(() => vi.restoreAllMocks());
 
 function renderLogin() {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    render(
+    return render(
         <QueryClientProvider client={qc}>
             <MemoryRouter><LoginPage /></MemoryRouter>
         </QueryClientProvider>,
@@ -67,14 +69,25 @@ it('v2: ships no controls the backend cannot honour', () => {
 });
 
 it('v2: the decorative panel is light, hidden from assistive tech and carries no invented testimonial', () => {
-    const { container } = (() => {
-        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-        return render(<QueryClientProvider client={qc}><MemoryRouter><LoginPage /></MemoryRouter></QueryClientProvider>);
-    })();
+    const { container } = renderLogin();
     const aside = container.querySelector('aside') as HTMLElement;
     expect(aside).toHaveAttribute('aria-hidden', 'true');
     expect(aside.style.background).toBe('var(--bg2)');
     expect(aside).toHaveTextContent('Escalations');
     expect(aside).not.toHaveTextContent(/Leon K/);
-    expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba\(/);
+});
+
+it('v2: the decorative panel never scrolls, and overflow clips its bottom rather than its top', () => {
+    const { container } = renderLogin();
+    const aside = container.querySelector('aside') as HTMLElement;
+    expect(aside.style.overflow).toBe('hidden');
+    expect(aside.style.justifyContent).toBe('');
+    expect((aside.firstElementChild as HTMLElement).style.margin).toBe('auto');
+});
+
+it('v2: the auth files carry no fixed hex or rgb(a) colours', () => {
+    // Checked on the source: jsdom rewrites inline hex as rgb(), so a rendered-DOM check would miss most of them.
+    for (const f of ['LoginPage.tsx', 'SignupPage.tsx', 'authStyles.ts', 'AuthChrome.tsx']) {
+        expect(readFileSync(resolve(__dirname, f), 'utf8')).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
+    }
 });

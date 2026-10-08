@@ -67,7 +67,7 @@ html, body { background: var(--bg); color: var(--fg); }
 .login-fade  { animation: login-fade .5s ease both; }
 @media (prefers-reduced-motion: reduce) { .login-fade { animation: none; } }
 .login-input { border-color: var(--border2); outline: none; transition: border-color .12s, box-shadow .12s; }
-.login-input:focus { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); }
+.login-input:focus { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); outline: 2px solid transparent; } /* the transparent outline shows in forced-colours mode */
 @media (max-width: 900px) { .login-aside { display: none; } }
 
 /* KB article editor preview ("As customers see it") — mirrors the public

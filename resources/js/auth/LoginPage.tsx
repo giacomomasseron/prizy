@@ -2,8 +2,8 @@ import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from '../lib/apiClient';
 import { Button } from '../components/ui/Button';
-import { AuthBrand, AuthFooter } from './AuthChrome';
-import { AUTH_LINK_CLASSES, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
+import { AuthColumn } from './AuthChrome';
+import { AUTH_LINK_CLASSES, authColumn, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
 import { useLogin } from './useAuth';
 
 const ROWS = [
@@ -39,41 +39,36 @@ export default function LoginPage() {
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
             {/* Left: brand, form, footer */}
-            <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '28px 40px 24px', overflowY: 'auto' }}>
-                <AuthBrand />
+            <section style={{ ...authColumn, flex: 1, minWidth: 0, overflowY: 'auto' }}>
+                <AuthColumn>
+                    <h1 style={authTitle}><span className="hl">Welcome back</span></h1>
+                    <p style={authLead}>Sign in to your workspace to keep things moving.</p>
 
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-                    <div className="login-fade" style={{ width: '100%', maxWidth: 400 }}>
-                        <h1 style={authTitle}><span className="hl">Welcome back</span></h1>
-                        <p style={authLead}>Sign in to your workspace to keep things moving.</p>
+                    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <label style={authLabel}>Work email
+                            <input className="login-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" autoComplete="email" style={authInput} />
+                        </label>
+                        {errors.email?.map((m) => <p key={m} role="alert" style={authError}>{m}</p>)}
+                        <label style={authLabel}>Password
+                            <input className="login-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••" autoComplete="current-password" style={authInput} />
+                        </label>
+                        {errors.password?.map((m) => <p key={m} role="alert" style={authError}>{m}</p>)}
+                        {message && <p role="alert" style={authError}>{message}</p>}
+                        <Button type="submit" disabled={login.isPending} style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>
+                            {login.isPending ? 'Signing in…' : 'Sign in →'}
+                        </Button>
+                    </form>
 
-                        <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                            <label style={authLabel}>Work email
-                                <input className="login-input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" autoComplete="email" style={authInput} />
-                            </label>
-                            {errors.email?.map((m) => <p key={m} role="alert" style={authError}>{m}</p>)}
-                            <label style={authLabel}>Password
-                                <input className="login-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••" autoComplete="current-password" style={authInput} />
-                            </label>
-                            {errors.password?.map((m) => <p key={m} role="alert" style={authError}>{m}</p>)}
-                            {message && <p role="alert" style={authError}>{message}</p>}
-                            <Button type="submit" disabled={login.isPending} style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>
-                                {login.isPending ? 'Signing in…' : 'Sign in →'}
-                            </Button>
-                        </form>
-
-                        <p style={{ margin: '28px 0 0', textAlign: 'center', color: 'var(--fg2)', fontSize: 15 }}>
-                            New to Prizy? <Link to="/signup" className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</Link>
-                        </p>
-                    </div>
-                </div>
-
-                <AuthFooter />
+                    <p style={{ margin: '28px 0 0', textAlign: 'center', color: 'var(--fg2)', fontSize: 15 }}>
+                        New to Prizy? <Link to="/signup" className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</Link>
+                    </p>
+                </AuthColumn>
             </section>
 
-            {/* Right: decorative (hidden below 900px via .login-aside) */}
-            <aside className="login-aside" aria-hidden="true" style={{ flex: 1, minWidth: 0, background: 'var(--bg2)', borderLeft: 'var(--line) solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: 56, overflowY: 'auto' }}>
-                <div className="login-fade" style={{ maxWidth: 500, width: '100%', margin: '0 auto' }}>
+            {/* Right: decorative (hidden below 900px via .login-aside). It never scrolls — a scroll box would be a keyboard
+                stop inside aria-hidden — and margin:auto centres it while there is room, so overflow clips the bottom, never the top. */}
+            <aside className="login-aside" aria-hidden="true" style={{ flex: 1, minWidth: 0, background: 'var(--bg2)', borderLeft: 'var(--line) solid var(--border)', display: 'flex', flexDirection: 'column', padding: 56, overflow: 'hidden' }}>
+                <div className="login-fade" style={{ maxWidth: 500, width: '100%', margin: 'auto' }}>
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 14px', borderRadius: 'var(--radius-pill)', background: 'var(--panel)', border: 'var(--line) solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--fg2)', marginBottom: 26 }}>
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />All systems operational
                     </div>

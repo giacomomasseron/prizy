@@ -83,6 +83,8 @@ describe('login aside', () => {
     });
     it('gives auth fields the v2 ink border and offset shadow on focus', () => {
         expect(css).toMatch(/\.login-input:focus\s*\{[^}]*border-color:\s*var\(--fg\)[^}]*box-shadow:\s*3px 3px 0 var\(--fg\)/);
+        // forced-colours mode drops the shadow and overrides borders; a transparent outline still shows there.
+        expect(css).toMatch(/\.login-input:focus\s*\{[^}]*outline:\s*2px solid transparent/);
     });
 });
 

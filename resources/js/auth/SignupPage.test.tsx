@@ -44,4 +44,14 @@ it('shows the success message once the workspace is created', async () => {
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
     await waitFor(() => expect(screen.getByText(/Workspace created/)).toBeInTheDocument());
     expect(screen.getByText('acme')).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('Workspace created');
+});
+
+it('gives the fields autofill hints, and the email field the email keyboard', () => {
+    render(<SignupPage />);
+    expect(screen.getByLabelText('workspace name')).toHaveAttribute('autocomplete', 'organization');
+    expect(screen.getByLabelText('name')).toHaveAttribute('autocomplete', 'name');
+    expect(screen.getByLabelText('email')).toHaveAttribute('type', 'email');
+    expect(screen.getByLabelText('email')).toHaveAttribute('autocomplete', 'email');
+    expect(screen.getByLabelText('password')).toHaveAttribute('autocomplete', 'new-password');
 });

@@ -4,6 +4,8 @@ import type { CSSProperties } from 'react';
  * The v2 auth frame shared by LoginPage and SignupPage (V2-F). Layout lives in style objects; colours that
  * change on hover or focus live in classes (`.login-input` in app.css, AUTH_LINK_CLASSES).
  */
+/** The auth page column: brand at the top, the centred form, the footer at the bottom (see AuthColumn). */
+export const authColumn: CSSProperties = { display: 'flex', flexDirection: 'column', padding: '28px 40px 24px', boxSizing: 'border-box' };
 export const authLabel: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 7, fontSize: 14, fontWeight: 700, color: 'var(--fg)' };
 /** Border colour + the offset focus shadow live in `.login-input` (app.css) so `:focus` can change them. */
 export const authInput: CSSProperties = {

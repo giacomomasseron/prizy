@@ -1,22 +1,20 @@
 import { useState } from 'react';
 import { ApiError } from '../lib/apiClient';
 import { Button } from '../components/ui/Button';
-import { AuthBrand, AuthFooter } from './AuthChrome';
-import { authError, authInput, authLabel, authLead, authTitle } from './authStyles';
+import { AuthColumn } from './AuthChrome';
+import { authColumn, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
 import { sessionPost } from './useAuth';
 
-/** The v2 auth frame (same left column as LoginPage, no decorative panel). */
+/** The v2 auth frame: the login page's left column on its own. */
 function AuthFrame({ children }: { children: React.ReactNode }) {
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', width: '100%', padding: '28px 40px 24px', boxSizing: 'border-box', color: 'var(--fg)', background: 'var(--bg)' }}>
-            <AuthBrand />
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
-                <div className="login-fade" style={{ width: '100%', maxWidth: 400 }}>{children}</div>
-            </div>
-            <AuthFooter />
+        <div style={{ ...authColumn, minHeight: '100vh', width: '100%', color: 'var(--fg)', background: 'var(--bg)' }}>
+            <AuthColumn>{children}</AuthColumn>
         </div>
     );
 }
+
+const AUTOCOMPLETE = { workspace_name: 'organization', slug: 'off', name: 'name', email: 'email', password: 'new-password' } as const;
 
 export default function SignupPage() {
     const [form, setForm] = useState({ workspace_name: '', slug: '', name: '', email: '', password: '' });
@@ -41,10 +39,13 @@ export default function SignupPage() {
     if (done) {
         return (
             <AuthFrame>
-                <h1 style={authTitle}><span className="hl">Workspace created</span></h1>
-                <p style={{ ...authLead, margin: '14px 0 0' }}>
-                    Visit <code style={{ fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--fg)' }}>{form.slug}</code>.localhost to log in.
-                </p>
+                {/* role="status": the focused Create button unmounts here, so announce the result. */}
+                <div role="status">
+                    <h1 style={authTitle}><span className="hl">Workspace created</span></h1>
+                    <p style={{ ...authLead, margin: '14px 0 0' }}>
+                        Visit <code style={{ fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--fg)' }}>{form.slug}</code>.localhost to log in.
+                    </p>
+                </div>
             </AuthFrame>
         );
     }
@@ -58,7 +59,8 @@ export default function SignupPage() {
                         <label htmlFor={field} style={{ ...authLabel, textTransform: 'capitalize' }}>{field.replace('_', ' ')}</label>
                         <input
                             id={field}
-                            type={field === 'password' ? 'password' : 'text'}
+                            type={field === 'password' ? 'password' : field === 'email' ? 'email' : 'text'}
+                            autoComplete={AUTOCOMPLETE[field]}
                             value={form[field]}
                             onChange={set(field)}
                             className="login-input"
