@@ -12,6 +12,9 @@ import { avatarFor } from '../../lib/avatarFor';
 import { Menu } from '../../components/ui/Menu';
 import type { MenuItem } from '../../components/ui/Menu';
 import type { Project, Label } from '../../lib/types';
+import { sectionLabel } from '../../components/sidebarStyles';
+import { HI_PILL_CLASSES, chipClasses, chipStyle, toolPillStyle } from '../issues/issueStyles';
+import { smallLabel } from '../support/supportStyles';
 
 function fmtLabel(value: string): string {
     return value
@@ -173,12 +176,12 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
         }));
 
     return (
-        <div style={{ margin: '14px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ margin: '14px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {/* Pills row */}
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 12, color: 'var(--fg3)', fontWeight: 500 }}>Filters</span>
+                <span style={{ ...sectionLabel, marginRight: 2 }}>Filters</span>
 
-                {/* Active filter pills */}
+                {/* Active filter pills: the yellow highlighter, like the issue filter bar */}
                 {activeKeys.map((key) => {
                     const value = (filters as Record<string, string>)[key];
                     const fieldDef = SEARCH_FILTER_FIELDS.find((f) => f.key === key);
@@ -188,23 +191,15 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                     return (
                         <span
                             key={key}
+                            className={HI_PILL_CLASSES}
                             style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                padding: '3px 6px 3px 9px',
-                                borderRadius: 7,
-                                background: 'var(--accent2)',
-                                color: 'var(--accent)',
-                                fontSize: 11.5,
-                                fontWeight: 600,
-                                border: '1px solid transparent',
+                                display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px 4px 12px',
+                                borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
+                                fontSize: 12.5, fontWeight: 700,
                             }}
                         >
                             {fieldLabel}
-                            <span style={{ color: 'var(--fg3)', fontWeight: 400, fontSize: 11 }}>
-                                · is ·
-                            </span>
+                            <span style={{ fontWeight: 500, fontSize: 12 }}>· is ·</span>
                             <PillValueIcon
                                 filterKey={key}
                                 value={value}
@@ -217,17 +212,7 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                                 type="button"
                                 aria-label={`Remove ${fieldLabel} filter`}
                                 onClick={() => removeFilter(key)}
-                                style={{
-                                    color: 'var(--accent)',
-                                    fontSize: 12,
-                                    background: 'none',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    lineHeight: 1,
-                                    marginLeft: 2,
-                                    fontFamily: 'inherit',
-                                }}
+                                style={{ color: 'inherit', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1, marginLeft: 2, fontFamily: 'inherit' }}
                             >
                                 ✕
                             </button>
@@ -240,19 +225,8 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                     trigger={
                         <button
                             type="button"
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 5,
-                                padding: '3px 9px',
-                                borderRadius: 7,
-                                border: '1px dashed var(--border)',
-                                background: 'transparent',
-                                color: 'var(--fg3)',
-                                fontSize: 12,
-                                cursor: 'pointer',
-                                fontFamily: 'inherit',
-                            }}
+                            className="border-border2 bg-transparent text-fg2 hover:border-fg hover:text-fg"
+                            style={{ ...toolPillStyle, padding: '5px 12px', fontSize: 12.5, borderStyle: 'dashed' }}
                         >
                             + Add filter
                         </button>
@@ -266,49 +240,24 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                         type="button"
                         aria-label="Clear all"
                         onClick={() => onChange({})}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: 12,
-                            color: 'var(--fg3)',
-                            padding: '3px 6px',
-                            fontFamily: 'inherit',
-                        }}
+                        className="text-fg3 hover:text-fg"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit' }}
                     >
                         Clear all
                     </button>
                 )}
             </div>
 
-            {/* Value picker card (shown after selecting a field from the + Add filter menu) */}
+            {/* Value picker card (shown after selecting a field from the + Add filter menu): the popover look */}
             {pendingField && pendingFieldDef && (
                 <div
                     style={{
-                        display: 'inline-flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                        padding: 12,
-                        background: 'var(--panel)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 10,
-                        boxShadow: '0 4px 16px rgba(0,0,0,.18)',
-                        maxWidth: 320,
-                        alignSelf: 'flex-start',
+                        display: 'inline-flex', flexDirection: 'column', gap: 8, padding: 14,
+                        background: 'var(--panel)', border: 'var(--line) solid var(--fg)', borderRadius: 'var(--radius-pop)',
+                        boxShadow: 'var(--pop-shadow)', maxWidth: 360, alignSelf: 'flex-start',
                     }}
                 >
-                    <span
-                        style={{
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: 'var(--fg3)',
-                            marginBottom: 4,
-                            textTransform: 'uppercase',
-                            letterSpacing: '.04em',
-                        }}
-                    >
-                        Choose {pendingFieldDef.label}
-                    </span>
+                    <span style={smallLabel}>Choose {pendingFieldDef.label}</span>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                         {pickerOptions.map((opt) => (
                             <button
@@ -319,19 +268,8 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                                     onChange({ ...filters, [pendingField]: opt.value });
                                     setPendingField(null);
                                 }}
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 6,
-                                    padding: '5px 10px',
-                                    borderRadius: 7,
-                                    border: '1px solid var(--border)',
-                                    background: 'var(--bg)',
-                                    cursor: 'pointer',
-                                    fontSize: 12.5,
-                                    fontFamily: 'inherit',
-                                    color: 'var(--fg)',
-                                }}
+                                className={chipClasses(false)}
+                                style={{ ...chipStyle, padding: '5px 11px', fontSize: 12.5 }}
                             >
                                 <OptionIcon
                                     filterKey={pendingField}
@@ -351,16 +289,8 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                     <button
                         type="button"
                         onClick={() => setPendingField(null)}
-                        style={{
-                            background: 'none',
-                            border: 'none',
-                            cursor: 'pointer',
-                            fontSize: 11.5,
-                            color: 'var(--fg3)',
-                            padding: '4px 0 0',
-                            textAlign: 'left',
-                            fontFamily: 'inherit',
-                        }}
+                        className="text-fg3 hover:text-fg"
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '2px 0 0', textAlign: 'left', fontFamily: 'inherit', alignSelf: 'flex-start' }}
                     >
                         Cancel
                     </button>

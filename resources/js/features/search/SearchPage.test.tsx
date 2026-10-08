@@ -222,3 +222,30 @@ describe('Sidebar saved views', () => {
         expect(await screen.findByText(/no saved views/i)).toBeInTheDocument();
     });
 });
+
+describe('v2 look', () => {
+    it('v2: a "Search" page title, a pill query field, and result rows whose hover is not blocked', async () => {
+        wrap(<SearchPage />);
+        expect(screen.getByRole('heading', { level: 1, name: 'Search' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Search issues').parentElement!.className).toContain('focus-within:border-fg');
+        const row = (await screen.findAllByTestId('search-row'))[0];
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.style.background).toBe('');
+    });
+
+    it('v2: the match highlight is the yellow highlighter, and the pager is v2 Buttons', async () => {
+        wrap(<SearchPage />);
+        await screen.findByText('Fix login bug');
+        fireEvent.change(screen.getByLabelText(/search/i), { target: { value: 'login' } });
+        const hl = await screen.findByTestId('hl');
+        expect(hl.style.background).toBe('var(--hi)');
+        expect(hl.style.color).toBe('var(--on-hi)'); // ink on yellow in both themes
+        expect(screen.getByTestId('search-next').className).toContain('border-border2');
+    });
+
+    it('v2: Save is the ink Button', () => {
+        wrap(<SearchPage />);
+        fireEvent.click(screen.getByRole('button', { name: /save this view/i }));
+        expect(screen.getByRole('button', { name: /^save$/i }).className).toContain('bg-fg');
+    });
+});
