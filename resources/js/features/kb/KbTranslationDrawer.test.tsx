@@ -251,4 +251,39 @@ describe('KbTranslationDrawer', () => {
         renderDrawer({ translationsFail: true });
         expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load translations.');
     });
+
+    it('v2: display-font title and a selected locale row tinted through classes', async () => {
+        renderDrawer({ initialLocale: 'fr' });
+        const h2 = await screen.findByRole('heading', { level: 2, name: 'Translations' });
+        expect(h2.style.fontFamily).toBe('var(--font-display)');
+        const fr = await screen.findByRole('button', { name: /French/ });
+        expect(fr.className).toBe('bg-sup2');
+        expect(fr.style.background).toBe('');
+        expect(screen.getByRole('button', { name: /German/ }).className).toContain('hover:bg-hover');
+    });
+
+    it('v2: the stale banner uses the note tokens', async () => {
+        renderDrawer({ initialLocale: 'es' });
+        const banner = await screen.findByTestId('kb-stale-banner');
+        expect(banner.style.background).toBe('var(--note2)');
+        expect(banner.style.border).toContain('color-mix(in srgb, var(--note) 40%, transparent)');
+    });
+
+    it('v2: the status control mirrors the segmented control and the footer is beige', async () => {
+        renderDrawer({ initialLocale: 'fr' });
+        const published = await screen.findByRole('button', { name: 'Published' });
+        await waitFor(() => expect(published.style.background).toBe('var(--panel)'));
+        expect(published.style.boxShadow).toBe('0 0 0 1.5px var(--border)');
+        expect(published.style.borderRadius).toBe('var(--radius-pill)');
+        expect(published.parentElement?.style.borderRadius).toBe('var(--radius-pill)');
+        const del = screen.getByRole('button', { name: 'Delete translation' });
+        expect(del.className).toContain('enabled:hover:text-red');
+        expect(del.style.color).toBe('');
+        expect(screen.getByTestId('kb-translation-footer').style.background).toBe('var(--bg2)');
+    });
+
+    it('v2: the untranslated state has a display-font title', async () => {
+        renderDrawer({ initialLocale: 'it' });
+        expect((await screen.findByText('Not translated yet')).style.fontFamily).toBe('var(--font-display)');
+    });
 });
