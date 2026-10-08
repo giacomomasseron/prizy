@@ -1,13 +1,17 @@
 import { useState, type CSSProperties } from 'react';
 import { TICKET_VIEWS, viewCount, type TicketViewKey } from './ticketViews';
 import { TICKET_CHANNEL } from './ticketMeta';
+import { sideFrame, sideRow, sideSection, sideSub, sideTitle, smallPill } from './supportStyles';
+import { NAV_ROW_HOVER, countStyle } from '../../components/sidebarStyles';
+import { DELETE_X_CLASSES, deleteXStyle } from '../projects/projectStyles';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 import type { TicketChannel, TicketCounts, HelpdeskSavedView } from '../../lib/types';
 
 const CHANNELS: TicketChannel[] = ['email', 'chat', 'portal', 'api'];
 
-const rowCss = (active: boolean): CSSProperties => ({ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '6px 9px', borderRadius: 7, border: 'none', cursor: 'pointer', fontSize: 12.8, fontWeight: active ? 600 : 500, textAlign: 'left', fontFamily: 'inherit', color: active ? 'var(--fg)' : 'var(--fg2)', background: active ? 'var(--hover)' : 'transparent' });
-const sectionLabel: CSSProperties = { padding: '8px 14px 4px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' };
-const badge: CSSProperties = { fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' };
+const icon: CSSProperties = { width: 16, display: 'inline-flex', justifyContent: 'center', color: 'var(--fg3)' };
+const rowList: CSSProperties = { padding: '0 8px 8px', display: 'flex', flexDirection: 'column', gap: 1 };
 
 export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSelectChannel, tag, onClearTag, savedViews, savedViewId, onSelectSavedView, onDeleteSavedView, onSaveView }: {
     counts: TicketCounts | undefined;
@@ -35,63 +39,63 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
     };
 
     return (
-        <aside style={{ width: 216, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-            <div style={{ padding: '15px 16px 6px', fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>Support</div>
-            <div style={{ padding: '4px 16px 10px', fontSize: 11, color: 'var(--fg3)' }}>Agent workspace</div>
+        <aside style={sideFrame}>
+            <div style={sideTitle}>Support</div>
+            <div style={sideSub}>Agent workspace</div>
 
-            <div style={sectionLabel}>Views</div>
-            <div style={{ padding: '0 8px 10px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={sideSection}>Views</div>
+            <div style={rowList}>
                 {TICKET_VIEWS.map((v) => {
                     const active = view === v.key && !savedViewId;
                     return (
-                        <button key={v.key} type="button" onClick={() => onSelectView(v.key)} style={rowCss(active)} className={active ? '' : 'hover:bg-hover'}>
-                            <span style={{ width: 15, display: 'inline-flex', justifyContent: 'center', color: 'var(--fg3)' }}>{v.icon}</span>
+                        <button key={v.key} type="button" onClick={() => onSelectView(v.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                            <span style={icon}>{v.icon}</span>
                             <span style={{ flex: 1 }}>{v.label}</span>
-                            <span style={badge}>{counts ? viewCount(v.key, counts) : ''}</span>
+                            <span style={countStyle}>{counts ? viewCount(v.key, counts) : ''}</span>
                         </button>
                     );
                 })}
             </div>
 
-            <div style={sectionLabel}>Channels</div>
-            <div style={{ padding: '0 8px 10px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={sideSection}>Channels</div>
+            <div style={rowList}>
                 {CHANNELS.map((c) => {
                     const active = channel === c && !savedViewId;
                     return (
-                        <button key={c} type="button" aria-pressed={active} onClick={() => onSelectChannel(c)} style={rowCss(active)} className={active ? '' : 'hover:bg-hover'}>
-                            <span style={{ width: 15, display: 'inline-flex', justifyContent: 'center', color: 'var(--fg3)' }}>{TICKET_CHANNEL[c].icon}</span>
+                        <button key={c} type="button" aria-pressed={active} onClick={() => onSelectChannel(c)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                            <span style={icon}>{TICKET_CHANNEL[c].icon}</span>
                             <span style={{ flex: 1 }}>{TICKET_CHANNEL[c].label}</span>
-                            <span style={badge}>{counts ? counts.by_channel[c] : ''}</span>
+                            <span style={countStyle}>{counts ? counts.by_channel[c] : ''}</span>
                         </button>
                     );
                 })}
             </div>
 
-            <div style={sectionLabel}>Saved views</div>
-            <div style={{ padding: '0 8px 6px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <div style={sideSection}>Saved views</div>
+            <div style={rowList}>
                 {savedViews.map((sv) => {
                     const active = savedViewId === sv.id;
                     return (
                         <div key={sv.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }} className="group">
-                            <button type="button" onClick={() => onSelectSavedView(sv.id)} style={{ ...rowCss(active), flex: 1 }} className={active ? '' : 'hover:bg-hover'}>
-                                <span style={{ width: 15, display: 'inline-flex', justifyContent: 'center', color: 'var(--fg3)' }}>☰</span>
+                            <button type="button" onClick={() => onSelectSavedView(sv.id)} style={{ ...sideRow(active), flex: 1, minWidth: 0 }} className={active ? '' : NAV_ROW_HOVER}>
+                                <span style={icon}>☰</span>
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sv.name}</span>
                             </button>
-                            <button type="button" aria-label={`Delete view ${sv.name}`} onClick={() => onDeleteSavedView(sv.id)} style={{ border: 'none', background: 'transparent', color: 'var(--fg3)', cursor: 'pointer', padding: '2px 6px', fontSize: 13, fontFamily: 'inherit' }}>✕</button>
+                            <button type="button" aria-label={`Delete view ${sv.name}`} onClick={() => onDeleteSavedView(sv.id)} className={DELETE_X_CLASSES} style={{ ...deleteXStyle, fontSize: 13 }}>✕</button>
                         </div>
                     );
                 })}
                 {saving ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 9px' }}>
-                        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ fontSize: 12.5, padding: '5px 8px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--fg)', fontFamily: 'inherit' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 4px' }}>
+                        <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
                         <div style={{ display: 'flex', gap: 6 }}>
-                            <button type="button" onClick={submit} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--sup)', background: 'var(--sup2)', color: 'var(--sup)', cursor: 'pointer', fontFamily: 'inherit' }}>Save</button>
-                            <button type="button" onClick={() => { setSaving(false); setName(''); }} style={{ fontSize: 12, padding: '4px 10px', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg2)', cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                            <Button size="sm" onClick={submit}>Save</Button>
+                            <Button variant="secondary" size="sm" onClick={() => { setSaving(false); setName(''); }}>Cancel</Button>
                         </div>
                     </div>
                 ) : (
-                    <button type="button" onClick={() => setSaving(true)} style={{ ...rowCss(false), color: 'var(--fg3)' }} className="hover:bg-hover">
-                        <span style={{ width: 15, display: 'inline-flex', justifyContent: 'center' }}>＋</span>
+                    <button type="button" onClick={() => setSaving(true)} style={{ ...sideRow(false), color: 'var(--fg3)' }} className={NAV_ROW_HOVER}>
+                        <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>＋</span>
                         <span style={{ flex: 1 }}>+ Save view</span>
                     </button>
                 )}
@@ -99,9 +103,10 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
 
             {tag && (
                 <>
-                    <div style={sectionLabel}>Filter</div>
-                    <div style={{ padding: '0 14px 12px' }}>
-                        <button type="button" onClick={onClearTag} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11.5, padding: '3px 9px', borderRadius: 20, background: 'var(--sup2)', border: '1px solid var(--sup)', color: 'var(--sup)', cursor: 'pointer', fontFamily: 'inherit' }}>
+                    <div style={sideSection}>Filter</div>
+                    <div style={{ padding: '0 16px 12px' }}>
+                        {/* Green border = an active filter; the label stays ink (no small green text). */}
+                        <button type="button" onClick={onClearTag} className="border-sup bg-transparent text-fg hover:bg-sup2" style={smallPill}>
                             Tag: {tag.name} <span aria-hidden="true">✕</span>
                         </button>
                     </div>

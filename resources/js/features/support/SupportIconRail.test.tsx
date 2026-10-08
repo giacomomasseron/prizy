@@ -32,4 +32,17 @@ describe('SupportIconRail', () => {
         render(<MemoryRouter><SupportIconRail viewsOpen onToggleViews={vi.fn()} onNewTicket={vi.fn()} /></MemoryRouter>);
         expect(screen.getByRole('link', { name: 'Knowledge base' })).toHaveAttribute('href', '/support/kb');
     });
+
+    it('v2: Home is the active item; Views is active only while the sidebar is open; names unchanged', () => {
+        const { rerender } = render(<MemoryRouter><SupportIconRail viewsOpen onToggleViews={vi.fn()} onNewTicket={vi.fn()} /></MemoryRouter>);
+        expect(screen.getByTitle('Home').className).toContain('bg-sup2');
+        expect(screen.getByRole('button', { name: 'Views' }).className).toContain('bg-sup2');
+        expect(screen.getByRole('button', { name: 'Views' })).toHaveAttribute('aria-pressed', 'true');
+        rerender(<MemoryRouter><SupportIconRail viewsOpen={false} onToggleViews={vi.fn()} onNewTicket={vi.fn()} /></MemoryRouter>);
+        const views = screen.getByRole('button', { name: 'Views' });
+        expect(views.className).toContain('hover:bg-hover');
+        expect(views.style.background).toBe('');
+        expect(screen.getByRole('link', { name: 'Prizy' })).toHaveAttribute('href', '/support');
+        expect(screen.getByRole('link', { name: 'Reporting' }).className).toContain('hover:bg-hover');
+    });
 });
