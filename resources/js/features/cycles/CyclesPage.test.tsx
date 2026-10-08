@@ -48,4 +48,15 @@ describe('CyclesPage', () => {
         renderPage([]);
         expect(await screen.findByText('No cycles in this team yet.')).toBeInTheDocument();
     });
+
+    it('v2: display-font title, state tags tinted from tokens, and a red-on-hover delete ×', async () => {
+        renderPage();
+        expect(await screen.findByText('Cycle 22')).toBeInTheDocument();
+        const h1 = screen.getByRole('heading', { name: 'Cycles' });
+        expect(h1.style.fontFamily).toBe('var(--font-display)');
+        expect((h1.closest('[style*="nav-inset"]') as HTMLElement).style.padding).toBe('26px 30px 80px calc(30px + var(--nav-inset, 0px))');
+        const active = screen.getAllByTestId('cycle-tag').find((t) => t.textContent === 'Active')!;
+        expect(active.style.background).toBe('color-mix(in srgb, var(--amber) 15%, transparent)');
+        expect((await screen.findByRole('button', { name: 'Delete Cycle 22' })).className).toContain('hover:text-red');
+    });
 });

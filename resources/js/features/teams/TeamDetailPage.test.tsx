@@ -58,4 +58,15 @@ describe('TeamDetailPage', () => {
         await screen.findByText('Cycles');
         expect(screen.queryByRole('button', { name: /New cycle/i })).not.toBeInTheDocument();
     });
+
+    it('v2: display-font title and Cycles heading, a quiet back link, and a danger Delete pill', async () => {
+        renderPage();
+        expect(await screen.findByText('Sprint 1')).toBeInTheDocument();
+        const h1 = screen.getByRole('heading', { level: 1 });
+        expect(h1.style.fontFamily).toBe('var(--font-display)');
+        expect((h1.closest('[style*="nav-inset"]') as HTMLElement).style.padding).toBe('26px 30px 80px calc(30px + var(--nav-inset, 0px))');
+        expect(screen.getByRole('heading', { name: 'Cycles' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('link', { name: /Teams/ }).className).toContain('hover:text-fg');
+        expect((await screen.findByRole('button', { name: 'Delete' })).className).toContain('hover:text-red');
+    });
 });

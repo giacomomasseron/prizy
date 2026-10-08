@@ -1,9 +1,16 @@
+import type { CSSProperties } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { Button } from '../../components/ui/Button';
+import { sectionTitle } from '../issues/issueStyles';
+import { pageTitle } from '../projects/projectStyles';
+import { DANGER_PILL_CLASSES, pillBtn } from '../settings/settingsStyles';
 import { useDeleteCycle, useCycles, useTeams } from './hooks';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+
+/** Detail-page frame; the left pad clears the floating "Expand sidebar" button when the sidebar is hidden. */
+const frame: CSSProperties = { padding: '26px 30px 80px calc(30px + var(--nav-inset, 0px))', maxWidth: 960, boxSizing: 'border-box' };
 
 export default function TeamDetailPage() {
     const { id = '' } = useParams();
@@ -16,30 +23,41 @@ export default function TeamDetailPage() {
     const confirm = useConfirm();
 
     const team = teams.data?.items.find((t) => t.id === id);
+    const items = cycles.data?.items ?? [];
 
     return (
-        <div className="mx-auto max-w-3xl p-6">
-            <Link to="/teams" className="text-sm text-accent">← Teams</Link>
-            <h1 className="mt-2 text-xl font-semibold">{team ? `${team.identifier} · ${team.name}` : 'Team'}</h1>
+        <div style={frame}>
+            <Link to="/teams" className="text-fg2 hover:text-fg" style={{ fontSize: 13.5, fontWeight: 600, textDecoration: 'none' }}>← Teams</Link>
+            <h1 style={{ ...pageTitle, margin: '10px 0 0' }}><span className="hl">{team ? `${team.identifier} · ${team.name}` : 'Team'}</span></h1>
 
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1.5rem', marginBottom: '0.5rem' }}>
-                <h2 className="font-semibold">Cycles</h2>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginTop: 28, marginBottom: 12 }}>
+                <h2 style={sectionTitle(20)}>Cycles</h2>
                 {canDevelop && (
-                    <Button onClick={() => navigate(`/create?tab=cycle&team=${id}`)}>New cycle</Button>
+                    <Button size="sm" onClick={() => navigate(`/create?tab=cycle&team=${id}`)}>New cycle</Button>
                 )}
             </div>
 
-            {cycles.isLoading && <p>Loading…</p>}
-            <ul className="divide-y rounded border border-border bg-panel">
-                {cycles.data?.items.map((c) => (
-                    <li key={c.id} className="flex items-center justify-between px-4 py-2">
-                        <span>{c.name} <span className="text-xs text-fg2">{c.starts_at} → {c.ends_at}</span></span>
-                        {canDevelop && (
-                            <button type="button" onClick={async () => { if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id); }} className="text-sm text-red hover:underline">Delete</button>
-                        )}
-                    </li>
-                ))}
-            </ul>
+            {cycles.isLoading && <p style={{ margin: 0, fontSize: 13, color: 'var(--fg3)' }}>Loading…</p>}
+            {items.length > 0 && (
+                <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
+                    {items.map((c) => (
+                        <div key={c.id} className="border-b border-border last:border-b-0" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px' }}>
+                            <span style={{ fontSize: 14, fontWeight: 700 }}>{c.name}</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' }}>{c.starts_at} → {c.ends_at}</span>
+                            {canDevelop && (
+                                <button
+                                    type="button"
+                                    onClick={async () => { if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id); }}
+                                    style={{ ...pillBtn, marginLeft: 'auto' }}
+                                    className={DANGER_PILL_CLASSES}
+                                >
+                                    Delete
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

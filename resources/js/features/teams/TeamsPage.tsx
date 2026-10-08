@@ -1,5 +1,9 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/ui/Button';
+import { TeamTile } from '../../components/ui/TeamTile';
+import { listCard } from '../settings/settingsStyles';
 import { useTeams } from './hooks';
 
 export default function TeamsPage() {
@@ -7,28 +11,35 @@ export default function TeamsPage() {
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const teams = useTeams();
     const navigate = useNavigate();
+    const items = teams.data?.items ?? [];
 
     return (
-        <div className="mx-auto max-w-4xl p-6">
-            <div className="mb-4 flex items-center justify-between">
-                <h1 className="text-xl font-semibold">Teams</h1>
-                {canManage && (
-                    <button type="button" onClick={() => navigate('/settings/teams')}
-                        className="rounded bg-accent px-3 py-1 text-on-accent text-sm">New team</button>
+        <>
+            <PageHeader
+                title="Teams"
+                actions={canManage ? <Button onClick={() => navigate('/settings/teams')}>New team</Button> : undefined}
+            />
+
+            <div style={{ padding: '4px 26px 40px', maxWidth: 952, boxSizing: 'border-box' }}>
+                {teams.isLoading && <p style={{ margin: 0, fontSize: 13, color: 'var(--fg3)' }}>Loading…</p>}
+                {items.length > 0 && (
+                    <ul style={{ ...listCard, listStyle: 'none', margin: 0, padding: 0 }}>
+                        {items.map((team) => (
+                            <li key={team.id} className="border-b border-border last:border-b-0">
+                                <Link
+                                    to={`/teams/${team.id}`}
+                                    className="hover:bg-hover"
+                                    style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', textDecoration: 'none', color: 'var(--fg)' }}
+                                >
+                                    <TeamTile identifier={team.identifier} color={team.color} size={30} />
+                                    <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</span>
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>{team.identifier}</span>
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
                 )}
             </div>
-
-            {teams.isLoading && <p>Loading…</p>}
-            <ul className="divide-y rounded border border-border bg-panel">
-                {teams.data?.items.map((team) => (
-                    <li key={team.id} className="flex items-center px-4 py-2">
-                        <Link to={`/teams/${team.id}`} className="font-medium hover:underline">
-                            <span className="mr-2 rounded bg-hover px-1.5 py-0.5 text-xs">{team.identifier}</span>
-                            {team.name}
-                        </Link>
-                    </li>
-                ))}
-            </ul>
-        </div>
+        </>
     );
 }
