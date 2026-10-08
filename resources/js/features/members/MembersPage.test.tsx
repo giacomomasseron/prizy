@@ -309,4 +309,18 @@ describe('MembersPage', () => {
         await screen.findByText('Frank');
         expect(screen.getByTestId('members-table')).toContainElement(screen.getByText(/no capability enabled/i));
     });
+    it('v2: the level trigger only shows its hover border while enabled', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co', admin_level: 'member' })]);
+        await screen.findByText('Alice');
+        const trigger = screen.getByTestId('level-btn-a@x.co');
+        expect(trigger.className).toContain('enabled:hover:border-fg');
+        expect(trigger.className).not.toMatch(/(^| )hover:border-fg/);
+    });
+
+    it('v2: the page frame keeps its gutters when the table forces sideways scrolling', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        const frame = screen.getByTestId('members-table').parentElement as HTMLElement;
+        expect(frame.style.minWidth).toBe('728px');
+    });
 });

@@ -135,6 +135,13 @@ describe('Switch', () => {
     // The visible label text should still be rendered in the DOM
     expect(screen.getByText('2-day cooldown after cycle ends')).toBeInTheDocument();
   });
+  it('shows a focus ring on the track when the hidden checkbox has keyboard focus', () => {
+    const { container } = render(<Switch checked={false} onChange={() => {}} label="Focusable" />);
+    expect(screen.getByRole('checkbox', { name: 'Focusable' }).className).toContain('peer');
+    const track = container.querySelector('[aria-hidden="true"]') as HTMLElement;
+    expect(track.className).toContain('peer-focus-visible:outline-fg');
+    expect(track.className).toContain('peer-focus-visible:outline-offset-2');
+  });
 });
 
 describe('SegmentedControl', () => {

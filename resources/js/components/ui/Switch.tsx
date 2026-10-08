@@ -39,6 +39,7 @@ export function Switch({ checked, onChange, label, ariaLabel, disabled = false }
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: disabled ? 'not-allowed' : 'pointer' }}>
             {/* Hidden native checkbox for accessibility */}
             <input
+                className="peer"
                 type="checkbox"
                 checked={checked}
                 disabled={disabled}
@@ -46,7 +47,11 @@ export function Switch({ checked, onChange, label, ariaLabel, disabled = false }
                 aria-label={ariaLabel ?? label}
                 style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
             />
-            <span style={trackStyle} aria-hidden="true">
+            <span
+                className="peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-fg"
+                style={trackStyle}
+                aria-hidden="true"
+            >
                 <span style={knobStyle} />
             </span>
             {label && <span style={{ fontSize: 13, color: disabled ? 'var(--fg3)' : 'var(--fg)' }}>{label}</span>}

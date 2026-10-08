@@ -119,6 +119,11 @@ describe('SettingsLayout', () => {
         expect(mark.style.borderRadius).toBe('50%');
         expect(mark.getAttribute('aria-hidden')).toBe('true');
     });
+    it('v2: the settings sidebar adds no extra complementary landmark inside main', async () => {
+        renderLayout('member');
+        await screen.findByRole('link', { name: 'General' });
+        expect(screen.queryByRole('complementary')).toBeNull();
+    });
 });
 
 describe('StubPage', () => {

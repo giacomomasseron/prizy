@@ -106,4 +106,10 @@ describe('SlaPoliciesSettingsPage', () => {
         expect(screen.getByText(/no sla policies yet/i).style.border).toBe('var(--line) dashed var(--border2)');
         policiesData = POLICIES;
     });
+    it('v2: long policy names wrap instead of painting over the row buttons', () => {
+        policiesData = POLICIES;
+        render(<SlaPoliciesSettingsPage />);
+        expect(screen.getByText('Priority support').style.overflowWrap).toBe('anywhere');
+        expect(screen.getByText(/First 30m/).style.overflowWrap).toBe('anywhere');
+    });
 });

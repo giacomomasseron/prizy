@@ -107,7 +107,7 @@ export default function MembersPage() {
     }
 
     return (
-        <div style={pageFrame}>
+        <div style={{ ...pageFrame, minWidth: 728 }}>
 
             {/* ── Header ─────────────────────────────────────────────────── */}
             <div style={titleRow}>
@@ -232,7 +232,7 @@ export default function MembersPage() {
                                                 data-testid={`level-btn-${row.email}`}
                                                 aria-label={`Level: ${levelMeta.label}`}
                                                 disabled={updateMember.isPending}
-                                                className="border-border hover:border-fg"
+                                                className="border-border enabled:hover:border-fg"
                                                 style={levelBtn}
                                             >
                                                 <span style={{ ...levelDot, background: levelMeta.color }} />

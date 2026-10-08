@@ -94,4 +94,10 @@ describe('BusinessHoursSettingsPage', () => {
         expect(screen.getByText(/no schedules yet/i).style.border).toBe('var(--line) dashed var(--border2)');
         schedulesData = SCHEDULES;
     });
+    it('v2: long schedule names wrap instead of painting over the row buttons', () => {
+        schedulesData = SCHEDULES;
+        render(<BusinessHoursSettingsPage />);
+        expect(screen.getByText('Weekday support').style.overflowWrap).toBe('anywhere');
+        expect(screen.getByText(/Mon–Fri 09:00–17:00/).style.overflowWrap).toBe('anywhere');
+    });
 });

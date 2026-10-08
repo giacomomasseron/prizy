@@ -97,8 +97,8 @@ export default function BusinessHoursSettingsPage() {
                             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}
                         >
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)' }}>{s.name}</span>
-                                <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{s.timezone} · {summarizeIntervals(s)}</span>
+                                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', overflowWrap: 'anywhere' }}>{s.name}</span>
+                                <span style={{ fontSize: 12, color: 'var(--fg3)', overflowWrap: 'anywhere' }}>{s.timezone} · {summarizeIntervals(s)}</span>
                             </div>
                             <span style={{ flex: 1 }} />
                             <Button variant="secondary" size="sm" data-testid={`edit-${s.id}`} onClick={() => openEdit(s)}>

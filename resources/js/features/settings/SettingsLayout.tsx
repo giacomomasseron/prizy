@@ -89,7 +89,7 @@ export default function SettingsLayout() {
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--fg)' }}>
             {/* Left sidebar */}
-            <aside
+            <div
                 style={{
                     width: 240, flexShrink: 0,
                     background: 'var(--bg2)',
@@ -142,7 +142,7 @@ export default function SettingsLayout() {
                     <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>Prizy</span>
                     <ThemeToggle />
                 </div>
-            </aside>
+            </div>
 
             {/* Right content area */}
             <div style={{ flex: 1, overflow: 'auto' }}>
