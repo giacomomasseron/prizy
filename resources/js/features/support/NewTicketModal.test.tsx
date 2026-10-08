@@ -136,4 +136,12 @@ describe('NewTicketModal', () => {
         // The box's Cancel comes before the dialog footer's in the DOM.
         expect(screen.getAllByRole('button', { name: 'Cancel' })[0].className).toContain('border-border2');
     });
+
+    it('v2: the requester label truncates inside the full-width trigger', () => {
+        renderModal();
+        const text = screen.getByText('Select a contact…');
+        expect(text.style.overflow).toBe('hidden');
+        expect(text.style.textOverflow).toBe('ellipsis');
+        expect(screen.getByRole('button', { name: 'Requester' })).toContainElement(text);
+    });
 });

@@ -19,7 +19,8 @@ describe('supportStyles', () => {
     });
 
     it('pane header and title, cards and labels', () => {
-        expect(s.paneHeader).toMatchObject({ minHeight: 60, borderBottom: '1px solid var(--border)', padding: '10px 20px' });
+        expect(s.paneHeader).toMatchObject({ height: 60, borderBottom: '1px solid var(--border)', padding: '10px 20px' });
+        expect(s.paneHeader).not.toHaveProperty('minHeight'); // fixed, so the list and conversation headers align
         expect(s.paneTitle).toMatchObject({ fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, textOverflow: 'ellipsis' });
         expect(s.paneSub).toEqual({ fontSize: 12, color: 'var(--fg3)' });
         expect(s.deskCard).toEqual({ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)' });

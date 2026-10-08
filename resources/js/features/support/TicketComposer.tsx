@@ -22,7 +22,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
     const next = nextStatus(ticket.status);
     const sendLabel = isNote ? 'Add note' : `Submit as ${TICKET_STATUS[next].label}`;
 
-    // The mode cue: the reply box's border and the active tab's dot. The send button stays ink.
+    // The mode cue: the reply box's border and the active tab's dot (the inactive dot is faded). The send button stays ink.
     const accent = isNote ? 'var(--note)' : 'var(--sup)';
 
     function addMacro(text: string) {
@@ -50,17 +50,17 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
         color: active ? 'var(--fg)' : 'var(--fg2)', background: active ? 'var(--panel)' : 'transparent',
         boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
     });
-    const dot = (color: string): CSSProperties => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 });
+    const dot = (color: string, active: boolean): CSSProperties => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, opacity: active ? 1 : 0.35 });
 
     return (
         <div style={{ flexShrink: 0, borderTop: `1px solid var(--border)`, background: 'var(--panel)', padding: '12px 20px' }}>
             <div style={{ maxWidth: 760, margin: '0 auto' }}>
                 <div style={{ display: 'inline-flex', gap: 2, padding: 3, background: 'var(--bg2)', border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-pill)', marginBottom: 10 }}>
                     <button type="button" aria-pressed={!isNote} style={tabStyle(!isNote)} onClick={() => { setTab('public'); setError(null); }}>
-                        <span aria-hidden="true" style={dot('var(--sup)')} />Public reply
+                        <span aria-hidden="true" style={dot('var(--sup)', !isNote)} />Public reply
                     </button>
                     <button type="button" aria-pressed={isNote} style={tabStyle(isNote)} onClick={() => { setTab('note'); setError(null); }}>
-                        <span aria-hidden="true" style={dot('var(--note)')} />Internal note
+                        <span aria-hidden="true" style={dot('var(--note)', isNote)} />Internal note
                     </button>
                 </div>
 

@@ -116,4 +116,13 @@ describe('SupportViewsSidebar', () => {
         expect(chip.className).toContain('text-fg');
         expect(chip.style.borderRadius).toBe('var(--radius-pill)');
     });
+
+    it('v2: a long tag name truncates inside the sidebar, with the full name in the title', () => {
+        const name = 'a-very-long-tag-name-that-would-overflow-the-sidebar';
+        render(<SupportViewsSidebar {...sidebarProps({ counts, tag: { id: 't1', name } })} />);
+        const chip = screen.getByRole('button', { name: `Tag: ${name}` });
+        expect(chip.style.maxWidth).toBe('100%');
+        expect(chip).toHaveAttribute('title', `Tag: ${name}`);
+        expect(screen.getByText(`Tag: ${name}`).style.textOverflow).toBe('ellipsis');
+    });
 });

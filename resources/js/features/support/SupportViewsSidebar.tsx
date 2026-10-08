@@ -106,8 +106,8 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                     <div style={sideSection}>Filter</div>
                     <div style={{ padding: '0 16px 12px' }}>
                         {/* Green border = an active filter; the label stays ink (no small green text). */}
-                        <button type="button" onClick={onClearTag} className="border-sup bg-transparent text-fg hover:bg-sup2" style={smallPill}>
-                            Tag: {tag.name} <span aria-hidden="true">✕</span>
+                        <button type="button" onClick={onClearTag} title={`Tag: ${tag.name}`} className="border-sup bg-transparent text-fg hover:bg-sup2" style={{ ...smallPill, maxWidth: '100%' }}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>Tag: {tag.name}</span><span aria-hidden="true">✕</span>
                         </button>
                     </div>
                 </>

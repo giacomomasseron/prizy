@@ -100,4 +100,11 @@ describe('TicketList', () => {
         expect(screen.getByRole('button', { name: 'Load more' }).className).toContain('border-border2');
         expect(screen.getByLabelText('urgent').style.color).toBe('var(--on-hi)');
     });
+
+    it('v2: the selected row carries a border2 ring, so it reads apart from a hovered row', () => {
+        render(<TicketList tickets={tickets} selectedId="a" onSelect={vi.fn()} {...baseProps()} />);
+        const [selected, other] = screen.getAllByTestId('ticket-row');
+        expect(selected.style.boxShadow).toBe('inset 0 0 0 1.5px var(--border2)');
+        expect(other.style.boxShadow).toBe('');
+    });
 });

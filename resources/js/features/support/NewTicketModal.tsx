@@ -105,7 +105,7 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                                     trigger={
                                         // The text colour (chosen vs placeholder) never changes on hover, so it may be inline.
                                         <button type="button" aria-label="Requester" className={TOOL_PILL_CLASSES} style={{ ...toolPillStyle, width: '100%', justifyContent: 'space-between', color: requester ? 'var(--fg)' : 'var(--fg3)' }}>
-                                            {requester ? label(requester) : 'Select a contact…'}
+                                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{requester ? label(requester) : 'Select a contact…'}</span>
                                         </button>
                                     }
                                     items={contacts.map((c) => ({ key: c.id, label: label(c), onActivate: () => setRequesterId(c.id) }))}

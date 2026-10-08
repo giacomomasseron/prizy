@@ -66,7 +66,7 @@ export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, 
                     return (
                         // No inline background on unselected rows: it would beat hover:bg-hover.
                         <div key={t.id} data-testid="ticket-row" onClick={() => onSelect(t.id)}
-                            style={{ display: 'flex', gap: 10, padding: '12px 14px 13px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', ...(active ? { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--border)' } : {}) }}
+                            style={{ display: 'flex', gap: 10, padding: '12px 14px 13px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', ...(active ? { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--border2)' } : {}) }}
                             className={active ? '' : 'bg-transparent hover:bg-hover'}>
                             <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 'var(--radius-pill)', background: st.color, flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>

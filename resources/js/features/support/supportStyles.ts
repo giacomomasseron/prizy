@@ -29,7 +29,7 @@ export function sideRow(active: boolean): CSSProperties {
 
 /** Column header bar (ticket list, conversation, reporting). */
 export const paneHeader: CSSProperties = {
-    minHeight: 60, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center',
+    height: 60, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center',
     gap: 12, padding: '10px 20px', boxSizing: 'border-box',
 };
 export const paneTitle: CSSProperties = {

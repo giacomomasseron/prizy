@@ -126,4 +126,14 @@ describe('TicketComposer', () => {
         expect(alert.style.background).toBe('color-mix(in srgb, var(--red) 10%, transparent)');
         expect(alert.getAttribute('style')).not.toMatch(/rgba/);
     });
+
+    it('v2: only the active tab\'s dot is full strength, so the dot marks the mode', () => {
+        render(<TicketComposer ticket={ticket()} />);
+        const dotOf = (name: string) => screen.getByRole('button', { name }).querySelector<HTMLElement>('span[aria-hidden="true"]')!;
+        expect(dotOf('Public reply').style.opacity).toBe('1');
+        expect(dotOf('Internal note').style.opacity).toBe('0.35');
+        fireEvent.click(screen.getByRole('button', { name: 'Internal note' }));
+        expect(dotOf('Public reply').style.opacity).toBe('0.35');
+        expect(dotOf('Internal note').style.opacity).toBe('1');
+    });
 });
