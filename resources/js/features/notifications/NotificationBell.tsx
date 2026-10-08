@@ -12,7 +12,8 @@ import type { AppNotification } from '../../lib/types';
  * unread badge that opens a dropdown of recent notifications + an "Open inbox →"
  * link. Wired to the existing endpoints; rows lightly render the enriched actor
  * avatar / body excerpt / subject ref when the API provides them (all optional —
- * the full inbox redesign lands in a later sub-project).
+ * the full inbox redesign lands in a later sub-project). v2 dropdown (prizy-v2.html): ink
+ * border, offset shadow, plain mono refs, and colours that change on hover in classes.
  */
 export function NotificationBell() {
     const navigate = useNavigate();
@@ -81,12 +82,12 @@ export function NotificationBell() {
                     aria-label="Notifications"
                     style={{
                         position: 'absolute', top: 'calc(100% + 8px)', right: 0, width: 366, zIndex: 30,
-                        background: 'var(--panel)', border: '1px solid var(--border2)', borderRadius: 13,
-                        boxShadow: '0 18px 44px rgba(0,0,0,.42)', overflow: 'hidden',
+                        background: 'var(--panel)', border: 'var(--line) solid var(--fg)', borderRadius: 18,
+                        boxShadow: 'var(--pop-shadow)', overflow: 'hidden',
                     }}
                 >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 13px', borderBottom: '1px solid var(--border)' }}>
-                        <span style={{ fontSize: 12.5, fontWeight: 600 }}>Notifications</span>
+                        <span style={{ fontSize: 13.5, fontWeight: 700 }}>Notifications</span>
                         {count > 0 && (
                             <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px', fontFamily: 'var(--font-mono)' }}>{badge}</span>
                         )}
@@ -94,7 +95,8 @@ export function NotificationBell() {
                             type="button"
                             onClick={() => markAll.mutate()}
                             disabled={count === 0}
-                            style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--fg3)', fontSize: 11.5, cursor: count > 0 ? 'pointer' : 'default', padding: '2px 4px', fontFamily: 'inherit', opacity: count > 0 ? 1 : 0.5 }}
+                            className="text-fg3 enabled:hover:text-fg"
+                            style={{ marginLeft: 'auto', border: 'none', background: 'none', fontSize: 12, fontWeight: 600, cursor: count > 0 ? 'pointer' : 'default', padding: '2px 4px', fontFamily: 'inherit', opacity: count > 0 ? 1 : 0.5 }}
                         >
                             Mark all read
                         </button>
@@ -131,7 +133,7 @@ export function NotificationBell() {
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                             <span style={{ fontSize: 10.5, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
                                             {n.subject?.ref && (
-                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 4, padding: '1px 5px' }}>
+                                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--accent)' }}>
                                                     {n.subject.ref}
                                                 </span>
                                             )}
@@ -145,8 +147,8 @@ export function NotificationBell() {
                     <Link
                         to="/notifications"
                         onClick={() => setOpen(false)}
-                        className="hover:bg-hover"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: 10, borderTop: '1px solid var(--border)', fontSize: 12, color: 'var(--fg2)', textDecoration: 'none' }}
+                        className="text-fg2 hover:bg-hover hover:text-fg"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7, padding: 11, borderTop: '1px solid var(--border)', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}
                     >
                         Open inbox →
                     </Link>

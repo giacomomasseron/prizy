@@ -122,3 +122,17 @@ it('shows an Advanced search footer that navigates to /search', async () => {
     await userEvent.click(footer);
     expect(navigate).toHaveBeenCalledWith(expect.stringContaining('/search'));
 });
+
+it('v2: the Modal frame (ink border, offset shadow, token backdrop), an esc hint, and a tinted active row', async () => {
+    renderPalette();
+    await openPalette();
+    const dialog = await screen.findByRole('dialog', { name: 'Command palette' });
+    expect(dialog.style.border).toBe('var(--line) solid var(--fg)');
+    expect(dialog.style.boxShadow).toBe('5px 5px 0 var(--fg)');
+    expect(dialog.parentElement!.style.background).toBe('var(--backdrop)');
+    expect(screen.getByText('esc').tagName).toBe('KBD');
+    await userEvent.type(screen.getByRole('textbox'), 'payment');
+    const row = (await screen.findByText('Payment webhook')).closest('button')!;
+    expect(row.className).toContain('bg-hover');
+    expect(row.style.borderRadius).toBe('var(--radius-row)');
+});

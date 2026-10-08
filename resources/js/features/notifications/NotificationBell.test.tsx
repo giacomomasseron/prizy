@@ -140,4 +140,18 @@ describe('NotificationBell', () => {
         expect(bell.className).toContain('border-accent');
         expect(bell.className).toContain('bg-accent2');
     });
+
+    it('v2 dropdown: ink border and offset shadow; colours that change on hover live in classes', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        const panel = screen.getByRole('dialog', { name: 'Notifications' });
+        expect(panel.style.border).toBe('var(--line) solid var(--fg)');
+        expect(panel.style.boxShadow).toBe('var(--pop-shadow)');
+        const markAll = screen.getByRole('button', { name: 'Mark all read' });
+        expect(markAll.className).toContain('enabled:hover:text-fg');
+        expect(markAll.style.color).toBe('');
+        const inbox = screen.getByRole('link', { name: /Open inbox/ });
+        expect(inbox.className).toContain('hover:text-fg');
+        expect(inbox.style.color).toBe('');
+    });
 });
