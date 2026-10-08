@@ -1,16 +1,22 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KbShell } from './KbShell';
+import { KbHeader } from './KbHeader';
 import { KbTree, type TreeNode } from './KbTree';
 import { KbArticleTable } from './KbArticleTable';
 import { KbNodeModal, type NodeModalState } from './KbNodeModal';
 import { useKbLibrary } from './hooks';
-import type { KbArticleSummary, KbStatus } from './types';
+import { crumbStyle, leadStyle, pageTitle } from './kbStyles';
+import type { KbStatus } from './types';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 
 type Filter = 'all' | KbStatus;
+
+function plural(n: number, one: string, many: string): string {
+    return `${n} ${n === 1 ? one : many}`;
+}
 
 export default function KbLibraryPage() {
     const lib = useKbLibrary();
@@ -43,39 +49,48 @@ export default function KbLibraryPage() {
     const q = search.trim().toLowerCase();
     const visible = scope.articles.filter((a) => (filter === 'all' || a.status === filter) && (!q || a.title.toLowerCase().includes(q) || a.slug.includes(q)));
     const filtered = filter !== 'all' || q !== '';
-    const totalArticles = categories.reduce((n, c) => n + c.sections.reduce((m, s) => m + s.articles.length, 0), 0);
+    const allArticles = categories.flatMap((c) => c.sections.flatMap((s) => s.articles));
+    const totalArticles = allArticles.length;
+    const liveArticles = allArticles.filter((a) => a.status === 'published').length;
+    const subtitle = lib.isSuccess
+        ? `${plural(totalArticles, 'article', 'articles')} · ${liveArticles} live · ${plural(categories.length, 'category', 'categories')}`
+        : '';
     const newArticleSection = node.kind === 'section' ? node.id : node.kind === 'category' ? categories.find((c) => c.id === node.id)?.sections[0]?.id : categories[0]?.sections[0]?.id;
+    const newArticle = () => navigate(newArticleSection ? `/support/kb/new?section=${newArticleSection}` : '/support/kb/new');
 
     return (
         <KbShell>
+            <KbHeader title="Knowledge base" subtitle={subtitle} />
             <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 <KbTree categories={categories} node={node} onSelect={setNode} totalArticles={totalArticles} onOpenModal={setModal} />
-                <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', padding: '18px 24px', overflow: 'auto' }}>
-                    <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{scope.crumb}</div>
-                    <h1 style={{ fontSize: 17, fontWeight: 600, margin: '4px 0 2px' }}>{scope.title}</h1>
-                    <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 14 }}>{scope.description}</div>
-                    {categories.length === 0 && lib.isSuccess ? (
-                        <EmptyState title="No categories yet" body="Categories are the top-level topics customers browse on the help center." action="＋ First category" onAction={() => setModal({ kind: 'category' })} />
-                    ) : (
-                        <>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
+                <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+                    <div style={{ flexShrink: 0, padding: '16px 22px 14px', borderBottom: '1px solid var(--border)' }}>
+                        <div style={crumbStyle}>{scope.crumb}</div>
+                        <h1 style={pageTitle}><span className="hl">{scope.title}</span></h1>
+                        <p style={leadStyle}>{scope.description}</p>
+                        {lib.isSuccess && categories.length > 0 && (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
                                 <SegmentedControl<Filter> value={filter} onChange={setFilter} options={[
                                     { value: 'all', label: `All ${counts.all}` }, { value: 'draft', label: `Draft ${counts.draft}` },
                                     { value: 'published', label: `Published ${counts.published}` }, { value: 'archived', label: `Archived ${counts.archived}` },
                                 ]} />
-                                <Input placeholder="Search titles" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 220 }} />
+                                <Input placeholder="Search titles" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 240, padding: '7px 14px', fontSize: 13 }} />
                                 <div style={{ flex: 1 }} />
-                                <Button onClick={() => navigate(newArticleSection ? `/support/kb/new?section=${newArticleSection}` : '/support/kb/new')}>＋ New article</Button>
+                                <Button size="sm" onClick={newArticle}>＋ New article</Button>
                             </div>
-                            {visible.length === 0 ? (
-                                filtered
-                                    ? <EmptyState title="Nothing matches those filters" body="Clear the search or switch the status filter to see everything in this section." action="＋ New article here" onAction={() => navigate(newArticleSection ? `/support/kb/new?section=${newArticleSection}` : '/support/kb/new')} />
-                                    : <EmptyState title="No articles in here yet" body="Write the first one — it stays a draft until you publish it." action="＋ New article here" onAction={() => navigate(newArticleSection ? `/support/kb/new?section=${newArticleSection}` : '/support/kb/new')} />
-                            ) : (
-                                <KbArticleTable articles={visible} canReorder={node.kind === 'section' && !filtered} />
-                            )}
-                        </>
-                    )}
+                        )}
+                    </div>
+                    <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
+                        {lib.isPending ? null : categories.length === 0 && lib.isSuccess ? (
+                            <EmptyState title="No categories yet" body="Categories are the top-level topics customers browse on the help center." action="＋ First category" onAction={() => setModal({ kind: 'category' })} />
+                        ) : visible.length === 0 ? (
+                            filtered
+                                ? <EmptyState title="Nothing matches those filters" body="Clear the search or switch the status filter to see everything in this section." action="＋ New article here" onAction={newArticle} />
+                                : <EmptyState title="No articles in here yet" body="Write the first one — it stays a draft until you publish it." action="＋ New article here" onAction={newArticle} />
+                        ) : (
+                            <KbArticleTable articles={visible} canReorder={node.kind === 'section' && !filtered} />
+                        )}
+                    </div>
                 </section>
             </div>
             <KbNodeModal state={modal} categories={categories} onClose={() => setModal(null)} onCreated={(n) => setNode(n)} />
@@ -85,10 +100,10 @@ export default function KbLibraryPage() {
 
 function EmptyState({ title, body, action, onAction }: { title: string; body: string; action: string; onAction(): void }) {
     return (
-        <div style={{ padding: '48px 24px', textAlign: 'center', border: '1px dashed var(--border2)', borderRadius: 12 }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>{title}</div>
-            <div style={{ fontSize: 12.5, color: 'var(--fg3)', marginBottom: 14 }}>{body}</div>
-            <Button variant="secondary" onClick={onAction}>{action}</Button>
+        <div data-testid="kb-empty" style={{ margin: '28px 22px', padding: '44px 24px', textAlign: 'center', border: 'var(--line) dashed var(--border2)', borderRadius: 'var(--radius-card)' }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)', marginBottom: 6 }}>{title}</div>
+            <div style={{ fontSize: 13, lineHeight: 1.55, color: 'var(--fg3)', marginBottom: 16 }}>{body}</div>
+            <Button variant="secondary" size="sm" onClick={onAction}>{action}</Button>
         </div>
     );
 }

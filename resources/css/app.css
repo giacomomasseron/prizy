@@ -45,6 +45,7 @@
   --color-blue: var(--blue);       --color-teal: var(--teal);
   --color-hi: var(--hi);           --color-on-accent: var(--on-accent);
   --color-on-sup: var(--on-sup);   --color-on-hi: var(--on-hi);
+  --color-sup: var(--sup);         --color-sup2: var(--sup2);
 }
 
 /* Highlighter behind display titles (v2). */

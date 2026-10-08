@@ -193,4 +193,81 @@ describe('KbArticleEditorPage', () => {
         expect(title).toHaveValue('Original title');
         expect(body).toHaveValue('Original body');
     });
+
+    it('v2: the top bar reads "New article" for a new article', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: library }) : j({ data: {} }))));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/support/kb/new']}>
+                    <Routes><Route path="/support/kb/new" element={<KbArticleEditorPage />} /></Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        await userEvent.type(await screen.findByPlaceholderText('Article title'), 'Something');
+        expect(screen.getByTestId('kb-header-title')).toHaveTextContent('New article');
+        expect(screen.getByText('Authoring · publishes to the customer help center')).toBeInTheDocument();
+    });
+
+    it('v2: for an existing article the top bar follows the title as you type', async () => {
+        renderEditor();
+        const title = await screen.findByPlaceholderText('Article title');
+        expect(screen.getByTestId('kb-header-title')).toHaveTextContent('Published one');
+        await userEvent.clear(title);
+        expect(screen.getByTestId('kb-header-title')).toHaveTextContent('Untitled article');
+        await userEvent.type(title, 'Renamed');
+        expect(screen.getByTestId('kb-header-title')).toHaveTextContent('Renamed');
+    });
+
+    it('v2: the back link, display title, slug shell and section select', async () => {
+        renderEditor();
+        const title = await screen.findByPlaceholderText('Article title');
+        expect(title.style.fontFamily).toBe('var(--font-display)');
+        expect(title.style.fontSize).toBe('32px');
+        expect(screen.getByRole('button', { name: '‹ Library' }).className).toContain('hover:text-fg');
+        const slug = screen.getByLabelText('URL slug');
+        expect(slug).toHaveAttribute('placeholder', 'article-slug');
+        const shell = screen.getByTestId('kb-slug-shell');
+        expect(shell).toContainElement(slug);
+        expect(shell.className).toContain('focus-within:border-fg');
+        expect(shell).toHaveTextContent('/help/g/b/');
+        expect((shell.firstElementChild as HTMLElement).style.textOverflow).toBe('ellipsis');
+        expect(screen.getByRole('combobox', { name: 'Section' }).className).toContain('focus:border-fg');
+    });
+
+    it('v2: Publish is the full-width ink button on a draft', async () => {
+        renderEditor('a2');
+        const publish = await screen.findByRole('button', { name: 'Publish' });
+        expect(publish.className).toContain('bg-fg');
+        expect(publish.style.width).toBe('100%');
+    });
+
+    it('v2: Unpublish is the outlined button on a published article', async () => {
+        renderEditor('a1');
+        const unpublish = await screen.findByRole('button', { name: 'Unpublish' });
+        expect(unpublish.className).toContain('border-border2');
+        expect(unpublish.className).not.toContain('bg-fg');
+    });
+
+    it('v2: side cards, the danger zone and a footer outside the scroll area', async () => {
+        renderEditor();
+        await screen.findByPlaceholderText('Article title');
+        expect(screen.getByText('Status').style.textTransform).toBe('');
+        expect(screen.getByText('Details').style.fontSize).toBe('12.5px');
+        expect(screen.getByText('👍 helpful').previousElementSibling).toHaveStyle({ color: 'var(--green)' });
+        const danger = screen.getByTestId('kb-danger-zone');
+        expect(danger.style.border).toContain('color-mix(in srgb, var(--red) 35%, transparent)');
+        expect(screen.getByRole('button', { name: 'Delete article' }).className).toContain('hover:text-red');
+        const footer = screen.getByTestId('kb-editor-footer');
+        expect(footer.style.background).toBe('var(--bg2)');
+        expect(screen.getByTestId('kb-editor-scroll').contains(footer)).toBe(false);
+        expect(footer).toContainElement(screen.getByRole('button', { name: 'Close' }));
+    });
+
+    it('v2: clicking the slug prefix focuses the slug input', async () => {
+        renderEditor();
+        const slug = await screen.findByLabelText('URL slug');
+        await userEvent.click(screen.getByTestId('kb-slug-shell').firstElementChild as HTMLElement);
+        expect(slug).toHaveFocus();
+    });
 });

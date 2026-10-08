@@ -17,6 +17,9 @@ import {
     useUpsertKbTranslation,
 } from './hooks';
 import { formatDate } from './kbUtils';
+import { drawerFooter, drawerHeader, drawerList, drawerSub, kbLabel, notTranslatedPill, pickRow, pickRowClasses, sourceTag, staleDot } from './kbStyles';
+import { StatusPill } from './StatusPill';
+import { modalTitle } from '../settings/settingsStyles';
 import type { KbArticleEdit, KbStatus, KbTranslationSummary } from './types';
 
 type Tab = 'write' | 'preview';
@@ -32,14 +35,7 @@ export interface KbTranslationDrawerProps {
     onViewChanges(): void;
 }
 
-const uppercaseLabel: CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--fg3)', textTransform: 'uppercase', letterSpacing: '.05em' };
-const neutralPill: CSSProperties = { display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, color: 'var(--fg3)', border: '1px solid var(--border2)' };
-const STATUS_PILL: Record<KbStatus, CSSProperties> = {
-    draft: { color: '#8b8b95', background: 'rgba(255,255,255,.06)' },
-    published: { color: '#3aa76d', background: 'rgba(58,167,109,.15)' },
-    archived: { color: '#8b8b95', background: 'transparent', border: '1px solid var(--border2)' },
-};
-const STATUS_LABEL: Record<KbStatus, string> = { draft: 'Draft', published: 'Published', archived: 'Archived' };
+const sourceH2: CSSProperties = { margin: '0 0 10px', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--fg)' };
 
 export function KbTranslationDrawer({ articleId, open, initialLocale, articleStatus, onClose, onViewChanges }: KbTranslationDrawerProps) {
     const articleQuery = useKbArticle(articleId);
@@ -125,16 +121,16 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
 
     return (
         <Drawer open={open} onClose={handleClose} side="right" width={820} label="Translations">
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: '18px 20px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                <div>
-                    <h2 style={{ margin: 0, fontSize: 17, fontWeight: 600 }}>Translations</h2>
-                    <div style={{ fontSize: 12.5, color: 'var(--fg3)', marginTop: 4 }}>{article?.title}</div>
+            <div style={drawerHeader}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    <h2 style={modalTitle}>Translations</h2>
+                    <div style={drawerSub}>{article?.title}</div>
                 </div>
                 <IconButton title="Close" onClick={handleClose}>✕</IconButton>
             </div>
 
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
-                <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', padding: 8 }}>
+                <div style={drawerList}>
                     {translationsQuery.isError && (
                         <div role="alert" style={{ color: 'var(--red)', fontSize: 12, padding: 8 }}>
                             {translationsQuery.error instanceof ApiError ? translationsQuery.error.detail : 'Failed to load translations.'}
@@ -147,11 +143,11 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
 
                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     {locale === 'en' ? (
-                        <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
-                            <div style={uppercaseLabel}>English (source) · edited in the article editor</div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '22px 26px 34px' }}>
+                            <div style={kbLabel}>English (source) · edited in the article editor</div>
                             {article && (
                                 <>
-                                    <h1 style={{ fontSize: 24, fontWeight: 600, margin: '10px 0 16px' }}>{article.title}</h1>
+                                    <h1 style={{ margin: '10px 0 18px', fontSize: 23, fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.25 }}>{article.title}</h1>
                                     <div className="kb-preview" dangerouslySetInnerHTML={{ __html: sourceHtml }} />
                                 </>
                             )}
@@ -176,47 +172,23 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
 
 function LocaleRow({ row, selected, onSelect }: { row: KbTranslationSummary; selected: boolean; onSelect(): void }) {
     return (
-        <button
-            type="button"
-            onClick={onSelect}
-            className="hover:bg-hover"
-            style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                border: selected ? '1px solid var(--sup2)' : '1px solid transparent',
-                background: selected ? 'var(--sup2)' : 'transparent',
-                borderRadius: 8,
-                padding: 8,
-                marginBottom: 2,
-                cursor: 'pointer',
-                textAlign: 'left',
-                fontFamily: 'inherit',
-            }}
-        >
-            <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 12.2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</span>
-                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', flexShrink: 0 }}>{row.locale}</span>
-                    {row.stale && (
-                        <span
-                            title="Source changed since this was translated"
-                            style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 }}
-                        />
-                    )}
-                </div>
-                {row.is_source && <div style={{ fontSize: 10.5, color: 'var(--fg3)', marginTop: 1 }}>The article as written</div>}
-            </div>
-            {row.is_source ? (
-                <span style={neutralPill}>Source</span>
-            ) : row.status === null ? (
-                <span style={neutralPill}>Not translated</span>
-            ) : (
-                <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, ...STATUS_PILL[row.status] }}>
-                    {STATUS_LABEL[row.status]}
-                </span>
-            )}
+        // No inline background: the selected tint and the hover both live in classes (pickRowClasses).
+        <button type="button" onClick={onSelect} className={pickRowClasses(selected)} style={pickRow}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 12.6, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</span>
+                {row.stale && <span title="Source changed since this was translated" style={staleDot} />}
+                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', flexShrink: 0 }}>{row.locale}</span>
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                {row.is_source ? (
+                    <span style={sourceTag}>Source</span>
+                ) : row.status === null ? (
+                    <span style={notTranslatedPill}>Not translated</span>
+                ) : (
+                    <StatusPill status={row.status} />
+                )}
+                {row.is_source && <span style={{ fontSize: 11, color: 'var(--fg3)' }}>The article as written</span>}
+            </span>
         </button>
     );
 }
@@ -356,15 +328,15 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
 
     if (!exists && original === null) {
         return (
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-                <div style={{ textAlign: 'center', maxWidth: 340 }}>
-                    <p style={{ fontSize: 14.5, fontWeight: 600, margin: '0 0 6px' }}>Not translated yet</p>
-                    <p style={{ fontSize: 12.5, color: 'var(--fg3)', lineHeight: 1.55, margin: '0 0 16px' }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 32px' }}>
+                <div style={{ textAlign: 'center', maxWidth: 350 }}>
+                    <p style={{ margin: '0 0 7px', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em' }}>Not translated yet</p>
+                    <p style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.6, margin: '0 0 20px' }}>
                         Start from the English article and edit it, or write this translation from scratch.
                     </p>
-                    <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                        <Button onClick={startFromEnglish}>Start from English</Button>
-                        <Button variant="secondary" onClick={startBlank}>Start blank</Button>
+                    <div style={{ display: 'flex', gap: 9, justifyContent: 'center' }}>
+                        <Button size="sm" onClick={startFromEnglish}>Start from English</Button>
+                        <Button variant="secondary" size="sm" onClick={startBlank}>Start blank</Button>
                     </div>
                 </div>
             </div>
@@ -396,27 +368,30 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                 placeholder="Translated title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                style={{ fontSize: 15, fontWeight: 600, marginBottom: 10 }}
+                style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', marginBottom: 10 }}
             />
             <Textarea
                 placeholder="Write the translation in markdown, matching the English structure."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7, minHeight: 340 }}
+                style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7, minHeight: 380 }}
             />
         </>
     ) : (
-        // Safe: this HTML comes solely from POST /kb/preview's response for THIS pane's own body —
-        // the same server MarkdownRenderer the article editor's own preview tab already trusts.
-        <div className="kb-preview" dangerouslySetInnerHTML={{ __html: preview.data?.html ?? '' }} />
+        <div style={{ border: 'var(--line) solid var(--border2)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '20px 22px', minHeight: 380, boxSizing: 'border-box' }}>
+            {/* Safe: this HTML comes solely from POST /kb/preview's response for THIS pane's own body —
+                the same server MarkdownRenderer the article editor's own preview tab already trusts. */}
+            <div className="kb-preview" dangerouslySetInnerHTML={{ __html: preview.data?.html ?? '' }} />
+        </div>
     );
 
     return (
         <>
-            <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '18px 22px 28px' }}>
                 {row.stale && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, background: 'rgba(224,161,58,.12)', border: '1px solid rgba(224,161,58,.35)', borderRadius: 9, padding: '10px 14px', marginBottom: 16 }}>
-                        <span style={{ fontSize: 12.5, color: 'var(--fg2)', flex: 1 }}>
+                    <div data-testid="kb-stale-banner" style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16, padding: '12px 15px', borderRadius: 'var(--radius-row)', background: 'var(--note2)', border: 'var(--line) solid color-mix(in srgb, var(--note) 40%, transparent)' }}>
+                        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 }} />
+                        <span style={{ fontSize: 12.5, color: 'var(--fg)', lineHeight: 1.55, flex: 1 }}>
                             The English article changed on {formatDate(article?.updated_at ?? null)}, after this translation was last saved. Review it for accuracy.
                         </span>
                         <Button variant="secondary" size="sm" onClick={onViewChanges}>View what changed</Button>
@@ -442,45 +417,54 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                 {compareOpen ? (
                     <div style={{ display: 'flex', gap: 24 }}>
                         <div style={{ flex: 1, minWidth: 0 }}>{editor}</div>
-                        <div style={{ flex: 1, minWidth: 0, opacity: 0.75 }}>
-                            <div style={uppercaseLabel}>English (source)</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ ...kbLabel, marginBottom: 10 }}>English (source)</div>
                             {article && (
-                                <>
-                                    <h2 style={{ fontSize: 17, fontWeight: 600, margin: '8px 0 10px' }}>{article.title}</h2>
+                                <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--bg2)', padding: '14px 16px', opacity: 0.75 }}>
+                                    <h2 style={sourceH2}>{article.title}</h2>
                                     <div className="kb-preview" dangerouslySetInnerHTML={{ __html: sourceHtml }} />
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
                 ) : editor}
             </div>
 
-            <div style={{ flexShrink: 0, borderTop: '1px solid var(--border)', padding: '14px 20px' }}>
+            <div data-testid="kb-translation-footer" style={drawerFooter}>
                 {deleteError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{deleteError}</div>}
                 {statusError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{statusError}</div>}
                 {saveError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{saveError}</div>}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
-                    <Button variant="ghost" onClick={handleDelete} disabled={status === null} style={{ color: 'var(--red)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <button
+                        type="button"
+                        onClick={handleDelete}
+                        disabled={status === null}
+                        className="text-fg3 enabled:hover:text-red"
+                        style={{ border: 'none', background: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: status === null ? 'not-allowed' : 'pointer', opacity: status === null ? 0.5 : 1 }}
+                    >
                         Delete translation
-                    </Button>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{dirty ? 'Unsaved changes' : status !== null ? 'Saved' : ''}</span>
-                        <StatusControl
-                            value={status ?? 'draft'}
-                            onChange={handleStatusChange}
-                            disabledAll={status === null}
-                            disabledPublish={articleStatus !== 'published'}
-                        />
-                        <Button onClick={handleSave} disabled={!dirty}>Save translation</Button>
-                    </div>
+                    </button>
+                    <span aria-hidden="true" style={{ width: 1, height: 14, background: 'var(--border2)', flexShrink: 0 }} />
+                    <div style={{ flex: 1 }} />
+                    <StatusControl
+                        value={status ?? 'draft'}
+                        onChange={handleStatusChange}
+                        disabledAll={status === null}
+                        disabledPublish={articleStatus !== 'published'}
+                    />
+                    <Button size="sm" onClick={handleSave} disabled={!dirty}>Save translation</Button>
                 </div>
                 {/* Only shown when the publish rule is actually why Published is disabled — not
                     when the real reason every option is disabled is that nothing has been saved
                     yet (a brand-new draft under a draft English article would otherwise show this
                     note next to a control that's disabled for an unrelated reason). */}
-                {status !== null && articleStatus !== 'published' && (
-                    <p style={{ fontSize: 11.5, color: 'var(--fg3)', margin: '8px 0 0', textAlign: 'right' }}>Publish the English article first</p>
-                )}
+                {/* The saved note sits under the row: beside the delete, status and save controls it overflowed the 514px pane. */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 8, fontSize: 11.5, color: 'var(--fg3)' }}>
+                    <span>{dirty ? 'Unsaved changes' : status !== null ? 'Saved' : ''}</span>
+                    {status !== null && articleStatus !== 'published' && (
+                        <p style={{ margin: '0 0 0 auto' }}>Publish the English article first</p>
+                    )}
+                </div>
             </div>
         </>
     );
@@ -502,7 +486,7 @@ function StatusControl({ value, onChange, disabledAll, disabledPublish }: {
         { label: 'Archived', value: 'archived' },
     ];
     return (
-        <div style={{ display: 'inline-flex', background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 10, padding: 3, gap: 2 }}>
+        <div style={{ display: 'inline-flex', background: 'var(--bg2)', border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-pill)', padding: 3, gap: 2 }}>
             {options.map((opt) => {
                 const disabled = disabledAll || (opt.value === 'published' && disabledPublish);
                 const active = opt.value === value;
@@ -513,17 +497,17 @@ function StatusControl({ value, onChange, disabledAll, disabledPublish }: {
                         disabled={disabled}
                         onClick={() => onChange(opt.value)}
                         style={{
-                            padding: '4px 13px',
-                            borderRadius: 6,
+                            padding: '5px 12px',
+                            borderRadius: 'var(--radius-pill)',
                             border: 'none',
                             cursor: disabled ? 'not-allowed' : 'pointer',
-                            fontSize: 12,
+                            fontSize: 12.5,
                             fontFamily: 'inherit',
-                            fontWeight: 500,
+                            fontWeight: 700,
                             background: active ? 'var(--panel)' : 'transparent',
                             color: active ? 'var(--fg)' : 'var(--fg2)',
                             opacity: disabled ? 0.5 : 1,
-                            boxShadow: active ? '0 1px 2px rgba(0,0,0,.18)' : 'none',
+                            boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
                         }}
                     >
                         {opt.label}

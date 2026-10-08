@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { KbShell } from './KbShell';
+import { KbHeader } from './KbHeader';
 import { StatusPill } from './StatusPill';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { Input } from '../../components/ui/Input';
+import { FIELD_CLASSES, Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
@@ -24,6 +25,8 @@ import {
     useUpdateKbArticle,
 } from './hooks';
 import { formatDate, formatViews, shortRef, slugify, wordStats } from './kbUtils';
+import { FIELD_SHELL_CLASSES, dangerCard, fieldShell, kbCard, kbLabel } from './kbStyles';
+import { DANGER_PILL_CLASSES, PILL_CLASSES, fieldLabel, pillBtn, selectStyle } from '../settings/settingsStyles';
 import type { KbArticleEdit, KbCategoryNode, KbStatus } from './types';
 
 type Tab = 'write' | 'preview';
@@ -34,9 +37,8 @@ const STATUS_HINT: Record<KbStatus, string> = {
     archived: 'Hidden from customers and from search. Its URL redirects to the category.',
 };
 
-const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: 14 };
-const cardTitle: CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--fg3)', textTransform: 'uppercase', letterSpacing: '.05em' };
-const fieldLabel: CSSProperties = { fontSize: 12, color: 'var(--fg3)', display: 'block', marginBottom: 6 };
+const EDITOR_SUB = 'Authoring · publishes to the customer help center';
+const cardColumn: CSSProperties = { ...kbCard, display: 'flex', flexDirection: 'column', gap: 12 };
 
 export default function KbArticleEditorPage() {
     const { id } = useParams();
@@ -64,6 +66,7 @@ export default function KbArticleEditorPage() {
     if (!isNew && !article) {
         return (
             <KbShell>
+                <KbHeader title="Knowledge base" subtitle={EDITOR_SUB} />
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg3)', fontSize: 13 }}>
                     {articleQuery.isError ? 'This article could not be found.' : 'Loading…'}
                 </div>
@@ -114,6 +117,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const [sectionId, setSectionId] = useState(article?.section_id ?? initialSection ?? categories.flatMap((c) => c.sections)[0]?.id ?? '');
     const [body, setBody] = useState(article?.body ?? '');
     const [tab, setTab] = useState<Tab>('write');
+    const slugInputRef = useRef<HTMLInputElement>(null);
     const [dirty, setDirty] = useState(false);
     const [savedMsg, setSavedMsg] = useState(isNew ? 'Not saved yet' : justCreated ? 'Saved just now' : 'All changes saved');
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -288,193 +292,223 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
         : 'Unfiled';
 
     return (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', padding: '12px 24px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-                <Button variant="ghost" onClick={() => navigate('/support/kb')}>‹ Library</Button>
-            </div>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+            <KbHeader title={isNew ? 'New article' : title.trim() || 'Untitled article'} subtitle={EDITOR_SUB} />
 
-            <div style={{ flex: 1, display: 'flex', flexWrap: 'wrap', gap: 28, padding: '20px 24px' }}>
-                <div style={{ flex: '1 1 520px', minWidth: 0 }}>
-                    <Input
-                        placeholder="Article title"
-                        value={title}
-                        onChange={(e) => onTitleChange(e.target.value)}
-                        style={{ border: 'none', background: 'transparent', fontSize: 26, fontWeight: 600, padding: '4px 0' }}
-                    />
+            <div data-testid="kb-editor-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '22px 26px 40px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: '1 1 520px', minWidth: 0 }}>
+                        <button
+                            type="button"
+                            onClick={() => navigate('/support/kb')}
+                            className="text-fg3 hover:text-fg"
+                            style={{ border: 'none', background: 'none', padding: 0, marginBottom: 14, fontSize: 12.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                        >
+                            ‹ Library
+                        </button>
 
-                    <div style={{ marginTop: 14 }}>
-                        <label htmlFor="kb-article-slug" style={fieldLabel}>URL slug</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)', whiteSpace: 'nowrap' }}>
-                                /help/{selectedCategory?.slug ?? '…'}/{selectedSection?.slug ?? '…'}/
-                            </span>
-                            <Input id="kb-article-slug" placeholder="article-slug" value={slug} onChange={(e) => onSlugChange(e.target.value)} style={{ maxWidth: 260 }} />
-                        </div>
-                        <div style={{ fontSize: 11.5, color: taken ? 'var(--red)' : 'var(--fg3)', marginTop: 4 }}>{slugNote}</div>
-                    </div>
+                        <Input
+                            placeholder="Article title"
+                            value={title}
+                            onChange={(e) => onTitleChange(e.target.value)}
+                            style={{ border: 'none', background: 'transparent', padding: 0, borderRadius: 0, fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.15 }}
+                        />
 
-                    <div style={{ marginTop: 16 }}>
-                        <label htmlFor="kb-article-section" style={fieldLabel}>Section</label>
-                        {noSections ? (
-                            <div role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>
-                                No sections exist yet — create one in the library before writing this article.
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
+                            <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+                                <label htmlFor="kb-article-slug" style={fieldLabel}>URL slug</label>
+                                <div
+                                    data-testid="kb-slug-shell"
+                                    className={FIELD_SHELL_CLASSES}
+                                    style={fieldShell}
+                                    // A click on the /help/…/ prefix focuses the input, like a click on any field.
+                                    onMouseDown={(e) => { if (e.target !== slugInputRef.current) { e.preventDefault(); slugInputRef.current?.focus(); } }}
+                                >
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>
+                                        /help/{selectedCategory?.slug ?? '…'}/{selectedSection?.slug ?? '…'}/
+                                    </span>
+                                    <input
+                                        ref={slugInputRef}
+                                        id="kb-article-slug"
+                                        placeholder="article-slug"
+                                        value={slug}
+                                        onChange={(e) => onSlugChange(e.target.value)}
+                                        style={{ flex: 1, minWidth: 60, border: 'none', background: 'none', outline: 'none', padding: 0, color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 12.5 }}
+                                    />
+                                </div>
+                                <div style={{ marginTop: 7, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: taken ? 'var(--red)' : 'var(--fg3)' }}>{slugNote}</div>
                             </div>
+
+                            <div style={{ flex: '0 1 260px', minWidth: 200 }}>
+                                <label htmlFor="kb-article-section" style={fieldLabel}>Section</label>
+                                {noSections ? (
+                                    <div role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>
+                                        No sections exist yet — create one in the library before writing this article.
+                                    </div>
+                                ) : (
+                                    <select id="kb-article-section" aria-label="Section" value={sectionId} onChange={(e) => onSectionChange(e.target.value)} className={FIELD_CLASSES} style={{ ...selectStyle, width: '100%', fontSize: 13 }}>
+                                        {allSections.map((s) => (
+                                            <option key={s.id} value={s.id}>{s.categoryName} › {s.name}</option>
+                                        ))}
+                                    </select>
+                                )}
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
+                            <SegmentedControl<Tab>
+                                value={tab}
+                                onChange={setTab}
+                                options={[{ value: 'write', label: 'Write' }, { value: 'preview', label: 'Preview' }]}
+                            />
+                            <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
+                                {stats.words === 0 ? 'empty' : `${stats.words} words · ${stats.minutes} min read`}
+                            </span>
+                        </div>
+
+                        {tab === 'write' ? (
+                            <Textarea
+                                value={body}
+                                onChange={(e) => onBodyChange(e.target.value)}
+                                placeholder={'# Heading\n\nWrite the article in markdown. Use ## for sections, - for bullets, **bold** and `code`.'}
+                                style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7, minHeight: 460, resize: 'vertical', marginTop: 10, padding: '16px 18px' }}
+                            />
                         ) : (
-                            <select id="kb-article-section" aria-label="Section" value={sectionId} onChange={(e) => onSectionChange(e.target.value)}>
-                                {allSections.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.categoryName} › {s.name}</option>
-                                ))}
-                            </select>
+                            <div style={{ marginTop: 10, border: 'var(--line) solid var(--border2)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '26px 30px', minHeight: 460, boxSizing: 'border-box' }}>
+                                <div style={kbLabel}>As customers see it</div>
+                                <h1 style={{ margin: '10px 0 8px', fontSize: 24, fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.25 }}>{title || 'Untitled article'}</h1>
+                                <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginBottom: 22 }}>{previewMeta}</div>
+                                {body.trim() === '' ? (
+                                    <p style={{ fontStyle: 'italic', color: 'var(--fg3)' }}>Nothing written yet — switch to Write and start the article.</p>
+                                ) : (
+                                    // Safe: this HTML comes ONLY from the POST /v1/kb/preview response (never concatenated
+                                    // with local state, never built client-side), rendered server-side by
+                                    // App\Services\MarkdownRenderer (html_input=>'escape', allow_unsafe_links=>false) — the
+                                    // same renderer whose output the public help-center article page already trusts via
+                                    // Blade {!! !!}. SearchPage.tsx's "never dangerouslySetInnerHTML" rule guards a
+                                    // DIFFERENT situation (an unsanitized search query interpolated into text with no
+                                    // renderer anywhere in the path); here the string is always pre-escaped server-side
+                                    // before it ever reaches the client, so that rule does not apply.
+                                    <div className="kb-preview" dangerouslySetInnerHTML={{ __html: preview.data?.html ?? '' }} />
+                                )}
+                            </div>
                         )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
-                        <SegmentedControl<Tab>
-                            value={tab}
-                            onChange={setTab}
-                            options={[{ value: 'write', label: 'Write' }, { value: 'preview', label: 'Preview' }]}
-                        />
-                        <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
-                            {stats.words === 0 ? 'empty' : `${stats.words} words · ${stats.minutes} min read`}
-                        </span>
-                    </div>
-
-                    {tab === 'write' ? (
-                        <Textarea
-                            value={body}
-                            onChange={(e) => onBodyChange(e.target.value)}
-                            placeholder={'# Heading\n\nWrite the article in markdown. Use ## for sections, - for bullets, **bold** and `code`.'}
-                            style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7, minHeight: 460, resize: 'vertical', marginTop: 10 }}
-                        />
-                    ) : (
-                        <div style={{ marginTop: 10, border: '1px solid var(--border)', borderRadius: 10, padding: 20 }}>
-                            <div style={{ fontSize: 11, color: 'var(--fg3)', textTransform: 'uppercase', letterSpacing: '.05em' }}>As customers see it</div>
-                            <h1 style={{ fontSize: 22, fontWeight: 700, margin: '8px 0 4px' }}>{title || 'Untitled article'}</h1>
-                            <div style={{ fontSize: 12, color: 'var(--fg3)', marginBottom: 16 }}>{previewMeta}</div>
-                            {body.trim() === '' ? (
-                                <p style={{ fontStyle: 'italic', color: 'var(--fg3)' }}>Nothing written yet — switch to Write and start the article.</p>
-                            ) : (
-                                // Safe: this HTML comes ONLY from the POST /v1/kb/preview response (never concatenated
-                                // with local state, never built client-side), rendered server-side by
-                                // App\Services\MarkdownRenderer (html_input=>'escape', allow_unsafe_links=>false) — the
-                                // same renderer whose output the public help-center article page already trusts via
-                                // Blade {!! !!}. SearchPage.tsx's "never dangerouslySetInnerHTML" rule guards a
-                                // DIFFERENT situation (an unsanitized search query interpolated into text with no
-                                // renderer anywhere in the path); here the string is always pre-escaped server-side
-                                // before it ever reaches the client, so that rule does not apply.
-                                <div className="kb-preview" dangerouslySetInnerHTML={{ __html: preview.data?.html ?? '' }} />
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                <aside style={{ flex: '0 1 296px', minWidth: 264, display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={card}>
-                        <div style={cardTitle}>Status</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                            <StatusPill status={status} />
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>{isNew ? '—' : shortRef(id ?? '')}</span>
-                        </div>
-                        <p style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 8 }}>{STATUS_HINT[status]}</p>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 10 }}>
+                    <aside style={{ flex: '0 1 296px', minWidth: 264, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                        <div style={cardColumn}>
+                            <div style={kbLabel}>Status</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                                <StatusPill status={status} />
+                                <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>{isNew ? '—' : shortRef(id ?? '')}</span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: 'var(--fg2)' }}>{STATUS_HINT[status]}</p>
                             <Button
+                                variant={status === 'published' ? 'secondary' : 'primary'}
                                 onClick={() => runStatus(status === 'published' ? 'draft' : 'published')}
                                 disabled={!title.trim() || !body.trim() || noSections || pending}
+                                style={{ width: '100%' }}
                             >
                                 {status === 'published' ? 'Unpublish' : 'Publish'}
                             </Button>
-                            <Button variant="secondary" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={(isNew && noSections) || pending}>
-                                {status === 'archived' ? 'Restore' : 'Archive'}
-                            </Button>
-                            {status === 'published' && article?.public_url && (
-                                <a href={article.public_url} target="_blank" rel="noreferrer" style={{ fontSize: 12.5, color: 'var(--fg2)', textAlign: 'center' }}>Open ↗</a>
-                            )}
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <Button variant="secondary" size="sm" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={(isNew && noSections) || pending} style={{ flex: 1 }}>
+                                    {status === 'archived' ? 'Restore' : 'Archive'}
+                                </Button>
+                                {status === 'published' && article?.public_url && (
+                                    <a href={article.public_url} target="_blank" rel="noreferrer" className={PILL_CLASSES} style={{ ...pillBtn, flex: 1, justifyContent: 'center', textDecoration: 'none' }}>Open ↗</a>
+                                )}
+                            </div>
+                            {statusError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{statusError}</div>}
                         </div>
-                        {statusError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>{statusError}</div>}
-                    </div>
 
-                    <div style={card}>
-                        <div style={cardTitle}>Details</div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
-                            <Avatar {...avatarFor(article?.author ?? null)} size={20} />
-                            <span style={{ fontSize: 12.5 }}>{article?.author?.name ?? '—'}</span>
+                        <div style={cardColumn}>
+                            <div style={kbLabel}>Details</div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                                <Avatar {...avatarFor(article?.author ?? null)} size={30} />
+                                <span style={{ fontSize: 13, fontWeight: 600, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{article?.author?.name ?? '—'}</span>
+                            </div>
+                            <div style={{ height: 1, background: 'var(--border)' }} />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                <DetailRow label="Created" value={formatDate(article?.created_at ?? null)} />
+                                <DetailRow label="Published" value={formatDate(article?.published_at ?? null)} />
+                                <DetailRow label="Updated" value={formatDate(article?.updated_at ?? null)} />
+                                <DetailRow label="Category" value={selectedCategory?.slug ?? '—'} />
+                            </div>
                         </div>
-                        <DetailRow label="Created" value={formatDate(article?.created_at ?? null)} />
-                        <DetailRow label="Published" value={formatDate(article?.published_at ?? null)} />
-                        <DetailRow label="Updated" value={formatDate(article?.updated_at ?? null)} />
-                        <DetailRow label="Category" value={selectedCategory?.slug ?? '—'} />
-                    </div>
 
-                    {!isNew && id && (
-                        <KbTranslationCard articleId={id} onOpen={(locale) => setTranslationDrawer({ open: true, locale: locale ?? null })} />
-                    )}
+                        {!isNew && id && (
+                            <KbTranslationCard articleId={id} onOpen={(locale) => setTranslationDrawer({ open: true, locale: locale ?? null })} />
+                        )}
 
-                    {!isNew && id && (
-                        <KbVersionCard articleId={id} onOpen={(versionId) => setVersionDrawer({ open: true, versionId: versionId ?? null })} />
-                    )}
+                        {!isNew && id && (
+                            <KbVersionCard articleId={id} onOpen={(versionId) => setVersionDrawer({ open: true, versionId: versionId ?? null })} />
+                        )}
 
-                    <div style={card}>
-                        <div style={cardTitle}>Performance</div>
-                        <DetailRow label="views" value={formatViews(article?.views_count ?? 0)} />
-                        <DetailRow label="👍 helpful" value={formatViews(article?.helpful_count ?? 0)} />
-                        <DetailRow label="👎 not helpful" value={formatViews(article?.unhelpful_count ?? 0)} />
-                    </div>
-
-                    {!isNew && (
-                        <div style={card}>
-                            <div style={cardTitle}>Danger zone</div>
-                            <p style={{ fontSize: 12, color: 'var(--fg3)', marginTop: 8 }}>Deleting removes the article and its URL. Customers with the link will get a 404.</p>
-                            <Button variant="secondary" onClick={onDelete} style={{ color: 'var(--red)', borderColor: 'var(--red)', marginTop: 8 }}>Delete article</Button>
-                            {deleteError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>{deleteError}</div>}
+                        <div style={kbCard}>
+                            <div style={{ ...kbLabel, marginBottom: 12 }}>Performance</div>
+                            <div style={{ display: 'flex', gap: 14 }}>
+                                <Stat value={formatViews(article?.views_count ?? 0)} label="views" color="var(--fg)" />
+                                <Stat value={formatViews(article?.helpful_count ?? 0)} label="👍 helpful" color="var(--green)" />
+                                <Stat value={formatViews(article?.unhelpful_count ?? 0)} label="👎 not helpful" color="var(--fg2)" />
+                            </div>
                         </div>
-                    )}
-                </aside>
+
+                        {!isNew && (
+                            <div data-testid="kb-danger-zone" style={dangerCard}>
+                                <div style={{ ...kbLabel, marginBottom: 6 }}>Danger zone</div>
+                                <p style={{ margin: '0 0 11px', fontSize: 12, lineHeight: 1.5, color: 'var(--fg2)' }}>Deleting removes the article and its URL. Customers with the link will get a 404.</p>
+                                <button type="button" onClick={onDelete} className={DANGER_PILL_CLASSES} style={pillBtn}>Delete article</button>
+                                {deleteError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>{deleteError}</div>}
+                            </div>
+                        )}
+                    </aside>
+                </div>
+
+                {!isNew && id && (
+                    <KbVersionDrawer
+                        articleId={id}
+                        open={versionDrawer.open}
+                        initialVersionId={versionDrawer.versionId}
+                        dirty={dirty}
+                        onClose={() => setVersionDrawer({ open: false, versionId: null })}
+                        onRestored={(msg, restoredArticle) => {
+                            setSavedMsg(msg);
+                            setDirty(false);
+                            // Review round 1, Finding 1 (Critical): the keyed remount (`key={article?.id
+                            // ?? 'new'}` above) only fires when the article's id changes, which a restore
+                            // never does — so without this, the title/body inputs kept showing the
+                            // pre-restore text even though the confirmation said otherwise. Apply the
+                            // restored values to the state that's already here instead.
+                            setTitle(restoredArticle.title);
+                            setBody(restoredArticle.body);
+                        }}
+                        onSaveFirst={persist}
+                    />
+                )}
+
+                {!isNew && id && (
+                    <KbTranslationDrawer
+                        articleId={id}
+                        open={translationDrawer.open}
+                        initialLocale={translationDrawer.locale}
+                        articleStatus={article?.status ?? 'draft'}
+                        onClose={() => setTranslationDrawer({ open: false, locale: null })}
+                        onViewChanges={() => setVersionDrawer({ open: true, versionId: null })}
+                    />
+                )}
             </div>
 
-            {!isNew && id && (
-                <KbVersionDrawer
-                    articleId={id}
-                    open={versionDrawer.open}
-                    initialVersionId={versionDrawer.versionId}
-                    dirty={dirty}
-                    onClose={() => setVersionDrawer({ open: false, versionId: null })}
-                    onRestored={(msg, restoredArticle) => {
-                        setSavedMsg(msg);
-                        setDirty(false);
-                        // Review round 1, Finding 1 (Critical): the keyed remount (`key={article?.id
-                        // ?? 'new'}` above) only fires when the article's id changes, which a restore
-                        // never does — so without this, the title/body inputs kept showing the
-                        // pre-restore text even though the confirmation said otherwise. Apply the
-                        // restored values to the state that's already here instead.
-                        setTitle(restoredArticle.title);
-                        setBody(restoredArticle.body);
-                    }}
-                    onSaveFirst={persist}
-                />
-            )}
-
-            {!isNew && id && (
-                <KbTranslationDrawer
-                    articleId={id}
-                    open={translationDrawer.open}
-                    initialLocale={translationDrawer.locale}
-                    articleStatus={article?.status ?? 'draft'}
-                    onClose={() => setTranslationDrawer({ open: false, locale: null })}
-                    onViewChanges={() => setVersionDrawer({ open: true, versionId: null })}
-                />
-            )}
-
-            <div style={{ position: 'sticky', bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 24px', borderTop: '1px solid var(--border)', background: 'var(--panel)', flexShrink: 0 }}>
-                <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>{savedMsg}</span>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    {saveError && <span role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{saveError}</span>}
-                    <Button variant="secondary" onClick={() => navigate('/support/kb')}>Close</Button>
-                    {canSave ? (
-                        <Button onClick={onSave}>Save changes</Button>
-                    ) : (
-                        <Button disabled>Saved</Button>
-                    )}
-                </div>
+            <div data-testid="kb-editor-footer" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 22px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
+                <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{savedMsg}</span>
+                <div style={{ flex: 1 }} />
+                {saveError && <span role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{saveError}</span>}
+                <Button variant="secondary" size="sm" onClick={() => navigate('/support/kb')}>Close</Button>
+                {canSave ? (
+                    <Button size="sm" onClick={onSave}>Save changes</Button>
+                ) : (
+                    <Button size="sm" disabled>Saved</Button>
+                )}
             </div>
         </div>
     );
@@ -482,9 +516,19 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
 
 function DetailRow({ label, value }: { label: string; value: string }) {
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, marginTop: 8 }}>
-            <span style={{ color: 'var(--fg3)' }}>{label}</span>
-            <span>{value}</span>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, fontSize: 12 }}>
+            <span style={{ width: 78, flexShrink: 0, color: 'var(--fg3)' }}>{label}</span>
+            <span style={{ flex: 1, minWidth: 0, fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg)', overflowWrap: 'anywhere' }}>{value}</span>
+        </div>
+    );
+}
+
+// 19px bold mono counts as large text, so the green "helpful" figure passes at 4.0:1.
+function Stat({ value, label, color }: { value: string; label: string; color: string }) {
+    return (
+        <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 19, fontWeight: 700, lineHeight: 1, color }}>{value}</div>
+            <div style={{ marginTop: 5, fontSize: 11, color: 'var(--fg3)' }}>{label}</div>
         </div>
     );
 }

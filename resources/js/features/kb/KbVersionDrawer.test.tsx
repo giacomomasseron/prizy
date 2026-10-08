@@ -181,4 +181,42 @@ describe('KbVersionDrawer', () => {
         renderDrawer({ initialVersionId: 'vPrev', detailFail: true });
         expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load this version.');
     });
+
+    it('v2: display-font title and a selected row tinted through classes', async () => {
+        renderDrawer({ initialVersionId: 'vPrev' });
+        const h2 = await screen.findByRole('heading', { level: 2, name: 'Version history' });
+        expect(h2.style.fontFamily).toBe('var(--font-display)');
+        await screen.findByText('gone');
+        const selected = screen.getByRole('button', { name: /Body only/ });
+        expect(selected.className).toBe('bg-sup2');
+        expect(selected.style.background).toBe('');
+        const other = screen.getByRole('button', { name: /Created/ });
+        expect(other.className).toContain('hover:bg-hover');
+    });
+
+    it('v2: diff lines carry a token tint and an aria-hidden sign, with the text in its own element', async () => {
+        renderDrawer();
+        const added = await screen.findByText('added');
+        const row = added.parentElement as HTMLElement;
+        expect(row.style.background).toBe('color-mix(in srgb, var(--green) 12%, transparent)');
+        expect(row.style.color).toBe('var(--fg)');
+        const sign = row.firstElementChild as HTMLElement;
+        expect(sign).toHaveAttribute('aria-hidden', 'true');
+        expect(sign).toHaveTextContent('+');
+        expect((screen.getByText('gone').parentElement as HTMLElement).style.background).toBe('color-mix(in srgb, var(--red) 10%, transparent)');
+    });
+
+    it('v2: the footer is beige and keeps the restore explanation beside the buttons', async () => {
+        renderDrawer();
+        const footer = await screen.findByTestId('kb-version-footer');
+        expect(footer.style.background).toBe('var(--bg2)');
+        expect(footer).toContainElement(screen.getByRole('button', { name: 'Restore this version' }));
+        expect(footer).toHaveTextContent('Nothing is overwritten');
+    });
+
+    it('v2: the diff sign is not selectable, so copying a line copies only its text', async () => {
+        renderDrawer();
+        const sign = (await screen.findByText('added')).previousElementSibling as HTMLElement;
+        expect(sign.style.userSelect).toBe('none');
+    });
 });

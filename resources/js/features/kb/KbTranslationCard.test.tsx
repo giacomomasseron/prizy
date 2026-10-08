@@ -73,4 +73,16 @@ describe('KbTranslationCard', () => {
         renderCardFailing();
         expect(await screen.findByRole('alert')).toHaveTextContent(/translations/i);
     });
+
+    it('v2: rows show their hover (no inline background); Source is a plain tag and Not translated is dashed', async () => {
+        renderCard(rows);
+        const fr = await screen.findByRole('button', { name: /French/ });
+        expect(fr.className).toContain('hover:bg-hover');
+        expect(fr.style.background).toBe('');
+        expect(screen.getByText('Source').style.borderStyle).toBe('');
+        expect(screen.getByText('Source').style.fontWeight).toBe('700');
+        expect(screen.getAllByText('Not translated')[0].style.borderStyle).toBe('dashed');
+        expect(screen.getAllByText('Published')[0].style.background).toBe('var(--sup2)');
+        expect(screen.getByText('Translations').style.textTransform).toBe('');
+    });
 });

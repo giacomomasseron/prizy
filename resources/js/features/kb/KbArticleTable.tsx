@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Avatar } from '../../components/ui/Avatar';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
@@ -7,12 +7,19 @@ import { Menu, type MenuItem } from '../../components/ui/Menu';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
 import { useChangeKbArticleStatus, useDeleteKbArticle, useMoveKbArticle } from './hooks';
+import { kbLabel } from './kbStyles';
 import { formatViews, relativeTime } from './kbUtils';
 import { StatusPill } from './StatusPill';
 import type { KbArticleSummary, KbStatus } from './types';
 
 const GRID = '100px minmax(260px,2fr) 132px 138px 100px 66px 78px';
+const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 
+/*
+ * Full-width rows (v2). The table and its wrappers carry no `overflow`: a clipping card used to hide the ⋯ menus
+ * of the last rows, while the page's scroll area grows to fit them instead. minWidth = 874 (columns) + 6 × 12 (gaps)
+ * + 44 (padding).
+ */
 export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleSummary & { sectionName: string })[]; canReorder: boolean }) {
     const navigate = useNavigate();
     const confirm = useConfirm();
@@ -39,8 +46,8 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
 
     return (
         <div>
-            <div role="table" aria-label="Articles" style={{ minWidth: 820, border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
-                <div role="row" style={{ display: 'grid', gridTemplateColumns: GRID, padding: '8px 14px', borderBottom: '1px solid var(--border)', fontSize: 10.5, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--fg3)' }}>
+            <div role="table" aria-label="Articles" style={{ minWidth: 990 }}>
+                <div role="row" style={{ display: 'grid', gridTemplateColumns: GRID, gap: 12, padding: '9px 22px', borderBottom: '1px solid var(--border)', ...kbLabel, position: 'sticky', top: 0, zIndex: 1, background: 'var(--bg)' }}>
                     <span>Status</span>
                     <span>Title</span>
                     <span>Section</span>
@@ -62,31 +69,32 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
                     items.push({ key: 'delete', label: 'Delete…', danger: true, onActivate: () => onDelete(a) });
 
                     return (
-                        <div key={a.id} role="row" style={{ display: 'grid', gridTemplateColumns: GRID, alignItems: 'center', padding: '10px 14px', borderBottom: '1px solid var(--border)', opacity: a.status === 'archived' ? 0.62 : 1 }}>
+                        <div key={a.id} role="row" className="border-b border-border hover:bg-hover" style={{ display: 'grid', gridTemplateColumns: GRID, gap: 12, alignItems: 'center', padding: '12px 22px', opacity: a.status === 'archived' ? 0.62 : 1 }}>
                             <div><StatusPill status={a.status} /></div>
 
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                            <div style={{ minWidth: 0 }}>
                                 <button
                                     type="button"
                                     aria-label={`Open ${a.title}`}
                                     onClick={() => navigate(`/support/kb/articles/${a.id}`)}
-                                    style={{ textAlign: 'left', border: 'none', background: 'none', padding: 0, color: 'var(--fg)', fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                    className="text-fg hover:text-accent"
+                                    style={{ display: 'block', maxWidth: '100%', textAlign: 'left', border: 'none', background: 'none', padding: 0, fontSize: 13.5, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', ...ellipsis }}
                                 >
                                     {a.title}
                                 </button>
-                                <span style={{ fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>/{a.slug}</span>
+                                <div style={{ marginTop: 2, fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)', ...ellipsis }}>/{a.slug}</div>
                             </div>
 
-                            <span style={{ fontSize: 12.5, color: 'var(--fg2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.sectionName}</span>
+                            <span style={{ fontSize: 12.5, color: 'var(--fg2)', ...ellipsis }}>{a.sectionName}</span>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                                <Avatar {...avatarFor(a.author)} size={18} />
-                                <span style={{ fontSize: 12.5, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.author.name}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                                <Avatar {...avatarFor(a.author)} size={22} />
+                                <span style={{ fontSize: 12.5, color: 'var(--fg2)', ...ellipsis }}>{a.author.name}</span>
                             </div>
 
-                            <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>Updated {relativeTime(a.updated_at)}</span>
+                            <span style={{ fontSize: 12, color: 'var(--fg2)', whiteSpace: 'nowrap' }}>Updated {relativeTime(a.updated_at)}</span>
 
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, textAlign: 'right' }}>{formatViews(a.views_count)}</span>
+                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)', textAlign: 'right' }}>{formatViews(a.views_count)}</span>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'flex-end' }}>
                                 {canReorder && (
@@ -102,7 +110,7 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
                 })}
             </div>
 
-            {error && <div role="alert" style={{ marginTop: 10, fontSize: 12.5, color: 'var(--red)' }}>{error}</div>}
+            {error && <div role="alert" style={{ margin: '10px 22px', fontSize: 12.5, color: 'var(--red)' }}>{error}</div>}
         </div>
     );
 }
