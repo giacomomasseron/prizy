@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { ApiError } from '../../lib/apiClient';
 import { useCreateKbCategory, useCreateKbSection, useUpdateKbCategory, useUpdateKbSection } from './hooks';
 import { slugify } from './kbUtils';
+import { fieldLabel, modalBody, modalFooter, modalHeader, modalSub, modalTitle, swatchStyle } from '../settings/settingsStyles';
 import { KB_COLORS, KB_ICONS, KB_RESERVED } from './types';
 import type { KbCategoryNode, KbSectionNode } from './types';
 import type { TreeNode } from './KbTree';
@@ -21,7 +22,6 @@ export interface KbNodeModalProps {
     onCreated(node: TreeNode): void;
 }
 
-const fieldLabel: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--fg3)', fontWeight: 500, marginBottom: 6 };
 const RESERVED_TEXT = `${KB_RESERVED.slice(0, -1).join(', ')} and ${KB_RESERVED[KB_RESERVED.length - 1]} are reserved.`;
 
 export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeModalProps) {
@@ -121,13 +121,13 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
     const footnote = isCategory ? 'Position: last in the library' : 'Position: last in the category';
 
     return (
-        <Modal open={open} onClose={onClose} width={520} label={title}>
-            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div>
-                    <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>{title}</h2>
-                    <div style={{ fontSize: 12.5, color: 'var(--fg3)', marginTop: 3 }}>{subtitle}</div>
-                </div>
+        <Modal open={open} onClose={onClose} width={480} label={title}>
+            <div style={modalHeader}>
+                <h2 style={modalTitle}>{title}</h2>
+                <p style={modalSub}>{subtitle}</p>
+            </div>
 
+            <div style={{ ...modalBody, maxHeight: '60vh', overflowY: 'auto' }}>
                 <div>
                     <label htmlFor="kb-node-name" style={fieldLabel}>Name</label>
                     <Input
@@ -141,8 +141,8 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
 
                 <div>
                     <label htmlFor="kb-node-slug" style={fieldLabel}>Slug</label>
-                    <Input id="kb-node-slug" value={slug} onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }} placeholder="slug" />
-                    {slugError && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 5 }}>{slugError}</div>}
+                    <Input id="kb-node-slug" value={slug} onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }} placeholder="slug" style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }} />
+                    {slugError && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 6 }}>{slugError}</div>}
                 </div>
 
                 {isCategory && (
@@ -150,22 +150,27 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
                         <div>
                             <div style={fieldLabel}>Icon</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                {KB_ICONS.map((glyph) => (
-                                    <button
-                                        key={glyph}
-                                        type="button"
-                                        aria-label={glyph}
-                                        aria-pressed={icon === glyph}
-                                        onClick={() => setIcon(glyph)}
-                                        style={{
-                                            width: 34, height: 34, borderRadius: 9, fontSize: 15, fontFamily: 'inherit',
-                                            border: icon === glyph ? '2px solid var(--fg)' : '1px solid var(--border)',
-                                            background: 'var(--panel)', color: 'var(--fg)', cursor: 'pointer',
-                                        }}
-                                    >
-                                        {glyph}
-                                    </button>
-                                ))}
+                                {KB_ICONS.map((glyph) => {
+                                    const selected = icon === glyph;
+                                    return (
+                                        <button
+                                            key={glyph}
+                                            type="button"
+                                            aria-label={glyph}
+                                            aria-pressed={selected}
+                                            onClick={() => setIcon(glyph)}
+                                            // Selected: the chosen category colour, inline (it never hovers). Unselected: classes, so the hover shows.
+                                            className={selected ? '' : 'border-border2 bg-transparent text-fg2 hover:border-fg hover:text-fg'}
+                                            style={{
+                                                width: 34, height: 34, borderRadius: 'var(--radius-row)', borderWidth: 'var(--line)', borderStyle: 'solid',
+                                                fontSize: 15, fontFamily: 'inherit', cursor: 'pointer',
+                                                ...(selected ? { borderColor: color, background: 'var(--hover)', color } : {}),
+                                            }}
+                                        >
+                                            {glyph}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
 
@@ -179,11 +184,7 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
                                         aria-label={hex}
                                         aria-pressed={color === hex}
                                         onClick={() => setColor(hex)}
-                                        style={{
-                                            width: 26, height: 26, borderRadius: '50%', background: hex, cursor: 'pointer',
-                                            border: color === hex ? '2px solid var(--fg)' : '2px solid transparent',
-                                            boxShadow: color === hex ? '0 0 0 1px var(--border2)' : 'none',
-                                        }}
+                                        style={{ ...swatchStyle(hex, color === hex, 28), borderRadius: '50%' }}
                                     />
                                 ))}
                             </div>
@@ -200,23 +201,23 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
                             />
                         </div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg2)' }}>
-                            <span style={{ fontSize: 18, color }}>{icon}</span>
+                        <div data-testid="kb-node-preview" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-row)', background: 'var(--bg2)' }}>
+                            <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color, background: 'var(--hover)', flexShrink: 0 }}>{icon}</span>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 13, fontWeight: 600 }}>{name.trim() || 'Category name'}</div>
-                                <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{description.trim() || 'Description shown under the topic card'}</div>
+                                <div style={{ fontSize: 13.5, fontWeight: 700 }}>{name.trim() || 'Category name'}</div>
+                                <div style={{ fontSize: 11.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{description.trim() || 'Description shown under the topic card'}</div>
                             </div>
                         </div>
                     </>
                 )}
 
                 {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+            </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                    <span style={{ fontSize: 11.5, color: 'var(--fg3)', flex: 1 }}>{footnote}</span>
-                    <Button variant="secondary" onClick={onClose}>Cancel</Button>
-                    <Button onClick={submit} disabled={!canSubmit}>{isEditing ? 'Save' : 'Create'}</Button>
-                </div>
+            <div style={modalFooter}>
+                <span style={{ flex: 1, fontSize: 11.5, color: 'var(--fg3)' }}>{footnote}</span>
+                <Button variant="secondary" onClick={onClose}>Cancel</Button>
+                <Button onClick={submit} disabled={!canSubmit}>{isEditing ? 'Save' : 'Create'}</Button>
             </div>
         </Modal>
     );
