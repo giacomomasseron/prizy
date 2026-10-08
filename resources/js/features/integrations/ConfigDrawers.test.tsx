@@ -80,3 +80,22 @@ describe('GithubConfigDrawer', () => {
         await waitFor(() => expect(ghSave).toHaveBeenCalledWith(expect.objectContaining({ move_to_done_on_merge: false })));
     });
 });
+
+describe('config drawers (v2 look)', () => {
+    it('v2: Slack fields are pill inputs, checkboxes are ink, actions are pill buttons', () => {
+        render(<SlackConfigDrawer open onClose={() => {}} />);
+        expect(screen.getByRole('heading', { name: 'Configure Slack' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByLabelText('Slack webhook URL').className).toContain('border-border2');
+        expect((screen.getByLabelText('Assigned') as HTMLInputElement).style.accentColor).toBe('var(--fg)');
+        expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: 'Send test' }).style.borderRadius).toBe('var(--radius-pill)');
+    });
+
+    it('v2: GitHub fields are pill inputs and Save GitHub is the ink button', () => {
+        render(<GithubConfigDrawer open onClose={() => {}} />);
+        expect(screen.getByLabelText('GitHub webhook secret').className).toContain('border-border2');
+        expect(screen.getByLabelText('GitHub webhook URL').className).toContain('border-border2');
+        expect((screen.getByLabelText('GitHub active') as HTMLInputElement).style.accentColor).toBe('var(--fg)');
+        expect(screen.getByRole('button', { name: 'Save GitHub' }).className).toContain('bg-fg');
+    });
+});

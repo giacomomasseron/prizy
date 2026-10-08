@@ -1,16 +1,35 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { ApiError } from '../../lib/apiClient';
+import { Button } from '../../components/ui/Button';
+import { tagBadge } from '../../components/sidebarStyles';
 import { INTEGRATIONS, type IntegrationDef } from './catalog';
 import { slackMeta, githubMeta } from './meta';
 import { SlackConfigDrawer } from './SlackConfigDrawer';
 import { GithubConfigDrawer } from './GithubConfigDrawer';
 import { useSlackIntegration, useGithubIntegration, useDisconnectSlack, useDisconnectGithub } from './hooks';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { DANGER_PILL_CLASSES, cardFrame, pageFrame, pageLead, pageTitle, pillBtn } from '../settings/settingsStyles';
 
 const glyphStyle = (color: string): CSSProperties => ({ width: 40, height: 40, borderRadius: 10, background: color, color: color === '#e6e6e6' ? '#111' : '#fff', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, letterSpacing: '.02em' });
-const cardBase: CSSProperties = { border: '1px solid var(--border)', borderRadius: 13, padding: 16 };
+const cardBase: CSSProperties = { ...cardFrame, padding: 16 };
 const sectionLabel: CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' };
-const grid: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 };
+const grid: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 };
+const connectedBadge: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 600, color: 'var(--green)', background: 'var(--sup2)', borderRadius: 20, padding: '1px 8px' };
+
+function CardHead({ d, tag }: { d: IntegrationDef; tag: ReactNode }) {
+    return (
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+            <span style={glyphStyle(d.color)}>{d.glyph}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{d.name}</span>
+                    {tag}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 3, lineHeight: 1.5 }}>{d.description}</div>
+            </div>
+        </div>
+    );
+}
 
 export default function IntegrationsSettingsPage() {
     const slack = useSlackIntegration();
@@ -23,7 +42,7 @@ export default function IntegrationsSettingsPage() {
 
     if (slack.isLoading || github.isLoading) {
         return (
-            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 30px 80px', width: '100%' }}>
+            <div style={pageFrame}>
                 <p style={{ color: 'var(--fg3)', fontSize: 13 }}>Loading…</p>
             </div>
         );
@@ -31,7 +50,7 @@ export default function IntegrationsSettingsPage() {
 
     if (slack.isError || github.isError) {
         return (
-            <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 30px 80px', width: '100%' }}>
+            <div style={pageFrame}>
                 <p role="alert" style={{ color: 'var(--red)', fontSize: 13 }}>Couldn't load integration status. Please retry.</p>
             </div>
         );
@@ -59,12 +78,10 @@ export default function IntegrationsSettingsPage() {
     const availableReal = real.filter((d) => !connectedIds.has(d.id));
     const comingSoon = INTEGRATIONS.filter((d) => !d.real);
 
-    const iconEl = (d: IntegrationDef) => <span style={glyphStyle(d.color)}>{d.glyph}</span>;
-
     return (
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '28px 30px 80px', width: '100%' }}>
-            <h1 style={{ margin: 0, fontSize: 21, fontWeight: 600, letterSpacing: '-.02em' }}>Integrations</h1>
-            <p style={{ margin: '6px 0 0', fontSize: 13, color: 'var(--fg2)', maxWidth: 600 }}>Connect Prizy to the tools your team already uses. Connected integrations sync across both the Issue Tracker and Support modules.</p>
+        <div style={pageFrame}>
+            <h1 style={pageTitle}><span className="hl">Integrations</span></h1>
+            <p style={pageLead}>Connect Prizy to the tools your team already uses. Connected integrations sync across both the Issue Tracker and Support modules.</p>
 
             {error && <p role="alert" style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--red)' }}>{error}</p>}
 
@@ -77,24 +94,21 @@ export default function IntegrationsSettingsPage() {
                     <div style={grid}>
                         {connected.map((d) => (
                             <div key={d.id} style={{ ...cardBase, background: 'var(--panel)' }} data-testid={`card-${d.id}`}>
-                                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                                    {iconEl(d)}
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                            <span style={{ fontSize: 13.5, fontWeight: 600 }}>{d.name}</span>
-                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 600, color: 'var(--green)', background: 'rgba(75,171,102,.14)', borderRadius: 20, padding: '1px 8px' }}>
-                                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />Connected
-                                            </span>
-                                        </div>
-                                        <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 3, lineHeight: 1.5 }}>{d.description}</div>
-                                    </div>
-                                </div>
+                                <CardHead
+                                    d={d}
+                                    tag={(
+                                        <span style={connectedBadge}>
+                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--green)' }} />Connected
+                                        </span>
+                                    )}
+                                />
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 14 }}>
                                     <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{metaFor(d.id)}</span>
-                                    <button type="button" data-testid={`manage-${d.id}`} onClick={() => setOpenDrawer(d.id as 'slack' | 'github')}
-                                        style={{ marginLeft: 'auto', border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg2)', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Manage</button>
+                                    <Button variant="secondary" size="sm" data-testid={`manage-${d.id}`} onClick={() => setOpenDrawer(d.id as 'slack' | 'github')} style={{ marginLeft: 'auto' }}>
+                                        Manage
+                                    </Button>
                                     <button type="button" data-testid={`disconnect-${d.id}`} onClick={() => disconnect(d.id as 'slack' | 'github')}
-                                        style={{ border: '1px solid var(--border)', background: 'transparent', color: 'var(--fg2)', padding: '6px 12px', borderRadius: 8, fontSize: 12, fontWeight: 500, cursor: 'pointer' }}>Disconnect</button>
+                                        className={DANGER_PILL_CLASSES} style={pillBtn}>Disconnect</button>
                                 </div>
                             </div>
                         ))}
@@ -108,36 +122,19 @@ export default function IntegrationsSettingsPage() {
             <div style={grid}>
                 {availableReal.map((d) => (
                     <div key={d.id} style={cardBase} data-testid={`card-${d.id}`}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                            {iconEl(d)}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{d.name}</span>
-                                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 5, padding: '1px 6px' }}>{d.category}</span>
-                                </div>
-                                <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 3, lineHeight: 1.5 }}>{d.description}</div>
-                            </div>
-                        </div>
+                        <CardHead d={d} tag={<span style={tagBadge}>{d.category}</span>} />
                         <div style={{ display: 'flex', marginTop: 14 }}>
-                            <button type="button" data-testid={`connect-${d.id}`} onClick={() => setOpenDrawer(d.id as 'slack' | 'github')}
-                                style={{ marginLeft: 'auto', border: 'none', background: 'var(--accent)', color: 'var(--on-accent)', padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Connect</button>
+                            <Button size="sm" data-testid={`connect-${d.id}`} onClick={() => setOpenDrawer(d.id as 'slack' | 'github')} style={{ marginLeft: 'auto' }}>
+                                Connect
+                            </Button>
                         </div>
                     </div>
                 ))}
                 {comingSoon.map((d) => (
                     <div key={d.id} style={{ ...cardBase, opacity: 0.55 }} data-testid={`card-${d.id}`}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                            {iconEl(d)}
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                    <span style={{ fontSize: 13.5, fontWeight: 600 }}>{d.name}</span>
-                                    <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '.03em', textTransform: 'uppercase', color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 5, padding: '1px 6px' }}>{d.category}</span>
-                                </div>
-                                <div style={{ fontSize: 12, color: 'var(--fg2)', marginTop: 3, lineHeight: 1.5 }}>{d.description}</div>
-                            </div>
-                        </div>
+                        <CardHead d={d} tag={<span style={tagBadge}>{d.category}</span>} />
                         <div style={{ display: 'flex', marginTop: 14 }}>
-                            <span data-testid={`soon-${d.id}`} style={{ marginLeft: 'auto', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.04em', color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 6, padding: '5px 10px' }}>Soon</span>
+                            <span data-testid={`soon-${d.id}`} style={{ ...tagBadge, marginLeft: 'auto', padding: '3px 10px' }}>Soon</span>
                         </div>
                     </div>
                 ))}
