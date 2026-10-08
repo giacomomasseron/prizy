@@ -1,7 +1,10 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
+import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Switch } from '../../components/ui/Switch';
+import { chipClasses, chipStyle } from '../issues/issueStyles';
+import { alertBox, fieldLabel, modalBody, modalFooter, modalHeader, modalSub, modalTitle } from '../settings/settingsStyles';
 import { LEVELS } from './levels';
 import { useInviteMember } from './workspaceHooks';
 
@@ -16,6 +19,18 @@ type Level = 'admin' | 'member' | 'viewer';
 
 // Exclude 'owner' — the web endpoint only accepts admin | member | viewer
 const CHIP_LEVELS: Level[] = ['admin', 'member', 'viewer'];
+
+// ─── styles ──────────────────────────────────────────────────────────────────
+
+function capRow(on: boolean): CSSProperties {
+    return {
+        display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 'var(--radius-row)',
+        border: `var(--line) solid ${on ? 'var(--accent)' : 'var(--border)'}`,
+        background: on ? 'var(--accent2)' : 'transparent',
+    };
+}
+const capTitle: CSSProperties = { fontSize: 13, fontWeight: 600, color: 'var(--fg)' };
+const capDesc: CSSProperties = { fontSize: 11.5, color: 'var(--fg3)' };
 
 // ─── component ────────────────────────────────────────────────────────────────
 
@@ -60,219 +75,104 @@ export function InviteModal({ open, onClose }: Props) {
 
     return (
         <Modal open={open} onClose={handleClose} width={520}>
-            <div style={{ padding: '24px 28px' }}>
-                {/* Header */}
-                <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 4px' }}>
-                    {/* TODO: real workspace name once exposed */}
-                    Invite to Prizy
-                </h2>
-                <p style={{ fontSize: 12.5, color: 'var(--fg2)', margin: '0 0 18px' }}>
-                    Invite a teammate. They'll receive an email to accept.
-                </p>
+            {/* Header */}
+            <div style={modalHeader}>
+                {/* TODO: real workspace name once exposed */}
+                <h2 style={modalTitle}>Invite to Prizy</h2>
+                <p style={modalSub}>Invite a teammate. They'll receive an email to accept.</p>
+            </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
-                    {/* Email address */}
-                    <div>
-                        <label
-                            htmlFor="invite-email"
-                            style={{
-                                display: 'block',
-                                fontSize: 12,
-                                color: 'var(--fg3)',
-                                fontWeight: 500,
-                                marginBottom: 6,
-                            }}
-                        >
-                            Email address
-                        </label>
-                        <Input
-                            id="invite-email"
-                            type="email"
-                            value={email}
-                            onChange={e => setEmail(e.target.value)}
-                            placeholder="colleague@example.com"
-                        />
-                    </div>
-
-                    {/* Administrative level chips */}
-                    <div>
-                        <div
-                            style={{
-                                fontSize: 12,
-                                color: 'var(--fg3)',
-                                fontWeight: 500,
-                                marginBottom: 8,
-                            }}
-                        >
-                            Administrative level
-                        </div>
-                        <div style={{ display: 'flex', gap: 8 }}>
-                            {CHIP_LEVELS.map(l => {
-                                const active = level === l;
-                                return (
-                                    <button
-                                        key={l}
-                                        type="button"
-                                        onClick={() => setLevel(l)}
-                                        aria-pressed={active}
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: 7,
-                                            padding: '6px 11px',
-                                            borderRadius: 8,
-                                            border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-                                            background: active ? 'var(--accent2)' : 'none',
-                                            color: active ? 'var(--fg)' : 'var(--fg2)',
-                                            fontSize: 12,
-                                            cursor: 'pointer',
-                                            fontFamily: 'inherit',
-                                        }}
-                                    >
-                                        {LEVELS[l].label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Capabilities */}
-                    <div>
-                        <div
-                            style={{
-                                fontSize: 12,
-                                color: 'var(--fg3)',
-                                fontWeight: 500,
-                                marginBottom: 8,
-                            }}
-                        >
-                            Capabilities
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            {/* Developer row */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    padding: '12px 14px',
-                                    borderRadius: 11,
-                                    border: `1px solid ${isDeveloper ? 'var(--accent)' : 'var(--border)'}`,
-                                    background: isDeveloper ? 'var(--accent2)' : 'none',
-                                }}
-                            >
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 13 }}>Developer</div>
-                                    <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
-                                        Access to Issues, Projects, Roadmap
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={isDeveloper}
-                                    onChange={setIsDeveloper}
-                                    ariaLabel="Developer"
-                                />
-                            </div>
-
-                            {/* Agent row */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    padding: '12px 14px',
-                                    borderRadius: 11,
-                                    border: `1px solid ${isAgent ? 'var(--accent)' : 'var(--border)'}`,
-                                    background: isAgent ? 'var(--accent2)' : 'none',
-                                }}
-                            >
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: 13 }}>Agent</div>
-                                    <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
-                                        Access to Support module
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={isAgent}
-                                    onChange={setIsAgent}
-                                    ariaLabel="Agent"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* No-access warning: member-level with no capability */}
-                    {showNoAccess && (
-                        <div
-                            role="alert"
-                            style={{
-                                background: 'rgba(224,161,58,.08)',
-                                border: '1px solid rgba(224,161,58,.3)',
-                                borderRadius: 9,
-                                padding: '10px 14px',
-                                color: 'var(--amber)',
-                                fontSize: 13,
-                            }}
-                        >
-                            ⚠ This member will have no access to any module.
-                        </div>
-                    )}
-
-                    {/* Inline error (422 / network failures) */}
-                    {errorMsg && (
-                        <div
-                            role="alert"
-                            data-testid="invite-error"
-                            style={{ color: 'var(--red)', fontSize: 12.5 }}
-                        >
-                            {errorMsg}
-                        </div>
-                    )}
+            <div style={modalBody}>
+                {/* Email address */}
+                <div>
+                    <label htmlFor="invite-email" style={fieldLabel}>Email address</label>
+                    <Input
+                        id="invite-email"
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="colleague@example.com"
+                    />
                 </div>
 
-                {/* Footer */}
-                <div
-                    style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: 10,
-                        marginTop: 20,
-                    }}
-                >
-                    <button
-                        type="button"
-                        onClick={handleClose}
-                        style={{
-                            border: '1px solid var(--border)',
-                            borderRadius: 9,
-                            padding: '8px 15px',
-                            fontSize: 12.5,
-                            color: 'var(--fg2)',
-                            background: 'none',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                        }}
-                    >
-                        Cancel
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleSend}
-                        disabled={disabled || invite.isPending}
-                        style={{
-                            background: 'var(--accent)',
-                            color: 'var(--on-accent)',
-                            border: 'none',
-                            borderRadius: 9,
-                            padding: '8px 15px',
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            cursor: disabled || invite.isPending ? 'not-allowed' : 'pointer',
-                            fontFamily: 'inherit',
-                            opacity: disabled || invite.isPending ? 0.5 : 1,
-                        }}
-                    >
-                        Send invite
-                    </button>
+                {/* Administrative level chips (ink when active) */}
+                <div>
+                    <div style={fieldLabel}>Administrative level</div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        {CHIP_LEVELS.map(l => {
+                            const active = level === l;
+                            return (
+                                <button
+                                    key={l}
+                                    type="button"
+                                    onClick={() => setLevel(l)}
+                                    aria-pressed={active}
+                                    style={chipStyle}
+                                    className={chipClasses(active)}
+                                >
+                                    <span
+                                        aria-hidden="true"
+                                        style={{ width: 8, height: 8, borderRadius: '50%', background: LEVELS[l].color, flexShrink: 0 }}
+                                    />
+                                    {LEVELS[l].label}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
+
+                {/* Capabilities */}
+                <div>
+                    <div style={fieldLabel}>Capabilities</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                        <div style={capRow(isDeveloper)}>
+                            <div style={{ flex: 1 }}>
+                                <div style={capTitle}>Developer</div>
+                                <div style={capDesc}>Access to Issues, Projects, Roadmap</div>
+                            </div>
+                            <Switch checked={isDeveloper} onChange={setIsDeveloper} ariaLabel="Developer" />
+                        </div>
+                        <div style={capRow(isAgent)}>
+                            <div style={{ flex: 1 }}>
+                                <div style={capTitle}>Agent</div>
+                                <div style={capDesc}>Access to Support module</div>
+                            </div>
+                            <Switch checked={isAgent} onChange={setIsAgent} ariaLabel="Agent" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* No-access warning: member-level with no capability */}
+                {showNoAccess && (
+                    <div
+                        role="alert"
+                        style={{
+                            ...alertBox,
+                            background: 'rgba(224,161,58,.08)',
+                            border: '1px solid rgba(224,161,58,.3)',
+                            color: 'var(--amber)',
+                        }}
+                    >
+                        ⚠ This member will have no access to any module.
+                    </div>
+                )}
+
+                {/* Inline error (422 / network failures) */}
+                {errorMsg && (
+                    <div
+                        role="alert"
+                        data-testid="invite-error"
+                        style={{ color: 'var(--red)', fontSize: 12.5 }}
+                    >
+                        {errorMsg}
+                    </div>
+                )}
+            </div>
+
+            {/* Footer */}
+            <div style={modalFooter}>
+                <Button variant="secondary" size="sm" onClick={handleClose}>Cancel</Button>
+                <Button size="sm" onClick={handleSend} disabled={disabled || invite.isPending}>Send invite</Button>
             </div>
         </Modal>
     );

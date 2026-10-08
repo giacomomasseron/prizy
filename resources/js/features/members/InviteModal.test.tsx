@@ -139,4 +139,19 @@ describe('InviteModal', () => {
         );
         expect(onClose).not.toHaveBeenCalled();
     });
+
+    it('v2: level chips are ink chips and the active one is pressed', () => {
+        renderModal();
+        const member = screen.getByRole('button', { name: 'Member' });
+        expect(member).toHaveAttribute('aria-pressed', 'true');
+        expect(member.className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: 'Viewer' }).className).toContain('hover:border-fg');
+    });
+
+    it('v2: display-font title and pill footer buttons', () => {
+        renderModal();
+        expect(screen.getByRole('heading', { name: 'Invite to Prizy' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: 'Cancel' }).style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByRole('button', { name: /send invite/i }).className).toContain('bg-fg');
+    });
 });

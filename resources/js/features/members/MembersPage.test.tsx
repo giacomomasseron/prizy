@@ -270,4 +270,43 @@ describe('MembersPage', () => {
         expect(screen.getByRole('menuitem', { name: 'Member' })).toBeInTheDocument();
         expect(screen.getByRole('menuitem', { name: 'Viewer' })).toBeInTheDocument();
     });
+
+    it('v2: highlighted title, ink invite button and display-font stats', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        expect(screen.getByRole('heading', { level: 1, name: 'Members' }).querySelector('.hl')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'Invite people' }).className).toContain('bg-fg');
+        expect(screen.getByTestId('stat-total').style.fontFamily).toBe('var(--font-display)');
+    });
+
+    it('v2: the table card keeps a minimum width and never clips the level menu', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        const card = screen.getByTestId('members-table');
+        expect(card.style.minWidth).toBe('668px');
+        expect(card.style.overflow).toBe('');
+        expect(card.style.overflowX).toBe('');
+    });
+
+    it('v2: the remove × keeps its colour in classes so the red hover works', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        const x = screen.getByTestId('remove-a@x.co');
+        expect(x.className).toContain('hover:text-red');
+        expect(x.style.color).toBe('');
+    });
+
+    it('v2: an off capability chip is dashed and still shows its dot', async () => {
+        renderPage([makeMember({ id: 'u2', name: 'Bob', email: 'b@x.co', admin_level: 'member', is_developer: false, is_agent: true })]);
+        await screen.findByText('Bob');
+        const dev = screen.getByTestId('cap-developer-b@x.co');
+        expect(dev.style.border).toBe('1px dashed var(--border2)');
+        expect(dev.querySelector('span[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it('v2: the no-access strip sits inside the table card', async () => {
+        renderPage([makeMember({ id: 'u5', name: 'Frank', email: 'f@x.co', admin_level: 'member', is_developer: false, is_agent: false })]);
+        await screen.findByText('Frank');
+        expect(screen.getByTestId('members-table')).toContainElement(screen.getByText(/no capability enabled/i));
+    });
 });
