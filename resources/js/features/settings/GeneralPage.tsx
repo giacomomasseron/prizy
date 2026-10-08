@@ -1,9 +1,19 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ApiError } from '../../lib/apiClient';
 import { downloadBlob } from '../../lib/downloadBlob';
 import { useMe } from '../../auth/useAuth';
+import { Button } from '../../components/ui/Button';
+import { FIELD_CLASSES } from '../../components/ui/Input';
+import { Switch } from '../../components/ui/Switch';
+import { sectionTitle } from '../issues/issueStyles';
+import { pageFrame, pageTitle, selectStyle, titleRow } from './settingsStyles';
 import type { DigestFrequency } from './hooks';
 import { useUpdateHelpdeskEnabled, useUpdateNotificationPreferences } from './hooks';
+
+const card: CSSProperties = { border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '20px 22px' };
+const cardHeading: CSSProperties = { ...sectionTitle(17), margin: '0 0 12px' };
+const bodyText: CSSProperties = { fontSize: 13.5, lineHeight: 1.6, color: 'var(--fg2)' };
+const errorText: CSSProperties = { margin: '10px 0 0', fontSize: 13, color: 'var(--red)' };
 
 export default function GeneralPage() {
     const me = useMe();
@@ -59,59 +69,56 @@ export default function GeneralPage() {
     if (me.isLoading) return <p className="p-6">Loading…</p>;
 
     return (
-        <div className="mx-auto max-w-2xl p-6">
-            <h1 className="mb-4 text-xl font-semibold">General</h1>
-            <section className="rounded border border-border bg-panel p-4">
-                <h2 className="mb-2 font-semibold">Notifications</h2>
-                <label className="flex items-center gap-2 text-sm">
-                    Email digest
-                    <select
-                        aria-label="Email digest frequency"
-                        value={me.data?.email_digest_frequency ?? 'off'}
-                        onChange={(e) => change(e.target.value as DigestFrequency)}
-                        className="rounded border border-border px-2 py-1"
-                    >
-                        <option value="off">Off</option>
-                        <option value="daily">Daily</option>
-                        <option value="weekly">Weekly</option>
-                    </select>
-                </label>
-                {saved && <span className="ml-2 text-sm text-green">Saved</span>}
-                {error && <p className="mt-2 text-sm text-red">{error}</p>}
+        <div style={{ ...pageFrame, maxWidth: 720 }}>
+            <div style={{ ...titleRow, marginBottom: 22 }}>
+                <h1 style={pageTitle}><span className="hl">General</span></h1>
+            </div>
+            <section style={card}>
+                <h2 style={cardHeading}>Notifications</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600 }}>
+                        Email digest
+                        <select
+                            aria-label="Email digest frequency"
+                            value={me.data?.email_digest_frequency ?? 'off'}
+                            onChange={(e) => change(e.target.value as DigestFrequency)}
+                            className={FIELD_CLASSES}
+                            style={selectStyle}
+                        >
+                            <option value="off">Off</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                        </select>
+                    </label>
+                    {saved && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>Saved</span>}
+                </div>
+                {error && <p style={errorText}>{error}</p>}
             </section>
             {(me.data?.admin_level === 'owner' || me.data?.admin_level === 'admin') && (
-                <section className="mt-4 rounded border border-border bg-panel p-4">
-                    <h2 className="mb-2 font-semibold">Modules</h2>
-                    <label className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            checked={me.data?.workspace?.helpdesk_enabled ?? false}
-                            disabled={updateHelpdesk.isPending}
-                            onChange={(e) => switchHelpdesk(e.target.checked)}
-                        />
-                        Support — help desk, knowledge base and customer portal
-                    </label>
-                    <p className="mt-2 text-sm text-fg2">
+                <section style={{ ...card, marginTop: 16 }}>
+                    <h2 style={cardHeading}>Modules</h2>
+                    <Switch
+                        checked={me.data?.workspace?.helpdesk_enabled ?? false}
+                        disabled={updateHelpdesk.isPending}
+                        onChange={switchHelpdesk}
+                        label="Support — help desk, knowledge base and customer portal"
+                    />
+                    <p style={{ ...bodyText, margin: '10px 0 0' }}>
                         Switching this off closes the help centre, the customer portal, the agent desk and
                         knowledge-base authoring for everyone in this workspace. Nothing is deleted — switch it
                         back on and every ticket, contact and article is where you left it.
                     </p>
-                    {moduleError && <p className="mt-2 text-sm text-red">{moduleError}</p>}
+                    {moduleError && <p style={errorText}>{moduleError}</p>}
                 </section>
             )}
             {me.data?.admin_level === 'owner' && (
-                <section className="mt-4 rounded border border-border bg-panel p-4">
-                    <h2 className="mb-2 font-semibold">Data export</h2>
-                    <p className="mb-3 text-sm text-fg2">Everything your team has put into Prizy — yours to take, any time.</p>
-                    <button
-                        type="button"
-                        onClick={downloadExport}
-                        disabled={exporting}
-                        className="rounded border border-border2 bg-panel px-3 py-1.5 text-sm font-semibold disabled:opacity-60"
-                    >
+                <section style={{ ...card, marginTop: 16 }}>
+                    <h2 style={cardHeading}>Data export</h2>
+                    <p style={{ ...bodyText, margin: '0 0 14px' }}>Everything your team has put into Prizy — yours to take, any time.</p>
+                    <Button variant="secondary" size="sm" onClick={downloadExport} disabled={exporting}>
                         {exporting ? 'Preparing export…' : 'Download export'}
-                    </button>
-                    {exportError && <p className="mt-2 text-sm text-red">{exportError}</p>}
+                    </Button>
+                    {exportError && <p style={errorText}>{exportError}</p>}
                 </section>
             )}
         </div>
