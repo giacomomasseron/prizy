@@ -214,4 +214,9 @@ describe('KbVersionDrawer', () => {
         expect(footer).toHaveTextContent('Nothing is overwritten');
     });
 
+    it('v2: the diff sign is not selectable, so copying a line copies only its text', async () => {
+        renderDrawer();
+        const sign = (await screen.findByText('added')).previousElementSibling as HTMLElement;
+        expect(sign.style.userSelect).toBe('none');
+    });
 });

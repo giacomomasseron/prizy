@@ -194,7 +194,6 @@ describe('KbArticleEditorPage', () => {
         expect(body).toHaveValue('Original body');
     });
 
-
     it('v2: the top bar reads "New article" for a new article', async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: library }) : j({ data: {} }))));
         const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -265,4 +264,10 @@ describe('KbArticleEditorPage', () => {
         expect(footer).toContainElement(screen.getByRole('button', { name: 'Close' }));
     });
 
+    it('v2: clicking the slug prefix focuses the slug input', async () => {
+        renderEditor();
+        const slug = await screen.findByLabelText('URL slug');
+        await userEvent.click(screen.getByTestId('kb-slug-shell').firstElementChild as HTMLElement);
+        expect(slug).toHaveFocus();
+    });
 });

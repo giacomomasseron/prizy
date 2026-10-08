@@ -35,7 +35,7 @@ export interface KbTranslationDrawerProps {
     onViewChanges(): void;
 }
 
-const sourceH2: CSSProperties = { margin: '0 0 10px', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--fg2)' };
+const sourceH2: CSSProperties = { margin: '0 0 10px', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--fg)' };
 
 export function KbTranslationDrawer({ articleId, open, initialLocale, articleStatus, onClose, onViewChanges }: KbTranslationDrawerProps) {
     const articleQuery = useKbArticle(articleId);
@@ -445,7 +445,6 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                         Delete translation
                     </button>
                     <span aria-hidden="true" style={{ width: 1, height: 14, background: 'var(--border2)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{dirty ? 'Unsaved changes' : status !== null ? 'Saved' : ''}</span>
                     <div style={{ flex: 1 }} />
                     <StatusControl
                         value={status ?? 'draft'}
@@ -459,9 +458,13 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                     when the real reason every option is disabled is that nothing has been saved
                     yet (a brand-new draft under a draft English article would otherwise show this
                     note next to a control that's disabled for an unrelated reason). */}
-                {status !== null && articleStatus !== 'published' && (
-                    <p style={{ fontSize: 11.5, color: 'var(--fg3)', margin: '8px 0 0', textAlign: 'right' }}>Publish the English article first</p>
-                )}
+                {/* The saved note sits under the row: beside the delete, status and save controls it overflowed the 514px pane. */}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginTop: 8, fontSize: 11.5, color: 'var(--fg3)' }}>
+                    <span>{dirty ? 'Unsaved changes' : status !== null ? 'Saved' : ''}</span>
+                    {status !== null && articleStatus !== 'published' && (
+                        <p style={{ margin: '0 0 0 auto' }}>Publish the English article first</p>
+                    )}
+                </div>
             </div>
         </>
     );

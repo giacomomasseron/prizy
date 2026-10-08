@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { KbShell } from './KbShell';
 import { KbHeader } from './KbHeader';
@@ -117,6 +117,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const [sectionId, setSectionId] = useState(article?.section_id ?? initialSection ?? categories.flatMap((c) => c.sections)[0]?.id ?? '');
     const [body, setBody] = useState(article?.body ?? '');
     const [tab, setTab] = useState<Tab>('write');
+    const slugInputRef = useRef<HTMLInputElement>(null);
     const [dirty, setDirty] = useState(false);
     const [savedMsg, setSavedMsg] = useState(isNew ? 'Not saved yet' : justCreated ? 'Saved just now' : 'All changes saved');
     const [saveError, setSaveError] = useState<string | null>(null);
@@ -316,11 +317,18 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
                             <div style={{ flex: '1 1 320px', minWidth: 0 }}>
                                 <label htmlFor="kb-article-slug" style={fieldLabel}>URL slug</label>
-                                <div data-testid="kb-slug-shell" className={FIELD_SHELL_CLASSES} style={fieldShell}>
+                                <div
+                                    data-testid="kb-slug-shell"
+                                    className={FIELD_SHELL_CLASSES}
+                                    style={fieldShell}
+                                    // A click on the /help/…/ prefix focuses the input, like a click on any field.
+                                    onMouseDown={(e) => { if (e.target !== slugInputRef.current) { e.preventDefault(); slugInputRef.current?.focus(); } }}
+                                >
                                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flexShrink: 1, minWidth: 0 }}>
                                         /help/{selectedCategory?.slug ?? '…'}/{selectedSection?.slug ?? '…'}/
                                     </span>
                                     <input
+                                        ref={slugInputRef}
                                         id="kb-article-slug"
                                         placeholder="article-slug"
                                         value={slug}

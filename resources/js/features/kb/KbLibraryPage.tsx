@@ -68,7 +68,7 @@ export default function KbLibraryPage() {
                         <div style={crumbStyle}>{scope.crumb}</div>
                         <h1 style={pageTitle}><span className="hl">{scope.title}</span></h1>
                         <p style={leadStyle}>{scope.description}</p>
-                        {!(categories.length === 0 && lib.isSuccess) && (
+                        {lib.isSuccess && categories.length > 0 && (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
                                 <SegmentedControl<Filter> value={filter} onChange={setFilter} options={[
                                     { value: 'all', label: `All ${counts.all}` }, { value: 'draft', label: `Draft ${counts.draft}` },

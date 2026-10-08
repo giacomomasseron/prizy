@@ -286,4 +286,18 @@ describe('KbTranslationDrawer', () => {
         renderDrawer({ initialLocale: 'it' });
         expect((await screen.findByText('Not translated yet')).style.fontFamily).toBe('var(--font-display)');
     });
+
+    it('v2: the saved note sits under the footer row so the row fits the pane', async () => {
+        renderDrawer({ initialLocale: 'fr' });
+        await screen.findByPlaceholderText('Translated title');
+        const save = screen.getByRole('button', { name: 'Save translation' });
+        expect(save.parentElement).not.toContainElement(screen.getByText('Saved'));
+        expect(screen.getByTestId('kb-translation-footer')).toContainElement(screen.getByText('Saved'));
+    });
+
+    it('v2: the compare pane shows the source title at full ink', async () => {
+        renderDrawer({ initialLocale: 'fr' });
+        await userEvent.click(await screen.findByRole('button', { name: 'Compare with source' }));
+        expect(screen.getByRole('heading', { level: 2, name: 'Create your first project' }).style.color).toBe('var(--fg)');
+    });
 });

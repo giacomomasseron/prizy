@@ -164,4 +164,27 @@ describe('KbLibraryPage', () => {
         expect(pill.style.color).toBe('var(--sup)');
         expect(pill.style.background).toBe('var(--sup2)');
     });
+
+    it('v2: an open tree menu is never painted under the rows below it', async () => {
+        renderPage();
+        await screen.findByRole('button', { name: /Getting started/ });
+        const pill = screen.getByTestId('tree-actions-c1');
+        expect(pill.style.transform).toBe('');
+        expect(pill.style.top).toBe('2px');
+        expect((pill.parentElement as HTMLElement).className).toContain('focus-within:z-10');
+    });
+
+    it('v2: "All articles" keeps its own height instead of stretching to fill the tree', async () => {
+        renderPage();
+        await screen.findByRole('button', { name: /Getting started/ });
+        expect(screen.getByRole('button', { name: 'All articles' }).style.flex).toBe('0 0 auto');
+    });
+
+    it('v2: the toolbar waits for the library to load', () => {
+        vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><KbLibraryPage /></MemoryRouter></QueryClientProvider>);
+        expect(screen.queryByPlaceholderText('Search titles')).toBeNull();
+        expect(screen.queryByRole('button', { name: '＋ New article' })).toBeNull();
+    });
 });

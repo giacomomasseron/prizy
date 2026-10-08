@@ -185,7 +185,7 @@ function VersionRow({ version, selected, onSelect }: { version: KbVersionSummary
 // The sign is a second cue besides the tint; aria-hidden so each line's text stays its own element.
 function DiffSign({ sign }: { sign: '+' | '-' | ' ' }) {
     return (
-        <span aria-hidden="true" style={{ width: 10, flexShrink: 0, fontWeight: 700, color: sign === '+' ? 'var(--green)' : sign === '-' ? 'var(--red)' : 'transparent' }}>
+        <span aria-hidden="true" style={{ width: 10, flexShrink: 0, fontWeight: 700, userSelect: 'none', color: sign === '+' ? 'var(--green)' : sign === '-' ? 'var(--red)' : 'transparent' }}>
             {sign === '+' ? '+' : sign === '-' ? '−' : ''}
         </span>
     );
