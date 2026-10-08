@@ -98,4 +98,21 @@ describe('ReleasesPage', () => {
         expect(screen.getByText(/no upcoming releases/i)).toBeInTheDocument();
         expect(screen.getByText(/no shipped releases/i)).toBeInTheDocument();
     });
+
+    it('v2: a PageHeader title with the ink "+ New release" Button, sentence-case sections and hovering rows', () => {
+        renderPage();
+        expect(screen.getByRole('heading', { name: 'Releases' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: '+ New release' }).className).toContain('bg-fg');
+        expect(screen.getByText('Upcoming').style.textTransform).toBe('');
+        const row = screen.getByRole('link', { name: /v1\.1/ });
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.style.background).toBe('');
+    });
+
+    it('v2: the new-release dialog has a display-font title and the ink Create button', async () => {
+        renderPage();
+        await userEvent.click(screen.getByRole('button', { name: '+ New release' }));
+        expect(screen.getByRole('heading', { name: 'New release' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: 'Create release' }).className).toContain('bg-fg');
+    });
 });

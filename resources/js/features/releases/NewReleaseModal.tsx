@@ -1,11 +1,12 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
+import { alertBox, fieldLabel, modalBody, modalFooter, modalHeader, modalTitle } from '../settings/settingsStyles';
+import { tint } from '../support/supportStyles';
 import { useCreateRelease } from './hooks';
 import { ApiError } from '../../lib/apiClient';
-
-const fieldLabel: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--fg3)', fontWeight: 500, marginBottom: 6 };
 
 export function NewReleaseModal({ open, onClose }: { open: boolean; onClose(): void }) {
     const navigate = useNavigate();
@@ -34,11 +35,14 @@ export function NewReleaseModal({ open, onClose }: { open: boolean; onClose(): v
         );
     }
 
+    // v2: the settings dialog frame (header / body / footer) with v2 fields and ink buttons.
     return (
         <Modal open={open} onClose={onClose} width={440} label="New release">
-            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>New release</h2>
+            <div style={modalHeader}>
+                <h2 style={modalTitle}>New release</h2>
+            </div>
 
+            <div style={modalBody}>
                 <div>
                     <label htmlFor="new-release-name" style={fieldLabel}>Name</label>
                     <Input id="new-release-name" autoFocus placeholder="e.g. v1.1" value={name} onChange={(e) => setName(e.target.value)} />
@@ -49,19 +53,12 @@ export function NewReleaseModal({ open, onClose }: { open: boolean; onClose(): v
                     <Input id="new-release-target-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
                 </div>
 
-                {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+                {error && <div role="alert" style={{ ...alertBox, color: 'var(--red)', background: tint('var(--red)', 10) }}>{error}</div>}
+            </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-                    <button type="button" onClick={onClose} style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    <button
-                        type="button"
-                        onClick={submit}
-                        disabled={!canCreate}
-                        style={{ background: 'var(--accent)', color: 'var(--on-accent)', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, fontFamily: 'inherit' }}
-                    >
-                        Create release
-                    </button>
-                </div>
+            <div style={modalFooter}>
+                <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+                <Button size="sm" onClick={submit} disabled={!canCreate}>Create release</Button>
             </div>
         </Modal>
     );

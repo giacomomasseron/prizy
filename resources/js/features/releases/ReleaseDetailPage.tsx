@@ -7,6 +7,12 @@ import { buildChangelog } from './changelog';
 import { formatTargetDate } from './formatDate';
 import { STATUS_LABELS } from '../issues/StatusEditor';
 import type { IssueStatus } from '../../lib/types';
+import { Button } from '../../components/ui/Button';
+import { FIELD_CLASSES } from '../../components/ui/Input';
+import { Textarea } from '../../components/ui/Textarea';
+import { sectionTitle } from '../issues/issueStyles';
+import { pageTitle } from '../projects/projectStyles';
+import { DANGER_PILL_CLASSES, pillBtn } from '../settings/settingsStyles';
 
 // Mirrors the per-status colors used by StatusIcon (components/ui/StatusIcon.tsx)
 // so the rollup bar and issue-row status pills read consistently with the rest
@@ -22,8 +28,12 @@ const STATUS_COLOR: Record<IssueStatus, string> = {
 
 const STATUS_ORDER: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
 
-const sectionHeader: CSSProperties = { fontSize: 11, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--fg3)', marginBottom: 10 };
-const actionBtn: CSSProperties = { border: '1px solid var(--border)', background: 'var(--panel)', color: 'var(--fg)', borderRadius: 8, padding: '7px 13px', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit' };
+const sectionHeader: CSSProperties = { ...sectionTitle(17), marginBottom: 12 };
+/** Detail-page frame; the left pad clears the floating "Expand sidebar" button when the sidebar is hidden. */
+const frame: CSSProperties = { padding: '26px 30px 80px calc(30px + var(--nav-inset, 0px))', maxWidth: 960, boxSizing: 'border-box' };
+/** "Edit" affordances: quiet text buttons whose colour lives in classes. */
+const editBtn: CSSProperties = { border: 'none', background: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: 2, fontFamily: 'inherit', flexShrink: 0 };
+const EDIT_BTN_CLASSES = 'text-fg3 hover:text-fg';
 
 // `shipped_at` is a real timestamp (not a date-only string), so instant→local
 // conversion via `new Date(iso)` is correct here — unlike `target_date`, which
@@ -55,10 +65,10 @@ export default function ReleaseDetailPage() {
     useEffect(() => () => { if (copiedTimer.current) clearTimeout(copiedTimer.current); }, []);
 
     if (releaseQ.isLoading) {
-        return <p style={{ padding: 24, color: 'var(--fg3)' }}>Loading…</p>;
+        return <p style={{ margin: 0, padding: 28, fontSize: 14, color: 'var(--fg3)' }}>Loading…</p>;
     }
     if (releaseQ.isError || !releaseQ.data) {
-        return <p style={{ padding: 24, color: 'var(--fg3)' }}>Release not found.</p>;
+        return <p style={{ margin: 0, padding: 28, fontSize: 14, color: 'var(--fg3)' }}>Release not found.</p>;
     }
 
     const release = releaseQ.data;
@@ -133,9 +143,9 @@ export default function ReleaseDetailPage() {
     }
 
     return (
-        <div style={{ padding: '28px 32px', maxWidth: 900 }}>
+        <div style={frame}>
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
                 {editingName ? (
                     <input
                         aria-label="Release name"
@@ -144,34 +154,34 @@ export default function ReleaseDetailPage() {
                         onChange={(e) => setNameDraft(e.target.value)}
                         onKeyDown={handleNameKeyDown}
                         onBlur={handleNameBlur}
+                        className={FIELD_CLASSES}
                         style={{
-                            fontSize: 22, fontWeight: 600, letterSpacing: '-.02em',
-                            background: 'var(--panel)', border: '1px solid var(--border)',
-                            borderRadius: 6, padding: '2px 8px', color: 'var(--fg)',
-                            fontFamily: 'inherit', minWidth: 220,
+                            fontFamily: 'var(--font-display)', fontSize: 30, fontWeight: 800, letterSpacing: '-.03em',
+                            background: 'var(--panel)', borderRadius: 12, padding: '2px 10px', color: 'var(--fg)',
+                            outline: 'none', minWidth: 260,
                         }}
                     />
                 ) : (
                     <h1
                         onClick={canDevelop ? startEditName : undefined}
                         title={canDevelop ? 'Click to rename' : undefined}
-                        style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: '-.02em', cursor: canDevelop ? 'pointer' : 'default' }}
+                        style={{ ...pageTitle, cursor: canDevelop ? 'pointer' : 'default' }}
                     >
-                        {release.name}
+                        <span className="hl">{release.name}</span>
                     </h1>
                 )}
                 {canDevelop && !editingName && (
-                    <button
-                        type="button"
-                        aria-label="Edit release name"
-                        onClick={startEditName}
-                        style={{ border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 12.5, padding: 2, fontFamily: 'inherit' }}
-                    >
+                    <button type="button" aria-label="Edit release name" onClick={startEditName} style={editBtn} className={EDIT_BTN_CLASSES}>
                         Edit
                     </button>
                 )}
                 {isShipped && (
-                    <span data-testid="shipped-badge" style={{ fontSize: 11, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '2px 9px' }}>
+                    // Ink text with a green dot: small green-on-green text would be hard to read.
+                    <span
+                        data-testid="shipped-badge"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '3px 11px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--border2)', fontSize: 12.5, fontWeight: 700, color: 'var(--fg)' }}
+                    >
+                        <span aria-hidden="true" style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--green)' }} />
                         Shipped {formatShippedAt(release.shipped_at)}
                     </span>
                 )}
@@ -179,47 +189,36 @@ export default function ReleaseDetailPage() {
 
             {canDevelop ? (
                 editingDescription ? (
-                    <div style={{ marginBottom: 8 }}>
-                        <textarea
+                    <div style={{ marginBottom: 10 }}>
+                        <Textarea
                             aria-label="Description"
                             autoFocus
                             value={descDraft}
                             onChange={(e) => setDescDraft(e.target.value)}
-                            style={{
-                                width: '100%', minHeight: 70, background: 'var(--panel)',
-                                border: '1px solid var(--border)', borderRadius: 8,
-                                padding: '8px 10px', fontSize: 13.5, lineHeight: 1.6,
-                                color: 'var(--fg)', fontFamily: 'inherit', resize: 'vertical',
-                                boxSizing: 'border-box',
-                            }}
+                            style={{ minHeight: 80, fontSize: 14, lineHeight: 1.6 }}
                         />
-                        <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                            <button type="button" style={actionBtn} onClick={saveDescription}>Save</button>
-                            <button type="button" style={{ ...actionBtn, background: 'transparent' }} onClick={() => setEditingDescription(false)}>Cancel</button>
+                        <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                            <Button size="sm" onClick={saveDescription}>Save</Button>
+                            <Button variant="secondary" size="sm" onClick={() => setEditingDescription(false)}>Cancel</Button>
                         </div>
                     </div>
                 ) : (
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>
-                        <p style={{ margin: 0, fontSize: 13.5, color: release.description ? 'var(--fg2)' : 'var(--fg3)', fontStyle: release.description ? 'normal' : 'italic', lineHeight: 1.6 }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10 }}>
+                        <p style={{ margin: 0, fontSize: 15, color: release.description ? 'var(--fg2)' : 'var(--fg3)', fontStyle: release.description ? 'normal' : 'italic', lineHeight: 1.6 }}>
                             {release.description || 'No description.'}
                         </p>
-                        <button
-                            type="button"
-                            aria-label="Edit description"
-                            onClick={startEditDescription}
-                            style={{ border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 12, padding: 2, flexShrink: 0, fontFamily: 'inherit' }}
-                        >
+                        <button type="button" aria-label="Edit description" onClick={startEditDescription} style={editBtn} className={EDIT_BTN_CLASSES}>
                             Edit
                         </button>
                     </div>
                 )
             ) : (
                 release.description && (
-                    <p style={{ margin: '0 0 8px', fontSize: 13.5, color: 'var(--fg2)', lineHeight: 1.6 }}>{release.description}</p>
+                    <p style={{ margin: '0 0 10px', fontSize: 15, color: 'var(--fg2)', lineHeight: 1.6 }}>{release.description}</p>
                 )
             )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: 'var(--fg3)', marginBottom: 18 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--fg3)', marginBottom: 20 }}>
                 <span>Target date: {formatTargetDate(release.target_date)}</span>
                 {canDevelop && (
                     <input
@@ -227,75 +226,73 @@ export default function ReleaseDetailPage() {
                         aria-label="Target date"
                         value={release.target_date ?? ''}
                         onChange={(e) => handleTargetDateChange(e.target.value)}
-                        style={{
-                            fontSize: 12, color: 'var(--fg)', background: 'var(--panel)',
-                            border: '1px solid var(--border)', borderRadius: 6,
-                            padding: '2px 6px', fontFamily: 'inherit',
-                        }}
+                        className={FIELD_CLASSES}
+                        style={{ background: 'var(--panel)', borderRadius: 'var(--radius-pill)', color: 'var(--fg)', fontSize: 13, padding: '6px 12px', fontFamily: 'inherit', outline: 'none' }}
                     />
                 )}
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 28 }}>
                 {canDevelop && (
-                    <button type="button" style={actionBtn} onClick={() => ship.mutate(!isShipped)} disabled={ship.isPending}>
+                    <Button size="sm" variant={isShipped ? 'secondary' : 'primary'} onClick={() => ship.mutate(!isShipped)} disabled={ship.isPending}>
                         {isShipped ? 'Unship' : 'Mark shipped'}
-                    </button>
+                    </Button>
                 )}
-                <button type="button" style={actionBtn} onClick={() => void copyChangelog()}>
+                <Button variant="secondary" size="sm" onClick={() => void copyChangelog()}>
                     {copied ? 'Copied' : 'Copy changelog'}
-                </button>
+                </Button>
                 {canDevelop && (
-                    <button type="button" style={{ ...actionBtn, marginLeft: 'auto', color: 'var(--red)' }} onClick={handleDelete} disabled={del.isPending}>
+                    <button type="button" style={{ ...pillBtn, marginLeft: 'auto' }} className={DANGER_PILL_CLASSES} onClick={handleDelete} disabled={del.isPending}>
                         Delete
                     </button>
                 )}
             </div>
 
             {/* Rollup bar */}
-            <div style={{ marginBottom: 28 }}>
+            <div style={{ marginBottom: 30 }}>
                 <div style={sectionHeader}>Progress</div>
-                <div style={{ display: 'flex', height: 10, borderRadius: 5, overflow: 'hidden', background: 'var(--bg2)', marginBottom: 10 }}>
+                <div style={{ display: 'flex', height: 10, borderRadius: 'var(--radius-pill)', overflow: 'hidden', background: 'var(--bg2)', marginBottom: 12 }}>
                     {total === 0
                         ? null
                         : STATUS_ORDER.filter((s) => (countByStatus[s] ?? 0) > 0).map((s) => (
                             <span key={s} style={{ width: `${((countByStatus[s] ?? 0) / total) * 100}%`, background: STATUS_COLOR[s] }} />
                         ))}
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14 }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
                     {STATUS_ORDER.filter((s) => (countByStatus[s] ?? 0) > 0).map((s) => (
-                        <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--fg2)' }}>
+                        <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--fg2)' }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[s], display: 'inline-block' }} />
                             {STATUS_LABELS[s]} <span style={{ color: 'var(--fg3)' }}>{countByStatus[s]}</span>
                         </span>
                     ))}
-                    {total === 0 && <span style={{ fontSize: 12, color: 'var(--fg3)' }}>No issues in this release yet.</span>}
+                    {total === 0 && <span style={{ fontSize: 13, color: 'var(--fg3)' }}>No issues in this release yet.</span>}
                 </div>
             </div>
 
             {/* Issues */}
             <div style={sectionHeader}>Issues</div>
-            <div style={{ border: '1px solid var(--border)', borderRadius: 12, overflow: 'hidden' }}>
+            <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
                 {release.issues.map((issue) => (
+                    // Separator + hover are classes (an inline background would beat hover:).
                     <Link
                         key={issue.id}
                         to={`/issues/${issue.id}`}
                         data-testid="release-issue-row"
-                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', textDecoration: 'none', color: 'inherit', borderBottom: '1px solid var(--border)' }}
-                        className="hover:bg-hover"
+                        style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', textDecoration: 'none', color: 'inherit' }}
+                        className="border-b border-border last:border-b-0 hover:bg-hover"
                     >
                         <span style={{ width: 70, flexShrink: 0, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: 'var(--fg3)' }}>{issue.ref}</span>
-                        <span style={{ flex: '1 1 auto', minWidth: 0, fontSize: 13, color: 'var(--fg)' }}>{issue.title}</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--fg2)', width: 110, flexShrink: 0 }}>
+                        <span style={{ flex: '1 1 auto', minWidth: 0, fontSize: 14, color: 'var(--fg)' }}>{issue.title}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--fg2)', width: 110, flexShrink: 0 }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[issue.status], display: 'inline-block' }} />
                             {STATUS_LABELS[issue.status]}
                         </span>
-                        <span style={{ width: 100, flexShrink: 0, textAlign: 'right', fontSize: 12, color: 'var(--fg3)' }}>{issue.assignee?.name ?? 'Unassigned'}</span>
+                        <span style={{ width: 110, flexShrink: 0, textAlign: 'right', fontSize: 12.5, color: 'var(--fg3)' }}>{issue.assignee?.name ?? 'Unassigned'}</span>
                     </Link>
                 ))}
                 {release.issues.length === 0 && (
-                    <div style={{ padding: '20px 16px', fontSize: 13, color: 'var(--fg3)' }}>No issues in this release yet.</div>
+                    <div style={{ padding: '22px 18px', fontSize: 13.5, color: 'var(--fg3)' }}>No issues in this release yet.</div>
                 )}
             </div>
         </div>
