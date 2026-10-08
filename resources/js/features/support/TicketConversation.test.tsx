@@ -123,4 +123,19 @@ describe('TicketConversation', () => {
         renderWithRouter('ticket-12345678');
         expect(screen.queryByText(/Rated good|Rated poor/)).not.toBeInTheDocument();
     });
+
+    it('v2: display-font subject, pill linked issue, and note cards bordered with a note tint', () => {
+        ticketData = ticket({
+            linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }],
+            messages: [msg({ id: 'm3', kind: 'note', sender: { name: 'Grace Hopper' }, body: 'Escalate to eng' })],
+        });
+        isLoading = false;
+        renderWithRouter('t1');
+        expect(screen.getByText('Cannot log in').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('↩ PRJ-42 ↗').style.borderRadius).toBe('var(--radius-pill)');
+        const card = screen.getByTestId('ticket-message').lastElementChild as HTMLElement;
+        expect(card.style.border).toBe('var(--line) solid color-mix(in srgb, var(--note) 40%, transparent)');
+        expect(card.style.borderRadius).toBe('16px');
+        expect(within(card).getByText('Internal note').style.borderRadius).toBe('var(--radius-pill)');
+    });
 });

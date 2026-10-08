@@ -96,4 +96,44 @@ describe('TicketComposer', () => {
         await vi.waitFor(() => expect(postMutateAsync).toHaveBeenCalled());
         expect(box.value).toBe('a fresh note'); // the in-flight success must not clear the new draft
     });
+
+    it('v2: pill tabs with aria-pressed; the active tab is white and its label stays ink', () => {
+        render(<TicketComposer ticket={ticket()} />);
+        const pub = screen.getByRole('button', { name: 'Public reply' });
+        expect(pub).toHaveAttribute('aria-pressed', 'true');
+        expect(pub.style.background).toBe('var(--panel)');
+        expect(pub.style.color).toBe('var(--fg)');
+        fireEvent.click(screen.getByRole('button', { name: 'Internal note' }));
+        expect(screen.getByRole('button', { name: 'Internal note' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByTestId('composer-box').style.border).toBe('var(--line) solid var(--note)');
+    });
+
+    it('v2: the send button is the ink Button, label unchanged; the reply box keeps the mode border', () => {
+        render(<TicketComposer ticket={ticket()} />);
+        const send = screen.getByRole('button', { name: /Submit as/ });
+        expect(send.className).toContain('bg-fg');
+        expect(send.style.background).toBe('');
+        expect(screen.getByTestId('composer-box').style.border).toBe('var(--line) solid var(--sup)');
+        expect(screen.getByTestId('composer-box').style.borderRadius).toBe('var(--radius-card)');
+    });
+
+    it('v2: the error box tints from the red token, with no rgba fallback', async () => {
+        postMutateAsync.mockRejectedValue(new ApiError(422, 'Error', 'Could not send.'));
+        render(<TicketComposer ticket={ticket()} />);
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Hello' } });
+        fireEvent.click(screen.getByRole('button', { name: /Submit as/ }));
+        const alert = await screen.findByRole('alert');
+        expect(alert.style.background).toBe('color-mix(in srgb, var(--red) 10%, transparent)');
+        expect(alert.getAttribute('style')).not.toMatch(/rgba/);
+    });
+
+    it('v2: only the active tab\'s dot is full strength, so the dot marks the mode', () => {
+        render(<TicketComposer ticket={ticket()} />);
+        const dotOf = (name: string) => screen.getByRole('button', { name }).querySelector<HTMLElement>('span[aria-hidden="true"]')!;
+        expect(dotOf('Public reply').style.opacity).toBe('1');
+        expect(dotOf('Internal note').style.opacity).toBe('0.35');
+        fireEvent.click(screen.getByRole('button', { name: 'Internal note' }));
+        expect(dotOf('Public reply').style.opacity).toBe('0.35');
+        expect(dotOf('Internal note').style.opacity).toBe('1');
+    });
 });

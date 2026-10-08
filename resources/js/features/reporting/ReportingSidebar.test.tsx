@@ -51,4 +51,22 @@ describe('ReportingSidebar', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Delete report Weekly overview' }));
         expect(onDeleteReport).toHaveBeenCalledWith('sr1');
     });
+
+    it('v2: display-font title, a white active row and row names that keep their icon', () => {
+        render(<ReportingSidebar {...sidebarProps()} />);
+        expect(screen.getByText('Reporting').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('Reports').style.textTransform).toBe('');
+        expect(screen.getByRole('button', { name: /◫\s*Overview/ }).style.background).toBe('var(--panel)');
+        const agents = screen.getByRole('button', { name: /☺\s*Agents & CSAT/ });
+        expect(agents.className).toContain('hover:bg-hover');
+        expect(agents.style.background).toBe('');
+        expect(screen.getByRole('button', { name: 'Delete report Weekly overview' }).className).toContain('hover:text-red');
+    });
+
+    it('v2: the save-report form uses the v2 input and buttons', () => {
+        render(<ReportingSidebar {...sidebarProps()} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
+        expect(screen.getByPlaceholderText('Report name').className).toContain('focus:border-fg');
+        expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
+    });
 });

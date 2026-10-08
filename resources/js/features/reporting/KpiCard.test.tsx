@@ -46,4 +46,19 @@ describe('KpiCard', () => {
         expect(poly).not.toBeNull();
         expect(poly?.getAttribute('stroke')).toBe('var(--fg3)');
     });
+
+    it('v2: card frame, sentence-case label, display-font value and a token-tinted delta', () => {
+        render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: 14 }} />);
+        expect(screen.getByText('71').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('+14%').style.background).toBe('color-mix(in srgb, var(--green) 14%, transparent)');
+        expect(screen.getByText('+14%').style.borderRadius).toBe('var(--radius-pill)');
+        const label = screen.getByText('Solved');
+        expect(label.style.fontWeight).toBe('700');
+        expect((label.parentElement?.parentElement as HTMLElement).style.borderRadius).toBe('var(--radius-card)');
+    });
+
+    it('v2: a bad delta tints from the red token', () => {
+        render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: -9 }} />);
+        expect(screen.getByText('-9%').style.background).toBe('color-mix(in srgb, var(--red) 14%, transparent)');
+    });
 });

@@ -18,4 +18,11 @@ describe('BreachRiskCard', () => {
         render(<BreachRiskCard breachRisk={[]} tags={[]} />);
         expect(screen.getByText(/nothing at risk|no tickets at risk/i)).toBeInTheDocument();
     });
+
+    it('v2: display-font title, pill remaining badge and pill tag chips', () => {
+        render(<BreachRiskCard breachRisk={[risk]} tags={[{ name: 'sso', count: 7 }] as TagCount[]} />);
+        expect(screen.getByText('Breach risk').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('42m').style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByText('sso').style.borderRadius).toBe('var(--radius-pill)');
+    });
 });

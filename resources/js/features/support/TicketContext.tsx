@@ -5,10 +5,13 @@ import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { slaMetricPresentation } from './sla';
+import { SMALL_PILL_CLASSES, deskCard, smallLabel, smallPill } from './supportStyles';
+import { sectionTitle } from '../issues/issueStyles';
 
 const asideStyle: CSSProperties = { width: 296, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto' };
-const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', fontSize: 12.2 };
-const label: CSSProperties = { padding: '16px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' };
+const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 };
+const label: CSSProperties = { ...smallLabel, padding: '18px 18px 8px' };
+const ellipsis: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
 export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void }) {
     const q = useTicket(ticketId ?? '');
@@ -22,16 +25,16 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {req && <Avatar {...avatarFor(req)} size={42} />}
                     <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req?.name}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--fg2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{req?.email}</div>
+                        <div style={{ ...sectionTitle(17), ...ellipsis }}>{req?.name}</div>
+                        <div style={{ fontSize: 12, color: 'var(--fg2)', ...ellipsis }}>{req?.email}</div>
                     </div>
                 </div>
             </div>
             <div style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 11 }}>
-                {req?.org && <div style={kv}><span style={{ color: 'var(--fg3)' }}>Organization</span><span style={{ fontWeight: 500 }}>{req.org}</span></div>}
+                {req?.org && <div style={kv}><span style={{ color: 'var(--fg3)' }}>Organization</span><span style={{ fontWeight: 600 }}>{req.org}</span></div>}
                 {req?.plan && <div style={kv}><span style={{ color: 'var(--fg3)' }}>Plan</span><span style={{ fontWeight: 600 }}>{req.plan}</span></div>}
-                <div style={kv}><span style={{ color: 'var(--fg3)' }}>Assignee</span><span style={{ fontWeight: 500 }}>{t.assignee?.name ?? 'Unassigned'}</span></div>
-                <div style={kv}><span style={{ color: 'var(--fg3)' }}>Priority</span><span style={{ fontWeight: 500 }}>{TICKET_PRIORITY[t.priority].label}</span></div>
+                <div style={kv}><span style={{ color: 'var(--fg3)' }}>Assignee</span><span style={{ fontWeight: 600 }}>{t.assignee?.name ?? 'Unassigned'}</span></div>
+                <div style={kv}><span style={{ color: 'var(--fg3)' }}>Priority</span><span style={{ fontWeight: 600 }}>{TICKET_PRIORITY[t.priority].label}</span></div>
             </div>
             {t.sla_metrics.length > 0 && (
                 <div style={{ margin: '0 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -39,18 +42,18 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
                         const pres = slaMetricPresentation(metric);
                         if (!pres) return null;
                         return (
-                            <div key={metric.metric} style={{ padding: '13px 14px', border: '1px solid var(--border2)', background: 'var(--panel)', borderRadius: 11 }}>
+                            <div key={metric.metric} data-testid="sla-card" style={{ ...deskCard, padding: '13px 15px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                    <span style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.05em', color: pres.color }}>{pres.title}</span>
+                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: pres.color }}>{pres.title}</span>
                                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                        {pres.paused && <span style={{ fontSize: 9.5, fontWeight: 600, padding: '1px 5px', borderRadius: 5, color: 'var(--fg3)', background: 'var(--hover)' }}>⏸ Paused</span>}
-                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 14, fontWeight: 600, color: pres.color }}>{pres.remaining}</span>
+                                        {pres.paused && <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: 'var(--fg3)', background: 'var(--hover)' }}>⏸ Paused</span>}
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: pres.color }}>{pres.remaining}</span>
                                     </span>
                                 </div>
-                                <div style={{ marginTop: 8, height: 4, borderRadius: 3, background: 'var(--border)', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${Math.round(pres.pct * 100)}%`, background: pres.color, borderRadius: 3 }} />
+                                <div style={{ marginTop: 9, height: 5, borderRadius: 'var(--radius-pill)', background: 'var(--border)', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${Math.round(pres.pct * 100)}%`, background: pres.color, borderRadius: 'var(--radius-pill)' }} />
                                 </div>
-                                {metric.policy_name && <div style={{ marginTop: 7, fontSize: 11, color: 'var(--fg2)' }}>{pres.label} target · {metric.policy_name}</div>}
+                                {metric.policy_name && <div style={{ marginTop: 8, fontSize: 12, color: 'var(--fg2)' }}>{pres.label} target · {metric.policy_name}</div>}
                             </div>
                         );
                     })}
@@ -60,12 +63,7 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
                 <div style={label}>Tags</div>
                 <div style={{ padding: '0 18px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                     {t.tags.map((tag) => (
-                        <button
-                            key={tag.id}
-                            type="button"
-                            onClick={() => onFilterTag(tag.id, tag.name)}
-                            style={{ fontSize: 11, padding: '2px 9px', borderRadius: 20, background: 'var(--panel)', border: '1px solid var(--border2)', color: 'var(--fg2)', cursor: 'pointer', fontFamily: 'inherit' }}
-                        >
+                        <button key={tag.id} type="button" onClick={() => onFilterTag(tag.id, tag.name)} className={SMALL_PILL_CLASSES} style={smallPill}>
                             {tag.name}
                         </button>
                     ))}
@@ -73,7 +71,7 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
             </>)}
             {linked && (<>
                 <div style={label}>Linked engineering issue</div>
-                <Link to={`/issues/${linked.id}`} style={{ display: 'block', margin: '0 18px', padding: '12px 13px', border: '1px solid var(--accent)', background: 'var(--accent2)', borderRadius: 11, textDecoration: 'none' }}>
+                <Link to={`/issues/${linked.id}`} style={{ display: 'block', margin: '0 18px', padding: '13px 14px', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', borderRadius: 'var(--radius-card)', textDecoration: 'none' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)', fontWeight: 600 }}>{linked.identifier ?? linked.id.slice(0, 6)}</span><span style={{ marginLeft: 'auto', color: 'var(--accent)', fontSize: 12 }}>↗</span></div>
                     <div style={{ marginTop: 5, fontSize: 12.5, color: 'var(--fg)', fontWeight: 500, lineHeight: 1.4 }}>{linked.title}</div>
                 </Link>
@@ -81,7 +79,7 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
             {t.requester_history.length > 0 && (<>
                 <div style={label}>Recent from {req?.name}</div>
                 <div style={{ padding: '0 12px 22px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {t.requester_history.map((h) => <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 9px', borderRadius: 7 }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: TICKET_STATUS[h.status].color, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.subject}</span></div>)}
+                    {t.requester_history.map((h) => <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 9px', borderRadius: 'var(--radius-row)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: TICKET_STATUS[h.status].color, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.subject}</span></div>)}
                 </div>
             </>)}
         </aside>

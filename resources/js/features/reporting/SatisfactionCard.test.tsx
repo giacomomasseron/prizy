@@ -21,4 +21,14 @@ describe('SatisfactionCard', () => {
         ] }} />);
         expect(screen.getByText(/no ratings/i)).toBeInTheDocument();
     });
+
+    it('v2: display-font title and pill-shaped bars', () => {
+        render(<SatisfactionCard csat={{ responses: 4, positive_pct: 75, breakdown: [
+            { key: 'positive', label: '👍 Positive', count: 3, pct: 75 },
+            { key: 'negative', label: '👎 Negative', count: 1, pct: 25 },
+        ] }} />);
+        expect(screen.getByText('Satisfaction').style.fontFamily).toBe('var(--font-display)');
+        const track = screen.getByText('👍 Positive').nextElementSibling as HTMLElement;
+        expect(track.style.borderRadius).toBe('var(--radius-pill)');
+    });
 });

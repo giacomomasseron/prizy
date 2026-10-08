@@ -88,4 +88,41 @@ describe('SupportViewsSidebar', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Delete view Email backlog' }));
         expect(onDeleteSavedView).toHaveBeenCalledWith('sv1');
     });
+
+    it('v2: display-font title, sentence-case labels and v2 rows whose hover is not blocked', () => {
+        render(<SupportViewsSidebar {...sidebarProps({ counts })} />);
+        expect(screen.getByText('Support').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('Views').style.textTransform).toBe('');
+        const active = screen.getByRole('button', { name: /Your unsolved tickets/ });
+        expect(active.style.background).toBe('var(--panel)');
+        const inactive = screen.getByRole('button', { name: /All unsolved/ });
+        expect(inactive.className).toContain('hover:bg-hover');
+        expect(inactive.style.background).toBe('');
+        expect(screen.getByRole('button', { name: 'Delete view Email backlog' }).className).toContain('hover:text-red');
+    });
+
+    it('v2: the save-view form uses the v2 input and buttons', () => {
+        render(<SupportViewsSidebar {...sidebarProps()} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save view/ }));
+        expect(screen.getByPlaceholderText('View name').className).toContain('focus:border-fg');
+        expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: 'Cancel' }).className).toContain('border-border2');
+    });
+
+    it('v2: the tag filter chip has a green border and ink text', () => {
+        render(<SupportViewsSidebar {...sidebarProps({ tag: { id: 't1', name: 'billing' } })} />);
+        const chip = screen.getByRole('button', { name: /Tag: billing/ });
+        expect(chip.className).toContain('border-sup');
+        expect(chip.className).toContain('text-fg');
+        expect(chip.style.borderRadius).toBe('var(--radius-pill)');
+    });
+
+    it('v2: a long tag name truncates inside the sidebar, with the full name in the title', () => {
+        const name = 'a-very-long-tag-name-that-would-overflow-the-sidebar';
+        render(<SupportViewsSidebar {...sidebarProps({ counts, tag: { id: 't1', name } })} />);
+        const chip = screen.getByRole('button', { name: `Tag: ${name}` });
+        expect(chip.style.maxWidth).toBe('100%');
+        expect(chip).toHaveAttribute('title', `Tag: ${name}`);
+        expect(screen.getByText(`Tag: ${name}`).style.textOverflow).toBe('ellipsis');
+    });
 });

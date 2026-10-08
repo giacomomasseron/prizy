@@ -36,4 +36,13 @@ describe('SlaAttainmentCard', () => {
         render(<SlaAttainmentCard report={report({ resolution_attainment_pct: null })} />);
         expect(screen.getByText('—')).toBeInTheDocument();
     });
+
+    it('v2: display-font title and value, and a sentence-case By channel label', () => {
+        render(<SlaAttainmentCard report={report()} />);
+        expect(screen.getByText('SLA attainment').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('94%').style.fontFamily).toBe('var(--font-display)');
+        const byChannel = screen.getByText('By channel');
+        expect(byChannel.style.textTransform).toBe('');
+        expect(byChannel.style.fontSize).toBe('12.5px');
+    });
 });

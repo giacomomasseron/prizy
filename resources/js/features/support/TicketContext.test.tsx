@@ -165,4 +165,22 @@ describe('TicketContext', () => {
         renderWithRouter('t1');
         expect(screen.getByText('⏸ Paused')).toBeInTheDocument();
     });
+
+    it('v2: display-font requester, sentence-case labels, pill tags and a card-shaped SLA block', () => {
+        ticketData = ticket({
+            tags: [{ id: 't-billing', name: 'billing', color: 'var(--blue)' }],
+            sla_metrics: [{ metric: 'first_reply', policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date(Date.now() + 20 * 60000).toISOString(), state: 'due', remaining_minutes: 20, within_business_hours: true }],
+        });
+        renderWithRouter('t1');
+        expect(screen.getByText('Ada Lovelace').style.fontFamily).toBe('var(--font-display)');
+        const tagsLabel = screen.getByText('Tags');
+        expect(tagsLabel.style.textTransform).toBe('');
+        expect(tagsLabel.style.fontSize).toBe('12.5px');
+        const tag = screen.getByRole('button', { name: 'billing' });
+        expect(tag.className).toContain('hover:border-fg');
+        expect(tag.style.borderRadius).toBe('var(--radius-pill)');
+        const sla = screen.getByTestId('sla-card');
+        expect(sla.style.borderRadius).toBe('var(--radius-card)');
+        expect(screen.getByText('First reply due').style.textTransform).toBe('');
+    });
 });
