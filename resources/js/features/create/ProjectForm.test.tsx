@@ -137,4 +137,13 @@ describe('ProjectForm', () => {
         });
         expect(onSuccess).not.toHaveBeenCalled();
     });
+
+    it('v2: display-font name, composer chips (ink when selected), pill dates and ink-ringed swatches', () => {
+        const { container } = wrap();
+        expect(screen.getByPlaceholderText(/project name/i).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: /no lead/i }).className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: /high/i }).className).toContain('bg-panel');
+        expect(container.querySelector('input[type="date"]')!.className).toContain('focus:border-fg');
+        expect(screen.getAllByRole('button', { name: /^#/i })[0].style.boxShadow).toBe('0 0 0 2px var(--panel), 0 0 0 3.5px var(--fg)');
+    });
 });

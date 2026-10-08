@@ -4,6 +4,7 @@ import { NotificationList } from './NotificationList';
 import { NotificationDetail } from './NotificationDetail';
 import { NotificationSettings } from './NotificationSettings';
 import { useNotifications } from './hooks';
+import { sideFrame } from '../support/supportStyles';
 
 type View = 'list' | 'settings';
 
@@ -33,12 +34,8 @@ export default function NotificationsPage() {
 
     return (
         <div style={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
-            <aside
-                style={{
-                    width: 232, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)',
-                    display: 'flex', flexDirection: 'column', overflowY: 'auto',
-                }}
-            >
+            {/* The desk sidebar frame, kept at the inbox's 232px (subscription rows need the room). */}
+            <aside style={{ ...sideFrame, width: 232 }}>
                 <NotificationSidebar
                     category={category}
                     onCategory={handleCategory}

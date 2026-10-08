@@ -77,12 +77,12 @@ describe('CycleForm', () => {
         wrap('t1');
         // Click "2 weeks" to activate that chip
         await userEvent.click(screen.getByRole('button', { name: /2 weeks/i }));
-        // Chip should be active (accent2 background)
-        expect(screen.getByRole('button', { name: /2 weeks/i })).toHaveStyle({ background: 'var(--accent2)' });
+        // Chip should be active (v2: ink-filled, via classes)
+        expect(screen.getByRole('button', { name: /2 weeks/i }).className).toContain('bg-fg');
         // Manually change the Ends date via fireEvent (simulates user editing the date field)
         fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2026-09-01' } });
-        // Active duration cleared → chip reverts to inactive styling
-        expect(screen.getByRole('button', { name: /2 weeks/i })).toHaveStyle({ background: 'transparent' });
+        // Active duration cleared → chip reverts to inactive styling (v2: the panel fill)
+        expect(screen.getByRole('button', { name: /2 weeks/i }).className).toContain('bg-panel');
     });
 
     it('shows inline error and does not call onSuccess when mutate rejects', async () => {
@@ -97,5 +97,13 @@ describe('CycleForm', () => {
             expect(screen.getByText('Server error')).toBeInTheDocument();
         });
         expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it('v2: display-font name, pill date fields, a toolbar-pill team picker and a sentence-case Description label', () => {
+        wrap('t1');
+        expect(screen.getByPlaceholderText(/cycle name/i).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByLabelText(/starts/i).className).toContain('focus:border-fg');
+        expect(screen.getByRole('button', { name: /Team picker/i }).className).toContain('hover:border-fg');
+        expect(screen.getByText('Description').style.textTransform).toBe('');
     });
 });

@@ -106,4 +106,36 @@ describe('NotificationSidebar', () => {
         wrap();
         expect(screen.getByRole('link', { name: /Back to Issues/ })).toHaveAttribute('href', '/');
     });
+
+    it('v2: display-font title with the yellow unread badge in the body font', () => {
+        wrap();
+        const badge = screen.getByTestId('rail-unread-badge');
+        expect(badge.style.background).toBe('var(--hi)');
+        expect(badge.style.color).toBe('var(--on-hi)');
+        expect(badge.style.fontFamily).toBe('var(--font-sans)');
+        expect(badge.parentElement!.style.fontFamily).toBe('var(--font-display)');
+        expect(screen.queryByRole('heading')).toBeNull(); // the list pane owns the only "Inbox" heading
+    });
+
+    it('v2: filter rows hover through classes; the active one is white', () => {
+        wrap({ category: 'mention' });
+        expect(screen.getByRole('button', { name: 'Mentions' }).style.background).toBe('var(--panel)');
+        const other = screen.getByRole('button', { name: 'Archived' });
+        expect(other.className).toContain('hover:bg-hover');
+        expect(other.style.background).toBe('');
+    });
+
+    it('v2: sentence-case Subscriptions, pill levels, and v2 footer rows', () => {
+        wrap({ settingsActive: true });
+        expect(screen.getByText('Subscriptions').style.textTransform).toBe('');
+        expect(screen.getByText('@ only').style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByRole('button', { name: 'Notification settings' }).style.background).toBe('var(--panel)');
+        expect(screen.getByRole('button', { name: /Engineering/ }).style.background).toBe('');
+        expect(screen.getByRole('link', { name: /Back to Issues/ }).className).toContain('hover:bg-hover');
+    });
+
+    it('v2: the rail title clears the floating Expand-sidebar button when the sidebar is hidden', () => {
+        wrap();
+        expect(screen.getByTestId('rail-unread-badge').parentElement!.style.padding).toBe('16px 16px 10px calc(16px + var(--nav-inset, 0px))');
+    });
 });

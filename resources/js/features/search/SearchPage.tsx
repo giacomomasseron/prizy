@@ -12,26 +12,17 @@ import type { MenuItem } from '../../components/ui/Menu';
 import type { Issue, SavedView } from '../../lib/types';
 import { useSavedViews, useCreateSavedView } from '../views/hooks';
 import { ApiError } from '../../lib/apiClient';
+import { PageHeader } from '../../components/PageHeader';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { NAV_ROW_HOVER, navRow, sectionLabel } from '../../components/sidebarStyles';
+import { TOOL_PILL_CLASSES, sectionTitle, toolPillStyle } from '../issues/issueStyles';
 
 const SORTS: { value: string; label: string }[] = [
     { value: 'updated', label: 'Last updated' },
     { value: 'priority', label: 'Priority' },
     { value: 'status', label: 'Status' },
 ];
-
-function pagerBtn(disabled: boolean): React.CSSProperties {
-    return {
-        border: '1px solid var(--border)',
-        borderRadius: 7,
-        padding: '5px 14px',
-        fontSize: 12.5,
-        fontFamily: 'inherit',
-        background: 'var(--panel)',
-        color: 'var(--fg)',
-        opacity: disabled ? 0.4 : 1,
-        cursor: disabled ? 'not-allowed' : 'pointer',
-    };
-}
 
 // XSS-safe highlight: split on the query, render text spans (never dangerouslySetInnerHTML).
 function highlight(title: string, q: string): React.ReactNode {
@@ -42,15 +33,8 @@ function highlight(title: string, q: string): React.ReactNode {
     return (
         <>
             {title.slice(0, i)}
-            <span
-                data-testid="hl"
-                style={{
-                    background: 'var(--accent2)',
-                    color: 'var(--accent)',
-                    borderRadius: 3,
-                    padding: '0 2px',
-                }}
-            >
+            {/* The yellow highlighter, as on titles. */}
+            <span data-testid="hl" style={{ background: 'var(--hi)', color: 'var(--on-hi)', borderRadius: 4, padding: '0 2px' }}>
                 {title.slice(i, i + query.length)}
             </span>
             {title.slice(i + query.length)}
@@ -133,326 +117,180 @@ export default function SearchPage() {
     }
 
     const savedViewItems = savedViews.data?.items ?? [];
+    const smallPill = { ...toolPillStyle, padding: '5px 12px', fontSize: 12.5 };
 
     return (
-        <div style={{ maxWidth: 1080, margin: '0 auto', padding: '26px 30px 80px', display: 'flex', gap: 24 }}>
-            {/* Saved views sidebar */}
-            <aside style={{ width: 200, flexShrink: 0 }}>
-                <div
-                    style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: 'var(--fg3)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.06em',
-                        marginBottom: 8,
-                    }}
-                >
-                    Saved views
-                </div>
-                {savedViews.isLoading ? null : savedViewItems.length === 0 ? (
-                    <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>No saved views</div>
-                ) : (
-                    savedViewItems.map((view) => (
-                        <button
-                            key={view.id}
-                            type="button"
-                            onClick={() => loadSavedView(view)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 8,
-                                width: '100%',
-                                padding: '6px 8px',
-                                background: 'none',
-                                border: 'none',
-                                borderRadius: 6,
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                fontSize: 13,
-                                color: 'var(--fg)',
-                                fontFamily: 'inherit',
-                            }}
-                        >
-                            <span
-                                style={{
-                                    width: 8,
-                                    height: 8,
-                                    borderRadius: '50%',
-                                    background: 'var(--accent)',
-                                    flexShrink: 0,
-                                    display: 'inline-block',
-                                }}
-                            />
-                            {view.name}
-                        </button>
-                    ))
-                )}
-            </aside>
-
-            {/* Main search area */}
-            <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Query input */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        background: 'var(--panel)',
-                        border: '1px solid var(--border)',
-                        borderRadius: 10,
-                        padding: '8px 14px',
-                    }}
-                >
-                    <span style={{ fontSize: 17, color: 'var(--fg3)', flexShrink: 0 }}>⌕</span>
-                    <input
-                        aria-label="Search issues"
-                        autoFocus
-                        placeholder="Search issues…"
-                        value={text}
-                        onChange={(e) => setText(e.target.value)}
-                        style={{
-                            flex: 1,
-                            border: 'none',
-                            background: 'transparent',
-                            outline: 'none',
-                            fontSize: 14,
-                            color: 'var(--fg)',
-                            fontFamily: 'inherit',
-                        }}
-                    />
-                </div>
-
-                <SearchFilterBuilder filters={filters} onChange={setFilters} />
-
-                {/* Results header: count + sort + save */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        margin: '20px 0 10px',
-                    }}
-                >
-                    <span style={{ fontSize: 12.5, fontWeight: 600 }}>Page {currentPage} of {lastPage}</span>
-                    <span style={{ fontSize: 12, color: 'var(--fg3)' }}>· sorted by</span>
-                    <Menu
-                        trigger={
-                            <button
-                                type="button"
-                                style={{
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: 4,
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 7,
-                                    padding: '3px 9px',
-                                    fontSize: 12,
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    fontFamily: 'inherit',
-                                    color: 'var(--fg)',
-                                }}
-                            >
-                                {sortLabel}
-                                <span style={{ fontSize: 9 }}>▾</span>
-                            </button>
-                        }
-                        items={sortMenuItems}
-                    />
-
-                    {/* Save this view — toast, inline form, or trigger button */}
-                    {saveSuccess ? (
-                        <span style={{ fontSize: 12, color: 'var(--accent)', marginLeft: 4 }}>
-                            View saved
-                        </span>
-                    ) : saveOpen ? (
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                handleSave();
-                            }}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 4 }}
-                        >
-                            <input
-                                autoFocus
-                                placeholder="View name…"
-                                value={saveName}
-                                onChange={(e) => setSaveName(e.target.value)}
-                                style={{
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 6,
-                                    padding: '3px 8px',
-                                    fontSize: 12,
-                                    background: 'var(--panel)',
-                                    color: 'var(--fg)',
-                                    fontFamily: 'inherit',
-                                    outline: 'none',
-                                    width: 140,
-                                }}
-                            />
-                            {saveError && (
-                                <span style={{ fontSize: 12, color: 'var(--red)' }}>{saveError}</span>
-                            )}
-                            <button
-                                type="submit"
-                                disabled={!saveName.trim() || createSavedView.isPending}
-                                style={{
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 6,
-                                    padding: '3px 9px',
-                                    fontSize: 12,
-                                    background: 'var(--accent)',
-                                    color: 'var(--on-accent)',
-                                    cursor: 'pointer',
-                                    fontFamily: 'inherit',
-                                }}
-                            >
-                                Save
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setSaveOpen(false);
-                                    setSaveName('');
-                                    setSaveError('');
-                                }}
-                                style={{
-                                    border: '1px solid var(--border)',
-                                    borderRadius: 6,
-                                    padding: '3px 9px',
-                                    fontSize: 12,
-                                    background: 'none',
-                                    cursor: 'pointer',
-                                    fontFamily: 'inherit',
-                                    color: 'var(--fg)',
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </form>
+        <>
+            <PageHeader title="Search" />
+            <div style={{ display: 'flex', gap: 24, padding: '4px 26px 80px', maxWidth: 1132, boxSizing: 'border-box' }}>
+                {/* Saved views sidebar */}
+                <aside style={{ width: 200, flexShrink: 0 }}>
+                    <div style={{ ...sectionLabel, display: 'block', padding: '0 12px', marginBottom: 6 }}>Saved views</div>
+                    {savedViews.isLoading ? null : savedViewItems.length === 0 ? (
+                        <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>
                     ) : (
-                        <button
-                            type="button"
-                            aria-label="Save this view"
-                            onClick={() => setSaveOpen(true)}
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 4,
-                                border: '1px solid var(--border)',
-                                borderRadius: 7,
-                                padding: '3px 9px',
-                                fontSize: 12,
-                                background: 'none',
-                                cursor: 'pointer',
-                                fontFamily: 'inherit',
-                                color: 'var(--fg3)',
-                                marginLeft: 4,
-                            }}
-                        >
-                            ☆ Save this view
-                        </button>
+                        savedViewItems.map((view) => (
+                            <button
+                                key={view.id}
+                                type="button"
+                                onClick={() => loadSavedView(view)}
+                                style={{ ...navRow(false), fontSize: 13.5 }}
+                                className={NAV_ROW_HOVER}
+                            >
+                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, display: 'inline-block' }} />
+                                {view.name}
+                            </button>
+                        ))
                     )}
-                </div>
+                </aside>
 
-                {/* Results list */}
-                <div
-                    style={{
-                        border: '1px solid var(--border)',
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                    }}
-                >
-                    {rows.map((it: Issue) => (
-                        <div
-                            key={it.id}
-                            data-testid="search-row"
-                            onClick={() => navigate(`/issues/${it.id}`)}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 11,
-                                padding: '10px 16px',
-                                borderBottom: '1px solid var(--border)',
-                                cursor: 'pointer',
-                                background: 'var(--panel)',
-                            }}
-                        >
-                            <PriorityIcon priority={it.priority} />
-                            <StatusIcon status={it.status} size={14} />
-                            <span
-                                style={{
-                                    fontFamily: 'var(--font-mono)',
-                                    fontSize: 11.5,
-                                    color: 'var(--fg3)',
-                                    width: 56,
-                                    flexShrink: 0,
-                                }}
-                            >
-                                {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
+                {/* Main search area */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Query field: a pill whose border turns ink while the input has focus. */}
+                    <div
+                        className="border-border2 focus-within:border-fg"
+                        style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', padding: '10px 18px' }}
+                    >
+                        <span aria-hidden="true" style={{ fontSize: 17, color: 'var(--fg3)', flexShrink: 0 }}>⌕</span>
+                        <input
+                            aria-label="Search issues"
+                            autoFocus
+                            placeholder="Search issues…"
+                            value={text}
+                            onChange={(e) => setText(e.target.value)}
+                            style={{ flex: 1, minWidth: 0, border: 'none', background: 'transparent', outline: 'none', fontSize: 15, color: 'var(--fg)', fontFamily: 'inherit' }}
+                        />
+                    </div>
+
+                    <SearchFilterBuilder filters={filters} onChange={setFilters} />
+
+                    {/* Results header: count + sort + save */}
+                    <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 10, margin: '20px 0 12px' }}>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>Page {currentPage} of {lastPage}</span>
+                        <span style={{ fontSize: 12.5, color: 'var(--fg3)' }}>· sorted by</span>
+                        <Menu
+                            trigger={
+                                <button type="button" style={smallPill} className={TOOL_PILL_CLASSES}>
+                                    {sortLabel}
+                                    <span aria-hidden="true" style={{ fontSize: 10, color: 'var(--fg3)' }}>▾</span>
+                                </button>
+                            }
+                            items={sortMenuItems}
+                        />
+
+                        {/* Save this view — toast, inline form, or trigger button */}
+                        {saveSuccess ? (
+                            <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--fg2)', marginLeft: 4 }}>
+                                View saved
                             </span>
-                            <span
-                                style={{
-                                    flex: 1,
-                                    minWidth: 0,
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                    fontSize: 13,
+                        ) : saveOpen ? (
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleSave();
                                 }}
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginLeft: 4 }}
                             >
-                                {highlight(it.title, debounced)}
-                            </span>
+                                <Input
+                                    autoFocus
+                                    placeholder="View name…"
+                                    value={saveName}
+                                    onChange={(e) => setSaveName(e.target.value)}
+                                    style={{ width: 170, padding: '5px 12px', fontSize: 12.5 }}
+                                />
+                                {saveError && (
+                                    <span style={{ fontSize: 12.5, color: 'var(--red)' }}>{saveError}</span>
+                                )}
+                                <Button type="submit" size="sm" disabled={!saveName.trim() || createSavedView.isPending}>
+                                    Save
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => {
+                                        setSaveOpen(false);
+                                        setSaveName('');
+                                        setSaveError('');
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </form>
+                        ) : (
+                            <button
+                                type="button"
+                                aria-label="Save this view"
+                                onClick={() => setSaveOpen(true)}
+                                style={{ ...smallPill, marginLeft: 4 }}
+                                className={TOOL_PILL_CLASSES}
+                            >
+                                ☆ Save this view
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Results list */}
+                    <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
+                        {rows.map((it: Issue) => (
+                            // Separator + hover are classes (an inline background would beat hover:).
                             <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    flexShrink: 0,
-                                }}
+                                key={it.id}
+                                data-testid="search-row"
+                                onClick={() => navigate(`/issues/${it.id}`)}
+                                className="border-b border-border last:border-b-0 hover:bg-hover"
+                                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 18px', cursor: 'pointer' }}
                             >
-                                {(it.labels ?? []).map((l) => (
-                                    <LabelChip key={l.id} name={l.name} color={l.color} />
-                                ))}
-                                <Avatar {...avatarFor(it.assignee ?? null)} size={20} />
+                                <PriorityIcon priority={it.priority} />
+                                <StatusIcon status={it.status} size={14} />
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
+                                    {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
+                                </span>
+                                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
+                                    {highlight(it.title, debounced)}
+                                </span>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                    {(it.labels ?? []).map((l) => (
+                                        <LabelChip key={l.id} name={l.name} color={l.color} />
+                                    ))}
+                                    <Avatar {...avatarFor(it.assignee ?? null)} size={20} />
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
 
-                    {rows.length === 0 && !search.isLoading && (
-                        <div style={{ padding: '56px 20px', textAlign: 'center' }}>
-                            <div style={{ fontSize: 26, color: 'var(--fg3)', marginBottom: 10 }}>⌕</div>
-                            <div style={{ fontSize: 14, fontWeight: 500 }}>No issues match your search</div>
-                            <div style={{ fontSize: 12.5, color: 'var(--fg3)', marginTop: 5 }}>
-                                Try removing a filter or broadening your query.
+                        {rows.length === 0 && !search.isLoading && (
+                            <div style={{ padding: '56px 20px', textAlign: 'center' }}>
+                                <div aria-hidden="true" style={{ fontSize: 26, color: 'var(--fg3)', marginBottom: 10 }}>⌕</div>
+                                <div style={sectionTitle(17)}>No issues match your search</div>
+                                <div style={{ fontSize: 13, color: 'var(--fg3)', marginTop: 6 }}>
+                                    Try removing a filter or broadening your query.
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </div>
+                        )}
+                    </div>
 
-                {/* Prev / Next pager */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
-                    <button
-                        type="button"
-                        data-testid="search-prev"
-                        disabled={currentPage <= 1}
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        style={pagerBtn(currentPage <= 1)}
-                    >
-                        Previous
-                    </button>
-                    <button
-                        type="button"
-                        data-testid="search-next"
-                        disabled={currentPage >= lastPage}
-                        onClick={() => setPage((p) => p + 1)}
-                        style={pagerBtn(currentPage >= lastPage)}
-                    >
-                        Next
-                    </button>
+                    {/* Prev / Next pager */}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            data-testid="search-prev"
+                            disabled={currentPage <= 1}
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        >
+                            Previous
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            data-testid="search-next"
+                            disabled={currentPage >= lastPage}
+                            onClick={() => setPage((p) => p + 1)}
+                        >
+                            Next
+                        </Button>
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     );
 }

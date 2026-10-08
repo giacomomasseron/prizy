@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import type { Cycle, Project } from '../../lib/types';
 import ProjectForm from './ProjectForm';
 import CycleForm from './CycleForm';
+import { deskCard } from '../support/supportStyles';
 
 type Tab = 'project' | 'cycle';
 type SuccessInfo = { tab: Tab; name: string; teamId?: string } | null;
@@ -99,9 +100,7 @@ function SuccessCard({ name, tab, teamId, onCreateAnother }: SuccessCardProps) {
     return (
         <div
             style={{
-                background: 'var(--panel)',
-                border: '1px solid var(--border)',
-                borderRadius: 14,
+                ...deskCard,
                 padding: '40px 32px',
                 textAlign: 'center',
                 display: 'flex',
@@ -110,13 +109,15 @@ function SuccessCard({ name, tab, teamId, onCreateAnother }: SuccessCardProps) {
                 gap: 16,
             }}
         >
+            {/* Ink check mark (a large glyph on the ink fill, in the ground colour). */}
             <div
+                aria-hidden="true"
                 style={{
                     width: 52,
                     height: 52,
                     borderRadius: '50%',
-                    background: 'var(--accent)',
-                    color: 'var(--on-accent)',
+                    background: 'var(--fg)',
+                    color: 'var(--bg)',
                     fontSize: 26,
                     display: 'flex',
                     alignItems: 'center',
@@ -130,8 +131,10 @@ function SuccessCard({ name, tab, teamId, onCreateAnother }: SuccessCardProps) {
             <div>
                 <div
                     style={{
-                        fontSize: 17,
-                        fontWeight: 600,
+                        fontFamily: 'var(--font-display)',
+                        fontSize: 22,
+                        fontWeight: 800,
+                        letterSpacing: '-.02em',
                         color: 'var(--fg)',
                     }}
                 >
@@ -139,7 +142,7 @@ function SuccessCard({ name, tab, teamId, onCreateAnother }: SuccessCardProps) {
                 </div>
                 <div
                     style={{
-                        fontSize: 13,
+                        fontSize: 14,
                         color: 'var(--fg2)',
                         marginTop: 6,
                     }}

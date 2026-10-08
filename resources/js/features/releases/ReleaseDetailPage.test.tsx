@@ -200,4 +200,38 @@ describe('ReleaseDetailPage', () => {
         expect(rows[1]).toHaveTextContent('AAA000');
         expect(rows[1]).toHaveAttribute('href', '/issues/i2');
     });
+
+    it('v2: display-font title on the highlighter, quiet Edit buttons, the ink Mark shipped and a danger Delete pill', () => {
+        renderPage();
+        const h1 = screen.getByRole('heading', { name: 'v1.1' });
+        expect(h1.style.fontFamily).toBe('var(--font-display)');
+        expect(h1.querySelector('.hl')).not.toBeNull();
+        // The frame's left pad clears the floating "Expand sidebar" button when the sidebar is hidden.
+        expect((h1.closest('[style*="nav-inset"]') as HTMLElement).style.padding).toBe('26px 30px 80px calc(30px + var(--nav-inset, 0px))');
+        expect(screen.getByRole('button', { name: 'Edit description' }).className).toContain('hover:text-fg');
+        expect(screen.getByRole('button', { name: 'Mark shipped' }).className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: 'Delete' }).className).toContain('hover:text-red');
+        expect(screen.getByText('Progress').style.fontFamily).toBe('var(--font-display)');
+    });
+
+    it('v2: the shipped badge is ink text with a green dot, and Unship is a secondary Button', () => {
+        detail = { ...DETAIL, shipped_at: '2026-09-08T00:00:00.000000Z' };
+        renderPage();
+        const badge = screen.getByTestId('shipped-badge');
+        expect(badge.style.color).toBe('var(--fg)');
+        expect((badge.firstElementChild as HTMLElement).style.background).toBe('var(--green)');
+        expect(screen.getByRole('button', { name: 'Unship' }).className).toContain('border-border2');
+    });
+
+    it('v2: issue rows hover through classes and the target date is a pill field', () => {
+        renderPage();
+        expect(screen.getAllByTestId('release-issue-row')[0].className).toContain('hover:bg-hover');
+        expect(screen.getByLabelText('Target date').className).toContain('focus:border-fg');
+    });
+
+    it('v2: "Release not found." clears the floating Expand-sidebar button', () => {
+        detail = undefined as unknown as ReleaseDetail;
+        renderPage();
+        expect(screen.getByText('Release not found.').style.padding).toBe('28px 28px 28px calc(28px + var(--nav-inset, 0px))');
+    });
 });

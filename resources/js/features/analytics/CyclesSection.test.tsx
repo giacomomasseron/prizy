@@ -25,4 +25,10 @@ describe('CyclesSection', () => {
         expect(screen.getByText('Join a team to see cycle analytics.')).toBeInTheDocument();
         expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
     });
+
+    it('v2: the team picker is a pill field', () => {
+        useTeamsMock.mockReturnValue({ data: { items: [{ id: 't1', name: 'Smoke Team' }] }, isLoading: false });
+        render(<CyclesSection />);
+        expect(screen.getByLabelText('Team').className).toContain('focus:border-fg');
+    });
 });

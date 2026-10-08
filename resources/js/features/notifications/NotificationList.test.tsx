@@ -209,9 +209,12 @@ describe('NotificationList', () => {
         expect(screen.queryByText('Earlier this week')).not.toBeInTheDocument();
     });
 
-    it('renders the selected row with an accent background', () => {
+    it('renders the selected row white with a ring (v2)', () => {
         wrap({ items: [makeItem({ id: 'n7' })], selectedId: 'n7' });
-        expect(screen.getByTestId('notif-row-n7')).toHaveStyle({ background: 'var(--accent2)' });
+        const row = screen.getByTestId('notif-row-n7');
+        expect(row.style.background).toBe('var(--panel)');
+        expect(row.style.boxShadow).toBe('inset 0 0 0 1.5px var(--border2)');
+        expect(row.className).not.toContain('hover:bg-hover');
     });
 
     it('scopes to a single row via within() when multiple rows are present', () => {
@@ -222,5 +225,28 @@ describe('NotificationList', () => {
             ],
         });
         expect(within(screen.getByTestId('notif-row-r1')).getByRole('button', { name: 'Snooze' })).toBeInTheDocument();
+    });
+
+    it('v2: display-font h1 header, and "Unread only" turns into the yellow pill when on', () => {
+        wrap({ unreadOnly: true });
+        expect(screen.getByRole('heading', { name: 'Inbox' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: 'Unread only' }).className).toContain('bg-hi');
+        expect(screen.getByRole('button', { name: 'Mark all read' }).className).toContain('hover:border-fg');
+    });
+
+    it('v2: sentence-case day labels and unselected rows whose hover is not blocked', () => {
+        wrap({ items: [makeItem({ id: 'a' }), makeItem({ id: 'b' })], selectedId: 'a' });
+        expect(screen.getByText('Today').style.textTransform).toBe('');
+        const other = screen.getByTestId('notif-row-b');
+        expect(other.className).toContain('hover:bg-hover');
+        expect(other.style.background).toBe('');
+    });
+
+    it('v2: row actions are round outlined buttons that also show on keyboard focus', () => {
+        wrap();
+        const snooze = screen.getByRole('button', { name: 'Snooze' });
+        expect(snooze.style.borderRadius).toBe('50%');
+        expect(snooze.className).toContain('hover:border-fg');
+        expect(snooze.parentElement!.className).toContain('group-focus-within:opacity-100');
     });
 });

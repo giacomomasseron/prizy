@@ -51,4 +51,31 @@ describe('AnalyticsLayout', () => {
         expect(await screen.findByText('Velocity')).toBeInTheDocument();
         expect(screen.getByText('Burndown')).toBeInTheDocument();
     });
+
+    it('v2: the rail holds the only "Analytics" heading, in the display font; section rows hover through classes', () => {
+        renderLayout();
+        expect(screen.getAllByRole('heading', { name: 'Analytics' })).toHaveLength(1);
+        const heading = screen.getByRole('heading', { name: 'Analytics' });
+        expect(heading.style.fontFamily).toBe('var(--font-display)');
+        expect(heading.closest('nav')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'Overview' }).style.background).toBe('var(--panel)');
+        const cycles = screen.getByRole('button', { name: 'Cycles' });
+        expect(cycles.className).toContain('hover:bg-hover');
+        expect(cycles.style.background).toBe('');
+    });
+
+    it('v2: the header names the range, Export CSV is a Button, and the cards use display-font titles', () => {
+        renderLayout();
+        expect(screen.getByText('Last 7d')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Export CSV' }).className).toContain('border-border2');
+        expect(screen.getByRole('link', { name: 'Back to tracker' }).className).toContain('hover:border-fg');
+        expect(screen.getByText('By status').style.fontFamily).toBe('var(--font-display)');
+    });
+
+    it('v2: the rail title and sub-line clear the floating Expand-sidebar button when the sidebar is hidden', () => {
+        renderLayout();
+        expect(screen.getByRole('heading', { name: 'Analytics' }).style.padding).toBe('16px 16px 0 calc(16px + var(--nav-inset, 0px))');
+        expect(screen.getByText('Issues and cycles').style.padding).toBe('2px 16px 8px calc(16px + var(--nav-inset, 0px))');
+        expect(screen.getByText('Reports')).toBeInTheDocument();
+    });
 });

@@ -119,4 +119,13 @@ describe('NotificationSettings', () => {
         expect(screen.getByText(/loading/i)).toBeInTheDocument();
         expect(screen.queryByText('Mentions')).not.toBeInTheDocument();
     });
+
+    it('v2: display-font title, sentence-case column labels, and a secondary Back button', () => {
+        wrap();
+        expect(screen.getByRole('heading', { name: 'Notification settings' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('Delivery per event').style.textTransform).toBe('');
+        expect(screen.getByText('In-app').style.letterSpacing).toBe('');
+        expect(screen.getByText('Email digest').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: /Back to inbox/ }).className).toContain('border-border2');
+    });
 });

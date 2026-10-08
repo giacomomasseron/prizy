@@ -148,4 +148,11 @@ describe('CreateScreen shell', () => {
         // URL must reflect the tab switch
         expect(screen.getByTestId('loc-search').textContent).toBe('?tab=project');
     });
+
+    it('v2: the success card has an ink check and a display-font title', async () => {
+        wrap();
+        await userEvent.click(screen.getByText('submit-project'));
+        expect(screen.getByText('P1 created').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('✓').style.background).toBe('var(--fg)');
+    });
 });

@@ -22,4 +22,9 @@ describe('BurndownChart', () => {
         // actual line only spans the 2 non-null days
         expect(polylines[1].getAttribute('points')!.trim().split(' ').length).toBe(2);
     });
+
+    it('v2: a display-font card title', () => {
+        render(<BurndownChart burndown={burndown} />);
+        expect(screen.getByText('Burndown').style.fontFamily).toBe('var(--font-display)');
+    });
 });

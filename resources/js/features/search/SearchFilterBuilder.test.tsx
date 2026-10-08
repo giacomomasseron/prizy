@@ -65,4 +65,32 @@ describe('SearchFilterBuilder', () => {
         render(<SearchFilterBuilder filters={{}} onChange={vi.fn()} />);
         expect(screen.queryByRole('button', { name: 'Clear all' })).not.toBeInTheDocument();
     });
+
+    it('v2: active filters are yellow highlighter pills; "+ Add filter" is a dashed pill', () => {
+        render(<SearchFilterBuilder filters={{ priority: 'urgent' }} onChange={vi.fn()} />);
+        expect(screen.getByRole('button', { name: 'Remove Priority filter' }).parentElement!.className).toContain('bg-hi');
+        const add = screen.getByRole('button', { name: '+ Add filter' });
+        expect(add.style.borderStyle).toBe('dashed');
+        expect(add.className).toContain('hover:border-fg');
+        expect(screen.getByText('Filters').style.textTransform).toBe('');
+        expect(screen.getByRole('button', { name: 'Clear all' }).className).toContain('hover:text-fg');
+    });
+
+    it('v2: the value picker has the popover look, a sentence-case heading and chip options', async () => {
+        render(<SearchFilterBuilder filters={{}} onChange={vi.fn()} />);
+        await userEvent.click(screen.getByRole('button', { name: '+ Add filter' }));
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Priority' }));
+        const heading = screen.getByText('Choose Priority');
+        expect(heading.style.textTransform).toBe('');
+        expect(heading.parentElement!.style.border).toBe('var(--line) solid var(--fg)');
+        expect(heading.parentElement!.style.boxShadow).toBe('var(--pop-shadow)');
+        expect(screen.getByRole('button', { name: 'Urgent' }).className).toContain('hover:border-fg');
+    });
+
+    it('v2: in the yellow pill, priority bars switch to ink and the remove ✕ hovers to full strength', () => {
+        render(<SearchFilterBuilder filters={{ priority: 'low' }} onChange={vi.fn()} />);
+        const remove = screen.getByRole('button', { name: 'Remove Priority filter' });
+        expect(remove.parentElement!.className).toContain('[--prio-bar:var(--on-hi)]');
+        expect(remove.className).toContain('hover:opacity-100');
+    });
 });
