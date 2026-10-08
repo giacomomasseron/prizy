@@ -51,4 +51,24 @@ describe('AnalyticsLayout', () => {
         expect(await screen.findByText('Velocity')).toBeInTheDocument();
         expect(screen.getByText('Burndown')).toBeInTheDocument();
     });
+
+    it('v2: the rail holds the only "Analytics" heading, in the display font; section rows hover through classes', () => {
+        renderLayout();
+        expect(screen.getAllByRole('heading', { name: 'Analytics' })).toHaveLength(1);
+        const heading = screen.getByRole('heading', { name: 'Analytics' });
+        expect(heading.style.fontFamily).toBe('var(--font-display)');
+        expect(heading.closest('nav')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'Overview' }).style.background).toBe('var(--panel)');
+        const cycles = screen.getByRole('button', { name: 'Cycles' });
+        expect(cycles.className).toContain('hover:bg-hover');
+        expect(cycles.style.background).toBe('');
+    });
+
+    it('v2: the header names the range, Export CSV is a Button, and the cards use display-font titles', () => {
+        renderLayout();
+        expect(screen.getByText('Last 7d')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Export CSV' }).className).toContain('border-border2');
+        expect(screen.getByRole('link', { name: 'Back to tracker' }).className).toContain('hover:border-fg');
+        expect(screen.getByText('By status').style.fontFamily).toBe('var(--font-display)');
+    });
 });

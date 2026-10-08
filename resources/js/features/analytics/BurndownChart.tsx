@@ -1,4 +1,6 @@
 import type { CycleReport } from '../../lib/types';
+import { sectionTitle } from '../issues/issueStyles';
+import { deskCard } from '../support/supportStyles';
 
 const W = 600; const H = 200; const PAD = 10;
 
@@ -13,16 +15,16 @@ export function BurndownChart({ burndown }: { burndown: NonNullable<CycleReport[
         .filter((p): p is string => p !== null)
         .join(' ');
     return (
-        <div style={{ border: '1px solid var(--border)', borderRadius: 12, background: 'var(--panel)', padding: '16px 18px' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Burndown</div>
-                <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{burndown.name}</div>
+        <div style={{ ...deskCard, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 12 }}>
+                <div style={{ ...sectionTitle(17), flex: 1 }}>Burndown</div>
+                <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>{burndown.name}</div>
             </div>
             <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`Burndown for ${burndown.name}`}>
                 <polyline points={idealPoints} fill="none" stroke="var(--fg3)" strokeWidth="1.5" strokeDasharray="5 5" />
                 <polyline points={actualPoints} fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
             </svg>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, fontSize: 10.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
                 <span>{burndown.starts_at}</span><span>{burndown.ends_at}</span>
             </div>
         </div>

@@ -10,4 +10,9 @@ describe('FlowChart', () => {
         expect(screen.getByText('Completed')).toBeInTheDocument();
         expect(screen.getByTitle('Sep 1 · 3 created, 1 completed')).toBeInTheDocument();
     });
+
+    it('v2: a display-font card title', () => {
+        render(<FlowChart flow={{ labels: ['Sep 1'], created: [1], completed: [1] }} />);
+        expect(screen.getByText('Issue flow').style.fontFamily).toBe('var(--font-display)');
+    });
 });

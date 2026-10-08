@@ -17,4 +17,14 @@ describe('VelocityTable', () => {
         render(<VelocityTable rows={[]} selectedId={null} onSelect={vi.fn()} />);
         expect(screen.getByText('No cycles yet')).toBeInTheDocument();
     });
+
+    it('v2: display-font title; the selected row is tinted with a ring and unselected rows hover through classes', () => {
+        render(<VelocityTable rows={[row, { ...row, id: 'c2', name: 'Cycle 2' }]} selectedId="c1" onSelect={vi.fn()} />);
+        expect(screen.getByText('Velocity').style.fontFamily).toBe('var(--font-display)');
+        const [selected, other] = screen.getAllByRole('button');
+        expect(selected).toHaveAttribute('aria-pressed', 'true');
+        expect(selected.style.boxShadow).toBe('inset 0 0 0 1.5px var(--border2)');
+        expect(other.className).toContain('hover:bg-hover');
+        expect(other.style.background).toBe('');
+    });
 });
