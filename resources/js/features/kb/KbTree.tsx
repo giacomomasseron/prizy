@@ -71,7 +71,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
     }
 
     async function archiveArticles(name: string, count: number, run: (opts: { onError: (e: unknown) => void }) => void) {
-        const ok = await confirm({ title: 'Archive articles', message: `Archive all ${count} articles in "“${name}”"? They disappear from the help center.`, confirmLabel: 'Archive articles' });
+        const ok = await confirm({ title: 'Archive articles', message: `Archive all ${count} articles in “${name}”? They disappear from the help center.`, confirmLabel: 'Archive articles' });
         if (!ok) return;
         setError(null);
         run({ onError: (err) => onMutationError(err, 'Failed to archive the articles.') });
@@ -80,7 +80,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
     async function deleteNode(kind: 'category' | 'section', name: string, count: number, run: (opts: { onSuccess: () => void; onError: (e: unknown) => void }) => void) {
         const ok = await confirm({
             title: kind === 'category' ? 'Delete category' : 'Delete section',
-            message: count > 0 ? `This also deletes ${count} articles inside it. Archive them instead if you want to keep them.` : `Delete "“${name}”"?`,
+            message: count > 0 ? `This also deletes ${count} articles inside it. Archive them instead if you want to keep them.` : `Delete “${name}”?`,
             confirmLabel: kind === 'category' ? 'Delete category' : 'Delete section',
             danger: true,
         });
