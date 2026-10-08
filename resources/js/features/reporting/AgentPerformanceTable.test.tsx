@@ -27,4 +27,12 @@ describe('AgentPerformanceTable', () => {
         render(<AgentPerformanceTable agents={[]} />);
         expect(screen.getByText(/no agent activity/i)).toBeInTheDocument();
     });
+
+    it('v2: display-font title and a sentence-case table head', () => {
+        render(<AgentPerformanceTable agents={[row({})]} />);
+        expect(screen.getByText('Agent performance').style.fontFamily).toBe('var(--font-display)');
+        const head = screen.getByText('Assigned').parentElement as HTMLElement;
+        expect(head.style.textTransform).toBe('');
+        expect(head.style.fontSize).toBe('12.5px');
+    });
 });
