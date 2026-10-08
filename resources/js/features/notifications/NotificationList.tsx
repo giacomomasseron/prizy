@@ -5,6 +5,9 @@ import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
 import type { AppNotification } from '../../lib/types';
+import { HI_PILL_CLASSES, TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
+import { sectionLabel } from '../../components/sidebarStyles';
+import { paneHeader, paneSub, paneTitle } from '../support/supportStyles';
 
 const CATEGORY_LABEL: Record<string, string> = {
     all: 'Inbox',
@@ -24,22 +27,16 @@ const EMPTY_COPY: Record<string, string> = {
     archived: 'No archived notifications',
 };
 
-const toggleBtn = (active: boolean): CSSProperties => ({
-    padding: '5px 11px', borderRadius: 7, border: '1px solid var(--border2)', fontFamily: 'inherit',
-    fontSize: 12, fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap',
-    background: active ? 'var(--accent2)' : 'transparent', color: active ? 'var(--accent)' : 'var(--fg2)',
-});
-
-const groupLabel: CSSProperties = {
-    padding: '12px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em',
-    textTransform: 'uppercase', color: 'var(--fg3)',
-};
-
+/** Hover-revealed row action: a small round outlined button; its colours live in classes. */
 const actionBtn: CSSProperties = {
-    width: 24, height: 24, borderRadius: 6, border: '1px solid var(--border2)', background: 'var(--panel)',
-    color: 'var(--fg2)', cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', flexShrink: 0,
+    width: 26, height: 26, borderRadius: '50%', borderWidth: 'var(--line)', borderStyle: 'solid', padding: 0,
+    cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', flexShrink: 0,
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 };
+const ACTION_BTN_CLASSES = 'border-border2 bg-panel text-fg2 hover:border-fg hover:text-fg';
+
+/** Selected row: white with a ring, like a selected ticket on the desk. */
+const selectedRow: CSSProperties = { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--border2)' };
 
 function isSameDay(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -74,6 +71,7 @@ function groupByDay(items: AppNotification[]): { label: string; rows: AppNotific
  * read"), rows grouped by Today / Yesterday / Earlier this week. Presentational —
  * the parent page (Task 5) owns the `useNotifications` query and category/unreadOnly
  * state; this component only wires the per-row mutation hooks.
+ * v2: a desk-style pane header, pill controls, and rows whose hover lives in classes.
  */
 export function NotificationList({
     items,
@@ -107,30 +105,32 @@ export function NotificationList({
         if (!unreadOnly && !n.read_at) markRead.mutate(n.id);
     }
 
+    const pill: CSSProperties = { ...toolPillStyle, padding: '6px 12px', fontSize: 12.5 };
+
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '16px 18px 14px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ ...paneHeader, justifyContent: 'space-between', padding: '10px 18px' }}>
                 <div style={{ minWidth: 0 }}>
-                    <h1 style={{ margin: 0, fontSize: 15.5, fontWeight: 600, color: 'var(--fg)' }}>{heading}</h1>
-                    <div style={{ marginTop: 2, fontSize: 12, color: 'var(--fg3)' }}>
+                    <h1 style={{ ...paneTitle, margin: 0 }}>{heading}</h1>
+                    <div style={paneSub}>
                         {items.length} notifications · {unreadCount} unread
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                    <button type="button" aria-pressed={unreadOnly} onClick={onToggleUnread} style={toggleBtn(unreadOnly)}>
+                    <button type="button" aria-pressed={unreadOnly} onClick={onToggleUnread} style={pill} className={unreadOnly ? HI_PILL_CLASSES : TOOL_PILL_CLASSES}>
                         Unread only
                     </button>
-                    <button type="button" onClick={() => markAllRead.mutate()} style={toggleBtn(false)}>
+                    <button type="button" onClick={() => markAllRead.mutate()} style={pill} className={TOOL_PILL_CLASSES}>
                         <span aria-hidden="true">✓ </span>Mark all read
                     </button>
                 </div>
             </div>
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {isLoading && <div style={{ padding: '20px 18px', fontSize: 12.5, color: 'var(--fg3)' }}>Loading…</div>}
+                {isLoading && <div style={{ padding: '20px 18px', fontSize: 14, color: 'var(--fg3)' }}>Loading…</div>}
 
                 {!isLoading && items.length === 0 && (
-                    <div style={{ padding: '48px 18px', textAlign: 'center', fontSize: 13, color: 'var(--fg3)' }}>
+                    <div style={{ padding: '48px 18px', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>
                         {EMPTY_COPY[category] ?? "You're all caught up"}
                     </div>
                 )}
@@ -138,7 +138,7 @@ export function NotificationList({
                 {!isLoading &&
                     groups.map((g) => (
                         <div key={g.label}>
-                            <div style={groupLabel}>{g.label}</div>
+                            <div style={{ ...sectionLabel, padding: '14px 18px 6px' }}>{g.label}</div>
                             {g.rows.map((n) => {
                                 const meta = notificationMeta(n.type);
                                 const unread = !n.read_at;
@@ -147,61 +147,64 @@ export function NotificationList({
                                 const avatar = n.actor ? avatarFor(n.actor) : null;
 
                                 return (
+                                    // No inline background on unselected rows: it would beat hover:bg-hover.
                                     <div
                                         key={n.id}
                                         data-testid={`notif-row-${n.id}`}
                                         onClick={() => selectRow(n)}
-                                        className={`group ${selected ? '' : 'hover:bg-hover'}`}
+                                        className={selected ? 'group' : 'group bg-transparent hover:bg-hover'}
                                         style={{
-                                            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '11px 18px',
+                                            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 18px',
                                             borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                                            background: selected ? 'var(--accent2)' : 'transparent',
+                                            ...(selected ? selectedRow : {}),
                                         }}
                                     >
-                                        <span style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 8, flexShrink: 0, background: unread ? 'var(--accent)' : 'transparent' }} />
+                                        <span style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 9, flexShrink: 0, background: unread ? 'var(--accent)' : 'transparent' }} />
                                         <span
                                             aria-hidden="true"
                                             style={{
-                                                width: 22, height: 22, borderRadius: 6, border: '1px solid var(--border2)',
+                                                width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border2)', background: 'var(--panel)',
                                                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 11, color: 'var(--fg2)', flexShrink: 0, marginTop: 1,
+                                                fontSize: 11.5, color: 'var(--fg2)', flexShrink: 0,
                                             }}
                                         >
                                             {meta.icon}
                                         </span>
-                                        {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={22} title={n.actor?.name} />}
+                                        {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={24} title={n.actor?.name} />}
 
                                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                            <div style={{ fontSize: 13, color: 'var(--fg)', lineHeight: 1.4 }}>
+                                            <div style={{ fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.45 }}>
                                                 {showActorName ? (
                                                     <>
-                                                        <span style={{ fontWeight: 600 }}>{n.actor!.name}</span> <span>{notificationText(n.type)}</span>
+                                                        <span style={{ fontWeight: 700 }}>{n.actor!.name}</span> <span>{notificationText(n.type)}</span>
                                                     </>
                                                 ) : (
                                                     notificationText(n.type)
                                                 )}
                                             </div>
                                             {n.body && (
-                                                <div style={{ fontSize: 12, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                <div style={{ fontSize: 12.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {n.body}
                                                 </div>
                                             )}
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                                 {n.subject?.ref && (
-                                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 4, padding: '1px 5px' }}>
+                                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>
                                                         {n.subject.ref}
                                                     </span>
                                                 )}
-                                                <span style={{ fontSize: 11, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
+                                                <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
                                             </div>
                                         </div>
 
-                                        <div className="opacity-0 group-hover:opacity-100" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, marginTop: 1 }}>
+                                        {/* Shown on row hover, and while one of them has keyboard focus. */}
+                                        <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                                             {unread ? (
                                                 <button
                                                     type="button"
                                                     aria-label="Mark read"
                                                     style={actionBtn}
+                                                    className={ACTION_BTN_CLASSES}
                                                     onClick={(e) => { e.stopPropagation(); markRead.mutate(n.id); }}
                                                 >
                                                     ●
@@ -211,6 +214,7 @@ export function NotificationList({
                                                     type="button"
                                                     aria-label="Mark unread"
                                                     style={actionBtn}
+                                                    className={ACTION_BTN_CLASSES}
                                                     onClick={(e) => { e.stopPropagation(); markUnread.mutate(n.id); }}
                                                 >
                                                     ○
@@ -220,6 +224,7 @@ export function NotificationList({
                                                 type="button"
                                                 aria-label="Snooze"
                                                 style={actionBtn}
+                                                className={ACTION_BTN_CLASSES}
                                                 onClick={(e) => { e.stopPropagation(); toggleSnooze.mutate(n.id); }}
                                             >
                                                 ☾
@@ -228,6 +233,7 @@ export function NotificationList({
                                                 type="button"
                                                 aria-label="Archive"
                                                 style={actionBtn}
+                                                className={ACTION_BTN_CLASSES}
                                                 onClick={(e) => { e.stopPropagation(); toggleArchive.mutate(n.id); }}
                                             >
                                                 ⌫
