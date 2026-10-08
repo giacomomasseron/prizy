@@ -39,3 +39,42 @@ it('shows a field error when login returns 422', async () => {
 
     await waitFor(() => expect(screen.getByText(/do not match/i)).toBeInTheDocument());
 });
+
+it('v2: brand mark, a display title on the highlighter and a full-width ink submit', () => {
+    renderLogin();
+    const brand = screen.getByText('Prizy');
+    expect((brand.previousElementSibling as HTMLElement).style.background).toBe('var(--fg)');
+    const h1 = screen.getByRole('heading', { level: 1, name: 'Welcome back' });
+    expect(h1.style.fontFamily).toBe('var(--font-display)');
+    expect(h1.querySelector('.hl')).toHaveTextContent('Welcome back');
+    const submit = screen.getByRole('button', { name: /sign in/i });
+    expect(submit).toHaveAttribute('type', 'submit');
+    expect(submit.className).toContain('bg-fg');
+    expect(submit.style.width).toBe('100%');
+    const email = screen.getByLabelText(/email/i);
+    expect(email.className).toContain('login-input');
+    expect(email.style.borderRadius).toBe('14px');
+    expect(email.style.background).toBe('var(--panel)');
+    expect(screen.getByRole('link', { name: /Create a workspace/i }).className).toContain('hover:text-accent');
+});
+
+it('v2: ships no controls the backend cannot honour', () => {
+    renderLogin();
+    expect(screen.queryByRole('button', { name: /google|sso|saml/i })).toBeNull();
+    expect(screen.queryByText(/forgot/i)).toBeNull();
+    expect(screen.queryByLabelText(/keep me signed in/i)).toBeNull();
+    expect(screen.queryByText(/or with email/i)).toBeNull();
+});
+
+it('v2: the decorative panel is light, hidden from assistive tech and carries no invented testimonial', () => {
+    const { container } = (() => {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        return render(<QueryClientProvider client={qc}><MemoryRouter><LoginPage /></MemoryRouter></QueryClientProvider>);
+    })();
+    const aside = container.querySelector('aside') as HTMLElement;
+    expect(aside).toHaveAttribute('aria-hidden', 'true');
+    expect(aside.style.background).toBe('var(--bg2)');
+    expect(aside).toHaveTextContent('Escalations');
+    expect(aside).not.toHaveTextContent(/Leon K/);
+    expect(container.innerHTML).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba\(/);
+});

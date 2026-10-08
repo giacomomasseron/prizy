@@ -74,11 +74,15 @@ describe('design tokens (app.css)', () => {
 });
 
 describe('login aside', () => {
-    it('pins dark text tokens inside the login aside (dark backdrop in both themes)', () => {
-        const body = [...css.matchAll(/\.login-aside\s*\{([^}]*)\}/g)].map((m) => m[1]).find((b) => b.includes('--fg:'));
-        expect(body).toBeDefined();
-        expect(body).toContain('--fg:#f6f0e2');
-        expect(body).toMatch(/color:\s*var\(--fg\)/);
+    // V2-F: the aside is a light var(--bg2) panel that follows the theme, so it pins no tokens any more
+    // (V2-A's dark-backdrop pins were removed with the dark backdrop).
+    it('follows the theme: no token pins, still hidden on narrow screens', () => {
+        const pinned = [...css.matchAll(/\.login-aside\s*\{([^}]*)\}/g)].map((m) => m[1]).find((b) => b.includes('--fg:'));
+        expect(pinned).toBeUndefined();
+        expect(css).toMatch(/@media \(max-width: 900px\) \{ \.login-aside \{ display: none; \} \}/);
+    });
+    it('gives auth fields the v2 ink border and offset shadow on focus', () => {
+        expect(css).toMatch(/\.login-input:focus\s*\{[^}]*border-color:\s*var\(--fg\)[^}]*box-shadow:\s*3px 3px 0 var\(--fg\)/);
     });
 });
 
