@@ -1,7 +1,8 @@
-import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useSetSubscription, useSubscriptions, useUnreadCount } from './hooks';
 import { useTeams } from '../teams/hooks';
+import { NAV_ROW_HOVER, hiBadge, tagBadge } from '../../components/sidebarStyles';
+import { sideRow, sideSection, sideTitle } from '../support/supportStyles';
 
 const FILTERS = [
     { key: 'all', label: 'All' },
@@ -21,26 +22,12 @@ function nextLevel(level: string): SubLevel {
     return LEVELS[(idx + 1) % LEVELS.length];
 }
 
-const filterRow = (active: boolean): CSSProperties => ({
-    display: 'flex', alignItems: 'center', width: '100%', gap: 9, padding: '6px 9px', borderRadius: 7,
-    border: 'none', fontFamily: 'inherit', fontSize: 12.8, fontWeight: 500, cursor: 'pointer', textAlign: 'left',
-    background: active ? 'var(--accent2)' : 'transparent', color: active ? 'var(--accent)' : 'var(--fg2)',
-});
-
-const footerBtn = (active: boolean): CSSProperties => ({
-    display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '6px 9px', borderRadius: 7,
-    border: 'none', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 500, cursor: 'pointer', textAlign: 'left',
-    background: active ? 'var(--accent2)' : 'transparent', color: active ? 'var(--accent)' : 'var(--fg2)',
-    textDecoration: 'none',
-});
-
-const sectionLabel: CSSProperties = { padding: '16px 18px 6px', fontSize: 10.5, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--fg3)' };
-
 /**
  * Notifications page left rail (Prizy Notifications.dc.html left <aside>): the
  * "Inbox" header + total unread badge, category filters, per-team subscription
  * level pills, and a footer ("Notification settings" + back-to-issues link).
  * Purely presentational — the parent page owns `category`/`settingsActive` state.
+ * v2: the desk sidebar's look (display title, nav rows whose hover lives in classes).
  */
 export function NotificationSidebar({
     category,
@@ -74,55 +61,45 @@ export function NotificationSidebar({
 
     return (
         <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '14px 16px 10px' }}>
-                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)' }}>Inbox</span>
+            {/* Not a heading: the list pane owns the "Inbox" heading. */}
+            <div style={{ ...sideTitle, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+                Inbox
                 {unreadCount > 0 && (
-                    <span data-testid="rail-unread-badge" style={{ fontSize: 10.5, fontWeight: 600, fontFamily: 'var(--font-mono)', color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px' }}>
+                    // The title's display font and tracking would otherwise reach the badge.
+                    <span data-testid="rail-unread-badge" style={{ ...hiBadge, fontFamily: 'var(--font-sans)', letterSpacing: 'normal' }}>
                         {unreadCount > 99 ? '99+' : unreadCount}
                     </span>
                 )}
             </div>
 
             <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {FILTERS.map((f) => (
-                    <button
-                        key={f.key}
-                        type="button"
-                        onClick={() => onCategory(f.key)}
-                        style={filterRow(category === f.key && !settingsActive)}
-                        className={category === f.key && !settingsActive ? '' : 'hover:bg-hover'}
-                    >
-                        {f.label}
-                    </button>
-                ))}
-            </nav>
-
-            <div style={sectionLabel}>Subscriptions</div>
-            <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {myTeams.map((t) => {
-                    const level = levelFor(t.id);
+                {FILTERS.map((f) => {
+                    const active = category === f.key && !settingsActive;
                     return (
-                        <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => cycle(t.id)}
-                            style={{ display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '6px 9px', borderRadius: 7, border: 'none', background: 'transparent', fontFamily: 'inherit', fontSize: 12.8, fontWeight: 500, color: 'var(--fg2)', cursor: 'pointer', textAlign: 'left' }}
-                            className="hover:bg-hover"
-                        >
-                            <span style={{ width: 10, height: 10, borderRadius: 3, background: t.color, flexShrink: 0 }} />
-                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-                            <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--fg3)', border: '1px solid var(--border2)', borderRadius: 20, padding: '1px 7px' }}>{LEVEL_LABEL[level]}</span>
+                        <button key={f.key} type="button" onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                            {f.label}
                         </button>
                     );
                 })}
-                {myTeams.length === 0 && <div style={{ padding: '4px 9px', fontSize: 12, color: 'var(--fg3)' }}>No teams yet.</div>}
+            </nav>
+
+            <div style={sideSection}>Subscriptions</div>
+            <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                {myTeams.map((t) => (
+                    <button key={t.id} type="button" onClick={() => cycle(t.id)} style={sideRow(false)} className={NAV_ROW_HOVER}>
+                        <span style={{ width: 10, height: 10, borderRadius: 3, background: t.color, flexShrink: 0 }} />
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                        <span style={tagBadge}>{LEVEL_LABEL[levelFor(t.id)]}</span>
+                    </button>
+                ))}
+                {myTeams.length === 0 && <div style={{ padding: '4px 10px', fontSize: 12.5, color: 'var(--fg3)' }}>No teams yet.</div>}
             </div>
 
             <div style={{ marginTop: 'auto', padding: 8, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button type="button" onClick={onOpenSettings} style={footerBtn(settingsActive)} className={settingsActive ? '' : 'hover:bg-hover'}>
+                <button type="button" onClick={onOpenSettings} style={sideRow(settingsActive)} className={settingsActive ? '' : NAV_ROW_HOVER}>
                     Notification settings
                 </button>
-                <Link to="/" style={footerBtn(false)} className="hover:bg-hover">
+                <Link to="/" style={sideRow(false)} className={NAV_ROW_HOVER}>
                     ← Back to Issues
                 </Link>
             </div>
