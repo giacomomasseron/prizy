@@ -75,4 +75,29 @@ describe('TicketList', () => {
         render(<TicketList tickets={tickets} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} hasMore={false} />);
         expect(screen.queryByRole('button', { name: 'Load more' })).not.toBeInTheDocument();
     });
+
+    it('v2: display-font header and a toolbar-pill sort trigger', () => {
+        render(<TicketList tickets={tickets} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} />);
+        expect(screen.getByText('Tickets').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: 'Sort tickets' }).className).toContain('hover:border-fg');
+    });
+
+    it('v2: sentence-case pill status tags, and unselected rows whose hover is not blocked', () => {
+        render(<TicketList tickets={tickets} selectedId="a" onSelect={vi.fn()} {...baseProps()} />);
+        const tag = screen.getByText('Pending');
+        expect(tag.style.textTransform).toBe('');
+        expect(tag.style.borderRadius).toBe('var(--radius-pill)');
+        expect(tag.style.background).toBe('color-mix(in srgb, var(--amber) 15%, transparent)');
+        const [selected, other] = screen.getAllByTestId('ticket-row');
+        expect(selected.style.background).toBe('var(--panel)');
+        expect(other.className).toContain('hover:bg-hover');
+        expect(other.style.background).toBe('');
+        expect(screen.getByText('↩ PRJ-42').style.borderRadius).toBe('var(--radius-pill)');
+    });
+
+    it('v2: Load more is a Button, and the urgent chip uses a token for its text', () => {
+        render(<TicketList tickets={[t({ id: 'u', priority: 'urgent' })]} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} hasMore />);
+        expect(screen.getByRole('button', { name: 'Load more' }).className).toContain('border-border2');
+        expect(screen.getByLabelText('urgent').style.color).toBe('var(--on-hi)');
+    });
 });
