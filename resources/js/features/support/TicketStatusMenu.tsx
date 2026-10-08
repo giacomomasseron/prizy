@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Menu, type MenuItem } from '../../components/ui/Menu';
+import { TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
 import { TICKET_STATUS } from './ticketMeta';
 import { useChangeTicketStatus } from './hooks';
 import type { TicketDetail, TicketStatus } from '../../lib/types';
@@ -21,17 +22,13 @@ export function TicketStatusMenu({ ticket }: { ticket: TicketDetail }) {
         onActivate: () => changeStatus.mutate(s),
     }));
 
-    const triggerStyle: CSSProperties = {
-        display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8,
-        border: '1px solid var(--border2)', background: 'var(--panel)', color: 'var(--fg)',
-        fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit',
-    };
+    const triggerStyle: CSSProperties = { ...toolPillStyle, padding: '6px 13px', fontSize: 12.5 };
 
     return (
         <Menu
             placement="bottom-start"
             trigger={
-                <button type="button" style={triggerStyle} aria-label={`Status: ${current.label}`}>
+                <button type="button" className={TOOL_PILL_CLASSES} style={triggerStyle} aria-label={`Status: ${current.label}`}>
                     <span style={dot(current.color)} />
                     {current.label}
                     <span aria-hidden="true" style={{ color: 'var(--fg3)' }}>▾</span>

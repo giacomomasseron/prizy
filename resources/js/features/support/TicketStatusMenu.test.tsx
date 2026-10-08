@@ -33,4 +33,11 @@ describe('TicketStatusMenu', () => {
         fireEvent.click(screen.getByRole('menuitem', { name: 'Solved' }));
         expect(changeMutate).toHaveBeenCalledWith('solved');
     });
+
+    it('v2: the trigger is a toolbar pill', () => {
+        render(<TicketStatusMenu ticket={ticket({ status: 'open' })} />);
+        const trigger = screen.getByRole('button', { name: /Status: Open/ });
+        expect(trigger.className).toContain('hover:border-fg');
+        expect(trigger.style.borderRadius).toBe('var(--radius-pill)');
+    });
 });
