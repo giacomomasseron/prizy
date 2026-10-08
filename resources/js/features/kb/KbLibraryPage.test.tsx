@@ -20,8 +20,8 @@ const library = { categories: [
 ] };
 
 function j(b: unknown, status = 200) { return new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } }); }
-function renderPage() {
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: library }) : j({ data: {} }))));
+function renderPage(lib: unknown = library) {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: lib }) : j({ data: {} }))));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(<QueryClientProvider client={qc}><MemoryRouter><KbLibraryPage /></MemoryRouter></QueryClientProvider>);
 }
@@ -98,5 +98,70 @@ describe('KbLibraryPage', () => {
         expect(await screen.findByText('Cannot delete a category with sections.')).toBeInTheDocument();
         // Selection must stay on the category — a rejected delete must not act as though it succeeded.
         expect(screen.getByRole('heading', { name: 'Getting started' })).toBeInTheDocument();
+    });
+
+    it('v2: the top bar names the knowledge base and counts the library', async () => {
+        renderPage();
+        expect(await screen.findByText('2 articles · 1 live · 2 categories')).toBeInTheDocument();
+        expect(screen.getByTestId('kb-header-title')).toHaveTextContent('Knowledge base');
+    });
+
+    it('v2: the top bar counts use singular forms for one', async () => {
+        renderPage({ categories: [{ ...library.categories[0], sections: [{ ...library.categories[0].sections[0], articles: [library.categories[0].sections[0].articles[0]] }] }] });
+        expect(await screen.findByText('1 article · 1 live · 1 category')).toBeInTheDocument();
+    });
+
+    it('v2: the scope title is a display h1 on the highlighter, with one New article button', async () => {
+        renderPage();
+        const h1 = await screen.findByRole('heading', { level: 1, name: 'All articles' });
+        expect(h1.style.fontFamily).toBe('var(--font-display)');
+        expect(h1.querySelector('.hl')).toHaveTextContent('All articles');
+        await screen.findByText('Published one');
+        expect(screen.getAllByRole('button', { name: '＋ New article' })).toHaveLength(1);
+    });
+
+    it('v2: shows no empty state while the library is still loading', () => {
+        vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><KbLibraryPage /></MemoryRouter></QueryClientProvider>);
+        expect(screen.queryByTestId('kb-empty')).toBeNull();
+        expect(screen.queryByText('No articles in here yet')).toBeNull();
+    });
+
+    it('v2: the tree is a beige pane with pill rows whose hover lives in classes', async () => {
+        renderPage();
+        const cat = await screen.findByRole('button', { name: /Getting started/ });
+        const nav = screen.getByRole('navigation', { name: 'Knowledge base library' });
+        expect(nav.style.background).toBe('var(--bg2)');
+        const all = screen.getByRole('button', { name: 'All articles' });
+        expect(all.style.background).toBe('var(--panel)');
+        expect(all.style.borderRadius).toBe('var(--radius-pill)');
+        expect(cat.className).toContain('hover:bg-hover');
+        expect(cat.style.background).toBe('');
+        expect(within(cat).getByText('Getting started').style.textOverflow).toBe('ellipsis');
+        const actions = screen.getByTestId('tree-actions-c1');
+        expect(actions.className).toContain('group-focus-within:opacity-100');
+        expect(actions.className).toContain('group-focus-within:pointer-events-auto');
+        expect(actions.style.position).toBe('absolute');
+        const addCat = screen.getByRole('button', { name: '＋ Category' });
+        expect(addCat.style.borderStyle).toBe('dashed');
+        expect(addCat.className).toContain('hover:border-fg');
+    });
+
+    it('v2: the article table is full-width rows with a sticky head and no clipping overflow', async () => {
+        renderPage();
+        await screen.findByText('Published one');
+        const table = screen.getByRole('table', { name: 'Articles' });
+        expect(table.style.overflow).toBe('');
+        expect(table.style.minWidth).toBe('990px');
+        const [head, firstRow] = screen.getAllByRole('row');
+        expect(head.style.position).toBe('sticky');
+        expect(head.style.textTransform).toBe('');
+        expect(firstRow.className).toContain('hover:bg-hover');
+        expect(firstRow.style.background).toBe('');
+        expect(screen.getByRole('button', { name: 'Open Published one' }).className).toContain('hover:text-accent');
+        const pill = within(firstRow).getByText('Published');
+        expect(pill.style.color).toBe('var(--sup)');
+        expect(pill.style.background).toBe('var(--sup2)');
     });
 });
