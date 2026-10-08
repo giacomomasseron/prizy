@@ -118,4 +118,22 @@ describe('NewTicketModal', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Create contact' }));
         expect(screen.getByRole('alert')).toHaveTextContent('Email already in use');
     });
+
+    it('v2: display-font title, pill requester picker and ink action buttons', () => {
+        renderModal();
+        expect(screen.getByRole('heading', { level: 2, name: 'New ticket' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: 'Requester' }).className).toContain('hover:border-fg');
+        const create = screen.getByRole('button', { name: 'Create ticket' });
+        expect(create.className).toContain('bg-fg');
+        expect(create.style.background).toBe('');
+    });
+
+    it('v2: the new-contact box uses the ink Create contact button', () => {
+        renderModal();
+        fireEvent.click(screen.getByRole('button', { name: '+ New contact' }));
+        expect(screen.getByTestId('new-contact-box').style.borderRadius).toBe('var(--radius-row)');
+        expect(screen.getByRole('button', { name: 'Create contact' }).className).toContain('bg-fg');
+        // The box's Cancel comes before the dialog footer's in the DOM.
+        expect(screen.getAllByRole('button', { name: 'Cancel' })[0].className).toContain('border-border2');
+    });
 });

@@ -1,10 +1,13 @@
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal } from '../../components/ui/Modal';
 import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Menu } from '../../components/ui/Menu';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Button } from '../../components/ui/Button';
+import { TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
+import { fieldLabel, modalBody, modalFooter, modalHeader, modalTitle } from '../settings/settingsStyles';
 import { useContacts, useCreateTicket, useCreateContact } from './hooks';
 import { ApiError } from '../../lib/apiClient';
 import type { TicketPriority, TicketChannel } from '../../lib/types';
@@ -23,8 +26,6 @@ const CHANNEL_OPTIONS: { label: string; value: TicketChannel }[] = [
     { label: 'API', value: 'api' },
 ];
 
-const fieldLabel: CSSProperties = { display: 'block', fontSize: 12, color: 'var(--fg3)', fontWeight: 500, marginBottom: 6 };
-const pickerTrigger: CSSProperties = { width: '100%', textAlign: 'left', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 9, fontSize: 13, padding: '7px 10px', cursor: 'pointer', fontFamily: 'inherit' };
 
 export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): void }) {
     const navigate = useNavigate();
@@ -81,9 +82,11 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
 
     return (
         <Modal open={open} onClose={onClose} width={520} label="New ticket">
-            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>New ticket</h2>
+            <div style={modalHeader}>
+                <h2 style={modalTitle}>New ticket</h2>
+            </div>
 
+            <div style={modalBody}>
                 <div>
                     <label htmlFor="new-ticket-subject" style={fieldLabel}>Subject</label>
                     <Input id="new-ticket-subject" autoFocus placeholder="Brief summary of the request" value={subject} onChange={(e) => setSubject(e.target.value)} />
@@ -94,29 +97,31 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                     {!showNewContact ? (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                             {contacts.length === 0 ? (
-                                <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>No contacts yet.</div>
+                                <div style={{ fontSize: 13, color: 'var(--fg3)' }}>No contacts yet.</div>
                             ) : (
                                 <Menu
                                     placement="bottom-start"
+                                    fullWidth
                                     trigger={
-                                        <button type="button" aria-label="Requester" style={{ ...pickerTrigger, color: requester ? 'var(--fg)' : 'var(--fg3)' }}>
+                                        // The text colour (chosen vs placeholder) never changes on hover, so it may be inline.
+                                        <button type="button" aria-label="Requester" className={TOOL_PILL_CLASSES} style={{ ...toolPillStyle, width: '100%', justifyContent: 'space-between', color: requester ? 'var(--fg)' : 'var(--fg3)' }}>
                                             {requester ? label(requester) : 'Select a contact…'}
                                         </button>
                                     }
                                     items={contacts.map((c) => ({ key: c.id, label: label(c), onActivate: () => setRequesterId(c.id) }))}
                                 />
                             )}
-                            <button type="button" onClick={() => { setShowNewContact(true); setContactError(null); }} style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', color: 'var(--sup)', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit', padding: 0 }}>+ New contact</button>
+                            <button type="button" onClick={() => { setShowNewContact(true); setContactError(null); }} className="text-fg2 hover:text-fg" style={{ alignSelf: 'flex-start', padding: 0, fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer' }}>+ New contact</button>
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border)', borderRadius: 9, padding: 12 }}>
+                        <div data-testid="new-contact-box" style={{ display: 'flex', flexDirection: 'column', gap: 8, border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-row)', padding: 12 }}>
                             <Input aria-label="Contact name" placeholder="Name" value={ncName} onChange={(e) => setNcName(e.target.value)} />
                             <Input aria-label="Contact email" placeholder="Email" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} />
                             <Input aria-label="Contact phone" placeholder="Phone (optional)" value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} />
                             {contactError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{contactError}</div>}
                             <div style={{ display: 'flex', gap: 8 }}>
-                                <button type="button" aria-label="Create contact" disabled={createContact.isPending || ncName.trim() === '' || ncEmail.trim() === ''} onClick={saveContact} style={{ background: 'var(--sup)', color: 'var(--on-sup)', borderRadius: 8, padding: '6px 12px', fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', fontFamily: 'inherit', opacity: (createContact.isPending || ncName.trim() === '' || ncEmail.trim() === '') ? 0.5 : 1 }}>Create contact</button>
-                                <button type="button" onClick={() => setShowNewContact(false)} style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 8, padding: '6px 12px', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
+                                <Button size="sm" aria-label="Create contact" disabled={createContact.isPending || ncName.trim() === '' || ncEmail.trim() === ''} onClick={saveContact}>Create contact</Button>
+                                <Button variant="secondary" size="sm" onClick={() => setShowNewContact(false)}>Cancel</Button>
                             </div>
                         </div>
                     )}
@@ -138,19 +143,11 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                 </div>
 
                 {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+            </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
-                    <button type="button" onClick={onClose} style={{ border: '1px solid var(--border)', color: 'var(--fg2)', background: 'transparent', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, cursor: 'pointer', fontFamily: 'inherit' }}>Cancel</button>
-                    <button
-                        type="button"
-                        onClick={submit}
-                        disabled={!canCreate}
-                        aria-label="Create ticket"
-                        style={{ background: 'var(--sup)', color: 'var(--on-sup)', borderRadius: 9, padding: '8px 15px', fontSize: 12.5, fontWeight: 600, border: 'none', cursor: canCreate ? 'pointer' : 'not-allowed', opacity: canCreate ? 1 : 0.5, fontFamily: 'inherit' }}
-                    >
-                        Create ticket
-                    </button>
-                </div>
+            <div style={modalFooter}>
+                <Button variant="secondary" onClick={onClose}>Cancel</Button>
+                <Button onClick={submit} disabled={!canCreate} aria-label="Create ticket">Create ticket</Button>
             </div>
         </Modal>
     );
