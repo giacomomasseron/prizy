@@ -86,4 +86,20 @@ describe('NotificationDetail', () => {
         expect(markRead).toHaveBeenCalledWith('n8');
         expect(markUnread).not.toHaveBeenCalled();
     });
+
+    it('v2: sentence-case kind tag, display title, and the ink "Open" link', () => {
+        wrap(makeItem({
+            actor: { id: 'u1', name: 'Alice' },
+            subject: { type: 'issue', id: 'i1', ref: 'PRZ-9', title: 'X', path: '/issues/i1' },
+        }));
+        const kind = screen.getAllByText('Assigned to you')[0];
+        expect(kind.style.textTransform).toBe('');
+        expect(kind.style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByRole('heading', { level: 2 }).style.fontFamily).toBe('var(--font-display)');
+        const open = screen.getByRole('link', { name: 'Open PRZ-9' });
+        expect(open.className).toContain('bg-fg');
+        expect(open.style.background).toBe('');
+        expect(screen.getByRole('button', { name: 'Mark read' }).className).toContain('border-border2');
+        expect(screen.getByText('Why you got this').style.textTransform).toBe('');
+    });
 });

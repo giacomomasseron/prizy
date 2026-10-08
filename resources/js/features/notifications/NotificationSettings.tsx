@@ -1,9 +1,11 @@
-import type { CSSProperties } from 'react';
 import { usePreferences, useSetPreference } from './hooks';
 import type { DigestFrequency } from '../settings/hooks';
 import { useUpdateNotificationPreferences } from '../settings/hooks';
 import { Switch } from '../../components/ui/Switch';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
+import { Button } from '../../components/ui/Button';
+import { sectionTitle } from '../issues/issueStyles';
+import { deskCard, smallLabel } from '../support/supportStyles';
 
 const EVENT_LABEL: Record<string, string> = {
     mention: 'Mentions',
@@ -18,16 +20,6 @@ const DIGEST_OPTIONS = [
     { label: 'Daily', value: 'daily' },
     { label: 'Weekly', value: 'weekly' },
 ] as const;
-
-const headerCell: CSSProperties = {
-    fontSize: 10.5, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', color: 'var(--fg3)',
-};
-
-const backBtn: CSSProperties = {
-    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 8,
-    border: '1px solid var(--border2)', background: 'transparent', color: 'var(--fg2)',
-    fontSize: 12.5, fontWeight: 500, cursor: 'pointer', fontFamily: 'inherit', marginTop: 8,
-};
 
 function eventLabel(eventType: string): string {
     return EVENT_LABEL[eventType] ?? eventType;
@@ -44,7 +36,8 @@ function eventLabel(eventType: string): string {
  * digest setter (`useUpdateNotificationPreferences`, already wired to
  * `PATCH /notifications/preferences` from Settings > General) rather than a
  * new endpoint. Presentational — the parent page (Task 5) owns `view` state
- * and passes `onBack`.
+ * and passes `onBack`. v2: display title, a v2 card with sentence-case column labels,
+ * and a secondary Button for "Back to inbox".
  */
 export function NotificationSettings({ onBack }: { onBack: () => void }) {
     const prefs = usePreferences();
@@ -52,29 +45,29 @@ export function NotificationSettings({ onBack }: { onBack: () => void }) {
     const updateDigest = useUpdateNotificationPreferences();
 
     if (prefs.isLoading) {
-        return <div style={{ padding: 24, fontSize: 12.5, color: 'var(--fg3)' }}>Loading…</div>;
+        return <div style={{ padding: 28, fontSize: 13.5, color: 'var(--fg3)' }}>Loading…</div>;
     }
 
     const rows = prefs.data?.preferences ?? [];
     const digest = (prefs.data?.email_digest_frequency ?? 'off') as DigestFrequency;
 
     return (
-        <div style={{ padding: '20px 24px', maxWidth: 640, height: '100%', overflowY: 'auto' }}>
-            <h1 style={{ margin: '0 0 4px', fontSize: 16, fontWeight: 600, color: 'var(--fg)' }}>Notification settings</h1>
-            <p style={{ margin: '0 0 20px', fontSize: 12.5, color: 'var(--fg3)' }}>
+        <div style={{ padding: '24px 28px', maxWidth: 680, height: '100%', overflowY: 'auto', boxSizing: 'border-box' }}>
+            <h1 style={{ margin: '0 0 6px', fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--fg)' }}>Notification settings</h1>
+            <p style={{ margin: '0 0 22px', fontSize: 14, color: 'var(--fg2)' }}>
                 Choose how you want to hear about activity on your issues.
             </p>
 
-            <section style={{ border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', marginBottom: 24 }}>
+            <section style={{ ...deskCard, overflow: 'hidden', marginBottom: 26 }}>
                 <div
                     style={{
                         display: 'grid', gridTemplateColumns: '1fr 84px 84px', alignItems: 'center', gap: 12,
-                        padding: '10px 16px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)',
+                        padding: '11px 18px', borderBottom: '1px solid var(--border)', background: 'var(--bg2)',
                     }}
                 >
-                    <span style={headerCell}>Delivery per event</span>
-                    <span style={{ ...headerCell, textAlign: 'center' }}>In-app</span>
-                    <span style={{ ...headerCell, textAlign: 'center' }}>Email</span>
+                    <span style={smallLabel}>Delivery per event</span>
+                    <span style={{ ...smallLabel, textAlign: 'center' }}>In-app</span>
+                    <span style={{ ...smallLabel, textAlign: 'center' }}>Email</span>
                 </div>
 
                 {rows.map((row) => {
@@ -83,12 +76,10 @@ export function NotificationSettings({ onBack }: { onBack: () => void }) {
                     return (
                         <div
                             key={row.event_type}
-                            style={{
-                                display: 'grid', gridTemplateColumns: '1fr 84px 84px', alignItems: 'center', gap: 12,
-                                padding: '12px 16px', borderBottom: '1px solid var(--border)',
-                            }}
+                            className="border-b border-border last:border-b-0"
+                            style={{ display: 'grid', gridTemplateColumns: '1fr 84px 84px', alignItems: 'center', gap: 12, padding: '12px 18px' }}
                         >
-                            <span style={{ fontSize: 13, color: 'var(--fg)' }}>{label}</span>
+                            <span style={{ fontSize: 14, color: 'var(--fg)' }}>{label}</span>
                             <span style={{ display: 'flex', justifyContent: 'center' }}>
                                 <Switch
                                     checked={row.in_app}
@@ -109,9 +100,9 @@ export function NotificationSettings({ onBack }: { onBack: () => void }) {
                 })}
             </section>
 
-            <section style={{ marginBottom: 24 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', marginBottom: 4 }}>Email digest</div>
-                <p style={{ margin: '0 0 10px', fontSize: 12, color: 'var(--fg3)' }}>
+            <section style={{ marginBottom: 26 }}>
+                <div style={{ ...sectionTitle(17), marginBottom: 4 }}>Email digest</div>
+                <p style={{ margin: '0 0 12px', fontSize: 13, color: 'var(--fg3)' }}>
                     A rolled-up summary email instead of one email per event.
                 </p>
                 <SegmentedControl
@@ -121,9 +112,9 @@ export function NotificationSettings({ onBack }: { onBack: () => void }) {
                 />
             </section>
 
-            <button type="button" onClick={onBack} style={backBtn}>
+            <Button variant="secondary" size="sm" onClick={onBack}>
                 ← Back to inbox
-            </button>
+            </Button>
         </div>
     );
 }
