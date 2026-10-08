@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import SettingsLayout, { RequireManage } from './SettingsLayout';
+import SettingsLayout, { RequireManage, StubPage } from './SettingsLayout';
 
 function makeMe(adminLevel: string, isAgent = false, helpdeskEnabled = true) {
     return {
@@ -89,5 +89,44 @@ describe('SettingsLayout', () => {
         expect(await screen.findByRole('link', { name: 'Integrations' })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Business hours' })).toBeNull();
         expect(screen.queryByRole('link', { name: 'SLA policies' })).toBeNull();
+    });
+
+    it('v2: the back button is an outlined pill that clears the collapsed-sidebar button', async () => {
+        renderLayout('member');
+        const back = await screen.findByRole('button', { name: /Back to app/i });
+        expect(back.className).toContain('hover:border-fg');
+        expect(back.style.borderRadius).toBe('var(--radius-pill)');
+        expect(back.style.margin).toContain('var(--nav-inset, 0px)');
+    });
+
+    it('v2: nav rows use the shared sidebar row style and keep their names', async () => {
+        renderLayout('owner', '/settings/general');
+        const members = await screen.findByRole('link', { name: /members/i });
+        const general = screen.getByRole('link', { name: 'General' });
+        expect(general.style.background).toBe('var(--panel)'); // active row
+        expect(members.className).toContain('hover:bg-hover'); // inactive row
+        expect(members.style.background).toBe('');
+        expect(screen.getByRole('link', { name: 'Integrations' })).toBeInTheDocument(); // icons add no text
+    });
+
+    it('v2: Billing and Audit log stay disabled, and the footer shows the ink mark', async () => {
+        renderLayout('member');
+        await screen.findByRole('link', { name: 'General' });
+        expect(screen.getByRole('button', { name: 'Billing' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Audit log' })).toBeDisabled();
+        const mark = screen.getByText('Prizy').previousElementSibling as HTMLElement;
+        expect(mark.textContent).toBe('P');
+        expect(mark.style.borderRadius).toBe('50%');
+        expect(mark.getAttribute('aria-hidden')).toBe('true');
+    });
+});
+
+describe('StubPage', () => {
+    it('v2: shows a highlighted title and the coming-soon note in a dashed box', () => {
+        render(<StubPage title="Billing" />);
+        const h1 = screen.getByRole('heading', { level: 1, name: 'Billing' });
+        expect(h1.querySelector('.hl')).not.toBeNull();
+        const note = screen.getByText('Billing — coming soon.');
+        expect(note.style.border).toBe('var(--line) dashed var(--border2)');
     });
 });
