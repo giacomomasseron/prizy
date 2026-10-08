@@ -1,8 +1,8 @@
-import { useState, type CSSProperties } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMe } from '../../auth/useAuth';
-import { Avatar } from '../../components/ui/Avatar';
-import { avatarFor } from '../../lib/avatarFor';
+import { Button } from '../../components/ui/Button';
+import { RAIL_ACTIVE_CLASSES, RAIL_ITEM_CLASSES, SupportRail, railItem } from '../support/SupportRail';
+import { paneHeader, paneSub, paneTitle } from '../support/supportStyles';
 import { useOverviewReport, useAgentsReport, useSlaReport, useSavedReports, useCreateSavedReport, useDeleteSavedReport } from './hooks';
 import { sectionCsv, toCsv, downloadCsv } from './csv';
 import { KPI_META, type ReportRange, type ReportSectionKey, REPORT_SECTIONS } from './reportMeta';
@@ -13,10 +13,7 @@ import { SlaSection } from './SlaSection';
 import { ReportingSidebar } from './ReportingSidebar';
 import { RangeToggle } from './RangeToggle';
 
-const railIcon: CSSProperties = { width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: 'var(--fg3)', textDecoration: 'none' };
-
 export default function ReportingLayout() {
-    const me = useMe();
     const [range, setRange] = useState<ReportRange>('7d');
     const [section, setSection] = useState<ReportSectionKey>('overview');
     const q = useOverviewReport(range);
@@ -36,16 +33,11 @@ export default function ReportingLayout() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
-            {/* icon rail */}
-            <div style={{ width: 56, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 6 }}>
-                <Link to="/support" style={{ width: 32, height: 32, borderRadius: 9, background: 'linear-gradient(135deg,var(--sup),#5cc78c)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 16, color: '#fff', marginBottom: 8, textDecoration: 'none' }}>P</Link>
-                <Link to="/support" title="Desk" aria-label="Desk" style={railIcon}>⌂</Link>
-                <Link to="/support/reporting" title="Reporting" aria-label="Reporting" style={{ ...railIcon, background: 'var(--sup2)', color: 'var(--sup)' }}>📊</Link>
-                <Link to="/support/kb" title="Knowledge base" aria-label="Knowledge base" style={railIcon}>📚</Link>
-                <div style={{ flex: 1 }} />
-                <Link to="/" title="Switch to Engineering" aria-label="Switch to Engineering" style={{ ...railIcon, border: '1px solid var(--border2)' }}>⌗</Link>
-                {me.data && <span style={{ marginTop: 6 }}><Avatar {...avatarFor({ id: me.data.id, name: me.data.name })} size={30} /></span>}
-            </div>
+            <SupportRail>
+                <Link to="/support" title="Desk" aria-label="Desk" className={RAIL_ITEM_CLASSES} style={railItem}>⌂</Link>
+                <Link to="/support/reporting" title="Reporting" aria-label="Reporting" aria-current="page" className={RAIL_ACTIVE_CLASSES} style={railItem}>📊</Link>
+                <Link to="/support/kb" title="Knowledge base" aria-label="Knowledge base" className={RAIL_ITEM_CLASSES} style={railItem}>📚</Link>
+            </SupportRail>
 
             <ReportingSidebar
                 section={section}
@@ -57,19 +49,12 @@ export default function ReportingLayout() {
             />
 
             <main style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-                <header style={{ minHeight: 52, flexShrink: 0, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, padding: '8px 22px' }}>
+                <header style={{ ...paneHeader, padding: '10px 22px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 15, fontWeight: 600, letterSpacing: '-.01em' }}>{sectionLabel}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--fg3)' }}>Last {range}</div>
+                        <div style={paneTitle}>{sectionLabel}</div>
+                        <div style={paneSub}>Last {range}</div>
                     </div>
-                    <button
-                        type="button"
-                        onClick={onExport}
-                        disabled={!exportable}
-                        style={{ padding: '6px 12px', borderRadius: 8, border: '1px solid var(--border2)', background: 'var(--panel)', color: exportable ? 'var(--fg2)' : 'var(--fg3)', cursor: exportable ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}
-                    >
-                        Export CSV
-                    </button>
+                    <Button variant="secondary" size="sm" onClick={onExport} disabled={!exportable}>Export CSV</Button>
                     <RangeToggle range={range} onSelect={setRange} />
                 </header>
 

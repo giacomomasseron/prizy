@@ -132,4 +132,19 @@ describe('ReportingLayout', () => {
             ),
         );
     });
+
+    it('v2: the shared rail, a display-font header, an outlined Export CSV and a segmented range toggle', () => {
+        renderLayout();
+        expect(screen.getByRole('link', { name: 'Prizy' })).toHaveAttribute('href', '/support');
+        const rail = screen.getByRole('link', { name: 'Reporting' });
+        expect(rail).toHaveAttribute('aria-current', 'page');
+        expect(rail.className).toContain('bg-sup2');
+        expect(screen.getAllByText('Overview').some((el) => el.style.fontFamily === 'var(--font-display)')).toBe(true);
+        expect(screen.getByRole('button', { name: 'Export CSV' }).className).toContain('border-border2');
+        const d7 = screen.getByRole('button', { name: '7d' });
+        expect(d7).toHaveAttribute('aria-pressed', 'true');
+        expect(d7.style.background).toBe('var(--panel)');
+        expect(d7.style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByRole('button', { name: '30d' }).style.background).toBe('transparent');
+    });
 });
