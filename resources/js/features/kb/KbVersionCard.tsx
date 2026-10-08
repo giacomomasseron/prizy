@@ -1,13 +1,12 @@
-import type { CSSProperties } from 'react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { ApiError } from '../../lib/apiClient';
 import { avatarFor } from '../../lib/avatarFor';
 import { useKbArticleVersions } from './hooks';
+import { LIST_ROW_CLASSES, currentBadge, kbCard, kbLabel, listRow } from './kbStyles';
 import { relativeTime } from './kbUtils';
 
-const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: 14 };
-const cardTitle: CSSProperties = { fontSize: 11, fontWeight: 600, color: 'var(--fg3)', textTransform: 'uppercase', letterSpacing: '.05em' };
+const ellipsis = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } as const;
 
 export function KbVersionCard({ articleId, onOpen }: { articleId: string; onOpen(versionId?: string): void }) {
     const versionsQuery = useKbArticleVersions(articleId);
@@ -17,8 +16,8 @@ export function KbVersionCard({ articleId, onOpen }: { articleId: string; onOpen
     const versions = Array.isArray(versionsQuery.data) ? versionsQuery.data : [];
 
     return (
-        <div style={card}>
-            <div style={cardTitle}>Version history</div>
+        <div style={kbCard}>
+            <div style={kbLabel}>Version history</div>
 
             {/* Muted "Loading…" text, matching the established placeholder pattern in
                 TicketConversation.tsx's Empty component — this card's siblings (Details,
@@ -26,64 +25,39 @@ export function KbVersionCard({ articleId, onOpen }: { articleId: string; onOpen
                 placeholder — not an empty gap, and not withholding the heading — is what keeps
                 this card visually consistent with them while its own fetch is in flight. */}
             {versionsQuery.isPending && (
-                <p style={{ fontSize: 11.5, color: 'var(--fg3)', lineHeight: 1.55, marginTop: 8 }}>Loading…</p>
+                <p style={{ fontSize: 11.5, color: 'var(--fg3)', lineHeight: 1.55, margin: '9px 0 0' }}>Loading…</p>
             )}
 
             {versionsQuery.isError && (
-                <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>
+                <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 9 }}>
                     {versionsQuery.error instanceof ApiError ? versionsQuery.error.detail : 'Failed to load version history.'}
                 </div>
             )}
 
             {versionsQuery.isSuccess && (
                 versions.length <= 1 ? (
-                    <p style={{ fontSize: 11.5, color: 'var(--fg3)', lineHeight: 1.55, marginTop: 8 }}>No edits yet — this is the original.</p>
+                    <p style={{ fontSize: 11.5, color: 'var(--fg3)', lineHeight: 1.55, margin: '9px 0 0' }}>No edits yet — this is the original.</p>
                 ) : (
                     <>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8 }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, margin: '9px -8px 0' }}>
                             {versions.slice(0, 3).map((v) => (
-                                <button
-                                    key={v.id}
-                                    type="button"
-                                    onClick={() => onOpen(v.id)}
-                                    className="hover:bg-hover"
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        width: '100%',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        borderRadius: 8,
-                                        padding: '6px 4px',
-                                        cursor: 'pointer',
-                                        textAlign: 'left',
-                                        fontFamily: 'inherit',
-                                    }}
-                                >
+                                // No inline background: it would beat hover:bg-hover (LIST_ROW_CLASSES).
+                                <button key={v.id} type="button" onClick={() => onOpen(v.id)} className={LIST_ROW_CLASSES} style={listRow}>
                                     <Avatar {...avatarFor(v.author)} size={22} />
                                     <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 12.2, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                {v.author.name}
+                                            <span style={{ fontSize: 12.5, fontWeight: 600, ...ellipsis }}>{v.author.name}</span>
+                                            {v.is_current && <span style={currentBadge}>Current</span>}
+                                            <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', whiteSpace: 'nowrap' }}>
+                                                {relativeTime(v.created_at)}
                                             </span>
-                                            {v.is_current && (
-                                                <span style={{ fontSize: 9.5, fontWeight: 600, color: 'var(--sup)', background: 'var(--sup2)', borderRadius: 20, padding: '1px 6px' }}>
-                                                    Current
-                                                </span>
-                                            )}
                                         </div>
-                                        <div style={{ fontSize: 11, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                            {v.summary}
-                                        </div>
+                                        <div style={{ fontSize: 11, color: 'var(--fg3)', marginTop: 1, ...ellipsis }}>{v.summary}</div>
                                     </div>
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', flexShrink: 0 }}>
-                                        {relativeTime(v.created_at)}
-                                    </span>
                                 </button>
                             ))}
                         </div>
-                        <Button variant="secondary" onClick={() => onOpen()} style={{ width: '100%', marginTop: 10, justifyContent: 'center' }}>
+                        <Button variant="secondary" size="sm" onClick={() => onOpen()} style={{ width: '100%', marginTop: 10 }}>
                             {`View all ${versions.length} versions`}
                         </Button>
                     </>

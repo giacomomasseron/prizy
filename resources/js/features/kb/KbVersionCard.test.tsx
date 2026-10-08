@@ -42,4 +42,18 @@ describe('KbVersionCard', () => {
         await userEvent.click(await screen.findByRole('button', { name: /Created/ }));
         expect(onOpen).toHaveBeenCalledWith('v1');
     });
+
+    it('v2: rows show their hover (no inline background) and Current is the green badge', async () => {
+        renderCard([v({ id: 'v2', is_current: true }), v({ id: 'v1', summary: 'Created' })]);
+        const row = await screen.findByRole('button', { name: /Created/ });
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.style.background).toBe('');
+        expect(row.style.borderRadius).toBe('var(--radius-row)');
+        const badge = screen.getByText('Current');
+        expect(badge.style.color).toBe('var(--sup)');
+        expect(badge.style.background).toBe('var(--sup2)');
+        expect(screen.getByText('Version history').style.textTransform).toBe('');
+        expect(screen.getByRole('button', { name: 'View all 2 versions' }).style.width).toBe('100%');
+    });
+
 });
