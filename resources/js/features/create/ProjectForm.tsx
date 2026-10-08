@@ -9,6 +9,10 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { PropertyRow } from '../../components/ui/PropertyRow';
+import { FIELD_CLASSES } from '../../components/ui/Input';
+import { chipClasses, chipStyle } from '../issues/issueStyles';
+import { alertBox, swatchStyle } from '../settings/settingsStyles';
+import { deskCard, tint } from '../support/supportStyles';
 
 interface ProjectFormProps {
     onSuccess(project: Project): void;
@@ -40,22 +44,20 @@ const PRIORITIES: PriorityOption[] = [
     { value: 'urgent',      label: 'Urgent' },
 ];
 
-function chipStyle(active: boolean): CSSProperties {
-    return {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '6px 11px',
-        borderRadius: 8,
-        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-        fontSize: 12.5,
-        background: active ? 'var(--accent2)' : 'transparent',
-        color: active ? 'var(--fg)' : 'var(--fg2)',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        lineHeight: 1,
-    };
-}
+/** Status / lead / priority chips: the new-issue composer's chips (selected = ink-filled; colours in classes). */
+const chip: CSSProperties = { ...chipStyle, padding: '5px 12px', fontSize: 13 };
+
+/** Native date input as a pill field; its border colour lives in FIELD_CLASSES. */
+const dateInput: CSSProperties = {
+    background: 'var(--panel)', borderRadius: 'var(--radius-pill)', color: 'var(--fg)', fontSize: 13,
+    padding: '6px 12px', fontFamily: 'inherit', outline: 'none',
+};
+
+/** The new-issue composer's display-font title input. */
+const nameInput: CSSProperties = {
+    flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none',
+    fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--fg)',
+};
 
 const divider = (
     <div
@@ -118,23 +120,14 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     style={{
                         width: 26,
                         height: 26,
-                        borderRadius: 7,
+                        borderRadius: 8,
                         background: color,
                         flexShrink: 0,
                     }}
                 />
                 <input
                     placeholder="Project name"
-                    style={{
-                        flex: 1,
-                        fontSize: 24,
-                        fontWeight: 600,
-                        color: 'var(--fg)',
-                        border: 'none',
-                        background: 'transparent',
-                        outline: 'none',
-                        fontFamily: 'inherit',
-                    }}
+                    style={nameInput}
                     value={name}
                     onChange={e => setName(e.target.value)}
                 />
@@ -150,7 +143,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     border: 'none',
                     background: 'transparent',
                     outline: 'none',
-                    fontSize: 14,
+                    fontSize: 15,
                     color: 'var(--fg2)',
                     fontFamily: 'inherit',
                     marginBottom: 20,
@@ -162,15 +155,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
             />
 
             {/* Property card */}
-            <div
-                style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: 12,
-                    padding: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                }}
-            >
+            <div style={{ ...deskCard, padding: 6, display: 'flex', flexDirection: 'column' }}>
                 {/* Status row */}
                 <PropertyRow label="Status">
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -178,7 +163,8 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                             <button
                                 key={s.value}
                                 type="button"
-                                style={chipStyle(status === s.value)}
+                                style={chip}
+                                className={chipClasses(status === s.value)}
                                 onClick={() => setStatus(s.value)}
                             >
                                 <span
@@ -205,7 +191,8 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         <button
                             type="button"
-                            style={chipStyle(leadId === null)}
+                            style={chip}
+                            className={chipClasses(leadId === null)}
                             onClick={() => setLeadId(null)}
                         >
                             No lead
@@ -214,7 +201,8 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                             <button
                                 key={m.id}
                                 type="button"
-                                style={chipStyle(leadId === m.id)}
+                                style={chip}
+                                className={chipClasses(leadId === m.id)}
                                 onClick={() => setLeadId(m.id)}
                             >
                                 <Avatar {...avatarFor(m)} size={18} />
@@ -233,7 +221,8 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                             <button
                                 key={p.value}
                                 type="button"
-                                style={chipStyle(priority === p.value)}
+                                style={chip}
+                                className={chipClasses(priority === p.value)}
                                 onClick={() => setPriority(p.value)}
                             >
                                 <PriorityIcon priority={p.value} />
@@ -251,30 +240,16 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                         type="date"
                         value={startDate}
                         onChange={e => setStartDate(e.target.value)}
-                        style={{
-                            border: '1px solid var(--border)',
-                            background: 'var(--panel)',
-                            borderRadius: 8,
-                            padding: '6px 10px',
-                            fontSize: 12.5,
-                            color: 'var(--fg)',
-                            fontFamily: 'inherit',
-                        }}
+                        className={FIELD_CLASSES}
+                        style={dateInput}
                     />
                     <span style={{ color: 'var(--fg3)' }}>→</span>
                     <input
                         type="date"
                         value={targetDate}
                         onChange={e => setTargetDate(e.target.value)}
-                        style={{
-                            border: '1px solid var(--border)',
-                            background: 'var(--panel)',
-                            borderRadius: 8,
-                            padding: '6px 10px',
-                            fontSize: 12.5,
-                            color: 'var(--fg)',
-                            fontFamily: 'inherit',
-                        }}
+                        className={FIELD_CLASSES}
+                        style={dateInput}
                     />
                 </PropertyRow>
 
@@ -288,19 +263,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 key={c}
                                 type="button"
                                 aria-label={c}
-                                style={{
-                                    width: 26,
-                                    height: 26,
-                                    borderRadius: 7,
-                                    background: c,
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    padding: 0,
-                                    flexShrink: 0,
-                                    boxShadow: color === c
-                                        ? '0 0 0 2px var(--bg), 0 0 0 4px var(--accent)'
-                                        : 'none',
-                                }}
+                                style={swatchStyle(c, color === c, 26)}
                                 onClick={() => setColor(c)}
                             />
                         ))}
@@ -310,7 +273,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
 
             {/* Inline error */}
             {error && (
-                <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 14 }}>
+                <div style={{ ...alertBox, color: 'var(--red)', background: tint('var(--red)', 10), marginTop: 14 }}>
                     {error}
                 </div>
             )}

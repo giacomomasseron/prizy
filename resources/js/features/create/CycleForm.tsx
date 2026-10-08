@@ -7,6 +7,10 @@ import { PropertyRow } from '../../components/ui/PropertyRow';
 import { Switch } from '../../components/ui/Switch';
 import { Textarea } from '../../components/ui/Textarea';
 import { Menu } from '../../components/ui/Menu';
+import { FIELD_CLASSES } from '../../components/ui/Input';
+import { TOOL_PILL_CLASSES, chipClasses, chipStyle, toolPillStyle } from '../issues/issueStyles';
+import { alertBox, fieldLabel } from '../settings/settingsStyles';
+import { deskCard, tint } from '../support/supportStyles';
 
 interface CycleFormProps {
     defaultTeamId?: string;
@@ -21,22 +25,8 @@ function addDays(date: string, n: number): string {
 
 const DURATIONS = [1, 2, 3, 4];
 
-function chipCss(active: boolean): CSSProperties {
-    return {
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 7,
-        padding: '6px 11px',
-        borderRadius: 8,
-        border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
-        fontSize: 12.5,
-        background: active ? 'var(--accent2)' : 'transparent',
-        color: active ? 'var(--fg)' : 'var(--fg2)',
-        cursor: 'pointer',
-        fontFamily: 'inherit',
-        lineHeight: 1,
-    };
-}
+/** Duration chips: the new-issue composer's chips (selected = ink-filled; colours in classes). */
+const chip: CSSProperties = { ...chipStyle, padding: '5px 12px', fontSize: 13 };
 
 const divider = (
     <div
@@ -45,15 +35,10 @@ const divider = (
     />
 );
 
+/** Native date input as a pill field; its border colour lives in FIELD_CLASSES. */
 const dateInputStyle: CSSProperties = {
-    border: '1px solid var(--border)',
-    background: 'var(--panel)',
-    borderRadius: 8,
-    padding: '6px 10px',
-    fontSize: 12.5,
-    color: 'var(--fg)',
-    fontFamily: 'inherit',
-    outline: 'none',
+    background: 'var(--panel)', borderRadius: 'var(--radius-pill)', color: 'var(--fg)', fontSize: 13,
+    padding: '6px 12px', fontFamily: 'inherit', outline: 'none',
 };
 
 export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleFormProps) {
@@ -131,8 +116,8 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                         width: 26,
                         height: 26,
                         borderRadius: '50%',
-                        border: '2px solid var(--accent)',
-                        background: 'conic-gradient(var(--accent) 0deg 90deg, transparent 90deg 360deg)',
+                        border: '2px solid var(--fg)',
+                        background: 'conic-gradient(var(--fg) 0deg 90deg, transparent 90deg 360deg)',
                         flexShrink: 0,
                         display: 'inline-block',
                         boxSizing: 'border-box',
@@ -141,14 +126,8 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                 <input
                     placeholder="Cycle name"
                     style={{
-                        flex: 1,
-                        fontSize: 24,
-                        fontWeight: 600,
-                        color: 'var(--fg)',
-                        border: 'none',
-                        background: 'transparent',
-                        outline: 'none',
-                        fontFamily: 'inherit',
+                        flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none',
+                        fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--fg)',
                     }}
                     value={name}
                     onChange={e => setName(e.target.value)}
@@ -156,27 +135,17 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
             </div>
 
             {/* Property card */}
-            <div
-                style={{
-                    border: '1px solid var(--border)',
-                    borderRadius: 12,
-                    padding: 6,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 2,
-                }}
-            >
+            <div style={{ ...deskCard, padding: 6, display: 'flex', flexDirection: 'column', gap: 2 }}>
                 {/* Team row */}
                 <PropertyRow label="Team">
                     <Menu
                         trigger={
+                            // The text colour (chosen vs placeholder) never changes on hover, so it may be inline.
                             <button
                                 type="button"
                                 aria-label="Team picker"
-                                style={{
-                                    ...chipCss(false),
-                                    color: selectedTeam ? 'var(--fg)' : 'var(--fg3)',
-                                }}
+                                className={TOOL_PILL_CLASSES}
+                                style={{ ...toolPillStyle, padding: '6px 13px', fontSize: 13, color: selectedTeam ? 'var(--fg)' : 'var(--fg3)' }}
                             >
                                 {selectedTeam ? selectedTeam.name : 'Select team'}
                             </button>
@@ -194,7 +163,8 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                             <button
                                 key={n}
                                 type="button"
-                                style={chipCss(activeDuration === n)}
+                                style={chip}
+                                className={chipClasses(activeDuration === n)}
                                 onClick={() => handleDurationClick(n)}
                             >
                                 {n === 1 ? '1 week' : `${n} weeks`}
@@ -212,6 +182,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                         aria-label="Starts"
                         value={startsAt}
                         onChange={e => handleStartsChange(e.target.value)}
+                        className={FIELD_CLASSES}
                         style={dateInputStyle}
                     />
                 </PropertyRow>
@@ -225,6 +196,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                         aria-label="Ends"
                         value={endsAt}
                         onChange={e => handleEndsChange(e.target.value)}
+                        className={FIELD_CLASSES}
                         style={dateInputStyle}
                     />
                 </PropertyRow>
@@ -238,24 +210,13 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                         onChange={setCooldown}
                         ariaLabel="Cooldown"
                     />
-                    <span style={{ fontSize: 13, color: 'var(--fg)' }}>2-day cooldown after cycle ends</span>
+                    <span style={{ fontSize: 13.5, color: 'var(--fg)' }}>2-day cooldown after cycle ends</span>
                 </PropertyRow>
             </div>
 
             {/* Description */}
             <div style={{ marginTop: 22 }}>
-                <div
-                    style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: 'var(--fg3)',
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase',
-                        marginBottom: 6,
-                    }}
-                >
-                    Description
-                </div>
+                <div style={fieldLabel}>Description</div>
                 <Textarea
                     placeholder="What is the focus of this cycle?"
                     value={description}
@@ -266,7 +227,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
 
             {/* Inline error */}
             {error && (
-                <div style={{ color: 'var(--red)', fontSize: 13, marginTop: 14 }}>
+                <div style={{ ...alertBox, color: 'var(--red)', background: tint('var(--red)', 10), marginTop: 14 }}>
                     {error}
                 </div>
             )}
