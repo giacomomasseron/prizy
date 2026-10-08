@@ -47,4 +47,15 @@ describe('CreateTeamModal', () => {
         rerender(<Wrapper open />);
         expect(screen.getByLabelText(/team name/i)).toHaveValue('');
     });
+
+    it('v2: the preview tile follows the identifier and colour; the selected swatch has the ring', () => {
+        wrap(<CreateTeamModal open onClose={vi.fn()} />);
+        fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'Platform' } });
+        expect(screen.getByText('PLA').style.background).toBe('rgb(99, 102, 241)'); // #6366f1
+        fireEvent.click(screen.getByRole('button', { name: 'Color #4bab66' }));
+        expect(screen.getByText('PLA').style.background).toBe('rgb(75, 171, 102)'); // #4bab66
+        expect(screen.getByRole('button', { name: 'Color #4bab66' }).style.boxShadow).toContain('var(--fg)');
+        expect(screen.getByRole('button', { name: 'Color #6366f1' }).style.boxShadow).toBe('none');
+        expect(screen.getByRole('heading', { name: 'Create team' }).style.fontFamily).toBe('var(--font-display)');
+    });
 });
