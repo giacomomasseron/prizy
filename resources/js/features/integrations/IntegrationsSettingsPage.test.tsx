@@ -37,6 +37,17 @@ describe('IntegrationsSettingsPage', () => {
         fireEvent.click(screen.getByTestId('disconnect-slack'));
         await waitFor(() => expect(disconnectSlack).toHaveBeenCalled());
     });
+
+    it('v2: Connected badge on --sup2, red-hover Disconnect, ink Connect, plain-case category', () => {
+        render(<IntegrationsSettingsPage />);
+        expect(screen.getByRole('heading', { level: 1, name: 'Integrations' }).querySelector('.hl')).not.toBeNull();
+        expect(screen.getAllByText('Connected').some((el) => el.style.background === 'var(--sup2)')).toBe(true);
+        expect(screen.getByTestId('disconnect-slack').className).toContain('hover:text-red');
+        expect(screen.getByTestId('manage-slack').style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByTestId('connect-github').className).toContain('bg-fg');
+        expect(screen.getAllByText('Dev')[0].style.textTransform).toBe('');
+        expect(screen.getByTestId('card-github').style.borderRadius).toBe('var(--radius-card)');
+    });
 });
 
 it('shows an error banner when a show query fails', () => {

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Drawer } from '../../components/ui/Drawer';
 import { Menu } from '../../components/ui/Menu';
 import { Avatar } from '../../components/ui/Avatar';
@@ -10,8 +10,20 @@ import { useTeams, useTeamMembers, useAddTeamMember, useSetTeamMemberRole, useRe
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { ROLES } from './roles';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { DELETE_X_CLASSES, deleteXStyle } from '../projects/projectStyles';
+import { DANGER_PILL_CLASSES, PILL_CLASSES, alertBox, groupLabel, pillBtn, swatchStyle } from '../settings/settingsStyles';
 
 const EDIT_COLORS = ['#6366f1', '#e0a13a', '#4bab66', '#5b8def', '#eb5757', '#a855f7'];
+
+/** Team role pill: colours in classes (a lead is accent-tinted; a member gets the ink hover). */
+const rolePill: CSSProperties = {
+    padding: '4px 11px', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
+    fontSize: 11.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
+};
+const ROLE_CLASSES = {
+    lead: 'border-accent bg-accent2 text-accent',
+    member: 'border-border bg-transparent text-fg2 hover:border-fg',
+} as const;
 
 export default function TeamDrawer({ team, onClose }: { team: Team | null; onClose(): void }) {
     const open = team !== null;
@@ -47,33 +59,39 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
     return (
         <Drawer open={open} onClose={onClose} width={520}>
             <div style={{ padding: '20px 22px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <TeamTile identifier={live.identifier} color={live.color} size={30} />
-                    <input aria-label="Team name" defaultValue={live.name} key={`${live.id}-${live.name}-${live.color}`}
-                        onBlur={(e) => commitName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
-                        style={{ flex: 1, minWidth: 0, fontSize: 17, fontWeight: 600, background: 'transparent', border: 'none', color: 'var(--fg)', outline: 'none' }} />
-                    <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'transparent', border: 'none', color: 'var(--fg3)', fontSize: 18, cursor: 'pointer' }}>×</button>
+                {/* Header: tile, editable display-font name over the mono identifier, round close */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                    <TeamTile identifier={live.identifier} color={live.color} size={40} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <input aria-label="Team name" defaultValue={live.name} key={`${live.id}-${live.name}-${live.color}`}
+                            onBlur={(e) => commitName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
+                            style={{ width: '100%', minWidth: 0, padding: 0, fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, letterSpacing: '-.02em', background: 'transparent', border: 'none', color: 'var(--fg)', outline: 'none' }} />
+                        <div style={{ fontSize: 11.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{live.identifier}</div>
+                    </div>
+                    <button type="button" onClick={onClose} aria-label="Close" className="bg-transparent text-fg2 hover:bg-hover"
+                        style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', fontSize: 18, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
                 </div>
-                <div style={{ display: 'flex', gap: 7, marginBottom: 18 }}>
+                <div style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
                     {EDIT_COLORS.map((c) => (
                         <button key={c} type="button" aria-label={`Set color ${c}`}
                             onClick={() => { clear(); updateTeam.mutate({ id: team.id, color: c }, { onError: surface }); }}
-                            style={{ width: 20, height: 20, borderRadius: 5, background: c, border: live.color === c ? '2px solid var(--fg)' : '2px solid transparent', cursor: 'pointer' }} />
+                            style={swatchStyle(c, live.color === c, 22)} />
                     ))}
                 </div>
 
                 {error && (
-                    <div role="alert" data-testid="team-drawer-error" style={{ background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.3)', borderRadius: 9, padding: '10px 14px', marginBottom: 14, color: 'var(--red)', fontSize: 13, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <div role="alert" data-testid="team-drawer-error" style={{ ...alertBox, background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.3)', marginBottom: 14, color: 'var(--red)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                         <span>{error}</span>
                         <button type="button" aria-label="Dismiss error" onClick={clear} style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer' }}>×</button>
                     </div>
                 )}
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <span style={{ fontSize: 10.5, textTransform: 'uppercase', fontWeight: 600, color: 'var(--fg3)' }}>Members</span>
+                    <span style={groupLabel}>Members</span>
                     <Menu
-                        trigger={<button type="button" aria-label="Add member" style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '4px 10px', fontSize: 12, background: 'transparent', color: 'var(--fg)', cursor: 'pointer' }}>+ Add member</button>}
+                        placement="bottom-end"
+                        trigger={<button type="button" aria-label="Add member" className={PILL_CLASSES} style={pillBtn}>+ Add member</button>}
                         items={addable.map((w) => ({
                             key: w.id,
                             label: w.name,
@@ -83,23 +101,25 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                     />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {(members.data ?? []).map((m) => (
-                        <div key={m.id} data-testid={`team-member-${m.email}`} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 4px' }}>
-                            <Avatar {...avatarFor({ id: m.id, name: m.name })} size={26} />
+                        <div key={m.id} data-testid={`team-member-${m.email}`} className="hover:bg-hover"
+                            style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '9px 8px', borderRadius: 'var(--radius-row)' }}>
+                            <Avatar {...avatarFor({ id: m.id, name: m.name })} size={28} />
                             <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: 13 }}>{m.name}</div>
-                                <div style={{ fontSize: 11.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.email}</div>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)' }}>{m.name}</div>
+                                <div style={{ fontSize: 11.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.email}</div>
                             </div>
                             <Menu
-                                trigger={<button type="button" data-testid={`role-btn-${m.email}`} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '4px 9px', fontSize: 11.5, background: 'transparent', color: ROLES[m.role].color, cursor: 'pointer' }}>{ROLES[m.role].label} ▾</button>}
+                                placement="bottom-end"
+                                trigger={<button type="button" data-testid={`role-btn-${m.email}`} className={ROLE_CLASSES[m.role]} style={rolePill}>{ROLES[m.role].label} ▾</button>}
                                 items={[
                                     { key: 'lead', label: 'Lead', onActivate: () => { clear(); setRole.mutate({ userId: m.id, role: 'lead' }, { onError: surface }); } },
                                     { key: 'member', label: 'Member', onActivate: () => { clear(); setRole.mutate({ userId: m.id, role: 'member' }, { onError: surface }); } },
                                 ]}
                             />
                             <button type="button" data-testid={`remove-${m.email}`} aria-label={`Remove ${m.name}`} onClick={() => { clear(); remove.mutate(m.id, { onError: surface }); }}
-                                style={{ background: 'transparent', border: 'none', color: 'var(--fg3)', fontSize: 14, cursor: 'pointer' }}>×</button>
+                                className={DELETE_X_CLASSES} style={deleteXStyle}>×</button>
                         </div>
                     ))}
                     {(members.data ?? []).length === 0 && <div style={{ fontSize: 12.5, color: 'var(--fg3)', padding: '6px 4px' }}>No members yet.</div>}
@@ -110,7 +130,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                         clear();
                         if (!(await confirm({ title: `Delete team ${team.name}?`, danger: true }))) return;
                         del.mutate(team.id, { onSuccess: () => onClose(), onError: surface });
-                    }} style={{ color: 'var(--red)', background: 'transparent', border: '1px solid rgba(239,68,68,.3)', borderRadius: 9, padding: '8px 14px', fontSize: 12.5, cursor: 'pointer' }}>
+                    }} className={DANGER_PILL_CLASSES} style={pillBtn}>
                         Delete team
                     </button>
                 </div>

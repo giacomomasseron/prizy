@@ -180,3 +180,25 @@ describe('GeneralPage (support module switch)', () => {
         expect(await screen.findByText(/help centre, the customer portal, the agent desk/i)).toBeInTheDocument();
     });
 });
+
+describe('GeneralPage (v2 look)', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return j({ data: { ...me, admin_level: 'owner' } });
+            return j({ data: {} });
+        }));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('v2: highlighted title, display card headings, pill select, switch toggle and pill export button', async () => {
+        renderPage();
+        const select = await screen.findByLabelText('Email digest frequency');
+        expect(select.className).toContain('border-border2');
+        expect(screen.getByRole('heading', { level: 1, name: 'General' }).querySelector('.hl')).not.toBeNull();
+        expect(screen.getByRole('heading', { level: 2, name: 'Notifications' }).style.fontFamily).toBe('var(--font-display)');
+        const toggle = screen.getByRole('checkbox', { name: /Support/ });
+        expect(toggle.closest('label')?.querySelector('[aria-hidden="true"]')).not.toBeNull(); // the Switch track
+        expect(screen.getByRole('button', { name: 'Download export' }).style.borderRadius).toBe('var(--radius-pill)');
+    });
+});

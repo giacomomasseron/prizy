@@ -5,19 +5,53 @@ import { canDevelop as canDevelopFor, canWorkHelpdesk } from '../../auth/capabil
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { useTeams } from '../teams/hooks';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
+import { BrandMark } from '../../components/ui/BrandMark';
+import { NAV_ROW_HOVER, countStyle, navRow, sectionLabel } from '../../components/sidebarStyles';
+import { emptyState } from '../projects/projectStyles';
+import { pageFrame, pageTitle, pillBtn } from './settingsStyles';
 
-const navBtn = (active: boolean): CSSProperties => ({
-    display: 'flex', alignItems: 'center', gap: 10,
-    width: '100%', padding: '6px 9px', borderRadius: 7,
-    fontSize: 12.8, fontWeight: 500,
-    color: active ? 'var(--fg)' : 'var(--fg2)',
-    background: active ? 'var(--hover)' : 'transparent',
-    border: 'none', cursor: 'pointer', fontFamily: 'inherit', textDecoration: 'none',
-});
+// ─── decorative nav icons (mockup glyphs; empty and hidden from assistive tech) ──────
+
+type IconKind = 'general' | 'members' | 'teams' | 'labels' | 'integrations' | 'hours' | 'sla' | 'billing' | 'audit';
+
+const ICON_SLOT: CSSProperties = { width: 15, display: 'inline-flex', justifyContent: 'center', flexShrink: 0 };
+const ICONS: Record<Exclude<IconKind, 'audit'>, CSSProperties> = {
+    general: { width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' },
+    members: { width: 12, height: 12, borderRadius: '50%', border: '1.5px solid currentColor' },
+    teams: { width: 12, height: 12, borderRadius: 3, background: 'currentColor', opacity: 0.85 },
+    labels: { width: 11, height: 11, borderRadius: '50%', background: 'currentColor', opacity: 0.85 },
+    integrations: { width: 12, height: 12, borderRadius: '50%', border: '1.5px dashed currentColor' },
+    hours: {
+        width: 12, height: 12, borderRadius: '50%', border: '1.5px solid currentColor',
+        backgroundImage: 'linear-gradient(currentColor, currentColor)', backgroundRepeat: 'no-repeat',
+        backgroundPosition: '50% 25%', backgroundSize: '1.5px 4px',
+    },
+    sla: { width: 12, height: 12, borderRadius: 3, border: '1.5px dashed currentColor' },
+    billing: { width: 12, height: 9, borderRadius: 2, border: '1.5px solid currentColor' },
+};
+const AUDIT_BAR: CSSProperties = { height: 2, background: 'currentColor', borderRadius: 1 };
+
+function NavIcon({ kind }: { kind: IconKind }) {
+    return (
+        <span style={ICON_SLOT} aria-hidden="true">
+            {kind === 'audit' ? (
+                <span style={{ display: 'inline-flex', flexDirection: 'column', gap: 2.5 }}>
+                    <span style={{ ...AUDIT_BAR, width: 10 }} />
+                    <span style={{ ...AUDIT_BAR, width: 7 }} />
+                </span>
+            ) : (
+                <span style={{ display: 'inline-block', ...ICONS[kind] }} />
+            )}
+        </span>
+    );
+}
+
+const disabledRow: CSSProperties = { ...navRow(false), opacity: 0.4, cursor: 'not-allowed' };
 
 export const StubPage = ({ title }: { title: string }) => (
-    <div style={{ padding: 40 }}>
-        <p style={{ color: 'var(--fg3)' }}>{title} — coming soon.</p>
+    <div style={pageFrame}>
+        <h1 style={pageTitle}><span className="hl">{title}</span></h1>
+        <div style={{ ...emptyState, marginTop: 22 }}>{title} — coming soon.</div>
     </div>
 );
 
@@ -42,6 +76,16 @@ export default function SettingsLayout() {
     const teams = useTeams({ enabled: canManage });
     const teamCount = teams.data?.items.length;
 
+    function navItem(to: string, label: string, icon: IconKind, count?: number) {
+        return (
+            <NavLink to={to} style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
+                <NavIcon kind={icon} />
+                <span style={{ flex: 1 }}>{label}</span>
+                {count !== undefined && <span style={countStyle}>{count}</span>}
+            </NavLink>
+        );
+    }
+
     return (
         <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: 'var(--bg)', color: 'var(--fg)' }}>
             {/* Left sidebar */}
@@ -53,127 +97,49 @@ export default function SettingsLayout() {
                     display: 'flex', flexDirection: 'column',
                 }}
             >
-                {/* Back to app */}
+                {/* Back to app — the left margin clears the floating Expand-sidebar button when the main sidebar is collapsed */}
                 <button
                     type="button"
                     onClick={() => navigate('/')}
-                    style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '14px 12px',
-                        fontSize: 12.5, color: 'var(--fg2)',
-                        background: 'none', border: 'none', cursor: 'pointer',
-                        fontFamily: 'inherit', textAlign: 'left',
-                    }}
+                    className="border-border2 bg-transparent text-fg2 hover:border-fg hover:text-fg"
+                    style={{ ...pillBtn, alignSelf: 'flex-start', margin: '14px 14px 10px calc(14px + var(--nav-inset, 0px))' }}
                 >
                     ← Back to app
                 </button>
 
-                {/* Section header */}
-                <div
-                    style={{
-                        fontSize: 10.5, fontWeight: 600, textTransform: 'uppercase',
-                        color: 'var(--fg3)', padding: '6px 12px 4px', letterSpacing: '0.05em',
-                    }}
-                >
-                    Workspace settings
-                </div>
+                <div style={{ ...sectionLabel, padding: '8px 18px 6px' }}>Workspace settings</div>
 
-                {/* Nav items */}
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 8px' }}>
-                    {canManage && (
-                        <NavLink
-                            to="/settings/members"
-                            style={({ isActive }) => navBtn(isActive)}
-                        >
-                            Members
-                            {memberCount !== undefined && (
-                                <span
-                                    style={{
-                                        marginLeft: 'auto', fontSize: 11,
-                                        color: 'var(--fg3)', fontFamily: 'var(--font-mono)',
-                                    }}
-                                >
-                                    {memberCount}
-                                </span>
-                            )}
-                        </NavLink>
-                    )}
-                    {canManage && (
-                        <NavLink to="/settings/teams" style={({ isActive }) => navBtn(isActive)}>
-                            Teams
-                            {teamCount !== undefined && (
-                                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
-                                    {teamCount}
-                                </span>
-                            )}
-                        </NavLink>
-                    )}
-                    <NavLink
-                        to="/settings/general"
-                        style={({ isActive }) => navBtn(isActive)}
-                    >
-                        General
-                    </NavLink>
-                    {canDevelop && (
-                        <NavLink to="/settings/labels" style={({ isActive }) => navBtn(isActive)}>
-                            <span style={{ width: 11, height: 11, borderRadius: '50%', background: 'currentColor', opacity: 0.85 }} />
-                            Labels
-                        </NavLink>
-                    )}
-                    {canManage && (
-                        <NavLink to="/settings/integrations" style={({ isActive }) => navBtn(isActive)}>
-                            Integrations
-                        </NavLink>
-                    )}
-                    {isAgent && (
-                        <NavLink to="/settings/business-hours" style={({ isActive }) => navBtn(isActive)}>
-                            Business hours
-                        </NavLink>
-                    )}
-                    {isAgent && (
-                        <NavLink to="/settings/sla-policies" style={({ isActive }) => navBtn(isActive)}>
-                            SLA policies
-                        </NavLink>
-                    )}
+                <nav style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '2px 8px' }}>
+                    {navItem('/settings/general', 'General', 'general')}
+                    {canManage && navItem('/settings/members', 'Members', 'members', memberCount)}
+                    {canManage && navItem('/settings/teams', 'Teams', 'teams', teamCount)}
+                    {canDevelop && navItem('/settings/labels', 'Labels', 'labels')}
+                    {canManage && navItem('/settings/integrations', 'Integrations', 'integrations')}
+                    {isAgent && navItem('/settings/business-hours', 'Business hours', 'hours')}
+                    {isAgent && navItem('/settings/sla-policies', 'SLA policies', 'sla')}
                     {/* Disabled stubs */}
-                    <button
-                        type="button"
-                        disabled
-                        style={{ ...navBtn(false), opacity: 0.4, cursor: 'not-allowed' }}
-                    >
-                        Billing
+                    <button type="button" disabled style={disabledRow}>
+                        <NavIcon kind="billing" />
+                        <span style={{ flex: 1 }}>Billing</span>
                     </button>
-                    <button
-                        type="button"
-                        disabled
-                        style={{ ...navBtn(false), opacity: 0.4, cursor: 'not-allowed' }}
-                    >
-                        Audit log
+                    <button type="button" disabled style={disabledRow}>
+                        <NavIcon kind="audit" />
+                        <span style={{ flex: 1 }}>Audit log</span>
                     </button>
                 </nav>
 
-                {/* Footer: workspace monogram + name + theme toggle */}
+                {/* Footer: ink mark + workspace name + theme toggle */}
                 <div
                     style={{
                         marginTop: 'auto',
                         borderTop: '1px solid var(--border)',
-                        padding: 10,
+                        padding: '12px 16px',
                         display: 'flex', alignItems: 'center', gap: 9,
                     }}
                 >
-                    <div
-                        style={{
-                            width: 22, height: 22, borderRadius: 6,
-                            background: 'var(--accent)', color: 'var(--on-accent)',
-                            fontWeight: 700, fontSize: 13,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            flexShrink: 0,
-                        }}
-                    >
-                        P
-                    </div>
+                    <BrandMark size={22} />
                     {/* TODO: pull real workspace name once exposed here — Me type has no workspace_name field and AppLayout also hardcodes this literal */}
-                    <span style={{ fontSize: 13, flex: 1 }}>Prizy</span>
+                    <span style={{ fontSize: 12.5, fontWeight: 600, flex: 1 }}>Prizy</span>
                     <ThemeToggle />
                 </div>
             </div>

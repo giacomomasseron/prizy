@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { ApiError } from '../../lib/apiClient';
 import { Drawer } from '../../components/ui/Drawer';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { checkboxStyle, fieldLabel, modalTitle } from '../settings/settingsStyles';
 import { useSlackIntegration, useSaveSlackIntegration, useSendSlackTest } from './hooks';
 
 const EVENT_OPTIONS: Array<{ key: string; label: string }> = [
@@ -9,6 +12,9 @@ const EVENT_OPTIONS: Array<{ key: string; label: string }> = [
     { key: 'assigned', label: 'Assigned' },
     { key: 'commented', label: 'Commented' },
 ];
+
+const checkRow: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, marginTop: 12, cursor: 'pointer' };
+const msgStyle = (color: string): CSSProperties => ({ fontSize: 13, fontWeight: 600, color });
 
 export function SlackConfigDrawer({ open, onClose }: { open: boolean; onClose(): void }) {
     const slack = useSlackIntegration();
@@ -40,31 +46,32 @@ export function SlackConfigDrawer({ open, onClose }: { open: boolean; onClose():
 
     return (
         <Drawer open={open} onClose={onClose} side="right" width={480}>
-            <div style={{ padding: 24 }}>
-                <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Configure Slack</h2>
-                <label className="block text-sm">
-                    Webhook URL
-                    <input aria-label="Slack webhook URL" type="url" value={url} onChange={(e) => setUrl(e.target.value)}
-                        placeholder={slack.data?.configured ? `Configured (${slack.data.url_preview})` : 'https://hooks.slack.com/services/…'}
-                        className="mt-1 w-full rounded border border-border px-2 py-1" />
+            <div style={{ padding: '22px 24px' }}>
+                <h2 style={{ ...modalTitle, marginBottom: 18 }}>Configure Slack</h2>
+                <label style={{ display: 'block' }}>
+                    <span style={fieldLabel}>Webhook URL</span>
+                    <Input aria-label="Slack webhook URL" type="url" value={url} onChange={(e) => setUrl(e.target.value)}
+                        placeholder={slack.data?.configured ? `Configured (${slack.data.url_preview})` : 'https://hooks.slack.com/services/…'} />
                 </label>
-                <fieldset className="mt-3">
-                    <legend className="text-sm text-fg2">Post on</legend>
-                    {EVENT_OPTIONS.map((o) => (
-                        <label key={o.key} className="mr-4 inline-flex items-center gap-1 text-sm">
-                            <input type="checkbox" aria-label={o.label} checked={events.includes(o.key)} onChange={() => toggle(o.key)} />
-                            {o.label}
-                        </label>
-                    ))}
+                <fieldset style={{ border: 'none', margin: '18px 0 0', padding: 0 }}>
+                    <legend style={{ ...fieldLabel, padding: 0 }}>Post on</legend>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 18px' }}>
+                        {EVENT_OPTIONS.map((o) => (
+                            <label key={o.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, cursor: 'pointer' }}>
+                                <input type="checkbox" aria-label={o.label} checked={events.includes(o.key)} onChange={() => toggle(o.key)} style={checkboxStyle} />
+                                {o.label}
+                            </label>
+                        ))}
+                    </div>
                 </fieldset>
-                <label className="mt-3 flex items-center gap-2 text-sm">
-                    <input type="checkbox" aria-label="Slack active" checked={active} onChange={(e) => setActive(e.target.checked)} /> Active
+                <label style={checkRow}>
+                    <input type="checkbox" aria-label="Slack active" checked={active} onChange={(e) => setActive(e.target.checked)} style={checkboxStyle} /> Active
                 </label>
-                <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={onSave} className="rounded bg-accent px-3 py-1 text-sm text-on-accent">Save</button>
-                    <button type="button" onClick={onTest} className="rounded border border-border px-3 py-1 text-sm">Send test</button>
-                    {msg && <span className="text-sm text-green">{msg}</span>}
-                    {error && <span className="text-sm text-red">{error}</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+                    <Button size="sm" onClick={onSave}>Save</Button>
+                    <Button variant="secondary" size="sm" onClick={onTest}>Send test</Button>
+                    {msg && <span style={msgStyle('var(--green)')}>{msg}</span>}
+                    {error && <span style={msgStyle('var(--red)')}>{error}</span>}
                 </div>
             </div>
         </Drawer>

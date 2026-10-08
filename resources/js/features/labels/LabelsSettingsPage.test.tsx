@@ -10,11 +10,14 @@ const deleteMutate = vi.fn().mockResolvedValue(undefined);
 const L = (id: string, name: string, group: string | null, issue_count = 0): Label =>
     ({ id, name, color: '#5b8def', group, issue_count, created_at: '', updated_at: '' });
 
+const DEFAULT_LABELS: Label[] = [L('1', 'Bug', 'Type', 4), L('2', 'chore', null, 1)];
+let labelItems: Label[] = DEFAULT_LABELS;
+
 let meData: Record<string, unknown> = { is_developer: true, admin_level: 'member' };
 
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: meData }) }));
 vi.mock('./hooks', () => ({
-    useLabels: () => ({ isLoading: false, data: { items: [L('1', 'Bug', 'Type', 4), L('2', 'chore', null, 1)], next: null } }),
+    useLabels: () => ({ isLoading: false, data: { items: labelItems, next: null } }),
     useCreateLabel: () => ({ mutateAsync: createMutate, isPending: false }),
     useUpdateLabel: () => ({ mutateAsync: updateMutate }),
     useDeleteLabel: () => ({ mutateAsync: deleteMutate }),
@@ -68,5 +71,33 @@ describe('LabelsSettingsPage', () => {
         fireEvent.click(screen.getByTestId('delete-1'));
         fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
         await waitFor(() => expect(deleteMutate).toHaveBeenCalledWith('1'));
+    });
+
+    it('v2: highlighted title, hover rows in a scrollable card, and an ink "Add label" button', () => {
+        render(<LabelsSettingsPage />);
+        expect(screen.getByRole('heading', { level: 1, name: 'Labels' }).querySelector('.hl')).not.toBeNull();
+        const row = screen.getByTestId('delete-1').parentElement as HTMLElement;
+        expect(row.className).toContain('hover:bg-hover');
+        expect((row.parentElement as HTMLElement).style.overflowX).toBe('auto');
+        expect(screen.getByTestId('delete-1').className).toContain('hover:text-red');
+        fireEvent.click(screen.getByRole('button', { name: 'New label' }));
+        expect(screen.getByRole('button', { name: 'Add label' }).className).toContain('bg-fg');
+        expect(screen.getByLabelText('Label name').className).toContain('border-border2');
+    });
+
+    it('v2: a long "Most used" name truncates and keeps the full name in its title', () => {
+        labelItems = [L('9', 'An extremely long label name that would never fit in a stat card', null, 7)];
+        render(<LabelsSettingsPage />);
+        const most = screen.getByTestId('stat-mostused');
+        expect(most.style.textOverflow).toBe('ellipsis');
+        expect(most).toHaveAttribute('title', 'An extremely long label name that would never fit in a stat card');
+        labelItems = DEFAULT_LABELS;
+    });
+
+    it('v2: no labels shows the dashed empty state', () => {
+        labelItems = [];
+        render(<LabelsSettingsPage />);
+        expect(screen.getByText('No labels yet.').style.border).toBe('var(--line) dashed var(--border2)');
+        labelItems = DEFAULT_LABELS;
     });
 });

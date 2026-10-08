@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useMe } from '../../auth/useAuth';
 import { Avatar } from '../../components/ui/Avatar';
+import { Button } from '../../components/ui/Button';
 import { Menu } from '../../components/ui/Menu';
 import { TeamTile } from '../../components/ui/TeamTile';
 import { avatarFor } from '../../lib/avatarFor';
@@ -14,49 +15,36 @@ import {
     useCancelInvitation,
 } from './workspaceHooks';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { DELETE_X_CLASSES, deleteXStyle } from '../projects/projectStyles';
+import {
+    ROW_SEP_CLASSES, alertBox, cardFrame, pageFrame, pageLead, pageTitle,
+    statCard, statGrid, statLabel, statValue, tableHead, titleRow,
+} from '../settings/settingsStyles';
 
-// ─── chip styles ─────────────────────────────────────────────────────────────
+// ─── styles ──────────────────────────────────────────────────────────────────
 
-const chipBase: React.CSSProperties = {
-    borderRadius: 7,
-    padding: '4px 9px',
-    fontSize: 11,
-    cursor: 'pointer',
-    fontFamily: 'inherit',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 4,
+const MEMBER_COLS = 'minmax(150px,1.3fr) 108px 160px 62px 66px 22px';
+
+/** Level trigger (mockup control). Its border colour lives in classes so the hover works. */
+const levelBtn: CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 9px', borderRadius: 8,
+    borderWidth: 1, borderStyle: 'solid', background: 'transparent', fontSize: 11.5, fontWeight: 600,
+    color: 'var(--fg)', fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: 'pointer',
 };
+const levelDot: CSSProperties = { width: 8, height: 8, borderRadius: '50%', display: 'inline-block', flexShrink: 0 };
 
-const devOnStyle: React.CSSProperties = {
-    ...chipBase,
-    background: 'rgba(91,141,239,.16)',
-    color: 'var(--blue)',
-    border: '1px solid transparent',
+/** Capability chips (mockup capCss): every chip shows a currentColor dot. */
+const capBase: CSSProperties = {
+    display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 9px', borderRadius: 7,
+    fontSize: 11, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: 'pointer',
 };
+const capOff: CSSProperties = { ...capBase, background: 'none', color: 'var(--fg3)', border: '1px dashed var(--border2)', opacity: 0.7 };
+const devOnStyle: CSSProperties = { ...capBase, background: 'rgba(91,141,239,.16)', color: 'var(--blue)', border: '1px solid transparent' };
+const agentOnStyle: CSSProperties = { ...capBase, background: 'rgba(75,171,102,.16)', color: 'var(--green)', border: '1px solid transparent' };
+const capDot: CSSProperties = { width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 };
 
-const devOffStyle: React.CSSProperties = {
-    ...chipBase,
-    background: 'none',
-    color: 'var(--fg3)',
-    border: '1px dashed var(--border2)',
-    opacity: 0.7,
-};
-
-const agentOnStyle: React.CSSProperties = {
-    ...chipBase,
-    background: 'rgba(75,171,102,.16)',
-    color: 'var(--green)',
-    border: '1px solid transparent',
-};
-
-const agentOffStyle: React.CSSProperties = {
-    ...chipBase,
-    background: 'none',
-    color: 'var(--fg3)',
-    border: '1px dashed var(--border2)',
-    opacity: 0.7,
-};
+const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
+const strong: CSSProperties = { color: 'var(--fg)', fontWeight: 600 };
 
 // ─── component ────────────────────────────────────────────────────────────────
 
@@ -119,52 +107,23 @@ export default function MembersPage() {
     }
 
     return (
-        <div style={{ maxWidth: 1000, padding: '28px 24px 80px' }}>
+        <div style={{ ...pageFrame, minWidth: 728 }}>
 
             {/* ── Header ─────────────────────────────────────────────────── */}
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: 22,
-                }}
-            >
+            <div style={titleRow}>
                 <div>
-                    <h1 style={{ fontSize: 21, fontWeight: 600, margin: 0 }}>Members</h1>
-                    <p style={{ fontSize: 13, color: 'var(--fg2)', maxWidth: 560, margin: '4px 0 0' }}>
-                        Manage workspace members, their roles, and module capabilities.
+                    <h1 style={pageTitle}><span className="hl">Members</span></h1>
+                    <p style={pageLead}>
+                        Manage who can access this workspace. Access is set by an administrative <b style={strong}>level</b> plus independent <b style={strong}>capabilities</b> for the Issue Tracker and Support modules.
                     </p>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => setInviteOpen(true)}
-                    style={{
-                        background: 'var(--accent)',
-                        color: 'var(--on-accent)',
-                        border: 'none',
-                        borderRadius: 9,
-                        padding: '9px 15px',
-                        fontSize: 12.5,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        fontFamily: 'inherit',
-                        flexShrink: 0,
-                    }}
-                >
+                <Button onClick={() => setInviteOpen(true)} style={{ marginLeft: 'auto', flexShrink: 0 }}>
                     Invite people
-                </button>
+                </Button>
             </div>
 
             {/* ── Stats grid ─────────────────────────────────────────────── */}
-            <div
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: 12,
-                    marginBottom: 22,
-                }}
-            >
+            <div style={statGrid}>
                 {(
                     [
                         { label: 'Total members', value: total,  testid: 'stat-total'  },
@@ -173,51 +132,12 @@ export default function MembersPage() {
                         { label: 'Agents',         value: agents, testid: 'stat-agents' },
                     ] as const
                 ).map(stat => (
-                    <div
-                        key={stat.label}
-                        style={{
-                            border: '1px solid var(--border)',
-                            borderRadius: 11,
-                            padding: '13px 15px',
-                        }}
-                    >
-                        <div
-                            style={{
-                                fontSize: 10.5,
-                                textTransform: 'uppercase',
-                                fontWeight: 600,
-                                color: 'var(--fg3)',
-                                marginBottom: 4,
-                            }}
-                        >
-                            {stat.label}
-                        </div>
-                        <div
-                            data-testid={stat.testid}
-                            style={{ fontSize: 22, fontWeight: 600 }}
-                        >
-                            {stat.value}
-                        </div>
+                    <div key={stat.label} style={statCard}>
+                        <div style={statLabel}>{stat.label}</div>
+                        <div data-testid={stat.testid} style={statValue}>{stat.value}</div>
                     </div>
                 ))}
             </div>
-
-            {/* ── No-access banner ───────────────────────────────────────── */}
-            {showNoAccess && (
-                <div
-                    style={{
-                        background: 'rgba(224,161,58,.08)',
-                        border: '1px solid rgba(224,161,58,.3)',
-                        borderRadius: 9,
-                        padding: '10px 14px',
-                        marginBottom: 16,
-                        color: 'var(--amber)',
-                        fontSize: 13,
-                    }}
-                >
-                    ⚠ Members with no capability enabled have no access to any module.
-                </div>
-            )}
 
             {/* ── Action error banner ────────────────────────────────────── */}
             {actionError && (
@@ -225,13 +145,11 @@ export default function MembersPage() {
                     role="alert"
                     data-testid="action-error"
                     style={{
+                        ...alertBox,
                         background: 'rgba(239,68,68,.08)',
                         border: '1px solid rgba(239,68,68,.3)',
-                        borderRadius: 9,
-                        padding: '10px 14px',
                         marginBottom: 16,
                         color: 'var(--red)',
-                        fontSize: 13,
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -260,22 +178,12 @@ export default function MembersPage() {
                 </div>
             )}
 
-            {/* ── Table ──────────────────────────────────────────────────── */}
-            <div style={{ border: '1px solid var(--border)', borderRadius: 13 }}>
+            {/* ── Table: no overflow on the card, so the level Menu can pop out of a row.
+                 Below its min width the settings content pane scrolls sideways. ── */}
+            <div data-testid="members-table" style={{ ...cardFrame, minWidth: 668 }}>
 
                 {/* Header row */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(150px,1.3fr) 108px 160px 62px 66px 22px',
-                        gap: 12,
-                        padding: '10px 18px',
-                        fontSize: 10.5,
-                        textTransform: 'uppercase',
-                        fontWeight: 600,
-                        color: 'var(--fg3)',
-                    }}
-                >
+                <div style={{ ...tableHead, display: 'grid', gridTemplateColumns: MEMBER_COLS, gap: 12 }}>
                     <div>Member</div>
                     <div>Level</div>
                     <div>Capabilities</div>
@@ -285,52 +193,37 @@ export default function MembersPage() {
                 </div>
 
                 {/* Data rows */}
-                {rows.map((row, i) => {
+                {rows.map((row) => {
                     const levelMeta = LEVELS[row.admin_level] ?? LEVELS.member;
                     const isInvited = row.status === 'invited';
 
                     return (
                         <div
                             key={row.id}
+                            className={ROW_SEP_CLASSES}
                             style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'minmax(150px,1.3fr) 108px 160px 62px 66px 22px',
+                                gridTemplateColumns: MEMBER_COLS,
                                 gap: 12,
-                                padding: '10px 18px',
+                                padding: '12px 18px',
                                 alignItems: 'center',
-                                borderTop: '1px solid var(--border)',
                             }}
                         >
                             {/* Member cell */}
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, overflow: 'hidden' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 11, minWidth: 0 }}>
                                 <Avatar {...avatarFor(row)} size={30} title={row.name} />
-                                <div style={{ overflow: 'hidden' }}>
-                                    <div
-                                        style={{
-                                            fontSize: 13,
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
+                                <div style={{ minWidth: 0 }}>
+                                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', ...ellipsis }}>
                                         {row.name}
                                     </div>
-                                    <div
-                                        style={{
-                                            fontSize: 11.5,
-                                            color: 'var(--fg3)',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap',
-                                        }}
-                                    >
+                                    <div style={{ fontSize: 11.5, color: 'var(--fg3)', ...ellipsis }}>
                                         {row.email}
                                     </div>
                                 </div>
                             </div>
 
                             {/* Level cell */}
-                            <div>
+                            <div style={{ minWidth: 0 }}>
                                 {!isInvited ? (
                                     <Menu
                                         trigger={
@@ -339,32 +232,12 @@ export default function MembersPage() {
                                                 data-testid={`level-btn-${row.email}`}
                                                 aria-label={`Level: ${levelMeta.label}`}
                                                 disabled={updateMember.isPending}
-                                                style={{
-                                                    display: 'inline-flex',
-                                                    alignItems: 'center',
-                                                    gap: 5,
-                                                    border: '1px solid var(--border)',
-                                                    borderRadius: 8,
-                                                    padding: '5px 9px',
-                                                    fontSize: 11.5,
-                                                    background: 'none',
-                                                    cursor: 'pointer',
-                                                    fontFamily: 'inherit',
-                                                    color: 'var(--fg)',
-                                                }}
+                                                className="border-border enabled:hover:border-fg"
+                                                style={levelBtn}
                                             >
-                                                <span
-                                                    style={{
-                                                        width: 8,
-                                                        height: 8,
-                                                        borderRadius: '50%',
-                                                        background: levelMeta.color,
-                                                        display: 'inline-block',
-                                                        flexShrink: 0,
-                                                    }}
-                                                />
+                                                <span style={{ ...levelDot, background: levelMeta.color }} />
                                                 {levelMeta.label}
-                                                <span style={{ fontSize: 9 }}>▾</span>
+                                                <span style={{ color: 'var(--fg3)', fontSize: 9 }}>▾</span>
                                             </button>
                                         }
                                         items={levelItems(row.id)}
@@ -373,38 +246,17 @@ export default function MembersPage() {
                                     <button
                                         type="button"
                                         disabled
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: 5,
-                                            border: '1px solid var(--border)',
-                                            borderRadius: 8,
-                                            padding: '5px 9px',
-                                            fontSize: 11.5,
-                                            background: 'none',
-                                            cursor: 'default',
-                                            fontFamily: 'inherit',
-                                            color: 'var(--fg)',
-                                            opacity: 0.6,
-                                        }}
+                                        className="border-border"
+                                        style={{ ...levelBtn, cursor: 'default', opacity: 0.6 }}
                                     >
-                                        <span
-                                            style={{
-                                                width: 8,
-                                                height: 8,
-                                                borderRadius: '50%',
-                                                background: levelMeta.color,
-                                                display: 'inline-block',
-                                                flexShrink: 0,
-                                            }}
-                                        />
+                                        <span style={{ ...levelDot, background: levelMeta.color }} />
                                         {levelMeta.label}
                                     </button>
                                 )}
                             </div>
 
                             {/* Capabilities cell */}
-                            <div style={{ display: 'flex', gap: 5 }}>
+                            <div style={{ display: 'flex', gap: 6, minWidth: 0 }}>
                                 {!isInvited ? (
                                     <>
                                         <button
@@ -422,19 +274,9 @@ export default function MembersPage() {
                                                     },
                                                 );
                                             }}
-                                            style={row.is_developer ? devOnStyle : devOffStyle}
+                                            style={row.is_developer ? devOnStyle : capOff}
                                         >
-                                            {row.is_developer && (
-                                                <span
-                                                    style={{
-                                                        width: 6,
-                                                        height: 6,
-                                                        borderRadius: '50%',
-                                                        background: 'var(--blue)',
-                                                        display: 'inline-block',
-                                                    }}
-                                                />
-                                            )}
+                                            <span style={capDot} aria-hidden="true" />
                                             Dev
                                         </button>
                                         <button
@@ -451,28 +293,20 @@ export default function MembersPage() {
                                                     },
                                                 );
                                             }}
-                                            style={row.is_agent ? agentOnStyle : agentOffStyle}
+                                            style={row.is_agent ? agentOnStyle : capOff}
                                         >
-                                            {row.is_agent && (
-                                                <span
-                                                    style={{
-                                                        width: 6,
-                                                        height: 6,
-                                                        borderRadius: '50%',
-                                                        background: 'var(--green)',
-                                                        display: 'inline-block',
-                                                    }}
-                                                />
-                                            )}
+                                            <span style={capDot} aria-hidden="true" />
                                             Agent
                                         </button>
                                     </>
                                 ) : (
                                     <>
-                                        <span style={row.is_developer ? { ...devOnStyle, cursor: 'default' } : { ...devOffStyle, cursor: 'default' }}>
+                                        <span style={{ ...(row.is_developer ? devOnStyle : capOff), cursor: 'default' }}>
+                                            <span style={capDot} aria-hidden="true" />
                                             Dev
                                         </span>
-                                        <span style={row.is_agent ? { ...agentOnStyle, cursor: 'default' } : { ...agentOffStyle, cursor: 'default' }}>
+                                        <span style={{ ...(row.is_agent ? agentOnStyle : capOff), cursor: 'default' }}>
+                                            <span style={capDot} aria-hidden="true" />
                                             Agent
                                         </span>
                                     </>
@@ -529,7 +363,7 @@ export default function MembersPage() {
                                 )}
                             </div>
 
-                            {/* Remove cell */}
+                            {/* Remove cell — colour in DELETE_X_CLASSES so the red hover works; the name stays "×" */}
                             <div>
                                 <button
                                     type="button"
@@ -550,17 +384,8 @@ export default function MembersPage() {
                                             }
                                         }
                                     }}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        fontSize: 14,
-                                        color: 'var(--fg3)',
-                                        padding: 0,
-                                        fontFamily: 'inherit',
-                                        lineHeight: 1,
-                                    }}
-                                    className="hover:text-[var(--red)]"
+                                    className={DELETE_X_CLASSES}
+                                    style={{ ...deleteXStyle, width: 24, height: 24, padding: 0 }}
                                 >
                                     ×
                                 </button>
@@ -568,6 +393,24 @@ export default function MembersPage() {
                         </div>
                     );
                 })}
+
+                {/* ── No-access strip (inside the card, after the last row) ── */}
+                {showNoAccess && (
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            padding: '10px 18px',
+                            fontSize: 12.5,
+                            color: 'var(--amber)',
+                            background: 'rgba(224,161,58,.08)',
+                            borderRadius: '0 0 16px 16px',
+                        }}
+                    >
+                        ⚠ Members with no capability enabled have no access to any module.
+                    </div>
+                )}
             </div>
 
             <InviteModal open={inviteOpen} onClose={() => setInviteOpen(false)} />

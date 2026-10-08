@@ -29,4 +29,30 @@ describe('TeamsSettingsPage', () => {
         expect(screen.getByText('3')).toBeInTheDocument();
         expect(screen.getByText('Design')).toBeInTheDocument();
     });
+
+    it('v2: hover rows, 34px tiles, and long names that truncate', async () => {
+        wrap(<TeamsSettingsPage />);
+        await screen.findByText('Engineering');
+        const row = screen.getByTestId('team-row-ENG');
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.style.background).toBe('');
+        expect(screen.getAllByText('ENG').some((el) => el.style.width === '34px')).toBe(true);
+        expect(screen.getByText('Engineering').style.textOverflow).toBe('ellipsis');
+        expect(screen.getByText('Ada').style.textOverflow).toBe('ellipsis');
+        expect(screen.getByRole('button', { name: 'Create team' }).className).toContain('bg-fg');
+    });
+
+    it('v2: an empty workspace shows the dashed empty state and no table', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 })));
+        wrap(<TeamsSettingsPage />);
+        const empty = await screen.findByText('No teams yet.');
+        expect(empty.style.border).toBe('var(--line) dashed var(--border2)');
+        expect(screen.queryByText('Lead')).toBeNull();
+    });
+
+    it('v2: no empty-state flash while the teams query is loading', () => {
+        vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+        wrap(<TeamsSettingsPage />);
+        expect(screen.queryByText('No teams yet.')).toBeNull();
+    });
 });

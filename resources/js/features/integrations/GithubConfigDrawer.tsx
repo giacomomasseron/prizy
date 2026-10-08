@@ -1,7 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { ApiError } from '../../lib/apiClient';
 import { Drawer } from '../../components/ui/Drawer';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { checkboxStyle, fieldLabel, modalTitle } from '../settings/settingsStyles';
 import { useGithubIntegration, useSaveGithubIntegration } from './hooks';
+
+const checkRow: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, marginTop: 12, cursor: 'pointer' };
+const msgStyle = (color: string): CSSProperties => ({ fontSize: 13, fontWeight: 600, color });
 
 export function GithubConfigDrawer({ open, onClose }: { open: boolean; onClose(): void }) {
     const github = useGithubIntegration();
@@ -24,31 +30,30 @@ export function GithubConfigDrawer({ open, onClose }: { open: boolean; onClose()
 
     return (
         <Drawer open={open} onClose={onClose} side="right" width={480}>
-            <div style={{ padding: 24 }}>
-                <h2 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 600 }}>Configure GitHub</h2>
+            <div style={{ padding: '22px 24px' }}>
+                <h2 style={{ ...modalTitle, marginBottom: 18 }}>Configure GitHub</h2>
                 {github.data?.configured && github.data.webhook_url && (
-                    <label className="block text-sm">
-                        Webhook URL (add this to your repo's webhook settings)
-                        <input readOnly aria-label="GitHub webhook URL" value={github.data.webhook_url} className="mt-1 w-full rounded border border-border bg-bg px-2 py-1 text-fg2" />
+                    <label style={{ display: 'block', marginBottom: 14 }}>
+                        <span style={fieldLabel}>Webhook URL (add this to your repo's webhook settings)</span>
+                        <Input readOnly aria-label="GitHub webhook URL" value={github.data.webhook_url} style={{ color: 'var(--fg2)' }} />
                     </label>
                 )}
-                <label className="mt-3 block text-sm">
-                    Webhook secret
-                    <input aria-label="GitHub webhook secret" type="password" value={ghSecret} onChange={(e) => setGhSecret(e.target.value)}
-                        placeholder={github.data?.secret_set ? 'Secret set — leave blank to keep' : 'Set the same secret as in GitHub'}
-                        className="mt-1 w-full rounded border border-border px-2 py-1" />
+                <label style={{ display: 'block' }}>
+                    <span style={fieldLabel}>Webhook secret</span>
+                    <Input aria-label="GitHub webhook secret" type="password" value={ghSecret} onChange={(e) => setGhSecret(e.target.value)}
+                        placeholder={github.data?.secret_set ? 'Secret set — leave blank to keep' : 'Set the same secret as in GitHub'} />
                 </label>
-                <label className="mt-3 flex items-center gap-2 text-sm">
-                    <input type="checkbox" aria-label="Move linked issue to Done on PR merge" checked={moveOnMerge} onChange={(e) => setMoveOnMerge(e.target.checked)} /> Move linked issue to Done on PR merge
+                <label style={checkRow}>
+                    <input type="checkbox" aria-label="Move linked issue to Done on PR merge" checked={moveOnMerge} onChange={(e) => setMoveOnMerge(e.target.checked)} style={checkboxStyle} /> Move linked issue to Done on PR merge
                 </label>
-                <label className="mt-2 flex items-center gap-2 text-sm">
-                    <input type="checkbox" aria-label="GitHub active" checked={ghActive} onChange={(e) => setGhActive(e.target.checked)} /> Active
+                <label style={{ ...checkRow, marginTop: 8 }}>
+                    <input type="checkbox" aria-label="GitHub active" checked={ghActive} onChange={(e) => setGhActive(e.target.checked)} style={checkboxStyle} /> Active
                 </label>
                 <p style={{ marginTop: 12, fontSize: 12, color: 'var(--fg3)' }}>Disconnecting removes the stored config; reconnecting generates a new webhook URL to re-paste in GitHub.</p>
-                <div className="mt-4 flex items-center gap-2">
-                    <button type="button" onClick={onSaveGithub} className="rounded bg-accent px-3 py-1 text-sm text-on-accent">Save GitHub</button>
-                    {ghMsg && <span className="text-sm text-green">{ghMsg}</span>}
-                    {ghError && <span className="text-sm text-red">{ghError}</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+                    <Button size="sm" onClick={onSaveGithub}>Save GitHub</Button>
+                    {ghMsg && <span style={msgStyle('var(--green)')}>{ghMsg}</span>}
+                    {ghError && <span style={msgStyle('var(--red)')}>{ghError}</span>}
                 </div>
             </div>
         </Drawer>

@@ -57,4 +57,19 @@ describe('TeamDrawer', () => {
         wrap(<TeamDrawer team={{ id: 't1', name: 'Old Name', identifier: 'ON', color: '#999' } as any} onClose={vi.fn()} />);
         expect(await screen.findByDisplayValue('New Name')).toBeInTheDocument();
     });
+
+    it('v2: accent lead pill, red-hover remove and delete, pill add-member trigger', async () => {
+        mockFetch((url) => {
+            if (url.includes('/teams/t1/members')) return new Response(JSON.stringify({ data: [{ id: 'u1', name: 'Ada', email: 'a@x.test', role: 'lead' }] }), { status: 200 });
+            if (url.includes('/workspace/members')) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+            return new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 });
+        });
+        wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
+        await screen.findByText('Ada');
+        expect(screen.getByTestId('role-btn-a@x.test').className).toContain('bg-accent2');
+        expect(screen.getByTestId('remove-a@x.test').className).toContain('hover:text-red');
+        expect(screen.getByRole('button', { name: /delete team/i }).className).toContain('hover:border-red');
+        expect(screen.getByRole('button', { name: /add member/i }).className).toContain('hover:border-fg');
+        expect(screen.getByLabelText('Team name').style.fontFamily).toBe('var(--font-display)');
+    });
 });

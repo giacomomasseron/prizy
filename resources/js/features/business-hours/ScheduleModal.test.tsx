@@ -68,4 +68,12 @@ describe('ScheduleModal', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Create schedule' }));
         await waitFor(() => expect(onClose).toHaveBeenCalled());
     });
+
+    it('v2: display-font title, pill timezone select and pill footer buttons', () => {
+        render(<ScheduleModal open onClose={vi.fn()} />);
+        expect(screen.getByRole('heading', { name: 'New schedule' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByLabelText('Timezone').className).toContain('border-border2');
+        expect(screen.getByRole('button', { name: 'Cancel' }).style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByRole('button', { name: 'Create schedule' }).className).toContain('bg-fg');
+    });
 });
