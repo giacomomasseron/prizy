@@ -6,8 +6,9 @@ import { ANALYTICS_SECTIONS, type AnalyticsSectionKey } from './analyticsMeta';
 export function AnalyticsSidebar({ section, onSelectSection }: { section: AnalyticsSectionKey; onSelectSection: (s: AnalyticsSectionKey) => void }) {
     return (
         <nav aria-label="Analytics sections" style={sideFrame}>
-            <h1 style={{ ...sideTitle, margin: 0 }}>Analytics</h1>
-            <div style={sideSub}>Issues and cycles</div>
+            {/* The left pad clears the floating "Expand sidebar" button when the main sidebar is hidden. */}
+            <h1 style={{ ...sideTitle, margin: 0, padding: '16px 16px 0 calc(16px + var(--nav-inset, 0px))' }}>Analytics</h1>
+            <div style={{ ...sideSub, padding: '2px 16px 8px calc(16px + var(--nav-inset, 0px))' }}>Issues and cycles</div>
             <div style={sideSection}>Reports</div>
             <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {ANALYTICS_SECTIONS.map((s) => {

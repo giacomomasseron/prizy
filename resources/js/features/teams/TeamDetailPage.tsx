@@ -4,7 +4,7 @@ import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { Button } from '../../components/ui/Button';
 import { sectionTitle } from '../issues/issueStyles';
-import { pageTitle } from '../projects/projectStyles';
+import { emptyState, pageTitle } from '../projects/projectStyles';
 import { DANGER_PILL_CLASSES, pillBtn } from '../settings/settingsStyles';
 import { useDeleteCycle, useCycles, useTeams } from './hooks';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
@@ -38,6 +38,7 @@ export default function TeamDetailPage() {
             </div>
 
             {cycles.isLoading && <p style={{ margin: 0, fontSize: 13, color: 'var(--fg3)' }}>Loading…</p>}
+            {!cycles.isLoading && items.length === 0 && <div style={emptyState}>No cycles in this team yet.</div>}
             {items.length > 0 && (
                 <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
                     {items.map((c) => (

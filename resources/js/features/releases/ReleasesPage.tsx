@@ -70,7 +70,7 @@ export default function ReleasesPage() {
                 actions={canDevelop ? <Button onClick={() => setShowNew(true)}>+ New release</Button> : undefined}
             />
 
-            <div style={{ padding: '4px 26px 40px', maxWidth: 952, boxSizing: 'border-box' }}>
+            <div style={{ padding: '4px 26px 40px' }}>
                 <section style={{ marginBottom: 26 }}>
                     <div style={{ ...sectionLabel, marginBottom: 10 }}>Upcoming</div>
                     <div data-testid="releases-upcoming" style={card}>

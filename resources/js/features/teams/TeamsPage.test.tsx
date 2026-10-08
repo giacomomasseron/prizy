@@ -68,4 +68,24 @@ describe('TeamsPage', () => {
         await screen.findByRole('button', { name: /new team/i });
         expect(screen.queryByRole('list')).toBeNull();
     });
+
+    it('v2: an empty workspace shows "No teams yet." in the dashed empty state', async () => {
+        renderPage();
+        expect(await screen.findByText('No teams yet.')).toBeInTheDocument();
+        expect(screen.queryByRole('list')).toBeNull();
+    });
+
+    it('v2: team rows sit on a white card, the tile shows two letters, and the body is not capped', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meAdmin }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMOKE1', color: '#6d69f2', created_at: '', updated_at: '' }], links: { next: null, prev: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }));
+        renderPage();
+        const row = await screen.findByRole('link', { name: /Smoke Team/ });
+        const list = row.closest('ul')!;
+        expect(list.style.background).toBe('var(--panel)');
+        expect(list.parentElement!.style.maxWidth).toBe('');
+        expect(screen.getByText('SM')).toBeInTheDocument();
+        expect(screen.getByText('SMOKE1')).toBeInTheDocument();
+    });
 });

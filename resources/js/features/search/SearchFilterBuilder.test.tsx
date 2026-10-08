@@ -86,4 +86,11 @@ describe('SearchFilterBuilder', () => {
         expect(heading.parentElement!.style.boxShadow).toBe('var(--pop-shadow)');
         expect(screen.getByRole('button', { name: 'Urgent' }).className).toContain('hover:border-fg');
     });
+
+    it('v2: in the yellow pill, priority bars switch to ink and the remove ✕ hovers to full strength', () => {
+        render(<SearchFilterBuilder filters={{ priority: 'low' }} onChange={vi.fn()} />);
+        const remove = screen.getByRole('button', { name: 'Remove Priority filter' });
+        expect(remove.parentElement!.className).toContain('[--prio-bar:var(--on-hi)]');
+        expect(remove.className).toContain('hover:opacity-100');
+    });
 });

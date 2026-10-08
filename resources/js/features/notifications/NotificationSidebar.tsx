@@ -62,7 +62,8 @@ export function NotificationSidebar({
     return (
         <>
             {/* Not a heading: the list pane owns the "Inbox" heading. */}
-            <div style={{ ...sideTitle, display: 'flex', alignItems: 'center', gap: 8, paddingBottom: 10 }}>
+            {/* The left pad clears the floating "Expand sidebar" button when the main sidebar is hidden. */}
+            <div style={{ ...sideTitle, display: 'flex', alignItems: 'center', gap: 8, padding: '16px 16px 10px calc(16px + var(--nav-inset, 0px))' }}>
                 Inbox
                 {unreadCount > 0 && (
                     // The title's display font and tracking would otherwise reach the badge.

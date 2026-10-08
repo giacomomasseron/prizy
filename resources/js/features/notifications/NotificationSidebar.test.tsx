@@ -133,4 +133,9 @@ describe('NotificationSidebar', () => {
         expect(screen.getByRole('button', { name: /Engineering/ }).style.background).toBe('');
         expect(screen.getByRole('link', { name: /Back to Issues/ }).className).toContain('hover:bg-hover');
     });
+
+    it('v2: the rail title clears the floating Expand-sidebar button when the sidebar is hidden', () => {
+        wrap();
+        expect(screen.getByTestId('rail-unread-badge').parentElement!.style.padding).toBe('16px 16px 10px calc(16px + var(--nav-inset, 0px))');
+    });
 });

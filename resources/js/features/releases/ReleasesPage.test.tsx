@@ -115,4 +115,9 @@ describe('ReleasesPage', () => {
         expect(screen.getByRole('heading', { name: 'New release' }).style.fontFamily).toBe('var(--font-display)');
         expect(screen.getByRole('button', { name: 'Create release' }).className).toContain('bg-fg');
     });
+
+    it('v2: the body is not capped, so the cards line up with the header actions', () => {
+        renderPage();
+        expect(screen.getByTestId('releases-upcoming').parentElement!.parentElement!.style.maxWidth).toBe('');
+    });
 });

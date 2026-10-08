@@ -228,4 +228,10 @@ describe('ReleaseDetailPage', () => {
         expect(screen.getAllByTestId('release-issue-row')[0].className).toContain('hover:bg-hover');
         expect(screen.getByLabelText('Target date').className).toContain('focus:border-fg');
     });
+
+    it('v2: "Release not found." clears the floating Expand-sidebar button', () => {
+        detail = undefined as unknown as ReleaseDetail;
+        renderPage();
+        expect(screen.getByText('Release not found.').style.padding).toBe('28px 28px 28px calc(28px + var(--nav-inset, 0px))');
+    });
 });

@@ -71,4 +71,11 @@ describe('AnalyticsLayout', () => {
         expect(screen.getByRole('link', { name: 'Back to tracker' }).className).toContain('hover:border-fg');
         expect(screen.getByText('By status').style.fontFamily).toBe('var(--font-display)');
     });
+
+    it('v2: the rail title and sub-line clear the floating Expand-sidebar button when the sidebar is hidden', () => {
+        renderLayout();
+        expect(screen.getByRole('heading', { name: 'Analytics' }).style.padding).toBe('16px 16px 0 calc(16px + var(--nav-inset, 0px))');
+        expect(screen.getByText('Issues and cycles').style.padding).toBe('2px 16px 8px calc(16px + var(--nav-inset, 0px))');
+        expect(screen.getByText('Reports')).toBeInTheDocument();
+    });
 });

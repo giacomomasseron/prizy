@@ -65,10 +65,10 @@ export default function ReleaseDetailPage() {
     useEffect(() => () => { if (copiedTimer.current) clearTimeout(copiedTimer.current); }, []);
 
     if (releaseQ.isLoading) {
-        return <p style={{ margin: 0, padding: 28, fontSize: 14, color: 'var(--fg3)' }}>Loading…</p>;
+        return <p style={{ margin: 0, padding: '28px 28px 28px calc(28px + var(--nav-inset, 0px))', fontSize: 14, color: 'var(--fg3)' }}>Loading…</p>;
     }
     if (releaseQ.isError || !releaseQ.data) {
-        return <p style={{ margin: 0, padding: 28, fontSize: 14, color: 'var(--fg3)' }}>Release not found.</p>;
+        return <p style={{ margin: 0, padding: '28px 28px 28px calc(28px + var(--nav-inset, 0px))', fontSize: 14, color: 'var(--fg3)' }}>Release not found.</p>;
     }
 
     const release = releaseQ.data;

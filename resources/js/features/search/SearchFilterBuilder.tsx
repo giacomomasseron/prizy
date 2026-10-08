@@ -191,7 +191,8 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                     return (
                         <span
                             key={key}
-                            className={HI_PILL_CLASSES}
+                            // --prio-bar: a priority icon's filled bars stay ink on the yellow fill (cream --fg vanishes in dark mode).
+                            className={`${HI_PILL_CLASSES} [--prio-bar:var(--on-hi)]`}
                             style={{
                                 display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 8px 4px 12px',
                                 borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid',
@@ -212,6 +213,7 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                                 type="button"
                                 aria-label={`Remove ${fieldLabel} filter`}
                                 onClick={() => removeFilter(key)}
+                                className="opacity-70 hover:opacity-100"
                                 style={{ color: 'inherit', fontSize: 12, background: 'none', border: 'none', cursor: 'pointer', padding: '0 2px', lineHeight: 1, marginLeft: 2, fontFamily: 'inherit' }}
                             >
                                 ✕
