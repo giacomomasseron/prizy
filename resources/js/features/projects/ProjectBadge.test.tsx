@@ -19,4 +19,9 @@ describe('ProjectBadge', () => {
         expect(el.textContent).toBe('?');
         expect(el.style.background).toBe('var(--border2)');
     });
+
+    it('G3a: the initial is ink on a pale project colour (white would be under 3:1)', () => {
+        const { container } = render(<ProjectBadge name="ops" color="#e0894a" size={30} />);
+        expect((container.firstElementChild as HTMLElement).style.color).toBe('var(--on-hi)');
+    });
 });

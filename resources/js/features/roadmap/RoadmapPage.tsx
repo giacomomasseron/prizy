@@ -5,6 +5,7 @@ import { barGeometry, computeWindow, isScheduled, markerLeft } from './layout';
 import { PageHeader } from '../../components/PageHeader';
 import { sectionTitle } from '../issues/issueStyles';
 import { cardStyle, emptyState } from '../projects/projectStyles';
+import { readableOn } from '../../lib/readableOn';
 
 export default function RoadmapPage() {
     const roadmap = useRoadmap();
@@ -44,9 +45,9 @@ export default function RoadmapPage() {
                                         <Link to={`/projects/${p.id}`} className="text-fg hover:text-accent" style={{ fontSize: 14, fontWeight: 600, textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</Link>
                                     </div>
                                     <div style={{ flex: 1, position: 'relative', height: '100%', backgroundImage: grid }}>
-                                        {/* White label on the project colour (spec §4.4). */}
+                                        {/* Label on the project colour: white or ink, whichever reads better (readableOn). */}
                                         <div data-testid={`bar-${p.id}`}
-                                            style={{ position: 'absolute', left: `${g.leftPct}%`, width: `${g.widthPct}%`, top: '50%', transform: 'translateY(-50%)', height: 32, borderRadius: 'var(--radius-pill)', background: p.color, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8, color: '#fff', fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}
+                                            style={{ position: 'absolute', left: `${g.leftPct}%`, width: `${g.widthPct}%`, top: '50%', transform: 'translateY(-50%)', height: 32, borderRadius: 'var(--radius-pill)', background: p.color, display: 'flex', alignItems: 'center', padding: '0 14px', gap: 8, color: readableOn(p.color), fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}
                                             title={`${p.name} · ${p.start_date} → ${p.target_date} · ${p.status}`}>
                                             {p.name}<span style={{ opacity: .82, fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500 }}>{p.progress ?? 0}%</span>
                                         </div>

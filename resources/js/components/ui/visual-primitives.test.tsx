@@ -146,3 +146,14 @@ describe('PropertyRow', () => {
     expect(screen.getByText('Status').style.width).toBe('80px');
   });
 });
+
+describe('G3a: labels on user colours use readableOn', () => {
+    it('TeamTile and Avatar write ink on a pale colour and keep white on a deep one', () => {
+        const { container } = render(<><TeamTile identifier="AM" color="#e0a13a" /><TeamTile identifier="IN" color="#6366f1" /></>);
+        const [amber, indigo] = Array.from(container.children) as HTMLElement[];
+        expect(amber.style.color).toBe('var(--on-hi)');
+        expect(indigo.style.color).toBe('rgb(255, 255, 255)');
+        render(<Avatar initials="GR" color="#4bab66" size={24} title="Green" />);
+        expect(screen.getByTitle('Green').style.color).toBe('var(--on-hi)');
+    });
+});

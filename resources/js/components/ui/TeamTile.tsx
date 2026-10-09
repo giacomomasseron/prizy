@@ -1,3 +1,5 @@
+import { readableOn } from '../../lib/readableOn';
+
 export interface TeamTileProps {
     identifier: string;
     color: string;
@@ -12,7 +14,7 @@ export function TeamTile({ identifier, color, size = 34 }: TeamTileProps) {
                 height: size,
                 borderRadius: 9,
                 background: color,
-                color: '#fff',
+                color: readableOn(color),
                 fontWeight: 700,
                 fontSize: size * 0.35,
                 display: 'inline-flex',
