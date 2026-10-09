@@ -142,7 +142,7 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
                 <div>
                     <label htmlFor="kb-node-slug" style={fieldLabel}>Slug</label>
                     <Input id="kb-node-slug" value={slug} onChange={(e) => { setSlugTouched(true); setSlug(e.target.value); }} placeholder="slug" style={{ fontFamily: 'var(--font-mono)', fontSize: 13 }} />
-                    {slugError && <div style={{ color: 'var(--red)', fontSize: 12, marginTop: 6 }}>{slugError}</div>}
+                    {slugError && <div style={{ color: 'var(--red-ink)', fontSize: 12, marginTop: 6 }}>{slugError}</div>}
                 </div>
 
                 {isCategory && (
@@ -211,7 +211,7 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
                     </>
                 )}
 
-                {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+                {error && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12.5 }}>{error}</div>}
             </div>
 
             <div style={modalFooter}>

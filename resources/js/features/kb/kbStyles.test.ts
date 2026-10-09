@@ -21,13 +21,13 @@ describe('kbStyles', () => {
     });
 
     it('status pills merge the pill base with a token tone', () => {
-        expect(s.statusPill('published')).toEqual({ ...s.pillBase, color: 'var(--sup)', background: 'var(--sup2)', borderColor: 'transparent' });
+        expect(s.statusPill('published')).toEqual({ ...s.pillBase, color: 'var(--sup-ink)', background: 'var(--sup2)', borderColor: 'transparent' });
         expect(s.statusPill('draft')).toEqual({ ...s.pillBase, color: 'var(--fg2)', background: 'var(--hover)', borderColor: 'transparent' });
         expect(s.statusPill('archived')).toEqual({ ...s.pillBase, color: 'var(--fg3)', background: 'transparent', borderColor: 'var(--border2)' });
         expect(s.pillBase).toMatchObject({ borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', fontSize: 11.5, fontWeight: 700 });
         expect(s.notTranslatedPill).toMatchObject({ borderStyle: 'dashed', borderColor: 'var(--border2)', color: 'var(--fg3)' });
         expect(s.sourceTag).toEqual({ fontSize: 12, fontWeight: 700, color: 'var(--fg3)', whiteSpace: 'nowrap' });
-        expect(s.currentBadge).toMatchObject({ color: 'var(--sup)', background: 'var(--sup2)', borderRadius: 'var(--radius-pill)' });
+        expect(s.currentBadge).toMatchObject({ color: 'var(--sup-ink)', background: 'var(--sup2)', borderRadius: 'var(--radius-pill)' });
         expect(s.staleDot).toEqual({ width: 7, height: 7, borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 });
     });
 

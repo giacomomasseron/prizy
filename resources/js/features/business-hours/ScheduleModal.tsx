@@ -104,7 +104,7 @@ export function ScheduleModal({ open, schedule, onClose }: ScheduleModalProps) {
                     <WeeklyEditor value={intervals} onChange={setIntervals} />
                 </div>
 
-                {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+                {error && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12.5 }}>{error}</div>}
             </div>
 
             <div style={modalFooter}>

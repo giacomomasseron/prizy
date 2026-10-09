@@ -39,8 +39,8 @@ const capBase: CSSProperties = {
     fontSize: 11, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: 'pointer',
 };
 const capOff: CSSProperties = { ...capBase, background: 'none', color: 'var(--fg3)', border: '1px dashed var(--border2)', opacity: 0.7 };
-const devOnStyle: CSSProperties = { ...capBase, background: 'rgba(91,141,239,.16)', color: 'var(--blue)', border: '1px solid transparent' };
-const agentOnStyle: CSSProperties = { ...capBase, background: 'rgba(75,171,102,.16)', color: 'var(--green)', border: '1px solid transparent' };
+const devOnStyle: CSSProperties = { ...capBase, background: 'rgba(91,141,239,.16)', color: 'var(--blue-ink)', border: '1px solid transparent' };
+const agentOnStyle: CSSProperties = { ...capBase, background: 'rgba(75,171,102,.16)', color: 'var(--green-ink)', border: '1px solid transparent' };
 const capDot: CSSProperties = { width: 6, height: 6, borderRadius: '50%', background: 'currentColor', flexShrink: 0 };
 
 const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
@@ -149,7 +149,7 @@ export default function MembersPage() {
                         background: 'rgba(239,68,68,.08)',
                         border: '1px solid rgba(239,68,68,.3)',
                         marginBottom: 16,
-                        color: 'var(--red)',
+                        color: 'var(--red-ink)',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
@@ -165,7 +165,7 @@ export default function MembersPage() {
                             background: 'none',
                             border: 'none',
                             cursor: 'pointer',
-                            color: 'var(--red)',
+                            color: 'var(--red-ink)',
                             fontSize: 16,
                             lineHeight: 1,
                             padding: 0,
@@ -358,7 +358,7 @@ export default function MembersPage() {
                                                 flexShrink: 0,
                                             }}
                                         />
-                                        <span style={{ color: 'var(--amber)', fontSize: 12 }}>Invited</span>
+                                        <span style={{ color: 'var(--amber-ink)', fontSize: 12 }}>Invited</span>
                                     </>
                                 )}
                             </div>
@@ -403,7 +403,7 @@ export default function MembersPage() {
                             gap: 8,
                             padding: '10px 18px',
                             fontSize: 12.5,
-                            color: 'var(--amber)',
+                            color: 'var(--amber-ink)',
                             background: 'rgba(224,161,58,.08)',
                             borderRadius: '0 0 16px 16px',
                         }}

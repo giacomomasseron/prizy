@@ -12,7 +12,7 @@ export const authInput: CSSProperties = {
     height: 48, borderRadius: 14, borderWidth: 'var(--line)', borderStyle: 'solid', background: 'var(--panel)',
     color: 'var(--fg)', fontSize: 15.5, fontWeight: 500, padding: '0 16px', fontFamily: 'inherit', width: '100%', boxSizing: 'border-box',
 };
-export const authError: CSSProperties = { margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--red)' };
+export const authError: CSSProperties = { margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--red-ink)' };
 /** Page h1. Wrap the text in <span className="hl">. */
 export const authTitle: CSSProperties = { margin: '0 0 10px', fontFamily: 'var(--font-display)', fontSize: 46, fontWeight: 800, letterSpacing: '-.045em', lineHeight: 1 };
 export const authLead: CSSProperties = { margin: '0 0 32px', color: 'var(--fg2)', fontSize: 16.5 };

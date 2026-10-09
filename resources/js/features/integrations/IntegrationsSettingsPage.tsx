@@ -14,7 +14,7 @@ const glyphStyle = (color: string): CSSProperties => ({ width: 40, height: 40, b
 const cardBase: CSSProperties = { ...cardFrame, padding: 16 };
 const sectionLabel: CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' };
 const grid: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 };
-const connectedBadge: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 600, color: 'var(--green)', background: 'var(--sup2)', borderRadius: 20, padding: '1px 8px' };
+const connectedBadge: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 10.5, fontWeight: 600, color: 'var(--green-ink)', background: 'var(--sup2)', borderRadius: 20, padding: '1px 8px' };
 
 function CardHead({ d, tag }: { d: IntegrationDef; tag: ReactNode }) {
     return (
@@ -51,7 +51,7 @@ export default function IntegrationsSettingsPage() {
     if (slack.isError || github.isError) {
         return (
             <div style={pageFrame}>
-                <p role="alert" style={{ color: 'var(--red)', fontSize: 13 }}>Couldn't load integration status. Please retry.</p>
+                <p role="alert" style={{ color: 'var(--red-ink)', fontSize: 13 }}>Couldn't load integration status. Please retry.</p>
             </div>
         );
     }
@@ -83,7 +83,7 @@ export default function IntegrationsSettingsPage() {
             <h1 style={pageTitle}><span className="hl">Integrations</span></h1>
             <p style={pageLead}>Connect Prizy to the tools your team already uses. Connected integrations sync across both the Issue Tracker and Support modules.</p>
 
-            {error && <p role="alert" style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--red)' }}>{error}</p>}
+            {error && <p role="alert" style={{ margin: '12px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
             {connected.length > 0 && (
                 <>

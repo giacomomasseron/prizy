@@ -80,7 +80,7 @@ export default function BusinessHoursSettingsPage() {
                 </Button>
             </div>
 
-            {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red)' }}>{error}</p>}
+            {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
             {schedulesQ.isLoading && <p style={{ color: 'var(--fg3)' }}>Loading…</p>}
             {!schedulesQ.isLoading && schedules.length === 0 && (

@@ -23,7 +23,7 @@ export function KbTranslationCard({ articleId, onOpen }: { articleId: string; on
             )}
 
             {translationsQuery.isError && (
-                <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 9 }}>
+                <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginTop: 9 }}>
                     {translationsQuery.error instanceof ApiError ? translationsQuery.error.detail : 'Failed to load translations.'}
                 </div>
             )}

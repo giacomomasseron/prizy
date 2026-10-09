@@ -110,7 +110,7 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
                 })}
             </div>
 
-            {error && <div role="alert" style={{ margin: '10px 22px', fontSize: 12.5, color: 'var(--red)' }}>{error}</div>}
+            {error && <div role="alert" style={{ margin: '10px 22px', fontSize: 12.5, color: 'var(--red-ink)' }}>{error}</div>}
         </div>
     );
 }

@@ -102,7 +102,7 @@ export default function LabelsSettingsPage() {
                 </form>
             )}
 
-            {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red)' }}>{error}</p>}
+            {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
             <div style={statGrid}>
                 <div style={statCard}><div style={statLabel}>Total labels</div><div style={statValue} data-testid="stat-total">{stats.total}</div></div>

@@ -150,7 +150,7 @@ export function InviteModal({ open, onClose }: Props) {
                             ...alertBox,
                             background: 'rgba(224,161,58,.08)',
                             border: '1px solid rgba(224,161,58,.3)',
-                            color: 'var(--amber)',
+                            color: 'var(--amber-ink)',
                         }}
                     >
                         ⚠ This member will have no access to any module.
@@ -162,7 +162,7 @@ export function InviteModal({ open, onClose }: Props) {
                     <div
                         role="alert"
                         data-testid="invite-error"
-                        style={{ color: 'var(--red)', fontSize: 12.5 }}
+                        style={{ color: 'var(--red-ink)', fontSize: 12.5 }}
                     >
                         {errorMsg}
                     </div>

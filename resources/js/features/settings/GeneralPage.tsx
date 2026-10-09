@@ -13,7 +13,7 @@ import { useUpdateHelpdeskEnabled, useUpdateNotificationPreferences } from './ho
 const card: CSSProperties = { border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '20px 22px' };
 const cardHeading: CSSProperties = { ...sectionTitle(17), margin: '0 0 12px' };
 const bodyText: CSSProperties = { fontSize: 13.5, lineHeight: 1.6, color: 'var(--fg2)' };
-const errorText: CSSProperties = { margin: '10px 0 0', fontSize: 13, color: 'var(--red)' };
+const errorText: CSSProperties = { margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' };
 
 export default function GeneralPage() {
     const me = useMe();
@@ -90,7 +90,7 @@ export default function GeneralPage() {
                             <option value="weekly">Weekly</option>
                         </select>
                     </label>
-                    {saved && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>Saved</span>}
+                    {saved && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-ink)' }}>Saved</span>}
                 </div>
                 {error && <p style={errorText}>{error}</p>}
             </section>

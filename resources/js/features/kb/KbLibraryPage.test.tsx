@@ -161,7 +161,7 @@ describe('KbLibraryPage', () => {
         expect(firstRow.style.background).toBe('');
         expect(screen.getByRole('button', { name: 'Open Published one' }).className).toContain('hover:text-accent');
         const pill = within(firstRow).getByText('Published');
-        expect(pill.style.color).toBe('var(--sup)');
+        expect(pill.style.color).toBe('var(--sup-ink)');
         expect(pill.style.background).toBe('var(--sup2)');
     });
 
