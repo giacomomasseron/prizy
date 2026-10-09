@@ -293,3 +293,43 @@ describe('v2 overlay styling', () => {
     expect((panel.previousElementSibling as HTMLElement).style.background).toBe('var(--backdrop)');
   });
 });
+
+describe('G3a: drawer edge and the danger button', () => {
+    it('a drawer draws the v2 ink edge on the side facing the page, with no fixed colours', () => {
+        const { unmount } = render(<Drawer open onClose={() => {}} label="Right"><p>x</p></Drawer>);
+        expect(screen.getByRole('dialog', { name: 'Right' }).style.boxShadow).toBe('-6px 0 0 var(--fg)');
+        unmount();
+        render(<Drawer open onClose={() => {}} side="left" label="Left"><p>x</p></Drawer>);
+        expect(screen.getByRole('dialog', { name: 'Left' }).style.boxShadow).toBe('6px 0 0 var(--fg)');
+    });
+    it('the danger Button is red through classes (so its hover works), with no inline colour', () => {
+        render(<Button variant="danger">Delete</Button>);
+        const b = screen.getByRole('button', { name: 'Delete' });
+        expect(b.className).toContain('bg-red');
+        expect(b.className).toContain('enabled:hover:bg-red-ink');
+        expect(b.className).toContain('text-on-accent');
+        expect(b.style.background).toBe('');
+    });
+});
+
+describe('G3a: Menu disabled and danger items, and long lists', () => {
+    const items = [
+        { key: 'a', label: 'Open', onActivate: vi.fn() },
+        { key: 'b', label: 'Locked', onActivate: vi.fn(), disabled: true },
+        { key: 'c', label: 'Delete', onActivate: vi.fn(), danger: true },
+    ];
+    it('a disabled item gets no hover/focus tint; a danger item is written in red ink', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        expect(screen.getByRole('menuitem', { name: 'Locked' }).className).not.toContain('hover:bg-hover');
+        expect(screen.getByRole('menuitem', { name: 'Open' }).className).toContain('hover:bg-hover');
+        expect(screen.getByRole('menuitem', { name: 'Delete' }).style.color).toBe('var(--red-ink)');
+    });
+    it('the popover caps its height and scrolls a long list inside itself', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        const menu = screen.getByRole('menu');
+        expect(menu.style.maxHeight).toBe('min(320px, 60vh)');
+        expect(menu.style.overflowY).toBe('auto');
+    });
+});

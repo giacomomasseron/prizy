@@ -227,7 +227,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
 
             {/* Inline error */}
             {error && (
-                <div style={{ ...alertBox, color: 'var(--red)', background: tint('var(--red)', 10), marginTop: 14 }}>
+                <div style={{ ...alertBox, color: 'var(--red-ink)', background: tint('var(--red)', 10), marginTop: 14 }}>
                     {error}
                 </div>
             )}

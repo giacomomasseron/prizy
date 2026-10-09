@@ -33,6 +33,15 @@ describe('ConfirmProvider / useConfirm', () => {
         fireEvent.keyDown(document, { key: 'Escape' });
         await waitFor(() => expect(results).toEqual([false]));
     });
+
+    it('G3a: the title is the v2 display title and a danger confirm is the red Button variant', async () => {
+        render(<ConfirmProvider><Harness onResult={() => {}} /></ConfirmProvider>);
+        fireEvent.click(screen.getByRole('button', { name: 'Ask' }));
+        expect((await screen.findByText('Delete it?')).style.fontFamily).toBe('var(--font-display)');
+        const confirm = screen.getByTestId('confirm-dialog-confirm');
+        expect(confirm.className).toContain('bg-red');
+        expect(confirm.style.background).toBe('');
+    });
 });
 
 it('resolves a pending confirm false when the provider unmounts', async () => {

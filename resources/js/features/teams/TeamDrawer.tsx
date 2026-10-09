@@ -21,7 +21,7 @@ const rolePill: CSSProperties = {
     fontSize: 11.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
 };
 const ROLE_CLASSES = {
-    lead: 'border-accent bg-accent2 text-accent',
+    lead: 'border-accent bg-accent2 text-accent-ink',
     member: 'border-border bg-transparent text-fg2 hover:border-fg',
 } as const;
 
@@ -81,9 +81,9 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                 </div>
 
                 {error && (
-                    <div role="alert" data-testid="team-drawer-error" style={{ ...alertBox, background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.3)', marginBottom: 14, color: 'var(--red)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                    <div role="alert" data-testid="team-drawer-error" style={{ ...alertBox, background: 'rgba(239,68,68,.08)', border: '1px solid rgba(239,68,68,.3)', marginBottom: 14, color: 'var(--red-ink)', display: 'flex', justifyContent: 'space-between', gap: 8 }}>
                         <span>{error}</span>
-                        <button type="button" aria-label="Dismiss error" onClick={clear} style={{ background: 'transparent', border: 'none', color: 'var(--red)', cursor: 'pointer' }}>×</button>
+                        <button type="button" aria-label="Dismiss error" onClick={clear} style={{ background: 'transparent', border: 'none', color: 'var(--red-ink)', cursor: 'pointer' }}>×</button>
                     </div>
                 )}
 

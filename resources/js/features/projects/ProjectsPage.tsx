@@ -46,7 +46,7 @@ export default function ProjectsPage() {
 
             <div style={{ padding: '4px 26px 40px' }}>
                 {error && (
-                    <div role="alert" style={{ margin: '0 0 12px', color: 'var(--red)', fontSize: 13 }}>
+                    <div role="alert" style={{ margin: '0 0 12px', color: 'var(--red-ink)', fontSize: 13 }}>
                         {error}
                     </div>
                 )}

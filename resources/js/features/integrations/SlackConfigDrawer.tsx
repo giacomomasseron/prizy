@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { checkboxStyle, fieldLabel, modalTitle } from '../settings/settingsStyles';
 import { useSlackIntegration, useSaveSlackIntegration, useSendSlackTest } from './hooks';
+import { ink } from '../../lib/ink';
 
 const EVENT_OPTIONS: Array<{ key: string; label: string }> = [
     { key: 'created', label: 'Issue created' },
@@ -14,7 +15,8 @@ const EVENT_OPTIONS: Array<{ key: string; label: string }> = [
 ];
 
 const checkRow: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, marginTop: 12, cursor: 'pointer' };
-const msgStyle = (color: string): CSSProperties => ({ fontSize: 13, fontWeight: 600, color });
+/** Status message ("Saved", errors): the colour is a status token, so the text takes its ink partner (4.5:1). */
+const msgStyle = (color: string): CSSProperties => ({ fontSize: 13, fontWeight: 600, color: ink(color) });
 
 export function SlackConfigDrawer({ open, onClose }: { open: boolean; onClose(): void }) {
     const slack = useSlackIntegration();

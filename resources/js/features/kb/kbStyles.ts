@@ -41,7 +41,7 @@ export const pillBase: CSSProperties = {
 };
 export const STATUS_TONE: Record<KbStatus, { color: string; background: string; borderColor: string }> = {
     draft: { color: 'var(--fg2)', background: 'var(--hover)', borderColor: 'transparent' },
-    published: { color: 'var(--sup)', background: 'var(--sup2)', borderColor: 'transparent' },
+    published: { color: 'var(--sup-ink)', background: 'var(--sup2)', borderColor: 'transparent' },
     archived: { color: 'var(--fg3)', background: 'transparent', borderColor: 'var(--border2)' },
 };
 export function statusPill(status: KbStatus): CSSProperties {
@@ -50,7 +50,7 @@ export function statusPill(status: KbStatus): CSSProperties {
 export const notTranslatedPill: CSSProperties = { ...pillBase, color: 'var(--fg3)', background: 'transparent', borderColor: 'var(--border2)', borderStyle: 'dashed' };
 export const sourceTag: CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--fg3)', whiteSpace: 'nowrap' };
 export const currentBadge: CSSProperties = {
-    fontSize: 10.5, fontWeight: 700, color: 'var(--sup)', background: 'var(--sup2)', borderRadius: 'var(--radius-pill)',
+    fontSize: 10.5, fontWeight: 700, color: 'var(--sup-ink)', background: 'var(--sup2)', borderRadius: 'var(--radius-pill)',
     padding: '1px 7px', whiteSpace: 'nowrap', flexShrink: 0,
 };
 export const staleDot: CSSProperties = { width: 7, height: 7, borderRadius: '50%', background: 'var(--amber)', flexShrink: 0 };
@@ -87,4 +87,4 @@ export const fieldShell: CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 2, height: 38, padding: '0 15px', background: 'var(--panel)',
     borderRadius: 'var(--radius-pill)', boxSizing: 'border-box', minWidth: 0,
 };
-export const FIELD_SHELL_CLASSES = 'border-[1.5px] border-solid border-border2 focus-within:border-fg';
+export const FIELD_SHELL_CLASSES = 'border-[1.5px] border-solid border-field focus-within:border-fg';

@@ -136,4 +136,10 @@ describe('TicketComposer', () => {
         expect(dotOf('Public reply').style.opacity).toBe('0.35');
         expect(dotOf('Internal note').style.opacity).toBe('1');
     });
+
+    it('G3a: the active tab is ringed in the 3:1 field colour', () => {
+        render(<TicketComposer ticket={ticket()} />);
+        expect(screen.getByRole('button', { name: 'Public reply' }).style.boxShadow).toBe('0 0 0 1.5px var(--field)');
+        expect(screen.getByRole('button', { name: 'Internal note' }).style.boxShadow).toBe('none');
+    });
 });

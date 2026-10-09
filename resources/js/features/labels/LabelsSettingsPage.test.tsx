@@ -82,7 +82,7 @@ describe('LabelsSettingsPage', () => {
         expect(screen.getByTestId('delete-1').className).toContain('hover:text-red');
         fireEvent.click(screen.getByRole('button', { name: 'New label' }));
         expect(screen.getByRole('button', { name: 'Add label' }).className).toContain('bg-fg');
-        expect(screen.getByLabelText('Label name').className).toContain('border-border2');
+        expect(screen.getByLabelText('Label name').className).toContain('border-field');
     });
 
     it('v2: a long "Most used" name truncates and keeps the full name in its title', () => {
@@ -99,5 +99,12 @@ describe('LabelsSettingsPage', () => {
         render(<LabelsSettingsPage />);
         expect(screen.getByText('No labels yet.').style.border).toBe('var(--line) dashed var(--border2)');
         labelItems = DEFAULT_LABELS;
+    });
+
+    it('G3a: the exclusive-group badge writes accent text in the ink partner on its accent tint', () => {
+        render(<LabelsSettingsPage />);
+        const badge = screen.getByText('Group · one of');
+        expect(badge.style.color).toBe('var(--accent-ink)');
+        expect(badge.style.background).toBe('var(--accent2)');
     });
 });

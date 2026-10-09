@@ -1,6 +1,7 @@
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { avatarFor } from '../../lib/avatarFor';
+import { ink } from '../../lib/ink';
 import { Menu, type MenuItem } from '../../components/ui/Menu';
 import { TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
@@ -78,7 +79,7 @@ export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, 
                                         const primary = primarySlaMetric(t.sla_metrics);
                                         const pres = primary ? slaMetricPresentation(primary) : null;
                                         return (
-                                            <span style={{ marginLeft: 'auto', fontSize: 11, color: pres ? pres.color : 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
+                                            <span style={{ marginLeft: 'auto', fontSize: 11, color: pres ? ink(pres.color) : 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>
                                                 {pres ? pres.remaining : '—'}
                                             </span>
                                         );

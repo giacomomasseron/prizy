@@ -27,4 +27,9 @@ describe('VelocityTable', () => {
         expect(other.className).toContain('hover:bg-hover');
         expect(other.style.background).toBe('');
     });
+
+    it('G3a: a good completion rate is written in the green ink partner', () => {
+        render(<VelocityTable rows={[row]} selectedId="c1" onSelect={vi.fn()} />);
+        expect(screen.getByText('80%').style.color).toBe('var(--green-ink)');
+    });
 });

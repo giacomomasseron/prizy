@@ -132,7 +132,7 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
             <div style={{ flex: 1, minHeight: 0, display: 'flex' }}>
                 <div style={drawerList}>
                     {translationsQuery.isError && (
-                        <div role="alert" style={{ color: 'var(--red)', fontSize: 12, padding: 8 }}>
+                        <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, padding: 8 }}>
                             {translationsQuery.error instanceof ApiError ? translationsQuery.error.detail : 'Failed to load translations.'}
                         </div>
                     )}
@@ -352,7 +352,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
         return (
             <div style={{ flex: 1, padding: 20 }}>
                 {detailQuery.isError ? (
-                    <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>
+                    <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>
                         {detailQuery.error instanceof ApiError ? detailQuery.error.detail : 'Failed to load this translation.'}
                     </div>
                 ) : (
@@ -431,15 +431,15 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
             </div>
 
             <div data-testid="kb-translation-footer" style={drawerFooter}>
-                {deleteError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{deleteError}</div>}
-                {statusError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{statusError}</div>}
-                {saveError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 8 }}>{saveError}</div>}
+                {deleteError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 8 }}>{deleteError}</div>}
+                {statusError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 8 }}>{statusError}</div>}
+                {saveError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 8 }}>{saveError}</div>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     <button
                         type="button"
                         onClick={handleDelete}
                         disabled={status === null}
-                        className="text-fg3 enabled:hover:text-red"
+                        className="text-fg3 enabled:hover:text-red-ink"
                         style={{ border: 'none', background: 'none', padding: 0, fontSize: 12.5, fontWeight: 600, fontFamily: 'inherit', whiteSpace: 'nowrap', cursor: status === null ? 'not-allowed' : 'pointer', opacity: status === null ? 0.5 : 1 }}
                     >
                         Delete translation
@@ -496,6 +496,7 @@ function StatusControl({ value, onChange, disabledAll, disabledPublish }: {
                         type="button"
                         disabled={disabled}
                         onClick={() => onChange(opt.value)}
+                        aria-pressed={active}
                         style={{
                             padding: '5px 12px',
                             borderRadius: 'var(--radius-pill)',
@@ -507,7 +508,7 @@ function StatusControl({ value, onChange, disabledAll, disabledPublish }: {
                             background: active ? 'var(--panel)' : 'transparent',
                             color: active ? 'var(--fg)' : 'var(--fg2)',
                             opacity: disabled ? 0.5 : 1,
-                            boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
+                            boxShadow: active ? '0 0 0 1.5px var(--field)' : 'none',
                         }}
                     >
                         {opt.label}

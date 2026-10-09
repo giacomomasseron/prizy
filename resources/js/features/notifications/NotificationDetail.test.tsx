@@ -102,4 +102,11 @@ describe('NotificationDetail', () => {
         expect(screen.getByRole('button', { name: 'Mark read' }).className).toContain('border-border2');
         expect(screen.getByText('Why you got this').style.textTransform).toBe('');
     });
+
+    it('G3a: the kind tag writes accent text in the ink partner on its accent tint', () => {
+        wrap(makeItem());
+        const kind = screen.getAllByText('Assigned to you')[0];
+        expect(kind.style.color).toBe('var(--accent-ink)');
+        expect(kind.style.background).toBe('var(--accent2)');
+    });
 });

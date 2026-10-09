@@ -175,7 +175,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                 })}
             </div>
 
-            {error && <div role="alert" style={{ margin: '0 10px 10px', fontSize: 12, color: 'var(--red)' }}>{error}</div>}
+            {error && <div role="alert" style={{ margin: '0 10px 10px', fontSize: 12, color: 'var(--red-ink)' }}>{error}</div>}
 
             <div style={{ padding: 8, borderTop: '1px solid var(--border)' }}>
                 <button

@@ -118,7 +118,7 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                             <Input aria-label="Contact name" placeholder="Name" value={ncName} onChange={(e) => setNcName(e.target.value)} />
                             <Input aria-label="Contact email" placeholder="Email" value={ncEmail} onChange={(e) => setNcEmail(e.target.value)} />
                             <Input aria-label="Contact phone" placeholder="Phone (optional)" value={ncPhone} onChange={(e) => setNcPhone(e.target.value)} />
-                            {contactError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{contactError}</div>}
+                            {contactError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{contactError}</div>}
                             <div style={{ display: 'flex', gap: 8 }}>
                                 <Button size="sm" aria-label="Create contact" disabled={createContact.isPending || ncName.trim() === '' || ncEmail.trim() === ''} onClick={saveContact}>Create contact</Button>
                                 <Button variant="secondary" size="sm" onClick={() => setShowNewContact(false)}>Cancel</Button>
@@ -142,7 +142,7 @@ export function NewTicketModal({ open, onClose }: { open: boolean; onClose(): vo
                     <Textarea id="new-ticket-body" rows={4} placeholder="What is the customer reporting?" value={body} onChange={(e) => setBody(e.target.value)} />
                 </div>
 
-                {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+                {error && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12.5 }}>{error}</div>}
             </div>
 
             <div style={modalFooter}>

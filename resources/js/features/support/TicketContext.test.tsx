@@ -183,4 +183,20 @@ describe('TicketContext', () => {
         expect(sla.style.borderRadius).toBe('var(--radius-card)');
         expect(screen.getByText('First reply due').style.textTransform).toBe('');
     });
+
+    it('G3a: the linked issue card writes its identifier and arrow in the accent ink on the accent tint', () => {
+        ticketData = ticket({ linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }] });
+        renderWithRouter('t1');
+        const id = screen.getByText('PRJ-42');
+        expect(id.style.color).toBe('var(--accent-ink)');
+        expect((id.nextElementSibling as HTMLElement).style.color).toBe('var(--accent-ink)');
+        expect((id.closest('a') as HTMLElement).style.background).toBe('var(--accent2)');
+    });
+
+    it('G3a: the SLA card writes its title and remaining time in the ink partner', () => {
+        ticketData = ticket({ sla_metrics: [{ metric: 'first_reply', policy_name: 'Standard SLA', target_minutes: 60, due_at: new Date().toISOString(), state: 'breached', remaining_minutes: 0, within_business_hours: true }] });
+        renderWithRouter('t1');
+        expect(screen.getByText('SLA breached').style.color).toBe('var(--red-ink)');
+        expect(screen.getByText('Overdue').style.color).toBe('var(--red-ink)');
+    });
 });

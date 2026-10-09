@@ -161,7 +161,7 @@ describe('KbLibraryPage', () => {
         expect(firstRow.style.background).toBe('');
         expect(screen.getByRole('button', { name: 'Open Published one' }).className).toContain('hover:text-accent');
         const pill = within(firstRow).getByText('Published');
-        expect(pill.style.color).toBe('var(--sup)');
+        expect(pill.style.color).toBe('var(--sup-ink)');
         expect(pill.style.background).toBe('var(--sup2)');
     });
 
@@ -186,5 +186,13 @@ describe('KbLibraryPage', () => {
         render(<QueryClientProvider client={qc}><MemoryRouter><KbLibraryPage /></MemoryRouter></QueryClientProvider>);
         expect(screen.queryByPlaceholderText('Search titles')).toBeNull();
         expect(screen.queryByRole('button', { name: '＋ New article' })).toBeNull();
+    });
+
+    it('G3a: an archived row is not faded (the Archived pill marks it), so its text keeps full contrast', async () => {
+        const archived = { categories: [{ ...library.categories[0], sections: [{ ...library.categories[0].sections[0], articles: [art({ id: 'a3', title: 'Old one', slug: 'old-one', status: 'archived', published_at: null, public_url: null })] }] }] };
+        renderPage(archived);
+        const row = (await screen.findByText('Old one')).closest('[role=row]') as HTMLElement;
+        expect(row.style.opacity).toBe('');
+        expect(within(row).getByText('Archived')).toBeInTheDocument();
     });
 });

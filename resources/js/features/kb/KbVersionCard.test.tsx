@@ -50,7 +50,7 @@ describe('KbVersionCard', () => {
         expect(row.style.background).toBe('');
         expect(row.style.borderRadius).toBe('var(--radius-row)');
         const badge = screen.getByText('Current');
-        expect(badge.style.color).toBe('var(--sup)');
+        expect(badge.style.color).toBe('var(--sup-ink)');
         expect(badge.style.background).toBe('var(--sup2)');
         expect(screen.getByText('Version history').style.textTransform).toBe('');
         expect(screen.getByRole('button', { name: 'View all 2 versions' }).style.width).toBe('100%');

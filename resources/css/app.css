@@ -13,6 +13,12 @@
   --sup:#3a8f4d; --sup2:rgba(58,143,77,.14); --on-sup:#ffffff;
   --note:#a8691c; --note2:rgba(168,105,28,.12);
   --backdrop:rgba(29,26,20,.32);
+  /* Text-only ("ink") partners of the status colours: 4.5:1 on panel, bg, bg2 and on a 15% tint of their partner.
+     Fills, dots, bars and tints keep the base colours. The field colour is the input border, 3:1 (WCAG 1.4.11). */
+  --red-ink:#af2226; --amber-ink:#835216; --green-ink:#2b6938; --blue-ink:#2759b6; --teal-ink:#226762;
+  --accent-ink:#4844dc; --sup-ink:#2b6938; --note-ink:#835216;
+  --field:#918773;
+  color-scheme: light;
 }
 :root[data-theme="dark"] {
   --bg:#16140f; --bg2:#1e1b15; --panel:#25221b; --border:#332e25; --border2:#4a4335;
@@ -22,6 +28,10 @@
   --sup:#5fbf7a; --sup2:rgba(95,191,122,.16); --on-sup:#16140f;
   --note:#e5aa4c; --note2:rgba(229,170,76,.14);
   --backdrop:rgba(0,0,0,.5);
+  --red-ink:#f07777; --amber-ink:#e5aa4c; --green-ink:#5fbf7a; --blue-ink:#7ea6f2; --teal-ink:#4fb8af;
+  --accent-ink:#9693f7; --sup-ink:#5fbf7a; --note-ink:#e5aa4c;
+  --field:#746b58;
+  color-scheme: dark;
 }
 /* Shape tokens — theme-independent. */
 :root {
@@ -46,6 +56,19 @@
   --color-hi: var(--hi);           --color-on-accent: var(--on-accent);
   --color-on-sup: var(--on-sup);   --color-on-hi: var(--on-hi);
   --color-sup: var(--sup);         --color-sup2: var(--sup2);
+  --color-red-ink: var(--red-ink);     --color-amber-ink: var(--amber-ink);
+  --color-green-ink: var(--green-ink); --color-blue-ink: var(--blue-ink);
+  --color-teal-ink: var(--teal-ink);   --color-accent-ink: var(--accent-ink);
+  --color-sup-ink: var(--sup-ink);     --color-note-ink: var(--note-ink);
+  --color-field: var(--field);
+}
+
+/* One keyboard focus ring app-wide (v2 ink). The element list sits in :where, so the selector weighs one
+   pseudo-class; the rule is unlayered, so it also beats Tailwind utilities. A component that needs its own focus
+   style sets it inline. Text fields keep their ink-border focus (FIELD_CLASSES). */
+:where(a, button, summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
 }
 
 /* Highlighter behind display titles (v2). */
@@ -66,7 +89,7 @@ html, body { background: var(--bg); color: var(--fg); }
 @keyframes login-fade   { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
 .login-fade  { animation: login-fade .5s ease both; }
 @media (prefers-reduced-motion: reduce) { .login-fade { animation: none; } }
-.login-input { border-color: var(--border2); outline: none; transition: border-color .12s, box-shadow .12s; }
+.login-input { border-color: var(--field); outline: none; transition: border-color .12s, box-shadow .12s; }
 .login-input:focus { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); outline: 2px solid transparent; } /* the transparent outline shows in forced-colours mode */
 @media (max-width: 900px) { .login-aside { display: none; } }
 

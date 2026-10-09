@@ -98,7 +98,7 @@ export default function CreateTeamModal({ open, onClose }: { open: boolean; onCl
                     <div
                         role="alert"
                         data-testid="create-team-error"
-                        style={{ color: 'var(--red)', fontSize: 12.5 }}
+                        style={{ color: 'var(--red-ink)', fontSize: 12.5 }}
                     >
                         {errorMsg}
                     </div>

@@ -109,7 +109,7 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
                     {/* Review round 1, Finding 2: a failed fetch used to leave this pane silently
                         empty. Surface it inline instead, following KbVersionCard.tsx's convention. */}
                     {versionsQuery.isError && (
-                        <div role="alert" style={{ color: 'var(--red)', fontSize: 12, padding: 8 }}>
+                        <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, padding: 8 }}>
                             {versionsQuery.error instanceof ApiError ? versionsQuery.error.detail : 'Failed to load version history.'}
                         </div>
                     )}
@@ -140,7 +140,7 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
                         `detail`, so ChangesTab/FullTextTab had nothing to render and nothing to
                         say). The non-error branches below are otherwise unchanged. */}
                     {detailQuery.isError ? (
-                        <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>
+                        <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>
                             {detailQuery.error instanceof ApiError ? detailQuery.error.detail : 'Failed to load this version.'}
                         </div>
                     ) : (
@@ -150,7 +150,7 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
             </div>
 
             <div data-testid="kb-version-footer" style={drawerFooter}>
-                {restoreError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginBottom: 10 }}>{restoreError}</div>}
+                {restoreError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 10 }}>{restoreError}</div>}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
                     <p style={{ ...footNote, flex: 1, minWidth: 0, margin: 0 }}>
                         Restoring copies this version’s title and body into the article. Nothing is overwritten — the current text is kept as a version.
@@ -185,7 +185,7 @@ function VersionRow({ version, selected, onSelect }: { version: KbVersionSummary
 // The sign is a second cue besides the tint; aria-hidden so each line's text stays its own element.
 function DiffSign({ sign }: { sign: '+' | '-' | ' ' }) {
     return (
-        <span aria-hidden="true" style={{ width: 10, flexShrink: 0, fontWeight: 700, userSelect: 'none', color: sign === '+' ? 'var(--green)' : sign === '-' ? 'var(--red)' : 'transparent' }}>
+        <span aria-hidden="true" style={{ width: 10, flexShrink: 0, fontWeight: 700, userSelect: 'none', color: sign === '+' ? 'var(--green-ink)' : sign === '-' ? 'var(--red-ink)' : 'transparent' }}>
             {sign === '+' ? '+' : sign === '-' ? '−' : ''}
         </span>
     );

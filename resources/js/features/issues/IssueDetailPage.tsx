@@ -151,7 +151,7 @@ export default function IssueDetailPage() {
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg)' }}>{identifier}</span>
             </div>
 
-            {error && <p style={{ color: 'var(--red)', fontSize: 13, margin: '0 34px 12px' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--red-ink)', fontSize: 13, margin: '0 34px 12px' }}>{error}</p>}
 
             {/* Two-column layout: main content + sticky right rail */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40, alignItems: 'flex-start', padding: '22px 34px 80px' }}>
@@ -194,7 +194,7 @@ export default function IssueDetailPage() {
                             border: 'var(--line) solid var(--fg)', borderRadius: 'var(--radius-modal)', padding: '18px 20px',
                             boxShadow: 'var(--pop-shadow)', background: 'var(--panel)', marginBottom: 30,
                         }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 11px', borderRadius: 'var(--radius-pill)', background: 'var(--accent2)', color: 'var(--accent)', fontSize: 12.5, fontWeight: 700 }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 11px', borderRadius: 'var(--radius-pill)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700 }}>
                                 ↩ Escalated from Support
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 600 }}>{data.support_ticket.ref}</span>
                             </span>
@@ -313,7 +313,7 @@ export default function IssueDetailPage() {
                     <form onSubmit={submitComment} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginTop: 22 }}>
                         <Avatar {...(me.data?.name ? avatarFor(me.data) : {})} size={34} />
                         <div
-                            className="border-border2 focus-within:border-fg"
+                            className="border-field focus-within:border-fg"
                             style={{
                                 flex: 1, minWidth: 0, borderWidth: 'var(--line)', borderStyle: 'solid',
                                 borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '12px 14px 10px',

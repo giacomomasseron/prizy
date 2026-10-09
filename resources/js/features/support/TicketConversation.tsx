@@ -8,6 +8,7 @@ import type { TicketMessage } from '../../lib/types';
 import { TicketComposer } from './TicketComposer';
 import { TicketStatusMenu } from './TicketStatusMenu';
 import { paneHeader, paneTitle, tint } from './supportStyles';
+import { ink } from '../../lib/ink';
 
 const mainStyle: CSSProperties = { flex: 1, minWidth: 460, display: 'flex', flexDirection: 'column', background: 'var(--bg)' };
 function Empty({ text }: { text: string }) { return <div style={{ margin: 'auto', color: 'var(--fg3)', fontSize: 13 }}>{text}</div>; }
@@ -26,7 +27,7 @@ function MessageRow({ m }: { m: TicketMessage }) {
             <div style={{ flex: 1, minWidth: 0, border: `var(--line) solid ${border}`, background: bg, borderRadius: 16, overflow: 'hidden' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 15px', borderBottom: `1px solid ${border}` }}>
                     <span style={{ fontSize: 13, fontWeight: 700 }}>{m.sender.name}</span>
-                    <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: tagColor, background: tagBg }}>{roleLabel}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: ink(tagColor), background: tagBg }}>{roleLabel}</span>
                 </div>
                 <div style={{ padding: '12px 15px', fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{m.body}</div>
             </div>
@@ -54,7 +55,7 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
                         {t.csat_rating === 'thumbs_up' ? '👍 Rated good' : '👎 Rated poor'}
                     </span>
                 )}
-                {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
+                {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
                 <TicketStatusMenu ticket={t} />
             </header>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '22px 20px 20px' }}>

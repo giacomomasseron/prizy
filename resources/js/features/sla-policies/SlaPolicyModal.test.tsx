@@ -120,7 +120,7 @@ describe('SlaPolicyModal', () => {
     it('v2: display-font title, pill schedule select and pill footer buttons', () => {
         render(<SlaPolicyModal open onClose={vi.fn()} />);
         expect(screen.getByRole('heading', { name: 'New SLA policy' }).style.fontFamily).toBe('var(--font-display)');
-        expect(screen.getByLabelText('Schedule').className).toContain('border-border2');
+        expect(screen.getByLabelText('Schedule').className).toContain('border-field');
         expect(screen.getByRole('button', { name: 'Cancel' }).style.borderRadius).toBe('var(--radius-pill)');
         expect(screen.getByRole('button', { name: 'Create policy' }).className).toContain('bg-fg');
     });

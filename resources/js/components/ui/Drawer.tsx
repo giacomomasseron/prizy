@@ -30,7 +30,9 @@ export function Drawer({ open, onClose, side = 'right', width = 520, label, chil
                 style={{ width, maxWidth: '92vw', height: '100%', background: 'var(--panel)', outline: 'none',
                     borderLeft: side === 'right' ? 'var(--line) solid var(--border)' : undefined,
                     borderRight: side === 'left' ? 'var(--line) solid var(--border)' : undefined,
-                    boxShadow: side === 'right' ? '-24px 0 48px rgba(0,0,0,.32)' : '24px 0 48px rgba(0,0,0,.32)',
+                    // v2 ink edge (settings mockup), like the offset shadows on modals and popovers; a black blur
+                    // vanished on the dark theme.
+                    boxShadow: side === 'right' ? '-6px 0 0 var(--fg)' : '6px 0 0 var(--fg)',
                     display: 'flex', flexDirection: 'column', animation: 'prizy-slide .2s cubic-bezier(.2,.8,.2,1)', overflowY: 'auto' }}
             >
                 {children}

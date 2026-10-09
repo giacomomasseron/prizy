@@ -29,11 +29,16 @@ describe('supportStyles', () => {
     });
 
     it('tags and pills are sentence-case pills on token tints', () => {
-        expect(s.statusTag('var(--amber)')).toEqual({ fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)', color: 'var(--amber)', background: 'color-mix(in srgb, var(--amber) 15%, transparent)', whiteSpace: 'nowrap' });
-        expect(s.accentTag).toMatchObject({ color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 'var(--radius-pill)' });
+        expect(s.statusTag('var(--amber)')).toEqual({ fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)', color: 'var(--amber-ink)', background: 'color-mix(in srgb, var(--amber) 15%, transparent)', whiteSpace: 'nowrap' });
+        expect(s.accentTag).toMatchObject({ color: 'var(--accent-ink)', background: 'var(--accent2)', borderRadius: 'var(--radius-pill)' });
         expect(s.smallPill).toMatchObject({ borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid' });
         expect(s.smallPill).not.toHaveProperty('borderColor');
         expect(s.SMALL_PILL_CLASSES).toBe('border-border2 bg-panel text-fg2 hover:border-fg');
         expect(s.bar).toEqual({ height: 8, borderRadius: 'var(--radius-pill)', background: 'var(--border)', overflow: 'hidden' });
+    });
+
+    it('G3a: a status tag writes its text in the ink partner and keeps the base colour for the tint', () => {
+        expect(s.statusTag('var(--green)')).toMatchObject({ color: 'var(--green-ink)', background: 'color-mix(in srgb, var(--green) 15%, transparent)' });
+        expect(s.statusTag('var(--fg3)').color).toBe('var(--fg2)');
     });
 });

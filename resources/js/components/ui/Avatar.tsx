@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { readableOn } from '../../lib/readableOn';
 
 export interface AvatarProps {
     initials?: string;
@@ -35,7 +36,7 @@ export function Avatar({ initials, color, size = 20, title }: AvatarProps) {
             style={{
                 ...base,
                 background: color ?? 'var(--accent)',
-                color: color ? '#fff' : 'var(--on-accent)',
+                color: color ? readableOn(color) : 'var(--on-accent)',
                 fontSize: size * 0.4,
                 fontWeight: 600,
             }}

@@ -176,7 +176,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
                         rows={5}
-                        className="border-border focus:border-fg"
+                        className="border-field focus:border-fg"
                         style={{
                             display: 'block', width: '100%', boxSizing: 'border-box', background: 'var(--bg2)',
                             borderWidth: 'var(--line)', borderStyle: 'solid', borderRadius: 12,

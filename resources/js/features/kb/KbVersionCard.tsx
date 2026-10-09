@@ -29,7 +29,7 @@ export function KbVersionCard({ articleId, onOpen }: { articleId: string; onOpen
             )}
 
             {versionsQuery.isError && (
-                <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 9 }}>
+                <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginTop: 9 }}>
                     {versionsQuery.error instanceof ApiError ? versionsQuery.error.detail : 'Failed to load version history.'}
                 </div>
             )}

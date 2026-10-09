@@ -48,7 +48,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
         display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: 'var(--radius-pill)', border: 'none',
         fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
         color: active ? 'var(--fg)' : 'var(--fg2)', background: active ? 'var(--panel)' : 'transparent',
-        boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
+        boxShadow: active ? '0 0 0 1.5px var(--field)' : 'none',
     });
     const dot = (color: string, active: boolean): CSSProperties => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, opacity: active ? 1 : 0.35 });
 
@@ -73,7 +73,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
                 </div>
 
                 {error && (
-                    <div role="alert" style={{ marginBottom: 8, padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'var(--line) solid ' + tint('var(--red)', 45), background: tint('var(--red)', 10), color: 'var(--red)', fontSize: 12.5 }}>
+                    <div role="alert" style={{ marginBottom: 8, padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'var(--line) solid ' + tint('var(--red)', 45), background: tint('var(--red)', 10), color: 'var(--red-ink)', fontSize: 12.5 }}>
                         {error}
                     </div>
                 )}

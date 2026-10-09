@@ -5,12 +5,13 @@ import { Button } from '../components/ui/Button';
 import { AuthColumn } from './AuthChrome';
 import { AUTH_LINK_CLASSES, authColumn, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
 import { useLogin } from './useAuth';
+import { ink } from '../lib/ink';
 
 const ROWS = [
-    { id: 'ENG-482', title: 'Webhook retries drop payload on 429', status: 'In progress', color: 'var(--amber)' },
-    { id: 'SUP-119', title: 'Enterprise SSO loop after password reset', status: 'Escalated', color: 'var(--red)' },
-    { id: 'ENG-467', title: 'Cycle burndown miscounts carryover', status: 'In review', color: 'var(--blue)' },
-    { id: 'SUP-131', title: 'Attachment preview fails on Safari 17', status: 'Resolved', color: 'var(--green)' },
+    { id: 'ENG-482', title: 'Webhook retries drop payload on 429', status: 'In progress', tone: 'var(--amber)' },
+    { id: 'SUP-119', title: 'Enterprise SSO loop after password reset', status: 'Escalated', tone: 'var(--red)' },
+    { id: 'ENG-467', title: 'Cycle burndown miscounts carryover', status: 'In review', tone: 'var(--blue)' },
+    { id: 'SUP-131', title: 'Attachment preview fails on Safari 17', status: 'Resolved', tone: 'var(--green)' },
 ];
 
 export default function LoginPage() {
@@ -85,7 +86,7 @@ export default function LoginPage() {
                             <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 20px', borderBottom: '1px solid var(--border)', marginBottom: -1 }}>
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)', width: 58, flexShrink: 0 }}>{r.id}</span>
                                 <span style={{ flex: 1, minWidth: 0, fontSize: 14.5, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.title}</span>
-                                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 11px', borderRadius: 'var(--radius-pill)', color: r.color, background: `color-mix(in srgb, ${r.color} 13%, transparent)`, whiteSpace: 'nowrap', flexShrink: 0 }}>{r.status}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, padding: '3px 11px', borderRadius: 'var(--radius-pill)', color: ink(r.tone), background: `color-mix(in srgb, ${r.tone} 13%, transparent)`, whiteSpace: 'nowrap', flexShrink: 0 }}>{r.status}</span>
                             </div>
                         ))}
                     </div>

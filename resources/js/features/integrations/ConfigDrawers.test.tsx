@@ -85,7 +85,7 @@ describe('config drawers (v2 look)', () => {
     it('v2: Slack fields are pill inputs, checkboxes are ink, actions are pill buttons', () => {
         render(<SlackConfigDrawer open onClose={() => {}} />);
         expect(screen.getByRole('heading', { name: 'Configure Slack' }).style.fontFamily).toBe('var(--font-display)');
-        expect(screen.getByLabelText('Slack webhook URL').className).toContain('border-border2');
+        expect(screen.getByLabelText('Slack webhook URL').className).toContain('border-field');
         expect((screen.getByLabelText('Assigned') as HTMLInputElement).style.accentColor).toBe('var(--fg)');
         expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
         expect(screen.getByRole('button', { name: 'Send test' }).style.borderRadius).toBe('var(--radius-pill)');
@@ -93,9 +93,28 @@ describe('config drawers (v2 look)', () => {
 
     it('v2: GitHub fields are pill inputs and Save GitHub is the ink button', () => {
         render(<GithubConfigDrawer open onClose={() => {}} />);
-        expect(screen.getByLabelText('GitHub webhook secret').className).toContain('border-border2');
-        expect(screen.getByLabelText('GitHub webhook URL').className).toContain('border-border2');
+        expect(screen.getByLabelText('GitHub webhook secret').className).toContain('border-field');
+        expect(screen.getByLabelText('GitHub webhook URL').className).toContain('border-field');
         expect((screen.getByLabelText('GitHub active') as HTMLInputElement).style.accentColor).toBe('var(--fg)');
         expect(screen.getByRole('button', { name: 'Save GitHub' }).className).toContain('bg-fg');
+    });
+});
+
+describe('config drawers (G3a ink)', () => {
+    it('G3a: Slack status messages use the ink partners (4.5:1)', async () => {
+        render(<SlackConfigDrawer open onClose={() => {}} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect((await screen.findByText('Saved')).style.color).toBe('var(--green-ink)');
+        slackTest.mockRejectedValueOnce(new Error('boom'));
+        fireEvent.click(screen.getByRole('button', { name: 'Send test' }));
+        expect((await screen.findByText('Failed to send test.')).style.color).toBe('var(--red-ink)');
+    });
+    it('G3a: GitHub status messages use the ink partners (4.5:1)', async () => {
+        render(<GithubConfigDrawer open onClose={() => {}} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Save GitHub' }));
+        expect((await screen.findByText('Saved')).style.color).toBe('var(--green-ink)');
+        ghSave.mockRejectedValueOnce(new Error('boom'));
+        fireEvent.click(screen.getByRole('button', { name: 'Save GitHub' }));
+        expect((await screen.findByText('Failed to save.')).style.color).toBe('var(--red-ink)');
     });
 });

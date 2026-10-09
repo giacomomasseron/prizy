@@ -148,7 +148,7 @@ export default function SearchPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Query field: a pill whose border turns ink while the input has focus. */}
                     <div
-                        className="border-border2 focus-within:border-fg"
+                        className="border-field focus-within:border-fg"
                         style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', padding: '10px 18px' }}
                     >
                         <span aria-hidden="true" style={{ fontSize: 17, color: 'var(--fg3)', flexShrink: 0 }}>⌕</span>
@@ -199,7 +199,7 @@ export default function SearchPage() {
                                     style={{ width: 170, padding: '5px 12px', fontSize: 12.5 }}
                                 />
                                 {saveError && (
-                                    <span style={{ fontSize: 12.5, color: 'var(--red)' }}>{saveError}</span>
+                                    <span style={{ fontSize: 12.5, color: 'var(--red-ink)' }}>{saveError}</span>
                                 )}
                                 <Button type="submit" size="sm" disabled={!saveName.trim() || createSavedView.isPending}>
                                     Save

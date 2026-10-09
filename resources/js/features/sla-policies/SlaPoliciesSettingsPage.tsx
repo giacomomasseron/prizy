@@ -61,7 +61,7 @@ export default function SlaPoliciesSettingsPage() {
                 </Button>
             </div>
 
-            {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red)' }}>{error}</p>}
+            {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
             {policiesQ.isLoading && <p style={{ color: 'var(--fg3)' }}>Loading…</p>}
             {!policiesQ.isLoading && policies.length === 0 && (

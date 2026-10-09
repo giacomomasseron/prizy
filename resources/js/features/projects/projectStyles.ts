@@ -34,4 +34,4 @@ export const deleteXStyle: CSSProperties = {
     background: 'transparent', border: 'none', fontSize: 15, lineHeight: 1, cursor: 'pointer',
     padding: '0 4px', fontFamily: 'inherit',
 };
-export const DELETE_X_CLASSES = 'text-fg3 hover:text-red';
+export const DELETE_X_CLASSES = 'text-fg3 hover:text-red-ink';

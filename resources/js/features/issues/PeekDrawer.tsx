@@ -80,7 +80,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                 {/* Escalation banner */}
                 {st && (
                     <div style={{ border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', borderRadius: 14, padding: '14px 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--accent)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700, color: 'var(--accent-ink)' }}>
                             ↩ Escalated from Support
                             <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11.5 }}>{st.ref}</span>
                         </div>
@@ -89,7 +89,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                         <Link
                             to={`/support/tickets/${st.id}`}
                             onClick={onClose}
-                            className="border-accent text-accent hover:bg-accent hover:text-on-accent"
+                            className="border-accent text-accent-ink hover:bg-accent hover:text-on-accent"
                             style={{ marginTop: 12, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 14px', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', fontSize: 12.5, fontWeight: 700, textDecoration: 'none' }}
                         >
                             Open original ticket ↗

@@ -147,4 +147,9 @@ describe('ReportingLayout', () => {
         expect(d7.style.borderRadius).toBe('var(--radius-pill)');
         expect(screen.getByRole('button', { name: '30d' }).style.background).toBe('transparent');
     });
+
+    it('G3a: the selected range is ringed in the 3:1 field colour', () => {
+        renderLayout();
+        expect(screen.getByRole('button', { name: '7d' }).style.boxShadow).toBe('0 0 0 1.5px var(--field)');
+    });
 });

@@ -42,7 +42,7 @@ export function AgentPerformanceTable({ agents }: { agents: AgentRow[] }) {
                             </div>
                         </div>
                         <div style={num}>{a.assigned}</div>
-                        <div style={{ ...num, color: 'var(--sup)' }}>{a.solved}</div>
+                        <div style={{ ...num, color: 'var(--sup-ink)' }}>{a.solved}</div>
                         <div style={{ ...num, color: 'var(--fg2)' }}>{a.median_first_reply_minutes === null ? '—' : formatDuration(a.median_first_reply_minutes)}</div>
                         <div style={{ ...num, color: 'var(--fg2)' }}>{a.median_resolution_minutes === null ? '—' : formatDuration(a.median_resolution_minutes)}</div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>

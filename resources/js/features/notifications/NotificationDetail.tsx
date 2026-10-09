@@ -72,7 +72,7 @@ export function NotificationDetail({ notification }: { notification: AppNotifica
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflowY: 'auto', padding: '20px 22px', boxSizing: 'border-box' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)', color: 'var(--accent)', background: 'var(--accent2)' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)', color: 'var(--accent-ink)', background: 'var(--accent2)' }}>
                     {kind}
                 </span>
                 <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{timeAgo(notification.created_at)}</span>

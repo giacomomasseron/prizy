@@ -1,4 +1,5 @@
 import { formatDuration } from './formatDuration';
+import { ink } from '../../lib/ink';
 import type { SlaReport } from '../../lib/types';
 import { sectionTitle } from '../issues/issueStyles';
 import { bar, cardSub, deskCard } from '../support/supportStyles';
@@ -27,7 +28,7 @@ export function BreachRiskCard({ breachRisk, tags }: { breachRisk: SlaReport['br
                             <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.subject}</div>
                         </div>
                         <div style={{ width: 78, flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-                            <span style={{ fontSize: 11.5, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: riskColor(t.pct), background: 'var(--hover)', fontFamily: 'var(--font-mono)' }}>{formatDuration(t.remaining_minutes)}</span>
+                            <span style={{ fontSize: 11.5, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: ink(riskColor(t.pct)), background: 'var(--hover)', fontFamily: 'var(--font-mono)' }}>{formatDuration(t.remaining_minutes)}</span>
                             <div style={{ ...bar, width: '100%', height: 5 }}>
                                 <div style={{ height: '100%', width: `${t.pct}%`, background: riskColor(t.pct), borderRadius: 'var(--radius-pill)' }} />
                             </div>

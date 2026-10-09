@@ -169,7 +169,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                         size="sm"
                                         aria-label={`Delete view ${view.name}`}
                                         onClick={async () => { if (await confirm({ title: `Delete view ${view.name}?`, danger: true })) deleteView.mutate(view.id); }}
-                                        style={{ color: 'var(--red)', padding: '2px 6px', minWidth: 0 }}
+                                        style={{ color: 'var(--red-ink)', padding: '2px 6px', minWidth: 0 }}
                                     >
                                         ×
                                     </Button>
@@ -298,7 +298,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                 )
             )}
 
-            {error && <span style={{ color: 'var(--red)', fontSize: 13 }}>{error}</span>}
+            {error && <span style={{ color: 'var(--red-ink)', fontSize: 13 }}>{error}</span>}
         </div>
     );
 }

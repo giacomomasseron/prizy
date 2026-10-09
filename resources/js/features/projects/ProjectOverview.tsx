@@ -11,6 +11,7 @@ import { fmtDate, milestoneState, progressBreakdown, membersFromIssues } from '.
 import { MS_TAG, MS_ICON } from './milestoneMeta';
 import { DELETE_X_CLASSES, cardStyle, deleteXStyle, tagPill } from './projectStyles';
 import { ProjectBadge } from './ProjectBadge';
+import { ink } from '../../lib/ink';
 import { sectionTitle } from '../issues/issueStyles';
 import { Avatar } from '../../components/ui/Avatar';
 import { AvatarStack } from '../../components/ui/AvatarStack';
@@ -49,9 +50,10 @@ export default function ProjectOverview() {
     const total = p.issue_count ?? bd.total;
     const doneN = Math.round(((p.progress ?? 0) / 100) * total);
     const segs = [
-        { key: 'done',       n: bd.done,       color: 'var(--green)',   label: 'Done' },
-        { key: 'inProgress', n: bd.inProgress, color: 'var(--amber)',   label: 'In progress' },
-        { key: 'todo',       n: bd.todo,       color: 'var(--border2)', label: 'Todo' },
+        // Bar segments and legend dots: fills, so they keep the base status colours.
+        { key: 'done',       n: bd.done,       fill: 'var(--green)',   label: 'Done' },
+        { key: 'inProgress', n: bd.inProgress, fill: 'var(--amber)',   label: 'In progress' },
+        { key: 'todo',       n: bd.todo,       fill: 'var(--border2)', label: 'Todo' },
     ].filter((s) => s.n > 0);
 
     function submitMs(e: React.FormEvent) {
@@ -103,10 +105,10 @@ export default function ProjectOverview() {
                     <div style={{ display: 'flex', height: 14, borderRadius: 'var(--radius-pill)', overflow: 'hidden', background: 'var(--bg2)', gap: 3 }}>
                         {segs.length === 0
                             ? <div data-testid="progress-empty" style={{ flexGrow: 1, background: 'var(--border2)', opacity: 0.5 }} />
-                            : segs.map((s) => <div key={s.key} data-testid={`seg-${s.key}`} style={{ flexGrow: s.n, background: s.color, minWidth: 8, borderRadius: 'var(--radius-pill)' }} />)}
+                            : segs.map((s) => <div key={s.key} data-testid={`seg-${s.key}`} style={{ flexGrow: s.n, background: s.fill, minWidth: 8, borderRadius: 'var(--radius-pill)' }} />)}
                     </div>
                     <div style={{ display: 'flex', gap: 18, marginTop: 14, flexWrap: 'wrap' }}>
-                        {segs.map((s) => (<span key={s.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: 'var(--fg2)' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color }} />{s.label} · {s.n}</span>))}
+                        {segs.map((s) => (<span key={s.key} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 13, fontWeight: 600, color: 'var(--fg2)' }}><span style={{ width: 8, height: 8, borderRadius: '50%', background: s.fill }} />{s.label} · {s.n}</span>))}
                     </div>
                 </section>
 
@@ -126,7 +128,7 @@ export default function ProjectOverview() {
                             <Button variant="primary" size="sm" type="submit" disabled={createMs.isPending}>Add</Button>
                         </form>
                     )}
-                    {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
+                    {error && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                         {(milestones.data?.items ?? []).map((m: Milestone) => {
                             const state = milestoneState(m.target_date, new Date());
@@ -138,7 +140,7 @@ export default function ProjectOverview() {
                                         <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--fg)' }}>{m.name}</div>
                                         <div style={{ ...mono, color: 'var(--fg3)' }}>{fmtDate(m.target_date)}</div>
                                     </div>
-                                    <span data-testid="milestone-tag" style={{ ...tagPill, color: tag.color, background: tag.bg }}>{tag.label}</span>
+                                    <span data-testid="milestone-tag" style={{ ...tagPill, color: ink(tag.color), background: tag.bg }}>{tag.label}</span>
                                     {canDevelop && (
                                         <button
                                             type="button"

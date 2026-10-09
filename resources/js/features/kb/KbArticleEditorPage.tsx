@@ -336,13 +336,13 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                         style={{ flex: 1, minWidth: 60, border: 'none', background: 'none', outline: 'none', padding: 0, color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 12.5 }}
                                     />
                                 </div>
-                                <div style={{ marginTop: 7, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: taken ? 'var(--red)' : 'var(--fg3)' }}>{slugNote}</div>
+                                <div style={{ marginTop: 7, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: taken ? 'var(--red-ink)' : 'var(--fg3)' }}>{slugNote}</div>
                             </div>
 
                             <div style={{ flex: '0 1 260px', minWidth: 200 }}>
                                 <label htmlFor="kb-article-section" style={fieldLabel}>Section</label>
                                 {noSections ? (
-                                    <div role="alert" style={{ fontSize: 12, color: 'var(--red)' }}>
+                                    <div role="alert" style={{ fontSize: 12, color: 'var(--red-ink)' }}>
                                         No sections exist yet — create one in the library before writing this article.
                                     </div>
                                 ) : (
@@ -419,7 +419,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                     <a href={article.public_url} target="_blank" rel="noreferrer" className={PILL_CLASSES} style={{ ...pillBtn, flex: 1, justifyContent: 'center', textDecoration: 'none' }}>Open ↗</a>
                                 )}
                             </div>
-                            {statusError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{statusError}</div>}
+                            {statusError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{statusError}</div>}
                         </div>
 
                         <div style={cardColumn}>
@@ -459,7 +459,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                 <div style={{ ...kbLabel, marginBottom: 6 }}>Danger zone</div>
                                 <p style={{ margin: '0 0 11px', fontSize: 12, lineHeight: 1.5, color: 'var(--fg2)' }}>Deleting removes the article and its URL. Customers with the link will get a 404.</p>
                                 <button type="button" onClick={onDelete} className={DANGER_PILL_CLASSES} style={pillBtn}>Delete article</button>
-                                {deleteError && <div role="alert" style={{ color: 'var(--red)', fontSize: 12, marginTop: 8 }}>{deleteError}</div>}
+                                {deleteError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginTop: 8 }}>{deleteError}</div>}
                             </div>
                         )}
                     </aside>
@@ -502,7 +502,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
             <div data-testid="kb-editor-footer" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 22px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
                 <span style={{ fontSize: 12, color: 'var(--fg3)' }}>{savedMsg}</span>
                 <div style={{ flex: 1 }} />
-                {saveError && <span role="alert" style={{ color: 'var(--red)', fontSize: 12 }}>{saveError}</span>}
+                {saveError && <span role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{saveError}</span>}
                 <Button variant="secondary" size="sm" onClick={() => navigate('/support/kb')}>Close</Button>
                 {canSave ? (
                     <Button size="sm" onClick={onSave}>Save changes</Button>

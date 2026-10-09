@@ -11,11 +11,11 @@ import { alertBox } from '../settings/settingsStyles';
 import { statusTag, tint } from '../support/supportStyles';
 import { useState, type CSSProperties } from 'react';
 
-// State tags tint from theme tokens (statusTag → color-mix), so no fixed rgba values.
-const STATE_TAG: Record<CycleState, { label: string; color: string }> = {
-    active:    { label: 'Active',    color: 'var(--amber)' },
-    upcoming:  { label: 'Upcoming',  color: 'var(--fg3)' },
-    completed: { label: 'Completed', color: 'var(--green)' },
+// State tags tint from theme tokens (statusTag → color-mix, text in the ink partner), so no fixed rgba values.
+const STATE_TAG: Record<CycleState, { label: string; tone: string }> = {
+    active:    { label: 'Active',    tone: 'var(--amber)' },
+    upcoming:  { label: 'Upcoming',  tone: 'var(--fg3)' },
+    completed: { label: 'Completed', tone: 'var(--green)' },
 };
 /** Detail-page frame; the left pad clears the floating "Expand sidebar" button when the sidebar is hidden. */
 const frame: CSSProperties = { padding: '26px 30px 80px calc(30px + var(--nav-inset, 0px))', maxWidth: 960, boxSizing: 'border-box' };
@@ -52,7 +52,7 @@ export default function CyclesPage() {
                     <Button style={{ marginLeft: 'auto', alignSelf: 'center' }} onClick={() => navigate(`/create?tab=cycle&team=${id}`)}>New cycle</Button>
                 )}
             </div>
-            {error && <div role="alert" style={{ ...alertBox, color: 'var(--red)', background: tint('var(--red)', 10), marginBottom: 12 }}>{error}</div>}
+            {error && <div role="alert" style={{ ...alertBox, color: 'var(--red-ink)', background: tint('var(--red)', 10), marginBottom: 12 }}>{error}</div>}
 
             {items.length > 0 && (
                 <div style={card}>
@@ -63,7 +63,7 @@ export default function CyclesPage() {
                             <div key={c.id} data-testid="cycle-card" className="border-b border-border last:border-b-0" style={{ padding: '14px 18px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 11 }}>
                                     <span style={{ fontSize: 14.5, fontWeight: 700 }}>{c.name}</span>
-                                    <span data-testid="cycle-tag" style={statusTag(tag.color)}>{tag.label}</span>
+                                    <span data-testid="cycle-tag" style={statusTag(tag.tone)}>{tag.label}</span>
                                     <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' }}>{c.starts_at.slice(0, 10)} → {c.ends_at.slice(0, 10)}</span>
                                     {canDevelop && (
                                         <button type="button" aria-label={`Delete ${c.name}`}

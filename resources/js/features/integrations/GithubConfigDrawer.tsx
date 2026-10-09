@@ -5,9 +5,11 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { checkboxStyle, fieldLabel, modalTitle } from '../settings/settingsStyles';
 import { useGithubIntegration, useSaveGithubIntegration } from './hooks';
+import { ink } from '../../lib/ink';
 
 const checkRow: CSSProperties = { display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, marginTop: 12, cursor: 'pointer' };
-const msgStyle = (color: string): CSSProperties => ({ fontSize: 13, fontWeight: 600, color });
+/** Status message ("Saved", errors): the colour is a status token, so the text takes its ink partner (4.5:1). */
+const msgStyle = (color: string): CSSProperties => ({ fontSize: 13, fontWeight: 600, color: ink(color) });
 
 export function GithubConfigDrawer({ open, onClose }: { open: boolean; onClose(): void }) {
     const github = useGithubIntegration();

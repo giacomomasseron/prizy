@@ -24,7 +24,7 @@ describe('SupportRail', () => {
 
     it('v2: item colours live in classes so the hover works', () => {
         expect(RAIL_ITEM_CLASSES).toBe('bg-transparent text-fg3 hover:bg-hover hover:text-fg');
-        expect(RAIL_ACTIVE_CLASSES).toBe('bg-sup2 text-sup');
+        expect(RAIL_ACTIVE_CLASSES).toBe('bg-sup2 text-sup-ink');
         expect(railItem).not.toHaveProperty('color');
         expect(railItem).not.toHaveProperty('background');
         expect(railItem).toMatchObject({ width: 38, height: 38, borderRadius: 10 });

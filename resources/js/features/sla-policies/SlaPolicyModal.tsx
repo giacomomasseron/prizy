@@ -140,7 +140,7 @@ export function SlaPolicyModal({ open, policy, onClose }: SlaPolicyModalProps) {
                     </select>
                 </div>
 
-                {error && <div role="alert" style={{ color: 'var(--red)', fontSize: 12.5 }}>{error}</div>}
+                {error && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12.5 }}>{error}</div>}
             </div>
 
             <div style={modalFooter}>

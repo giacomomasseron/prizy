@@ -154,4 +154,13 @@ describe('NotificationBell', () => {
         expect(inbox.className).toContain('hover:text-fg');
         expect(inbox.style.color).toBe('');
     });
+
+    it('G3a: the unread count in the dropdown header writes accent text in the ink partner on its accent tint', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        const panel = screen.getByRole('dialog', { name: 'Notifications' });
+        const count = screen.getAllByText('3').find((el) => panel.contains(el)) as HTMLElement;
+        expect(count.style.color).toBe('var(--accent-ink)');
+        expect(count.style.background).toBe('var(--accent2)');
+    });
 });

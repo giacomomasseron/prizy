@@ -26,7 +26,7 @@ describe('WeeklyEditor', () => {
         render(<WeeklyEditor value={[{ day_of_week: 1, opens_at: '09:00', closes_at: '17:00' }]} onChange={vi.fn()} />);
         expect((screen.getByLabelText('Monday open') as HTMLInputElement).style.accentColor).toBe('var(--fg)');
         const opens = screen.getByLabelText('Monday opens');
-        expect(opens.className).toContain('border-border2');
+        expect(opens.className).toContain('border-field');
         expect(opens.style.borderRadius).toBe('var(--radius-pill)');
         expect(opens.style.opacity).toBe('1');
         expect(screen.getByLabelText('Tuesday opens').style.opacity).toBe('0.5');
