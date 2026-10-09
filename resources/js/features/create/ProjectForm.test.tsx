@@ -181,4 +181,9 @@ describe('ProjectForm', () => {
         wrap();
         expect(screen.getByRole('group', { name: 'Colour' })).toBeInTheDocument();
     });
+
+    it('G3c: Cancel is a secondary button, like the dialog Cancels', () => {
+        wrap();
+        expect(screen.getByRole('button', { name: 'Cancel' }).className).toContain('border-border2');
+    });
 });

@@ -117,7 +117,7 @@ test.describe('Knowledge base authoring (agent) → public help center', () => {
         await page.getByRole('button', { name: /Create your first project/ }).first().click();
         await expect(page).toHaveURL(/\/support\/kb\/articles\//);
 
-        await expect(page.getByText('Translations')).toBeVisible();
+        await expect(page.getByText('Translations', { exact: true })).toBeVisible();
         await page.getByRole('button', { name: 'Manage translations' }).click();
         // Scoped to the drawer's own dialog (aria-label="Translations", set by Drawer.tsx) — the
         // sidebar KbTranslationCard behind it renders its OWN "Italian" locale row with the exact

@@ -291,7 +291,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                             style={{ width: 180, padding: '6px 13px', fontSize: 13.5 }}
                         />
                         <Button variant="primary" size="sm" onClick={submitView} disabled={createView.isPending || !newViewName.trim()}>Save</Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setSavingView(false); setNewViewName(''); }}>Cancel</Button>
+                        <Button variant="secondary" size="sm" onClick={() => { setSavingView(false); setNewViewName(''); }}>Cancel</Button>
                     </span>
                 ) : (
                     <Button variant="secondary" size="sm" onClick={() => setSavingView(true)}>Save view</Button>

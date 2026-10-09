@@ -126,4 +126,9 @@ describe('CycleForm', () => {
         expect(screen.getByRole('button', { name: '2 weeks' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: '1 week' })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('G3c: Cancel is a secondary button, like the dialog Cancels', () => {
+        wrap();
+        expect(screen.getByRole('button', { name: 'Cancel' }).className).toContain('border-border2');
+    });
 });

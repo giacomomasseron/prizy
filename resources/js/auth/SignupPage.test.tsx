@@ -55,3 +55,8 @@ it('gives the fields autofill hints, and the email field the email keyboard', ()
     expect(screen.getByLabelText('email')).toHaveAttribute('autocomplete', 'email');
     expect(screen.getByLabelText('password')).toHaveAttribute('autocomplete', 'new-password');
 });
+
+it('G3c: the signup page renders exactly one main landmark', () => {
+    render(<SignupPage />);
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+});

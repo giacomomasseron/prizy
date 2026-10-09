@@ -48,6 +48,20 @@ function tags(src: string, names: string): { name: string; tag: string; line: nu
     return out;
 }
 
+/** The source of attribute `name` in an opening tag: the `{…}` expression or the quoted string ('' when absent). */
+function attrExpr(tag: string, name: string): string {
+    const m = new RegExp(`\\b${name}=`).exec(tag);
+    if (!m) return '';
+    const start = m.index + m[0].length;
+    if (tag[start] !== '{') return tag[start] === '"' ? tag.slice(start, tag.indexOf('"', start + 1) + 1) : '';
+    let depth = 0;
+    for (let i = start; i < tag.length; i++) {
+        if (tag[i] === '{') depth++;
+        else if (tag[i] === '}' && --depth === 0) return tag.slice(start, i + 1);
+    }
+    return tag.slice(start);
+}
+
 /** Blank out comments (keeping newlines, so line numbers hold): a `<main>` or `<aside>` named in a comment is not markup. */
 function stripComments(src: string): string {
     const blank = (m: string) => m.replace(/[^\n]/g, ' ');
@@ -68,11 +82,12 @@ describe('V2-G3b: keyboard and screen-reader guards', () => {
         expect(offenders).toEqual([]);
     });
 
-    it('one main landmark (the app layout\'s); every nav and aside is named or hidden', () => {
+    it('<main> only in the two page shells (the app layout and the auth column); every nav and aside is named or hidden', () => {
+        const SHELLS = ['components/AppLayout.tsx', 'auth/AuthChrome.tsx'];
         const offenders: string[] = [];
         for (const { rel, src } of files) {
             for (const t of tags(src, 'main|nav|aside')) {
-                if (t.name === 'main' && rel !== 'components/AppLayout.tsx') offenders.push(`${rel}:${t.line} <main>`);
+                if (t.name === 'main' && !SHELLS.includes(rel)) offenders.push(`${rel}:${t.line} <main>`);
                 if (t.name !== 'main' && !/aria-(label|labelledby|hidden)=/.test(t.tag)) offenders.push(`${rel}:${t.line} <${t.name}>`);
             }
         }
@@ -96,13 +111,47 @@ describe('V2-G3b: keyboard and screen-reader guards', () => {
         expect(offenders).toEqual([]);
     });
 
-    it('a control drawn as selected by a selection style or class helper says so (aria-pressed / aria-current / aria-selected)', () => {
-        const SELECTION_STYLE = /\b(navRow|sideRow|rowBtn|swatchStyle|chipClasses|pickRowClasses)\(\s*(?!false\b)[^,)]/;
+    it('a control drawn as selected (a selection test in its className or style) says so (aria-pressed / aria-current / aria-selected / aria-checked / aria-expanded)', () => {
+        // A selection test: an === comparison, a membership test (`.includes(`), or a flag named for the state (`on`, or a name ending in
+        // active / selected / current / checked / pressed: `sActive`, `isSelected`). `disabled`, `loading`, `pending`, `open` alone are not one.
+        // Two narrowings, both false positives found on the first run: words inside string literals are not flags (`hover:text-on-accent`
+        // contains `on`), and the tag's own `disabled={…}` expression drawn as a dimmed look is not a selection.
+        const SELECTION_TEST = /===|\.includes\(|\b\w*(?:[Aa]ctive|[Ss]elected|[Cc]urrent|[Cc]hecked|[Pp]ressed)\b|\bon\b/;
+        const code = (expr: string) => expr
+            .replace(/`[^`]*`/g, (m) => [...m.matchAll(/\$\{([^}]*)\}/g)].map((x) => x[1]).join(' '))
+            .replace(/'[^'\n]*'|"[^"\n]*"/g, "''");
         const offenders: string[] = [];
         for (const { rel, src } of files) {
-            for (const t of tags(src, 'button|Link|a')) {
-                if (SELECTION_STYLE.test(t.tag) && !/aria-(pressed|current|selected)=/.test(t.tag)) offenders.push(`${rel}:${t.line}`);
+            for (const t of tags(src, 'button|a|Link')) {
+                const disabled = attrExpr(t.tag, 'disabled').slice(1, -1).trim();
+                const drawn = code(['className', 'style'].map((a) => attrExpr(t.tag, a)).join(' ').split(disabled || '\0').join(' '));
+                if (SELECTION_TEST.test(drawn) && !/aria-(pressed|current|selected|checked|expanded)=/.test(t.tag)) offenders.push(`${rel}:${t.line}`);
             }
+        }
+        expect(offenders).toEqual([]);
+    });
+
+    it('every route page that reads a query shows its failure (QueryState or isError)', () => {
+        // A query hook is any `use…` call that is not React, the router or the session (`useMe`: RequireAuth already sends a failed session to /login).
+        const NOT_QUERY = 'State|Effect|Memo|Callback|Ref|Context|Reducer|Id|Navigate|Params|Location|SearchParams|Me|Confirm|Outlet';
+        const readsQuery = (src: string) => new RegExp(`\\buse(?!(?:${NOT_QUERY})\\b)[A-Z]\\w*\\(`).test(src) && (/\.data\b/.test(src) || /\{[^}]*\bdata\b[^}]*\}\s*=/.test(src));
+        // Handing the query result to a child (`query={q}`) is allowed: the child renders QueryState (TicketList, NotificationList).
+        // The settings layout's sidebar counts decorate the nav; each settings page renders its own states.
+        const EXEMPT = ['features/settings/SettingsLayout.tsx'];
+        const router = readFileSync(join(ROOT, 'router.tsx'), 'utf8');
+        const imports = new Map<string, string>();
+        for (const m of router.matchAll(/import\s+(?:(\w+)|\{([^}]*)\}|(\w+)\s*,\s*\{([^}]*)\})\s+from\s+'(\.[^']+)'/g)) {
+            for (const name of [m[1] ?? m[3], ...(m[2] ?? m[4] ?? '').split(',').map((n) => n.trim())]) if (name) imports.set(name, m[5]);
+        }
+        const elements = [...router.matchAll(/element=\{([^\n]*?)\}\s*\/?>/g)].flatMap((m) => [...m[1].matchAll(/<([A-Z]\w*)/g)].map((n) => n[1]));
+        const pages = [...new Set(elements)].filter((n) => imports.has(n));
+        expect(pages.length).toBeGreaterThan(20);
+        const offenders: string[] = [];
+        for (const name of pages) {
+            const rel = join(imports.get(name)!.replace(/^\.\//, '') + '.tsx');
+            const src = files.find((f) => f.rel === rel)?.src;
+            if (src === undefined) { offenders.push(`${rel} (unresolved ${name})`); continue; }
+            if (!EXEMPT.includes(rel) && readsQuery(src) && !/<QueryState\b|\bisError\b|\bquery=\{/.test(src)) offenders.push(`${rel} <${name}>`);
         }
         expect(offenders).toEqual([]);
     });

@@ -298,7 +298,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     marginTop: 14,
                 }}
             >
-                <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
                 <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!name.trim() || create.isPending}>Create project</Button>
             </div>
         </div>

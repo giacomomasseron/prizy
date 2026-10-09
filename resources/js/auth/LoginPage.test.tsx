@@ -91,3 +91,8 @@ it('v2: the auth files carry no fixed hex or rgb(a) colours', () => {
         expect(readFileSync(resolve(__dirname, f), 'utf8')).not.toMatch(/#[0-9a-fA-F]{3,8}\b|rgba?\(/);
     }
 });
+
+it('G3c: the login page renders exactly one main landmark', () => {
+    renderLogin();
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+});
