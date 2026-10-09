@@ -216,4 +216,11 @@ describe('KbLibraryPage', () => {
         expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load the library.");
         expect(screen.queryByText('No categories yet')).toBeNull();
     });
+
+    it('G3c: the tree caret is at least 24x24', async () => {
+        renderPage();
+        const caret = (await screen.findAllByRole('button', { name: 'Collapse' }))[0];
+        expect(caret.style.minWidth).toBe('24px');
+        expect(caret.style.minHeight).toBe('24px');
+    });
 });

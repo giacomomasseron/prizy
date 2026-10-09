@@ -126,8 +126,8 @@ describe('TicketList', () => {
     it('G3b: a row draws the inset ink ring while its subject has keyboard focus', () => {
         render(<TicketList tickets={tickets} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} />);
         const row = screen.getAllByTestId('ticket-row')[0];
-        expect(row.className).toContain('has-[:focus-visible]:outline-2');
-        expect(row.className).toContain('has-[:focus-visible]:-outline-offset-2');
+        expect(row.className).toContain('has-[.row-primary:focus-visible]:outline-2');
+        expect(row.className).toContain('has-[.row-primary:focus-visible]:-outline-offset-2');
         expect(screen.getByRole('button', { name: 'Cannot log in' }).className).toContain('focus-visible:outline-none');
     });
 });

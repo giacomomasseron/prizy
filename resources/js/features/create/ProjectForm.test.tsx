@@ -176,4 +176,9 @@ describe('ProjectForm', () => {
         expect(summary.className).toBe('border-transparent focus:border-fg');
         expect(summary.style.borderStyle).toBe('solid');
     });
+
+    it('G3c: the colour swatches are a group named Colour', () => {
+        wrap();
+        expect(screen.getByRole('group', { name: 'Colour' })).toBeInTheDocument();
+    });
 });

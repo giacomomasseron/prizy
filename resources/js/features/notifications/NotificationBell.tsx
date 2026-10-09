@@ -1,10 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotifications, useUnreadCount, useMarkAllRead, useMarkRead } from './hooks';
 import { notificationMeta, notificationText, subjectPath } from './text';
 import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
+import { useOverlayEscape } from '../../components/ui/useOverlayEscape';
 import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { AppNotification } from '../../lib/types';
 
@@ -20,6 +21,7 @@ export function NotificationBell() {
     const navigate = useNavigate();
     const [open, setOpen] = useState(false);
     const ref = useRef<HTMLDivElement>(null);
+    const bellRef = useRef<HTMLButtonElement>(null);
 
     const unread = useUnreadCount();
     const list = useNotifications('all', false, open); // only fetch the list while the dropdown is open
@@ -33,11 +35,13 @@ export function NotificationBell() {
     useEffect(() => {
         if (!open) return;
         function onDown(e: PointerEvent) { if (!ref.current?.contains(e.target as Node)) setOpen(false); }
-        function onKey(e: KeyboardEvent) { if (e.key === 'Escape') setOpen(false); }
         document.addEventListener('pointerdown', onDown);
-        document.addEventListener('keydown', onKey);
-        return () => { document.removeEventListener('pointerdown', onDown); document.removeEventListener('keydown', onKey); };
+        return () => document.removeEventListener('pointerdown', onDown);
     }, [open]);
+
+    // Escape closes the panel through the overlay stack (a drawer under it stays open) and hands focus back to the bell.
+    const closeOnEscape = useCallback(() => { setOpen(false); bellRef.current?.focus(); }, []);
+    useOverlayEscape(closeOnEscape, open);
 
     function openItem(n: AppNotification) {
         markRead.mutate(n.id);
@@ -49,6 +53,7 @@ export function NotificationBell() {
     return (
         <div ref={ref} style={{ position: 'relative' }}>
             <button
+                ref={bellRef}
                 type="button"
                 aria-label="Notifications"
                 title="Notifications"
@@ -121,11 +126,13 @@ export function NotificationBell() {
                                     className={`hover:bg-hover ${ROW_FOCUS_CLASSES}`}
                                     style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 13px 10px 10px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                                 >
-                                    <span style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 7, flexShrink: 0, background: n.read_at ? 'transparent' : 'var(--accent)' }} />
+                                    <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 7, flexShrink: 0, background: n.read_at ? 'transparent' : 'var(--accent)' }} />
                                     {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={20} title={n.actor?.name} />}
                                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                         {/* The item's primary control (V2-G3b): its click bubbles to the item. */}
                                         <button type="button" className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%', fontSize: 12.3, color: 'var(--fg)', lineHeight: 1.45 }}>
+                                            {/* The space sits outside the hidden span so the name reads "Unread: …"; visually it collapses at the line start. */}
+                                            {!n.read_at && <><span className="sr-only">Unread:</span>{' '}</>}
                                             {showActorName && <span style={{ fontWeight: 600 }}>{n.actor!.name} </span>}
                                             {notificationText(n.type)}
                                         </button>

@@ -273,7 +273,7 @@ describe('ProjectsPage', () => {
         expect(mockNavigate).toHaveBeenCalledTimes(1);
         expect(mockNavigate).toHaveBeenCalledWith('/projects/p1');
         expect(screen.queryByText('project page')).toBeNull();
-        expect(screen.getByTestId('project-row-p1').className).toContain('has-[:focus-visible]:outline-2');
+        expect(screen.getByTestId('project-row-p1').className).toContain('has-[.row-primary:focus-visible]:outline-2');
     });
 
     it('G3b: a modified click on the project link is left to the browser (new tab), not to the row', async () => {

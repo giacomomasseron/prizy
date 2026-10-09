@@ -45,7 +45,7 @@ describe('IssueRow', () => {
         expect(onPeek).toHaveBeenCalledWith('abc-123-xyz-qrs');
         await userEvent.keyboard(' ');
         expect(onPeek).toHaveBeenCalledTimes(2);
-        expect(screen.getByTestId('issue-row').className).toContain('has-[:focus-visible]:outline-2');
+        expect(screen.getByTestId('issue-row').className).toContain('has-[.row-primary:focus-visible]:outline-2');
     });
 
     it('renders priority icon aria-label=high', () => {

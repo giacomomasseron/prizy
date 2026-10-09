@@ -164,7 +164,7 @@ export function NotificationList({
                                                 ...(selected ? selectedRow : {}),
                                             }}
                                         >
-                                            <span style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 9, flexShrink: 0, background: unread ? 'var(--accent)' : 'transparent' }} />
+                                            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 9, flexShrink: 0, background: unread ? 'var(--accent)' : 'transparent' }} />
                                             <span
                                                 aria-hidden="true"
                                                 style={{
@@ -180,6 +180,8 @@ export function NotificationList({
                                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
                                                 {/* The row's primary control (V2-G3b): its click bubbles to the row. */}
                                                 <button type="button" aria-current={selected ? 'true' : undefined} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%', fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.45 }}>
+                                                    {/* The space sits outside the hidden span so the name reads "Unread: …"; visually it collapses at the line start. */}
+                                                    {unread && <><span className="sr-only">Unread:</span>{' '}</>}
                                                     {showActorName ? (
                                                         <>
                                                             <span style={{ fontWeight: 700 }}>{n.actor!.name}</span> <span>{notificationText(n.type)}</span>

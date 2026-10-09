@@ -93,7 +93,7 @@ export default function LabelsSettingsPage() {
                         <datalist id="label-groups">{existingGroups.map((g) => <option key={g} value={g} />)}</datalist>
                         <Button size="sm" type="submit" disabled={create.isPending}>Add label</Button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <div role="group" aria-label="Colour" style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <span style={{ ...groupLabel, width: 44 }}>Color</span>
                         {SWATCHES.map((hex) => (
                             <button key={hex} type="button" aria-label={`color ${hex}`} aria-pressed={color === hex} onClick={() => setColor(hex)}
@@ -128,7 +128,7 @@ export default function LabelsSettingsPage() {
                                     <span style={{ flex: 1 }} />
                                     <span style={{ ...mono, fontSize: 12, color: 'var(--fg3)', width: 120, textAlign: 'right', flexShrink: 0 }}>{l.issue_count ?? 0} uses</span>
                                     {canDevelop && (
-                                        <div style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
+                                        <div role="group" aria-label={`Colour for ${l.name}`} style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
                                             {SWATCHES.map((hex) => (
                                                 <button key={hex} type="button" aria-label={`recolor ${l.name} ${hex}`} aria-pressed={l.color === hex} data-testid={`recolor-${l.id}`} onClick={() => recolor(l, hex)}
                                                     style={swatchStyle(hex, l.color === hex, 16)} />

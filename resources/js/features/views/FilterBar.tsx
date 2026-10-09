@@ -37,7 +37,7 @@ const hiPillStyle: React.CSSProperties = {
 
 // The × inside a pill: transparent on the yellow fill; hover raises opacity (class).
 const pillRemoveStyle: React.CSSProperties = {
-    width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'none', color: 'inherit',
+    width: 20, height: 20, minWidth: 24, minHeight: 24, borderRadius: '50%', border: 'none', background: 'none', color: 'inherit',
     cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1, fontFamily: 'inherit',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 };

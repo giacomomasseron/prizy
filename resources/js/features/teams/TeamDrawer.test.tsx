@@ -136,4 +136,10 @@ describe('TeamDrawer', () => {
         fireEvent.click(btn);
         expect(screen.queryByRole('menu')).toBeNull();
     });
+
+    it('G3c: the colour swatches are a group named Colour', async () => {
+        mockFetch(() => new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 }));
+        wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
+        expect(await screen.findByRole('group', { name: 'Colour' })).toBeInTheDocument();
+    });
 });

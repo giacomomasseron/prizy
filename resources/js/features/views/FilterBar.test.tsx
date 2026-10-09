@@ -122,4 +122,11 @@ describe('FilterBar v2 styling', () => {
         const label = screen.getByLabelText('Sort issues').closest('label') as HTMLElement;
         expect(label.className).toContain('focus-within:border-fg');
     });
+
+    it('G3c: the filter pill x is at least 24x24', () => {
+        renderBar('/?status=todo');
+        const x = screen.getByRole('button', { name: 'Remove Status filter' });
+        expect(x.style.minWidth).toBe('24px');
+        expect(x.style.minHeight).toBe('24px');
+    });
 });

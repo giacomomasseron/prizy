@@ -175,8 +175,8 @@ export default function CommandPalette() {
                         </li>
                     ))}
                 </ul>
-                {/* Outside the listbox: a listbox holds options only. */}
-                {rows.length === 0 && <div style={{ padding: '0 22px 22px', textAlign: 'center', color: 'var(--fg3)', fontSize: 13 }}>No results.</div>}
+                {/* Outside the listbox (a listbox holds options only), and always rendered so a screen reader announces the text when it appears. */}
+                <div role="status" style={rows.length === 0 ? { padding: '0 22px 22px', textAlign: 'center', color: 'var(--fg3)', fontSize: 13 } : undefined}>{rows.length === 0 ? 'No results.' : ''}</div>
                 <div style={{ borderTop: '1px solid var(--border)' }}>
                     <button
                         type="button"

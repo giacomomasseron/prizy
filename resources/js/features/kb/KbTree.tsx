@@ -35,7 +35,7 @@ const rowBtn = (active: boolean, indent: number): CSSProperties => ({
 const rowClasses = (active: boolean): string => (active ? '' : 'bg-transparent text-fg2 hover:bg-hover');
 const nameStyle: CSSProperties = { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 const countStyle: CSSProperties = { fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' };
-const caretBtn: CSSProperties = { width: 18, height: 24, flexShrink: 0, border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' };
+const caretBtn: CSSProperties = { width: 18, height: 24, minWidth: 24, minHeight: 24, flexShrink: 0, border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const rowWrap: CSSProperties = { position: 'relative', display: 'flex', alignItems: 'center' };
 // Overlays the row's right end on hover or keyboard focus (opacity + pointer-events live in ACTION_PILL_CLASSES).
 // No transform: a transform makes a stacking context that would trap the Menu popover's z-index under the rows below.

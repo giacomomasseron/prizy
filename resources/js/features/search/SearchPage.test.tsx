@@ -274,7 +274,7 @@ describe('G3b: result rows are reachable by keyboard', () => {
         );
         const link = await screen.findByRole('link', { name: 'Fix login bug' });
         expect(link).toHaveAttribute('href', '/issues/i1');
-        expect(screen.getByTestId('search-row').className).toContain('has-[:focus-visible]:outline-2');
+        expect(screen.getByTestId('search-row').className).toContain('has-[.row-primary:focus-visible]:outline-2');
         link.focus();
         await userEvent.keyboard('{Enter}');
         expect(await screen.findByText('issue page')).toBeInTheDocument();

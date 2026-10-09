@@ -267,7 +267,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
 
                 {/* Color row */}
                 <PropertyRow label="Color">
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div role="group" aria-label="Colour" style={{ display: 'flex', gap: 8 }}>
                         {COLORS.map(c => (
                             <button
                                 key={c}

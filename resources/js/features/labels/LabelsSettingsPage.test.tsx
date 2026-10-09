@@ -130,4 +130,13 @@ describe('LabelsSettingsPage', () => {
             labelsQuery = null;
         }
     });
+
+    it('G3c: the new-label swatches and each label\'s recolour swatches are named groups', () => {
+        meData = { is_developer: true, admin_level: 'member' };
+        render(<LabelsSettingsPage />);
+        fireEvent.click(screen.getByRole('button', { name: 'New label' }));
+        expect(screen.getByRole('group', { name: 'Colour' })).toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Colour for Bug' })).toBeInTheDocument();
+        expect(screen.getByRole('group', { name: 'Colour for chore' })).toBeInTheDocument();
+    });
 });

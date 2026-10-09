@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import CommandPalette from './CommandPalette';
 import { Drawer } from '../../components/ui/Drawer';
+import * as commands from './commands';
 
 const navigate = vi.fn();
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
@@ -216,4 +217,25 @@ it('G3b: Escape closes only the palette, not a drawer open under it', async () =
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Command palette' })).toBeNull());
     expect(onClose).not.toHaveBeenCalled();
     expect(screen.getByRole('dialog', { name: 'Peek' })).toBeInTheDocument();
+});
+
+it('G3c: "No results." lives in an always-rendered status region, empty while there are results', async () => {
+    const { unmount } = renderPalette();
+    await openPalette();
+    await screen.findByRole('combobox', { name: 'Search' });
+    const status = screen.getByRole('status');
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0);
+    expect(status.textContent).toBe('');
+    expect(status.closest('[role=listbox]')).toBeNull();
+    unmount();
+    // The empty list (the commands list can be empty, the search returns nothing).
+    const spy = vi.spyOn(commands, 'filterCommands').mockReturnValue([]);
+    try {
+        renderPalette();
+        await openPalette();
+        await screen.findByRole('combobox', { name: 'Search' });
+        expect(screen.queryAllByRole('option')).toHaveLength(0);
+        expect(screen.getByRole('status').textContent).toBe('No results.');
+        expect(screen.getByRole('status').closest('[role=listbox]')).toBeNull();
+    } finally { spy.mockRestore(); }
 });

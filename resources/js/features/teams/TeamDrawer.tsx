@@ -74,7 +74,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                     <button type="button" onClick={onClose} aria-label="Close" className="bg-transparent text-fg2 hover:bg-hover"
                         style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', fontSize: 18, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
                 </div>
-                <div style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
+                <div role="group" aria-label="Colour" style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
                     {EDIT_COLORS.map((c) => (
                         <button key={c} type="button" aria-label={`Set color ${c}`} aria-pressed={live.color === c}
                             onClick={() => { clear(); updateTeam.mutate({ id: team.id, color: c }, { onError: surface }); }}
