@@ -30,9 +30,10 @@ const SCHEDULES: Schedule[] = [
 ];
 
 let schedulesData: Schedule[] = SCHEDULES;
+let schedulesQuery: Record<string, unknown> | null = null;
 
 vi.mock('./hooks', () => ({
-    useSchedules: () => ({ isLoading: false, data: schedulesData }),
+    useSchedules: () => schedulesQuery ?? ({ isLoading: false, data: schedulesData }),
     useDeleteSchedule: () => ({ mutateAsync: deleteMutate }),
     useCreateSchedule: () => ({ mutateAsync: createMutate, isPending: false }),
     useUpdateSchedule: () => ({ mutateAsync: updateMutate, isPending: false }),
@@ -99,5 +100,15 @@ describe('BusinessHoursSettingsPage', () => {
         render(<BusinessHoursSettingsPage />);
         expect(screen.getByText('Weekday support').style.overflowWrap).toBe('anywhere');
         expect(screen.getByText(/Mon–Fri 09:00–17:00/).style.overflowWrap).toBe('anywhere');
+    });
+    it('G3c: a failed schedules load shows the retryable alert, not the empty state', () => {
+        schedulesQuery = { isLoading: false, isError: true, data: undefined, refetch: vi.fn() };
+        try {
+            render(<BusinessHoursSettingsPage />);
+            expect(screen.getByRole('alert').textContent).toContain("Couldn't load schedules.");
+            expect(screen.queryByText('No schedules yet.')).toBeNull();
+        } finally {
+            schedulesQuery = null;
+        }
     });
 });

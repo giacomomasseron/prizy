@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, within, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, within, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -7,6 +7,7 @@ import IssueDetailPage from './IssueDetailPage';
 // Namespace imports required for per-test mock overrides (vi.mocked — ESM-safe, no require())
 import * as hooks from './hooks';
 import * as authModule from '../../auth/useAuth';
+import * as ghLinks from './githubLinks';
 
 // Minimal mocks — vi.fn() on hooks that need per-test override
 vi.mock('./hooks', () => ({
@@ -37,7 +38,7 @@ vi.mock('./hooks', () => ({
 }));
 vi.mock('./githubLinks', () => ({
     useGithubLinks: () => ({ data: [] }),
-    useAddGithubLink: () => ({ mutateAsync: vi.fn() }),
+    useAddGithubLink: vi.fn().mockReturnValue({ mutateAsync: vi.fn() }),
     useRemoveGithubLink: () => ({ mutate: vi.fn() }),
 }));
 vi.mock('../../features/members/hooks', () => ({
@@ -553,5 +554,15 @@ describe('IssueDetailPage v2 layout', () => {
         expect(title.className).toContain('border-transparent');
         expect(title.className).toContain('focus:border-fg');
         expect(title.style.borderStyle).toBe('solid');
+    });
+
+    it('G3c: Add PR is disabled while the link is being added', () => {
+        vi.mocked(ghLinks.useAddGithubLink).mockReturnValue({ mutateAsync: vi.fn(), isPending: true } as any);
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        expect(screen.getByRole('button', { name: 'Add PR' })).toBeDisabled();
+        vi.mocked(ghLinks.useAddGithubLink).mockReturnValue({ mutateAsync: vi.fn() } as any);
+        cleanup();
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        expect(screen.getByRole('button', { name: 'Add PR' })).toBeEnabled();
     });
 });

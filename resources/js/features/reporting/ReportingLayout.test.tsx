@@ -158,4 +158,10 @@ describe('ReportingLayout', () => {
         expect(screen.getByRole('complementary', { name: 'Reporting' })).toBeInTheDocument();
         expect(screen.queryByRole('main')).toBeNull();
     });
+    it('G3c: a failed report load shows the retryable alert, not a blank page', () => {
+        useOverviewReport.mockReturnValueOnce({ isLoading: false, isError: true, data: undefined, refetch: vi.fn() } as never);
+        renderLayout();
+        expect(screen.getByRole('alert').textContent).toContain("Couldn't load the report.");
+        expect(screen.queryByText('Tickets created')).toBeNull();
+    });
 });

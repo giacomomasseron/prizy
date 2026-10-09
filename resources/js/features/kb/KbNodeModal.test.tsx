@@ -56,3 +56,16 @@ describe('KbNodeModal', () => {
         expect(screen.getByText('Position: last in the category')).toBeInTheDocument();
     });
 });
+
+describe('G3c: KbNodeModal preview name', () => {
+    it('G3c: the preview name is one ellipsised line with the full name in its title', async () => {
+        renderModal({ kind: 'category' });
+        const long = 'A very long category name that would otherwise wrap the preview card';
+        await userEvent.type(screen.getByPlaceholderText('e.g. Accounts & SSO'), long);
+        const name = screen.getByTestId('kb-node-preview').querySelector(`[title="${long}"]`) as HTMLElement;
+        expect(name).not.toBeNull();
+        expect(name.style.textOverflow).toBe('ellipsis');
+        expect(name.style.whiteSpace).toBe('nowrap');
+        expect(name.style.overflow).toBe('hidden');
+    });
+});

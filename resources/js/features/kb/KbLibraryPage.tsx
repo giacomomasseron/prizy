@@ -11,6 +11,7 @@ import type { KbStatus } from './types';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 
 type Filter = 'all' | KbStatus;
 
@@ -81,15 +82,17 @@ export default function KbLibraryPage() {
                         )}
                     </div>
                     <div style={{ flex: 1, minHeight: 0, overflow: 'auto' }}>
-                        {lib.isPending ? null : categories.length === 0 && lib.isSuccess ? (
-                            <EmptyState title="No categories yet" body="Categories are the top-level topics customers browse on the help center." action="＋ First category" onAction={() => setModal({ kind: 'category' })} />
-                        ) : visible.length === 0 ? (
-                            filtered
-                                ? <EmptyState title="Nothing matches those filters" body="Clear the search or switch the status filter to see everything in this section." action="＋ New article here" onAction={newArticle} />
-                                : <EmptyState title="No articles in here yet" body="Write the first one — it stays a draft until you publish it." action="＋ New article here" onAction={newArticle} />
-                        ) : (
-                            <KbArticleTable articles={visible} canReorder={node.kind === 'section' && !filtered} />
-                        )}
+                        <QueryState query={lib} what="the library" frame={{ padding: '28px 22px' }}>
+                            {categories.length === 0 ? (
+                                <EmptyState title="No categories yet" body="Categories are the top-level topics customers browse on the help center." action="＋ First category" onAction={() => setModal({ kind: 'category' })} />
+                            ) : visible.length === 0 ? (
+                                filtered
+                                    ? <EmptyState title="Nothing matches those filters" body="Clear the search or switch the status filter to see everything in this section." action="＋ New article here" onAction={newArticle} />
+                                    : <EmptyState title="No articles in here yet" body="Write the first one — it stays a draft until you publish it." action="＋ New article here" onAction={newArticle} />
+                            ) : (
+                                <KbArticleTable articles={visible} canReorder={node.kind === 'section' && !filtered} />
+                            )}
+                        </QueryState>
                     </div>
                 </section>
             </div>

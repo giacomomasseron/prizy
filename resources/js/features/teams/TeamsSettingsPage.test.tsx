@@ -64,9 +64,15 @@ describe('TeamsSettingsPage', () => {
             : teams(url))));
         wrap(<TeamsSettingsPage />);
         const name = await screen.findByRole('button', { name: 'Engineering' });
-        expect(screen.getByTestId('team-row-ENG').className).toContain('has-[:focus-visible]:outline-2');
+        expect(screen.getByTestId('team-row-ENG').className).toContain('has-[.row-primary:focus-visible]:outline-2');
         name.focus();
         await userEvent.keyboard('{Enter}');
         expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    });
+    it('G3c: a failed teams load shows the retryable alert, not the empty state', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } })));
+        wrap(<TeamsSettingsPage />);
+        expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load teams.");
+        expect(screen.queryByText('No teams yet.')).toBeNull();
     });
 });

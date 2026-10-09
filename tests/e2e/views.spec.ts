@@ -18,9 +18,9 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
     await page.getByRole('button', { name: '+ Filter' }).click();
     await page.getByRole('menuitem', { name: 'Status' }).click();
     // The Status pill is now shown with its popover open — click "backlog" checkbox
-    await expect(page.getByLabel('backlog')).toBeVisible();
-    await page.getByLabel('backlog').click();
-    await expect(page.getByLabel('backlog')).toBeChecked();
+    await expect(page.getByLabel('backlog', { exact: true })).toBeVisible();
+    await page.getByLabel('backlog', { exact: true }).click();
+    await expect(page.getByLabel('backlog', { exact: true })).toBeChecked();
     await expect(page.getByRole('button').filter({ hasText: /Status/ })).toBeVisible();
     await expect(page).toHaveURL(/status=/);
 

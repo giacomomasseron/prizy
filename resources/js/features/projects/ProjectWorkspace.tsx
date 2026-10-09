@@ -1,4 +1,6 @@
 import { Link, Outlet, useLocation, useParams } from 'react-router-dom';
+import { ApiError } from '../../lib/apiClient';
+import { QueryState } from '../../components/ui/QueryState';
 import { useProject } from './hooks';
 
 function viewLabel(pathname: string): string {
@@ -16,28 +18,33 @@ export default function ProjectWorkspace() {
     const location = useLocation();
     const p = project.data;
 
-    if (project.isLoading) return <p style={{ margin: 0, padding: '24px 34px 24px calc(34px + var(--nav-inset, 0px))', fontSize: 15, color: 'var(--fg3)' }}>Loading…</p>;
-    if (!p) return <p style={{ margin: 0, padding: '24px 34px 24px calc(34px + var(--nav-inset, 0px))', fontSize: 15, color: 'var(--fg2)' }}>Project not found.</p>;
+    const notFound = <p style={{ margin: 0, padding: '24px 34px 24px calc(34px + var(--nav-inset, 0px))', fontSize: 15, color: 'var(--fg2)' }}>Project not found.</p>;
+    // A 404 is "not found", not a load failure; any other error gets QueryState's retryable alert.
+    if (project.isError && project.error instanceof ApiError && project.error.status === 404) return notFound;
 
     return (
-        <>
-            {/* Top bar: breadcrumb (never headings). The left padding clears the floating
-                Expand-sidebar button when the sidebar is collapsed (--nav-inset on <main>). */}
-            <div style={{ height: 64, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '0 34px 0 calc(34px + var(--nav-inset, 0px))' }}>
-                <Link to="/projects" className="text-fg2 hover:text-fg hover:bg-hover" style={{ fontSize: 14, fontWeight: 600, padding: '5px 10px', borderRadius: 'var(--radius-pill)', textDecoration: 'none' }}>
-                    Projects
-                </Link>
-                <span aria-hidden="true" style={sep}>/</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
-                </span>
-                <span aria-hidden="true" style={sep}>/</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg2)', whiteSpace: 'nowrap' }}>{viewLabel(location.pathname)}</span>
-            </div>
-            {/* Left-aligned with the bar (no auto margins). */}
-            <div style={{ maxWidth: 1120, width: '100%', boxSizing: 'border-box', padding: '22px 34px 80px' }}>
-                <Outlet />
-            </div>
-        </>
+        <QueryState query={project} what="this project" frame={{ padding: '24px 34px 24px calc(34px + var(--nav-inset, 0px))' }}>
+            {!p ? notFound : (
+            <>
+                {/* Top bar: breadcrumb (never headings). The left padding clears the floating
+                    Expand-sidebar button when the sidebar is collapsed (--nav-inset on <main>). */}
+                <div style={{ height: 64, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, padding: '0 34px 0 calc(34px + var(--nav-inset, 0px))' }}>
+                    <Link to="/projects" className="text-fg2 hover:text-fg hover:bg-hover" style={{ fontSize: 14, fontWeight: 600, padding: '5px 10px', borderRadius: 'var(--radius-pill)', textDecoration: 'none' }}>
+                        Projects
+                    </Link>
+                    <span aria-hidden="true" style={sep}>/</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 700, color: 'var(--fg)', whiteSpace: 'nowrap', minWidth: 0, overflow: 'hidden' }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: p.color, flexShrink: 0 }} /><span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</span>
+                    </span>
+                    <span aria-hidden="true" style={sep}>/</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg2)', whiteSpace: 'nowrap' }}>{viewLabel(location.pathname)}</span>
+                </div>
+                {/* Left-aligned with the bar (no auto margins). */}
+                <div style={{ maxWidth: 1120, width: '100%', boxSizing: 'border-box', padding: '22px 34px 80px' }}>
+                    <Outlet />
+                </div>
+            </>
+            )}
+        </QueryState>
     );
 }

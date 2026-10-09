@@ -254,13 +254,48 @@ describe('NotificationList', () => {
     it('G3b: each notification\'s text is the row\'s button — Enter selects it, and the selected one is current', async () => {
         const { onSelect } = wrap({ items: [makeItem({ id: 'a' }), makeItem({ id: 'b', type: 'issue_unblocked' })], selectedId: 'a' });
         const [first, second] = [screen.getByTestId('notif-row-a'), screen.getByTestId('notif-row-b')];
-        const firstBtn = within(first).getByRole('button', { name: 'You were assigned an issue' });
+        const firstBtn = within(first).getByRole('button', { name: 'Unread: You were assigned an issue' });
         expect(firstBtn).toHaveAttribute('aria-current', 'true');
         const secondBtn = within(second).getAllByRole('button')[0];
         expect(secondBtn).not.toHaveAttribute('aria-current');
         secondBtn.focus();
         await userEvent.keyboard('{Enter}');
         expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
-        expect(second.className).toContain('has-[:focus-visible]:outline-2');
+        expect(second.className).toContain('has-[.row-primary:focus-visible]:outline-2');
+    });
+
+    it("G3c: a failed query shows a retryable alert, not the all-caught-up state", () => {
+        render(
+            <NotificationList
+                items={[]}
+                isLoading={false}
+                query={{ isLoading: false, isError: true, data: undefined, refetch: vi.fn() }}
+                category="all"
+                unreadOnly={false}
+                onToggleUnread={vi.fn()}
+                selectedId={null}
+                onSelect={vi.fn()}
+            />,
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load notifications.");
+        expect(screen.queryByText(/all caught up/i)).toBeNull();
+    });
+
+    it('G3c: only an unread row\'s primary control starts with a visually hidden "Unread: "', () => {
+        wrap({ items: [makeItem({ id: 'u', read_at: null }), makeItem({ id: 'r', read_at: new Date().toISOString() })] });
+        const unreadBtn = within(screen.getByTestId('notif-row-u')).getByRole('button', { name: 'Unread: You were assigned an issue' });
+        expect(unreadBtn.querySelector('.sr-only')).toHaveTextContent('Unread:');
+        const readBtn = within(screen.getByTestId('notif-row-r')).getByRole('button', { name: 'You were assigned an issue' });
+        expect(readBtn.querySelector('.sr-only')).toBeNull();
+    });
+
+    it('G3c: a nested action button is not the row\'s ring trigger — only the .row-primary control is', () => {
+        wrap({ items: [makeItem({ id: 'a' })] });
+        const row = screen.getByTestId('notif-row-a');
+        expect(row.className).toContain('has-[.row-primary:focus-visible]:outline-2');
+        expect(row.className).not.toContain('has-[:focus-visible]');
+        const nested = within(row).getByRole('button', { name: 'Snooze' });
+        expect(nested.classList.contains('row-primary')).toBe(false);
+        expect(within(row).getAllByRole('button')[0].classList.contains('row-primary')).toBe(true);
     });
 });

@@ -66,4 +66,9 @@ describe('CreateTeamModal', () => {
         expect(screen.getByRole('button', { name: 'Color #4bab66' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: 'Color #6366f1' })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('G3c: the colour swatches are a group named Colour', () => {
+        wrap(<CreateTeamModal open onClose={vi.fn()} />);
+        expect(screen.getByRole('group', { name: 'Colour' })).toBeInTheDocument();
+    });
 });

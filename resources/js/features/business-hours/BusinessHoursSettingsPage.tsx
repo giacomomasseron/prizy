@@ -3,6 +3,7 @@ import { useSchedules, useDeleteSchedule } from './hooks';
 import { ScheduleModal } from './ScheduleModal';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { ApiError } from '../../lib/apiClient';
 import type { Schedule } from '../../lib/types';
 import { DELETE_X_CLASSES, deleteXStyle, emptyState } from '../projects/projectStyles';
@@ -82,42 +83,43 @@ export default function BusinessHoursSettingsPage() {
 
             {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
-            {schedulesQ.isLoading && <p style={{ color: 'var(--fg3)' }}>Loading…</p>}
-            {!schedulesQ.isLoading && schedules.length === 0 && (
-                <div style={{ ...emptyState, marginTop: 20 }}>No schedules yet.</div>
-            )}
+            <QueryState query={schedulesQ} what="schedules">
+                {schedules.length === 0 && (
+                    <div style={{ ...emptyState, marginTop: 20 }}>No schedules yet.</div>
+                )}
 
-            {schedules.length > 0 && (
-                <div style={{ ...listCard, marginTop: 20 }}>
-                    {schedules.map((s) => (
-                        <div
-                            key={s.id}
-                            data-testid={`schedule-row-${s.id}`}
-                            className={ROW_CLASSES}
-                            style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}
-                        >
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', overflowWrap: 'anywhere' }}>{s.name}</span>
-                                <span style={{ fontSize: 12, color: 'var(--fg3)', overflowWrap: 'anywhere' }}>{s.timezone} · {summarizeIntervals(s)}</span>
-                            </div>
-                            <span style={{ flex: 1 }} />
-                            <Button variant="secondary" size="sm" data-testid={`edit-${s.id}`} onClick={() => openEdit(s)}>
-                                Edit
-                            </Button>
-                            <button
-                                type="button"
-                                title="Delete"
-                                data-testid={`delete-${s.id}`}
-                                onClick={() => remove(s)}
-                                className={DELETE_X_CLASSES}
-                                style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
+                {schedules.length > 0 && (
+                    <div style={{ ...listCard, marginTop: 20 }}>
+                        {schedules.map((s) => (
+                            <div
+                                key={s.id}
+                                data-testid={`schedule-row-${s.id}`}
+                                className={ROW_CLASSES}
+                                style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}
                             >
-                                ×
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                                    <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', overflowWrap: 'anywhere' }}>{s.name}</span>
+                                    <span style={{ fontSize: 12, color: 'var(--fg3)', overflowWrap: 'anywhere' }}>{s.timezone} · {summarizeIntervals(s)}</span>
+                                </div>
+                                <span style={{ flex: 1 }} />
+                                <Button variant="secondary" size="sm" data-testid={`edit-${s.id}`} onClick={() => openEdit(s)}>
+                                    Edit
+                                </Button>
+                                <button
+                                    type="button"
+                                    title="Delete"
+                                    data-testid={`delete-${s.id}`}
+                                    onClick={() => remove(s)}
+                                    className={DELETE_X_CLASSES}
+                                    style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
+                                >
+                                    ×
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </QueryState>
 
             <ScheduleModal open={modalOpen} schedule={editing} onClose={closeModal} />
         </div>

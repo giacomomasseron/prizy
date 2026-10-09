@@ -142,6 +142,7 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                             onChange={(e) => setQuery(e.target.value)}
                             className={FIELD_CLASSES}
                             style={{
+                                position: 'sticky', top: 0, zIndex: 1,
                                 width: '100%', boxSizing: 'border-box', margin: '2px 0 6px',
                                 background: 'var(--bg)', borderRadius: 'var(--radius-pill)',
                                 padding: '7px 12px', color: 'var(--fg)', fontSize: 13.5, fontFamily: 'inherit', outline: 'none',

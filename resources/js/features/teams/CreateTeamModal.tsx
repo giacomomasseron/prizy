@@ -82,7 +82,7 @@ export default function CreateTeamModal({ open, onClose }: { open: boolean; onCl
                 </div>
                 <div>
                     <div style={fieldLabel}>Color</div>
-                    <div style={{ display: 'flex', gap: 9 }}>
+                    <div role="group" aria-label="Colour" style={{ display: 'flex', gap: 9 }}>
                         {COLORS.map((c) => (
                             <button
                                 key={c}

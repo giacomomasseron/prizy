@@ -13,7 +13,7 @@ const report: AgentsReport = {
     ] },
 };
 
-const useAgentsReport = vi.fn((_range: string, _enabled: boolean) => ({ data: report, isLoading: false }));
+const useAgentsReport = vi.fn((_range: string, _enabled: boolean) => ({ data: report, isLoading: false, isError: false, refetch: vi.fn() }));
 vi.mock('./hooks', () => ({ useAgentsReport: (r: string, e: boolean) => useAgentsReport(r, e) }));
 
 describe('AgentsSection', () => {
@@ -26,8 +26,15 @@ describe('AgentsSection', () => {
     });
 
     it('shows a loading state while data is pending', () => {
-        useAgentsReport.mockReturnValueOnce({ data: undefined as unknown as AgentsReport, isLoading: true });
+        useAgentsReport.mockReturnValueOnce({ data: undefined as unknown as AgentsReport, isLoading: true, isError: false, refetch: vi.fn() });
         render(<AgentsSection range="7d" />);
         expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    });
+
+    it('G3c: a failed load shows the retryable alert, not a stuck "Loading…"', () => {
+        useAgentsReport.mockReturnValueOnce({ data: undefined as unknown as AgentsReport, isLoading: false, isError: true, refetch: vi.fn() });
+        render(<AgentsSection range="7d" />);
+        expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the agents report.");
+        expect(screen.queryByText(/loading/i)).toBeNull();
     });
 });

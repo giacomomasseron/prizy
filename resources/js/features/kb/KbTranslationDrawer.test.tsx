@@ -34,6 +34,7 @@ interface DrawerOverrides {
     initialLocale?: string | null;
     articleStatus?: 'draft' | 'published' | 'archived';
     saveFails?: boolean;
+    saveGate?: Promise<void>;
     statusFails?: boolean;
     deleteFails?: boolean;
     translationsFail?: boolean;
@@ -44,6 +45,7 @@ function renderDrawer(overrides: DrawerOverrides = {}) {
         if (url.includes('/kb/preview')) return j({ html: '<p>rendered</p>' });
         if (/\/kb\/articles\/a1$/.test(url)) return j({ data: article });
         if (init?.method === 'PUT' && url.includes('/translations/')) {
+            if (overrides.saveGate) await overrides.saveGate;
             return overrides.saveFails
                 ? j({ title: 'Error', detail: 'Could not save.' }, 422)
                 // A distinguishable payload (not an echo of what was typed) — proves the drawer
@@ -170,6 +172,18 @@ describe('KbTranslationDrawer', () => {
         await waitFor(() => expect(titleInput).toHaveValue('SAVED_TITLE'));
         // Dirty is now false again — the pane's own state matches what was just persisted.
         expect(screen.getByRole('button', { name: 'Save translation' })).toBeDisabled();
+    });
+
+    it('G3c: Save translation is disabled while the save is in flight', async () => {
+        let release: () => void = () => {};
+        renderDrawer({ initialLocale: 'fr', saveGate: new Promise<void>((r) => { release = r; }) });
+        await userEvent.type(await screen.findByPlaceholderText('Translated title'), '!');
+        const save = screen.getByRole('button', { name: 'Save translation' });
+        expect(save).toBeEnabled();
+        await userEvent.click(save);
+        await waitFor(() => expect(save).toBeDisabled());
+        release();
+        await waitFor(() => expect(screen.getByPlaceholderText('Translated title')).toHaveValue('SAVED_TITLE'));
     });
 
     it('seeds the fields from the English article when starting from it, and enables Save immediately', async () => {

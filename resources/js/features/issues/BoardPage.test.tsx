@@ -167,4 +167,16 @@ describe('BoardPage', () => {
         expect(row.style.alignItems).toBe('');
         expect(row.style.flexShrink).toBe('0');
     });
+
+    it("G3c: a failed issues load shows a retryable alert instead of empty columns", async () => {
+        const hooks = await import('./hooks');
+        const spy = vi.spyOn(hooks, 'useIssues').mockReturnValue({ isLoading: false, isError: true, data: undefined, refetch: vi.fn() } as never);
+        try {
+            mountBoard();
+            expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load issues.");
+            expect(screen.queryByTestId('col-todo')).toBeNull();
+        } finally {
+            spy.mockRestore();
+        }
+    });
 });

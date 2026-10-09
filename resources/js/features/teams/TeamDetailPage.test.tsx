@@ -1,9 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TeamDetailPage from './TeamDetailPage';
+import * as hooksModule from './hooks';
+import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 
 // Mock useNavigate while preserving all other react-router-dom exports.
 const mockNavigate = vi.fn();
@@ -79,5 +81,60 @@ describe('TeamDetailPage', () => {
         renderPage();
         expect(await screen.findByText('No cycles in this team yet.')).toBeInTheDocument();
         expect(screen.getByText('Cycles')).toBeInTheDocument(); // still the only element reading exactly "Cycles"
+    });
+
+    it("G3c: a failed cycles load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/cycles')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meOwnerDev }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [{ id: 't1', name: 'Eng', identifier: 'ENG', color: '#111', created_at: '', updated_at: '' }], links: { next: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/teams/t1']}>
+                    <Routes><Route path="/teams/:id" element={<TeamDetailPage />} /></Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load cycles.");
+        expect(screen.queryByText('No cycles in this team yet.')).toBeNull();
+    });
+
+    it('G3c: a cycle Delete is disabled while the delete is pending', async () => {
+        const spy = vi.spyOn(hooksModule, 'useDeleteCycle').mockReturnValue({ mutate: vi.fn(), isPending: true, variables: 'c1' } as never);
+        try {
+            renderPage();
+            await screen.findByText('Sprint 1');
+            expect(await screen.findByRole('button', { name: 'Delete' })).toBeDisabled();
+        } finally { spy.mockRestore(); }
+    });
+
+    it('G3c: only the cycle being deleted has its Delete disabled', async () => {
+        let release: () => void = () => {};
+        const gate = new Promise<void>((r) => { release = r; });
+        const cyc = (id: string, name: string) => ({ id, team_id: 't1', name, starts_at: '2026-01-01', ends_at: '2026-01-14', created_at: '', updated_at: '' });
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (init?.method === 'DELETE') { await gate; return new Response(null, { status: 204 }); }
+            if (url.includes('/cycles')) return new Response(JSON.stringify({ data: [cyc('c1', 'Sprint 1'), cyc('c2', 'Sprint 2')], links: { next: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meOwnerDev }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [{ id: 't1', name: 'Eng', identifier: 'ENG', color: '#111', created_at: '', updated_at: '' }], links: { next: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }));
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <ConfirmProvider>
+                    <MemoryRouter initialEntries={['/teams/t1']}>
+                        <Routes><Route path="/teams/:id" element={<TeamDetailPage />} /></Routes>
+                    </MemoryRouter>
+                </ConfirmProvider>
+            </QueryClientProvider>,
+        );
+        await screen.findByText('Sprint 2');
+        const deletes = await screen.findAllByRole('button', { name: 'Delete' });
+        await userEvent.click(deletes[0]);
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        await waitFor(() => expect(screen.getAllByRole('button', { name: 'Delete' })[0]).toBeDisabled());
+        expect(screen.getAllByRole('button', { name: 'Delete' })[1]).toBeEnabled();
+        release();
     });
 });

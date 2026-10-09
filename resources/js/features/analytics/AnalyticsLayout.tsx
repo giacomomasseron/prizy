@@ -12,6 +12,7 @@ import { OverviewSection } from './OverviewSection';
 import { CyclesSection } from './CyclesSection';
 import { analyticsCsv } from './csv';
 import { ANALYTICS_SECTIONS, type AnalyticsSectionKey } from './analyticsMeta';
+import { QueryState } from '../../components/ui/QueryState';
 import { Button } from '../../components/ui/Button';
 import { PILL_CLASSES, pillBtn } from '../settings/settingsStyles';
 import { paneHeader, paneSub, paneTitle } from '../support/supportStyles';
@@ -43,7 +44,11 @@ export default function AnalyticsLayout() {
                 </header>
                 <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 22 }}>
                     <div style={{ maxWidth: 1180, margin: '0 auto' }}>
-                        {section === 'overview' && (q.data ? <OverviewSection report={q.data} /> : <div style={{ fontSize: 13, color: 'var(--fg3)' }}>Loading…</div>)}
+                        {section === 'overview' && (
+                            <QueryState query={q} what="analytics">
+                                {q.data && <OverviewSection report={q.data} />}
+                            </QueryState>
+                        )}
                         {section === 'cycles' && <CyclesSection />}
                     </div>
                 </div>

@@ -3,6 +3,7 @@ import { useMarkAllRead, useMarkRead, useMarkUnread, useToggleSnooze, useToggleA
 import { notificationMeta, notificationText } from './text';
 import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
+import { QueryState, type QueryLike } from '../../components/ui/QueryState';
 import { Avatar } from '../../components/ui/Avatar';
 import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { AppNotification } from '../../lib/types';
@@ -77,6 +78,7 @@ function groupByDay(items: AppNotification[]): { label: string; rows: AppNotific
 export function NotificationList({
     items,
     isLoading,
+    query,
     category,
     unreadOnly,
     onToggleUnread,
@@ -85,6 +87,8 @@ export function NotificationList({
 }: {
     items: AppNotification[];
     isLoading: boolean;
+    /** The inbox query itself (V2-G3c): when given, a failed load shows the retryable alert; `isLoading` alone keeps the loading line. */
+    query?: QueryLike;
     category: string;
     unreadOnly: boolean;
     onToggleUnread: () => void;
@@ -105,6 +109,8 @@ export function NotificationList({
         onSelect(n);
         if (!unreadOnly && !n.read_at) markRead.mutate(n.id);
     }
+
+    const listState: QueryLike = query ?? { isLoading, isError: false, refetch: () => undefined };
 
     const pill: CSSProperties = { ...toolPillStyle, padding: '6px 12px', fontSize: 12.5 };
 
@@ -128,124 +134,125 @@ export function NotificationList({
             </div>
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {isLoading && <div style={{ padding: '20px 18px', fontSize: 14, color: 'var(--fg3)' }}>Loading…</div>}
+                <QueryState query={listState} what="notifications" frame={{ padding: '20px 18px' }}>
+                    {items.length === 0 && (
+                        <div style={{ padding: '48px 18px', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>
+                            {EMPTY_COPY[category] ?? "You're all caught up"}
+                        </div>
+                    )}
 
-                {!isLoading && items.length === 0 && (
-                    <div style={{ padding: '48px 18px', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>
-                        {EMPTY_COPY[category] ?? "You're all caught up"}
-                    </div>
-                )}
+                    {groups.map((g) => (
+                            <div key={g.label}>
+                                <div style={{ ...sectionLabel, padding: '14px 18px 6px' }}>{g.label}</div>
+                                {g.rows.map((n) => {
+                                    const meta = notificationMeta(n.type);
+                                    const unread = !n.read_at;
+                                    const selected = selectedId === n.id;
+                                    const showActorName = !!n.actor && (['mention', 'comment', 'status'] as string[]).includes(meta.category);
+                                    const avatar = n.actor ? avatarFor(n.actor) : null;
 
-                {!isLoading &&
-                    groups.map((g) => (
-                        <div key={g.label}>
-                            <div style={{ ...sectionLabel, padding: '14px 18px 6px' }}>{g.label}</div>
-                            {g.rows.map((n) => {
-                                const meta = notificationMeta(n.type);
-                                const unread = !n.read_at;
-                                const selected = selectedId === n.id;
-                                const showActorName = !!n.actor && (['mention', 'comment', 'status'] as string[]).includes(meta.category);
-                                const avatar = n.actor ? avatarFor(n.actor) : null;
-
-                                return (
-                                    // No inline background on unselected rows: it would beat hover:bg-hover.
-                                    <div
-                                        key={n.id}
-                                        data-testid={`notif-row-${n.id}`}
-                                        onClick={() => selectRow(n)}
-                                        className={`${selected ? 'group' : 'group bg-transparent hover:bg-hover'} ${ROW_FOCUS_CLASSES}`}
-                                        style={{
-                                            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 18px',
-                                            borderBottom: '1px solid var(--border)', cursor: 'pointer',
-                                            ...(selected ? selectedRow : {}),
-                                        }}
-                                    >
-                                        <span style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 9, flexShrink: 0, background: unread ? 'var(--accent)' : 'transparent' }} />
-                                        <span
-                                            aria-hidden="true"
+                                    return (
+                                        // No inline background on unselected rows: it would beat hover:bg-hover.
+                                        <div
+                                            key={n.id}
+                                            data-testid={`notif-row-${n.id}`}
+                                            onClick={() => selectRow(n)}
+                                            className={`${selected ? 'group' : 'group bg-transparent hover:bg-hover'} ${ROW_FOCUS_CLASSES}`}
                                             style={{
-                                                width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border2)', background: 'var(--panel)',
-                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                fontSize: 11.5, color: 'var(--fg2)', flexShrink: 0,
+                                                display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 18px',
+                                                borderBottom: '1px solid var(--border)', cursor: 'pointer',
+                                                ...(selected ? selectedRow : {}),
                                             }}
                                         >
-                                            {meta.icon}
-                                        </span>
-                                        {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={24} title={n.actor?.name} />}
+                                            <span aria-hidden="true" style={{ width: 7, height: 7, borderRadius: '50%', marginTop: 9, flexShrink: 0, background: unread ? 'var(--accent)' : 'transparent' }} />
+                                            <span
+                                                aria-hidden="true"
+                                                style={{
+                                                    width: 24, height: 24, borderRadius: '50%', border: '1px solid var(--border2)', background: 'var(--panel)',
+                                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                    fontSize: 11.5, color: 'var(--fg2)', flexShrink: 0,
+                                                }}
+                                            >
+                                                {meta.icon}
+                                            </span>
+                                            {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={24} title={n.actor?.name} />}
 
-                                        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                            {/* The row's primary control (V2-G3b): its click bubbles to the row. */}
-                                            <button type="button" aria-current={selected ? 'true' : undefined} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%', fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.45 }}>
-                                                {showActorName ? (
-                                                    <>
-                                                        <span style={{ fontWeight: 700 }}>{n.actor!.name}</span> <span>{notificationText(n.type)}</span>
-                                                    </>
-                                                ) : (
-                                                    notificationText(n.type)
+                                            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
+                                                {/* The row's primary control (V2-G3b): its click bubbles to the row. */}
+                                                <button type="button" aria-current={selected ? 'true' : undefined} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%', fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.45 }}>
+                                                    {/* The space sits outside the hidden span so the name reads "Unread: …"; visually it collapses at the line start. */}
+                                                    {unread && <><span className="sr-only">Unread:</span>{' '}</>}
+                                                    {showActorName ? (
+                                                        <>
+                                                            <span style={{ fontWeight: 700 }}>{n.actor!.name}</span> <span>{notificationText(n.type)}</span>
+                                                        </>
+                                                    ) : (
+                                                        notificationText(n.type)
+                                                    )}
+                                                </button>
+                                                {n.body && (
+                                                    <div style={{ fontSize: 12.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                                        {n.body}
+                                                    </div>
                                                 )}
-                                            </button>
-                                            {n.body && (
-                                                <div style={{ fontSize: 12.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                    {n.body}
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                                    {n.subject?.ref && (
+                                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>
+                                                            {n.subject.ref}
+                                                        </span>
+                                                    )}
+                                                    <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
                                                 </div>
-                                            )}
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                {n.subject?.ref && (
-                                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent)' }}>
-                                                        {n.subject.ref}
-                                                    </span>
+                                            </div>
+
+                                            {/* Shown on row hover, and while one of them has keyboard focus. */}
+                                            <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                                {unread ? (
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Mark read"
+                                                        style={actionBtn}
+                                                        className={ACTION_BTN_CLASSES}
+                                                        onClick={(e) => { e.stopPropagation(); markRead.mutate(n.id); }}
+                                                    >
+                                                        ●
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        aria-label="Mark unread"
+                                                        style={actionBtn}
+                                                        className={ACTION_BTN_CLASSES}
+                                                        onClick={(e) => { e.stopPropagation(); markUnread.mutate(n.id); }}
+                                                    >
+                                                        ○
+                                                    </button>
                                                 )}
-                                                <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>{timeAgo(n.created_at)}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Snooze"
+                                                    style={actionBtn}
+                                                    className={ACTION_BTN_CLASSES}
+                                                    onClick={(e) => { e.stopPropagation(); toggleSnooze.mutate(n.id); }}
+                                                >
+                                                    ☾
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    aria-label="Archive"
+                                                    style={actionBtn}
+                                                    className={ACTION_BTN_CLASSES}
+                                                    onClick={(e) => { e.stopPropagation(); toggleArchive.mutate(n.id); }}
+                                                >
+                                                    ⌫
+                                                </button>
                                             </div>
                                         </div>
-
-                                        {/* Shown on row hover, and while one of them has keyboard focus. */}
-                                        <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                                            {unread ? (
-                                                <button
-                                                    type="button"
-                                                    aria-label="Mark read"
-                                                    style={actionBtn}
-                                                    className={ACTION_BTN_CLASSES}
-                                                    onClick={(e) => { e.stopPropagation(); markRead.mutate(n.id); }}
-                                                >
-                                                    ●
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    aria-label="Mark unread"
-                                                    style={actionBtn}
-                                                    className={ACTION_BTN_CLASSES}
-                                                    onClick={(e) => { e.stopPropagation(); markUnread.mutate(n.id); }}
-                                                >
-                                                    ○
-                                                </button>
-                                            )}
-                                            <button
-                                                type="button"
-                                                aria-label="Snooze"
-                                                style={actionBtn}
-                                                className={ACTION_BTN_CLASSES}
-                                                onClick={(e) => { e.stopPropagation(); toggleSnooze.mutate(n.id); }}
-                                            >
-                                                ☾
-                                            </button>
-                                            <button
-                                                type="button"
-                                                aria-label="Archive"
-                                                style={actionBtn}
-                                                className={ACTION_BTN_CLASSES}
-                                                onClick={(e) => { e.stopPropagation(); toggleArchive.mutate(n.id); }}
-                                            >
-                                                ⌫
-                                            </button>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
+                                    );
+                                })}
+                            </div>
+                        ))}
+                </QueryState>
             </div>
         </div>
     );

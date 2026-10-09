@@ -88,4 +88,26 @@ describe('TeamsPage', () => {
         expect(screen.getByText('SM')).toBeInTheDocument();
         expect(screen.getByText('SMOKE1')).toBeInTheDocument();
     });
+
+    it("G3c: a failed teams load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meAdmin }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><TeamsPage /></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load teams.");
+        expect(screen.queryByText('No teams yet.')).toBeNull();
+        expect(screen.getByRole('heading', { name: 'Teams' })).toBeInTheDocument();
+    });
+
+    it('G3c: the tile clips the key itself, so its title is the full key', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meAdmin }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMOKE1', color: '#6d69f2', created_at: '', updated_at: '' }], links: { next: null, prev: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }));
+        renderPage();
+        const tile = (await screen.findByText('SM')) as HTMLElement;
+        expect(tile).toHaveAttribute('title', 'SMOKE1');
+    });
 });

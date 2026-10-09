@@ -29,9 +29,9 @@ export function AuthColumn({ children }: { children: ReactNode }) {
     return (
         <>
             <AuthBrand />
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
+            <main style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 0' }}>
                 <div className="login-fade" style={{ width: '100%', maxWidth: 400 }}>{children}</div>
-            </div>
+            </main>
             <AuthFooter />
         </>
     );

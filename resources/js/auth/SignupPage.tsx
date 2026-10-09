@@ -20,6 +20,7 @@ export default function SignupPage() {
     const [form, setForm] = useState({ workspace_name: '', slug: '', name: '', email: '', password: '' });
     const [errors, setErrors] = useState<Record<string, string[]>>({});
     const [done, setDone] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
     function set(k: keyof typeof form) {
         return (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
@@ -27,12 +28,15 @@ export default function SignupPage() {
 
     async function submit(e: React.FormEvent) {
         e.preventDefault();
+        if (submitting) return;
         setErrors({});
+        setSubmitting(true);
         try {
             await sessionPost('/workspaces', form);
             setDone(true);
         } catch (err) {
             if (err instanceof ApiError) setErrors(err.errors ?? {});
+            setSubmitting(false);
         }
     }
 
@@ -69,7 +73,7 @@ export default function SignupPage() {
                         {errors[field]?.map((m) => <p key={m} role="alert" style={authError}>{m}</p>)}
                     </div>
                 ))}
-                <Button type="submit" style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>Create</Button>
+                <Button type="submit" disabled={submitting} style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>Create</Button>
             </form>
         </AuthFrame>
     );

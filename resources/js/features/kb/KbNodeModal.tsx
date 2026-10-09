@@ -204,7 +204,7 @@ export function KbNodeModal({ state, categories, onClose, onCreated }: KbNodeMod
                         <div data-testid="kb-node-preview" style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '12px 14px', border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-row)', background: 'var(--bg2)' }}>
                             <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color, background: 'var(--hover)', flexShrink: 0 }}>{icon}</span>
                             <div style={{ minWidth: 0 }}>
-                                <div style={{ fontSize: 13.5, fontWeight: 700 }}>{name.trim() || 'Category name'}</div>
+                                <div title={name.trim() || undefined} style={{ fontSize: 13.5, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name.trim() || 'Category name'}</div>
                                 <div style={{ fontSize: 11.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{description.trim() || 'Description shown under the topic card'}</div>
                             </div>
                         </div>

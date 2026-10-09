@@ -93,4 +93,13 @@ describe('RoadmapPage', () => {
         const thisMonth = new Date().toLocaleString('en-US', { month: 'short' });
         expect(screen.queryByText(thisMonth)).toBeNull();
     });
+
+    it("G3c: a failed roadmap load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } })));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><RoadmapPage /></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load the roadmap.");
+        expect(screen.queryByText('No projects yet.')).toBeNull();
+        expect(screen.getByRole('heading', { name: 'Roadmap' })).toBeInTheDocument();
+    });
 });

@@ -36,3 +36,10 @@ describe('AgentPerformanceTable', () => {
         expect(head.style.fontSize).toBe('12.5px');
     });
 });
+
+describe('G3c: AgentPerformanceTable head', () => {
+    it('G3c: the header row keeps column heads on one line', () => {
+        render(<AgentPerformanceTable agents={[row({})]} />);
+        expect((screen.getByText('Assigned').parentElement as HTMLElement).style.whiteSpace).toBe('nowrap');
+    });
+});

@@ -19,7 +19,7 @@ export function Drawer({ open, onClose, side = 'right', width = 520, label, chil
     if (!open) return null;
 
     return (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', justifyContent: side === 'right' ? 'flex-end' : 'flex-start' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 40, display: 'flex', flexDirection: side === 'left' ? 'row-reverse' : 'row' }}>
             {/* The backdrop is a mouse convenience (Escape closes for the keyboard), so it carries no role of its own. */}
             <div role="presentation" onClick={onClose} style={{ flex: 1, background: 'var(--backdrop)', animation: 'prizy-fade .15s ease' }} />
             <div

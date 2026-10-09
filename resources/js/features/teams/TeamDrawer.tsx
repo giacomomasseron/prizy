@@ -74,7 +74,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                     <button type="button" onClick={onClose} aria-label="Close" className="bg-transparent text-fg2 hover:bg-hover"
                         style={{ width: 28, height: 28, borderRadius: '50%', border: 'none', fontSize: 18, lineHeight: 1, cursor: 'pointer', flexShrink: 0 }}>×</button>
                 </div>
-                <div style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
+                <div role="group" aria-label="Colour" style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
                     {EDIT_COLORS.map((c) => (
                         <button key={c} type="button" aria-label={`Set color ${c}`} aria-pressed={live.color === c}
                             onClick={() => { clear(); updateTeam.mutate({ id: team.id, color: c }, { onError: surface }); }}
@@ -91,16 +91,21 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
 
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span style={groupLabel}>Members</span>
-                    <Menu
-                        placement="bottom-end"
-                        trigger={<button type="button" aria-label="Add member" className={PILL_CLASSES} style={pillBtn}>+ Add member</button>}
-                        items={addable.map((w) => ({
-                            key: w.id,
-                            label: w.name,
-                            subtitle: w.email,
-                            onActivate: () => { clear(); add.mutate({ user_id: w.id }, { onError: surface }); },
-                        }))}
-                    />
+                    {workspace.data && addable.length === 0 ? (
+                        <button type="button" aria-label="Add member" disabled title="Everyone is already on this team"
+                            className="border-border2 bg-transparent text-fg disabled:opacity-50" style={{ ...pillBtn, cursor: 'not-allowed' }}>+ Add member</button>
+                    ) : (
+                        <Menu
+                            placement="bottom-end"
+                            trigger={<button type="button" aria-label="Add member" className={PILL_CLASSES} style={pillBtn}>+ Add member</button>}
+                            items={addable.map((w) => ({
+                                key: w.id,
+                                label: w.name,
+                                subtitle: w.email,
+                                onActivate: () => { clear(); add.mutate({ user_id: w.id }, { onError: surface }); },
+                            }))}
+                        />
+                    )}
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -120,7 +125,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                                     { key: 'member', label: 'Member', onActivate: () => { clear(); setRole.mutate({ userId: m.id, role: 'member' }, { onError: surface }); } },
                                 ]}
                             />
-                            <button type="button" data-testid={`remove-${m.email}`} aria-label={`Remove ${m.name}`} onClick={() => { clear(); remove.mutate(m.id, { onError: surface }); }}
+                            <button type="button" data-testid={`remove-${m.email}`} aria-label={`Remove ${m.name}`} disabled={remove.isPending && remove.variables === m.id} onClick={() => { clear(); remove.mutate(m.id, { onError: surface }); }}
                                 className={DELETE_X_CLASSES} style={deleteXStyle}>×</button>
                         </div>
                     ))}
@@ -132,7 +137,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                         clear();
                         if (!(await confirm({ title: `Delete team ${team.name}?`, danger: true }))) return;
                         del.mutate(team.id, { onSuccess: () => onClose(), onError: surface });
-                    }} className={DANGER_PILL_CLASSES} style={pillBtn}>
+                    }} disabled={del.isPending} className={DANGER_PILL_CLASSES} style={pillBtn}>
                         Delete team
                     </button>
                 </div>

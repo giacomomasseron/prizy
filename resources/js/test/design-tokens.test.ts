@@ -26,7 +26,9 @@ const PALETTE = ['--bg', '--bg2', '--panel', '--border', '--border2', '--fg', '-
     '--accent', '--accent2', '--on-accent', '--hi', '--on-hi', '--red', '--amber', '--green', '--blue', '--teal',
     '--sup', '--sup2', '--on-sup', '--note', '--note2', '--backdrop',
     // V2-G3a: text-only status colours and the 3:1 field border.
-    '--red-ink', '--amber-ink', '--green-ink', '--blue-ink', '--teal-ink', '--accent-ink', '--sup-ink', '--note-ink', '--field'];
+    '--red-ink', '--amber-ink', '--green-ink', '--blue-ink', '--teal-ink', '--accent-ink', '--sup-ink', '--note-ink', '--field',
+    // V2-G3c: the danger button's hover fill.
+    '--red-hover'];
 
 describe('design tokens (app.css)', () => {
     it('light palette is the default :root block with the v2 values', () => {

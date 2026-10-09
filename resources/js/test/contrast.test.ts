@@ -86,4 +86,9 @@ describe.each(Object.entries(THEMES))('contrast in the %s theme', (_name, p) => 
         expect(ratio(rgb('--on-accent'), rgb('--red-ink'))).toBeGreaterThanOrEqual(4.5);
         expect(ratio(rgb('--on-hi'), rgb('--hi'))).toBeGreaterThanOrEqual(4.5);
     });
+
+    it('G3c: the danger hover fill keeps 4.5:1 for its text and is a visible step from --red', () => {
+        expect(ratio(rgb('--on-accent'), rgb('--red-hover'))).toBeGreaterThanOrEqual(4.5);
+        expect(ratio(rgb('--red'), rgb('--red-hover'))).toBeGreaterThanOrEqual(1.3);
+    });
 });

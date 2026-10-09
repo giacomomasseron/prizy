@@ -1,10 +1,11 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useTicket } from './hooks';
+import { QueryState } from '../../components/ui/QueryState';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { TICKET_CHANNEL } from './ticketMeta';
-import type { TicketMessage } from '../../lib/types';
+import type { TicketDetail, TicketMessage } from '../../lib/types';
 import { TicketComposer } from './TicketComposer';
 import { TicketStatusMenu } from './TicketStatusMenu';
 import { paneHeader, paneTitle, tint } from './supportStyles';
@@ -37,12 +38,20 @@ function MessageRow({ m }: { m: TicketMessage }) {
 
 export function TicketConversation({ ticketId }: { ticketId: string | undefined }) {
     const q = useTicket(ticketId ?? '');
-    const t = q.data;
     if (!ticketId) return <div style={mainStyle}><Empty text="Select a ticket" /></div>;
-    if (q.isLoading || !t) return <div style={mainStyle}><Empty text="Loading…" /></div>;
-    const linked = t.linked_issues[0];
     return (
         <div style={mainStyle}>
+            <QueryState query={q} what="this ticket" frame={{ margin: 'auto', padding: 16 }}>
+                {q.data && <TicketBody t={q.data} />}
+            </QueryState>
+        </div>
+    );
+}
+
+function TicketBody({ t }: { t: TicketDetail }) {
+    const linked = t.linked_issues[0];
+    return (
+        <>
             <header style={paneHeader}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={paneTitle}>{t.subject}</div>
@@ -64,6 +73,6 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
                 </div>
             </div>
             <TicketComposer ticket={t} />
-        </div>
+        </>
     );
 }

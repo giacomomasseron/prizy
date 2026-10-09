@@ -238,7 +238,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
 
             {/* Footer */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 14 }}>
-                <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
                 <Button
                     variant="primary"
                     size="sm"

@@ -273,7 +273,7 @@ describe('ProjectsPage', () => {
         expect(mockNavigate).toHaveBeenCalledTimes(1);
         expect(mockNavigate).toHaveBeenCalledWith('/projects/p1');
         expect(screen.queryByText('project page')).toBeNull();
-        expect(screen.getByTestId('project-row-p1').className).toContain('has-[:focus-visible]:outline-2');
+        expect(screen.getByTestId('project-row-p1').className).toContain('has-[.row-primary:focus-visible]:outline-2');
     });
 
     it('G3b: a modified click on the project link is left to the browser (new tab), not to the row', async () => {
@@ -284,5 +284,18 @@ describe('ProjectsPage', () => {
         fireEvent.click(link, { metaKey: true });
         fireEvent.click(link, { ctrlKey: true });
         expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it("G3c: a failed projects load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return j({ data: meOwnerDev });
+            if (url.includes('/projects')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><ProjectsPage /></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load projects.");
+        expect(screen.queryByText('No projects yet.')).toBeNull();
+        expect(screen.queryByText('0')).toBeNull();
     });
 });

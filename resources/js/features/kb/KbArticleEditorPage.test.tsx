@@ -1,10 +1,11 @@
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import KbArticleEditorPage from './KbArticleEditorPage';
+import * as kbHooks from './hooks';
 
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Alex', is_agent: true } }) }));
 
@@ -287,5 +288,21 @@ describe('KbArticleEditorPage', () => {
         const title = await screen.findByRole('textbox', { name: 'Article title' });
         expect(title.className).toBe('border-transparent focus:border-fg');
         expect(title.style.borderStyle).toBe('solid');
+    });
+
+    it('G3c: Save changes and Delete article are disabled while their mutation is pending', async () => {
+        const upd = vi.spyOn(kbHooks, 'useUpdateKbArticle').mockReturnValue({ isPending: true, mutateAsync: vi.fn(), mutate: vi.fn() } as never);
+        try {
+            renderEditor();
+            const title = await screen.findByPlaceholderText('Article title');
+            await userEvent.type(title, '!');
+            expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+        } finally { upd.mockRestore(); }
+        cleanup();
+        const del = vi.spyOn(kbHooks, 'useDeleteKbArticle').mockReturnValue({ isPending: true, mutateAsync: vi.fn(), mutate: vi.fn() } as never);
+        try {
+            renderEditor();
+            expect(await screen.findByRole('button', { name: 'Delete article' })).toBeDisabled();
+        } finally { del.mockRestore(); }
     });
 });

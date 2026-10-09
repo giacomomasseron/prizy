@@ -122,4 +122,25 @@ describe('FilterBar v2 styling', () => {
         const label = screen.getByLabelText('Sort issues').closest('label') as HTMLElement;
         expect(label.className).toContain('focus-within:border-fg');
     });
+
+    it('G3c: the filter pill x is at least 24x24', () => {
+        renderBar('/?status=todo');
+        const x = screen.getByRole('button', { name: 'Remove Status filter' });
+        expect(x.style.minWidth).toBe('24px');
+        expect(x.style.minHeight).toBe('24px');
+    });
+
+    it('G3c: the save-view Cancel is a secondary button, like the dialog Cancels', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(
+            JSON.stringify(url.includes('/v1/me') ? { data: devUser } : { data: [], links: { next: null } }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } },
+        )));
+        try {
+            renderBar('/?status=todo');
+            await userEvent.click(await screen.findByRole('button', { name: 'Save view' }));
+            expect(screen.getByRole('button', { name: 'Cancel' }).className).toContain('border-border2');
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
 });

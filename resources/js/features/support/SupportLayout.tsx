@@ -92,6 +92,7 @@ export default function SupportLayout() {
                 hasMore={!!ticketsQ.hasNextPage}
                 onLoadMore={() => ticketsQ.fetchNextPage()}
                 loadingMore={ticketsQ.isFetchingNextPage}
+                query={ticketsQ}
             />
             <TicketConversation ticketId={selectedId} />
             <TicketContext ticketId={selectedId} onFilterTag={filterTag} />

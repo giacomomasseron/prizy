@@ -9,6 +9,7 @@ import { DELETE_X_CLASSES, cardStyle, deleteXStyle, emptyState, pageCount } from
 import { PageHeader } from '../../components/PageHeader';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
 import type { Project } from '../../lib/types';
@@ -42,7 +43,7 @@ export default function ProjectsPage() {
                 title="All projects"
                 actions={canDevelop ? <Button variant="primary" onClick={() => navigate('/create?tab=project')}>New project</Button> : undefined}
             >
-                <span style={pageCount}>{rows.length}</span>
+                {projects.data !== undefined && <span style={pageCount}>{rows.length}</span>}
             </PageHeader>
 
             <div style={{ padding: '4px 26px 40px' }}>
@@ -52,82 +53,84 @@ export default function ProjectsPage() {
                     </div>
                 )}
 
-                {rows.length > 0 && (
-                    <div style={{ ...cardStyle, borderRadius: 18, overflowX: 'auto' }}>
-                        <div style={{ minWidth: 942 }}>
-                        <div style={{ display: 'grid', gridTemplateColumns: COL, gap: 11, padding: '12px 20px', background: 'var(--bg2)', borderBottom: 'var(--line) solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--fg3)' }}>
-                            <span>Project</span>
-                            <span>Status</span>
-                            <span>Lead</span>
-                            <span>Progress</span>
-                            <span>Target</span>
-                            <span style={{ textAlign: 'right' }}>Issues</span>
-                            <span />
-                        </div>
+                <QueryState query={projects} what="projects">
+                    {rows.length > 0 && (
+                        <div style={{ ...cardStyle, borderRadius: 18, overflowX: 'auto' }}>
+                            <div style={{ minWidth: 942 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: COL, gap: 11, padding: '12px 20px', background: 'var(--bg2)', borderBottom: 'var(--line) solid var(--border)', fontSize: 13, fontWeight: 700, color: 'var(--fg3)' }}>
+                                <span>Project</span>
+                                <span>Status</span>
+                                <span>Lead</span>
+                                <span>Progress</span>
+                                <span>Target</span>
+                                <span style={{ textAlign: 'right' }}>Issues</span>
+                                <span />
+                            </div>
 
-                        {rows.map((p) => {
-                            const st = PROJECT_STATUS[p.status];
-                            return (
-                                <div
-                                    key={p.id}
-                                    data-testid={`project-row-${p.id}`}
-                                    onClick={() => navigate(`/projects/${p.id}`)}
-                                    // Separator + hover are classes (an inline background would beat hover:).
-                                    className={`border-b border-border last:border-b-0 hover:bg-hover ${ROW_FOCUS_CLASSES}`}
-                                    style={{ display: 'grid', gridTemplateColumns: COL, gap: 11, padding: '16px 20px', cursor: 'pointer', alignItems: 'center' }}
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600, color: 'var(--fg)', minWidth: 0 }}>
-                                        <span style={{ width: 14, height: 14, borderRadius: 4, background: p.color, flexShrink: 0 }} />
-                                        {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
-                                        <Link to={`/projects/${p.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</Link>
-                                    </div>
-                                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 600, color: 'var(--fg2)' }}>
-                                        <span style={{ width: 8, height: 8, borderRadius: '50%', background: st.color }} />
-                                        {st.label}
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--fg2)' }}>
-                                        {p.lead
-                                            ? <><Avatar {...avatarFor(p.lead)} size={20} />{p.lead.name}</>
-                                            : <span style={{ color: 'var(--fg3)' }}>No lead</span>
-                                        }
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                        <div style={{ width: 110, height: 8, borderRadius: 'var(--radius-pill)', background: 'var(--bg2)', overflow: 'hidden' }}>
-                                            <div style={{ width: `${p.progress ?? 0}%`, height: '100%', background: p.color, borderRadius: 'var(--radius-pill)' }} />
+                            {rows.map((p) => {
+                                const st = PROJECT_STATUS[p.status];
+                                return (
+                                    <div
+                                        key={p.id}
+                                        data-testid={`project-row-${p.id}`}
+                                        onClick={() => navigate(`/projects/${p.id}`)}
+                                        // Separator + hover are classes (an inline background would beat hover:).
+                                        className={`border-b border-border last:border-b-0 hover:bg-hover ${ROW_FOCUS_CLASSES}`}
+                                        style={{ display: 'grid', gridTemplateColumns: COL, gap: 11, padding: '16px 20px', cursor: 'pointer', alignItems: 'center' }}
+                                    >
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600, color: 'var(--fg)', minWidth: 0 }}>
+                                            <span style={{ width: 14, height: 14, borderRadius: 4, background: p.color, flexShrink: 0 }} />
+                                            {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
+                                            <Link to={`/projects/${p.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</Link>
                                         </div>
-                                        <span style={{ ...mono, fontSize: 11.5, width: 38 }}>
-                                            {p.progress ?? 0}%
-                                        </span>
+                                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 600, color: 'var(--fg2)' }}>
+                                            <span style={{ width: 8, height: 8, borderRadius: '50%', background: st.color }} />
+                                            {st.label}
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: 'var(--fg2)' }}>
+                                            {p.lead
+                                                ? <><Avatar {...avatarFor(p.lead)} size={20} />{p.lead.name}</>
+                                                : <span style={{ color: 'var(--fg3)' }}>No lead</span>
+                                            }
+                                        </div>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                            <div style={{ width: 110, height: 8, borderRadius: 'var(--radius-pill)', background: 'var(--bg2)', overflow: 'hidden' }}>
+                                                <div style={{ width: `${p.progress ?? 0}%`, height: '100%', background: p.color, borderRadius: 'var(--radius-pill)' }} />
+                                            </div>
+                                            <span style={{ ...mono, fontSize: 11.5, width: 38 }}>
+                                                {p.progress ?? 0}%
+                                            </span>
+                                        </div>
+                                        <div style={mono}>
+                                            {fmtDate(p.target_date)}
+                                        </div>
+                                        <div style={{ ...mono, textAlign: 'right' }}>
+                                            {p.issue_count ?? 0}
+                                        </div>
+                                        <div>
+                                            {canDevelop && (
+                                                <button
+                                                    type="button"
+                                                    aria-label={`Delete ${p.name}`}
+                                                    onClick={(e) => { e.stopPropagation(); remove(p); }}
+                                                    className={DELETE_X_CLASSES}
+                                                    style={deleteXStyle}
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div style={mono}>
-                                        {fmtDate(p.target_date)}
-                                    </div>
-                                    <div style={{ ...mono, textAlign: 'right' }}>
-                                        {p.issue_count ?? 0}
-                                    </div>
-                                    <div>
-                                        {canDevelop && (
-                                            <button
-                                                type="button"
-                                                aria-label={`Delete ${p.name}`}
-                                                onClick={(e) => { e.stopPropagation(); remove(p); }}
-                                                className={DELETE_X_CLASSES}
-                                                style={deleteXStyle}
-                                            >
-                                                ×
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {rows.length === 0 && !projects.isLoading && (
-                    <div style={emptyState}>No projects yet.</div>
-                )}
+                    {rows.length === 0 && (
+                        <div style={emptyState}>No projects yet.</div>
+                    )}
+                </QueryState>
             </div>
         </>
     );

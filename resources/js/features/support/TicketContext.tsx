@@ -4,6 +4,7 @@ import { useTicket } from './hooks';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ink } from '../../lib/ink';
+import type { TicketDetail } from '../../lib/types';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { slaMetricPresentation } from './sla';
 import { SMALL_PILL_CLASSES, deskCard, smallLabel, smallPill } from './supportStyles';
@@ -16,12 +17,20 @@ const ellipsis: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', text
 
 export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void }) {
     const q = useTicket(ticketId ?? '');
-    const t = q.data;
-    if (!ticketId || !t) return <aside aria-label="Ticket details" style={asideStyle} />;
+    if (!ticketId) return <aside aria-label="Ticket details" style={asideStyle} />;
+    return (
+        <aside aria-label="Ticket details" style={asideStyle}>
+            {/* While the ticket loads or fails the aside stays empty: the conversation pane (same useTicket) carries the message. */}
+            {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} />}
+        </aside>
+    );
+}
+
+function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: string, name: string) => void }) {
     const req = t.requester;
     const linked = t.linked_issues[0];
     return (
-        <aside aria-label="Ticket details" style={asideStyle}>
+        <>
             <div style={{ padding: '18px 18px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {req && <Avatar {...avatarFor(req)} size={42} />}
@@ -83,6 +92,6 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
                     {t.requester_history.map((h) => <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 9px', borderRadius: 'var(--radius-row)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: TICKET_STATUS[h.status].color, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.subject}</span></div>)}
                 </div>
             </>)}
-        </aside>
+        </>
     );
 }

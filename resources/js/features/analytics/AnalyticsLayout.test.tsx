@@ -83,4 +83,16 @@ describe('AnalyticsLayout', () => {
         renderLayout();
         expect(screen.queryByRole('main')).toBeNull();
     });
+
+    it("G3c: a failed overview load shows a retryable alert, not a stuck loading line", async () => {
+        const hooks = await import('./hooks');
+        const spy = vi.spyOn(hooks, 'useTrackerOverview').mockReturnValue({ isLoading: false, isError: true, data: undefined, refetch: vi.fn() } as never);
+        try {
+            renderLayout();
+            expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load analytics.");
+            expect(screen.queryByText('Issues created')).toBeNull();
+        } finally {
+            spy.mockRestore();
+        }
+    });
 });

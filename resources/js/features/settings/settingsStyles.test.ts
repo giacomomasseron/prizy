@@ -35,7 +35,7 @@ describe('settingsStyles', () => {
             fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
         });
         expect(s.PILL_CLASSES).toBe('border-border2 bg-transparent text-fg hover:border-fg');
-        expect(s.DANGER_PILL_CLASSES).toBe('border-border2 bg-transparent text-fg2 hover:border-red hover:text-red-ink');
+        expect(s.DANGER_PILL_CLASSES).toBe('border-border2 bg-transparent text-fg2 enabled:hover:border-red enabled:hover:text-red-ink disabled:opacity-50');
     });
 
     it('form controls and dialog frame', () => {

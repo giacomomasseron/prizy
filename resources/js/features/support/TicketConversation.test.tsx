@@ -33,9 +33,10 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
 
 let ticketData: TicketDetail | undefined;
 let isLoading = false;
+let isError = false;
 
 vi.mock('./hooks', () => ({
-    useTicket: () => ({ data: ticketData, isLoading }),
+    useTicket: () => ({ data: ticketData, isLoading, isError, refetch: vi.fn() }),
     usePostTicketMessage: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
     useChangeTicketStatus: () => ({ mutate: vi.fn(), isPending: false }),
 }));
@@ -153,5 +154,17 @@ describe('TicketConversation', () => {
         isLoading = false;
         renderWithRouter(undefined);
         expect(screen.queryByRole('main')).toBeNull();
+    });
+    it('G3c: a failed ticket load shows the retryable alert', () => {
+        ticketData = undefined;
+        isLoading = false;
+        isError = true;
+        try {
+            renderWithRouter('t1');
+            expect(screen.getByRole('alert').textContent).toContain("Couldn't load this ticket.");
+            expect(screen.queryByText('Select a ticket')).toBeNull();
+        } finally {
+            isError = false;
+        }
     });
 });

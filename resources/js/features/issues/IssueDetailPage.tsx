@@ -160,8 +160,8 @@ export default function IssueDetailPage() {
                 <div style={{ flex: '1 1 460px', minWidth: 0 }}>
 
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        <span style={headPill}><StatusIcon status={data.status} size={13} />{STATUS_LABELS[data.status]}</span>
-                        <span style={headPill}><PriorityIcon priority={data.priority} />{PRIORITY_LABELS[data.priority]}</span>
+                        <span style={headPill}><StatusIcon status={data.status} size={13} decorative />{STATUS_LABELS[data.status]}</span>
+                        <span style={headPill}><PriorityIcon priority={data.priority} decorative />{PRIORITY_LABELS[data.priority]}</span>
                     </div>
 
                     {/* Title (editable for developers). The highlighter sits on the element holding the
@@ -256,6 +256,7 @@ export default function IssueDetailPage() {
                                         <button
                                             type="button"
                                             aria-label={`Remove ${l.repo} #${l.number}`}
+                                            disabled={removeGithubLink.isPending && removeGithubLink.variables === l.id}
                                             onClick={() => removeGithubLink.mutate(l.id)}
                                             className="text-fg3 hover:text-fg"
                                             style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 12, padding: 2, fontFamily: 'inherit' }}
@@ -278,7 +279,7 @@ export default function IssueDetailPage() {
                                     placeholder="https://github.com/…/pull/123"
                                     style={{ flex: 1 }}
                                 />
-                                <Button variant="secondary" onClick={() => void onAddPr()}>Add PR</Button>
+                                <Button variant="secondary" disabled={addGithubLink.isPending} onClick={() => void onAddPr()}>Add PR</Button>
                             </div>
                         )}
                     </section>

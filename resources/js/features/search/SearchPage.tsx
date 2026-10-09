@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { QueryState } from '../../components/ui/QueryState';
 import { Link, useNavigate } from 'react-router-dom';
 import { useIssueSearch, type AdvancedSearchFilters } from './hooks';
 import { SearchFilterBuilder } from './SearchFilterBuilder';
@@ -127,22 +128,24 @@ export default function SearchPage() {
                 {/* Saved views sidebar */}
                 <aside aria-label="Saved views" style={{ width: 200, flexShrink: 0 }}>
                     <div style={{ ...sectionLabel, display: 'block', padding: '0 12px', marginBottom: 6 }}>Saved views</div>
-                    {savedViews.isLoading ? null : savedViewItems.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>
-                    ) : (
-                        savedViewItems.map((view) => (
-                            <button
-                                key={view.id}
-                                type="button"
-                                onClick={() => loadSavedView(view)}
-                                style={{ ...navRow(false), fontSize: 13.5 }}
-                                className={NAV_ROW_HOVER}
-                            >
-                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, display: 'inline-block' }} />
-                                {view.name}
-                            </button>
-                        ))
-                    )}
+                    <QueryState query={savedViews} what="saved views">
+                        {savedViewItems.length === 0 ? (
+                            <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>
+                        ) : (
+                            savedViewItems.map((view) => (
+                                <button
+                                    key={view.id}
+                                    type="button"
+                                    onClick={() => loadSavedView(view)}
+                                    style={{ ...navRow(false), fontSize: 13.5 }}
+                                    className={NAV_ROW_HOVER}
+                                >
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, display: 'inline-block' }} />
+                                    {view.name}
+                                </button>
+                            ))
+                        )}
+                    </QueryState>
                 </aside>
 
                 {/* Main search area */}
@@ -232,66 +235,68 @@ export default function SearchPage() {
                     </div>
 
                     {/* Results list */}
-                    <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
-                        {rows.map((it: Issue) => (
-                            // Separator + hover are classes (an inline background would beat hover:).
-                            <div
-                                key={it.id}
-                                data-testid="search-row"
-                                onClick={() => navigate(`/issues/${it.id}`)}
-                                className={`border-b border-border last:border-b-0 hover:bg-hover ${ROW_FOCUS_CLASSES}`}
-                                style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 18px', cursor: 'pointer' }}
+                    <QueryState query={search} what="results">
+                        <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
+                            {rows.map((it: Issue) => (
+                                // Separator + hover are classes (an inline background would beat hover:).
+                                <div
+                                    key={it.id}
+                                    data-testid="search-row"
+                                    onClick={() => navigate(`/issues/${it.id}`)}
+                                    className={`border-b border-border last:border-b-0 hover:bg-hover ${ROW_FOCUS_CLASSES}`}
+                                    style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 18px', cursor: 'pointer' }}
+                                >
+                                    <PriorityIcon priority={it.priority} />
+                                    <StatusIcon status={it.status} size={14} />
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
+                                        {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
+                                    </span>
+                                    {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
+                                    <Link to={`/issues/${it.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
+                                        {highlight(it.title, debounced)}
+                                    </Link>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                                        {(it.labels ?? []).map((l) => (
+                                            <LabelChip key={l.id} name={l.name} color={l.color} />
+                                        ))}
+                                        <Avatar {...avatarFor(it.assignee ?? null)} size={20} />
+                                    </div>
+                                </div>
+                            ))}
+
+                            {rows.length === 0 && (
+                                <div style={{ padding: '56px 20px', textAlign: 'center' }}>
+                                    <div aria-hidden="true" style={{ fontSize: 26, color: 'var(--fg3)', marginBottom: 10 }}>⌕</div>
+                                    <div style={sectionTitle(17)}>No issues match your search</div>
+                                    <div style={{ fontSize: 13, color: 'var(--fg3)', marginTop: 6 }}>
+                                        Try removing a filter or broadening your query.
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Prev / Next pager */}
+                        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                data-testid="search-prev"
+                                disabled={currentPage <= 1}
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
                             >
-                                <PriorityIcon priority={it.priority} />
-                                <StatusIcon status={it.status} size={14} />
-                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
-                                    {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
-                                </span>
-                                {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
-                                <Link to={`/issues/${it.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
-                                    {highlight(it.title, debounced)}
-                                </Link>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-                                    {(it.labels ?? []).map((l) => (
-                                        <LabelChip key={l.id} name={l.name} color={l.color} />
-                                    ))}
-                                    <Avatar {...avatarFor(it.assignee ?? null)} size={20} />
-                                </div>
-                            </div>
-                        ))}
-
-                        {rows.length === 0 && !search.isLoading && (
-                            <div style={{ padding: '56px 20px', textAlign: 'center' }}>
-                                <div aria-hidden="true" style={{ fontSize: 26, color: 'var(--fg3)', marginBottom: 10 }}>⌕</div>
-                                <div style={sectionTitle(17)}>No issues match your search</div>
-                                <div style={{ fontSize: 13, color: 'var(--fg3)', marginTop: 6 }}>
-                                    Try removing a filter or broadening your query.
-                                </div>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Prev / Next pager */}
-                    <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'center' }}>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            data-testid="search-prev"
-                            disabled={currentPage <= 1}
-                            onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        >
-                            Previous
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            data-testid="search-next"
-                            disabled={currentPage >= lastPage}
-                            onClick={() => setPage((p) => p + 1)}
-                        >
-                            Next
-                        </Button>
-                    </div>
+                                Previous
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                data-testid="search-next"
+                                disabled={currentPage >= lastPage}
+                                onClick={() => setPage((p) => p + 1)}
+                            >
+                                Next
+                            </Button>
+                        </div>
+                    </QueryState>
                 </div>
             </div>
         </>

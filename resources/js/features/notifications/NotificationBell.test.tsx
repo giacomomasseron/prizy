@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { NotificationBell } from './NotificationBell';
+import { Drawer } from '../../components/ui/Drawer';
 
 const markAll = vi.fn();
 const markRead = vi.fn();
@@ -172,10 +173,35 @@ describe('NotificationBell', () => {
         expect(bell).toHaveAttribute('aria-expanded', 'false');
         fireEvent.click(bell);
         expect(bell).toHaveAttribute('aria-expanded', 'true');
-        const item = screen.getByRole('button', { name: 'You were assigned an issue' });
+        const item = screen.getByRole('button', { name: 'Unread: You were assigned an issue' });
         item.focus();
         await userEvent.keyboard('{Enter}');
         expect(markRead).toHaveBeenCalledWith('n1');
         await waitFor(() => expect(screen.getByText('issue page')).toBeInTheDocument());
+    });
+
+    it('G3c: only an unread item\'s primary control starts with a visually hidden "Unread: "', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByRole('button', { name: 'Unread: You were assigned an issue' }).querySelector('.sr-only')).toHaveTextContent('Unread:');
+        expect(screen.getByRole('button', { name: "An issue you're assigned was unblocked" }).querySelector('.sr-only')).toBeNull();
+    });
+
+    it('G3c: Escape closes the open panel and returns focus to the bell, leaving a drawer under it open', async () => {
+        const onClose = vi.fn();
+        render(
+            <MemoryRouter initialEntries={['/']}>
+                <Drawer open onClose={onClose} label="Peek">peek</Drawer>
+                <NotificationBell />
+            </MemoryRouter>,
+        );
+        const bell = screen.getByRole('button', { name: 'Notifications' });
+        fireEvent.click(bell);
+        expect(screen.getByRole('dialog', { name: 'Notifications' })).toBeInTheDocument();
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Notifications' })).toBeNull());
+        expect(bell).toHaveFocus();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByRole('dialog', { name: 'Peek' })).toBeInTheDocument();
     });
 });

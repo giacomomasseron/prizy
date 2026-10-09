@@ -37,7 +37,7 @@ const hiPillStyle: React.CSSProperties = {
 
 // The × inside a pill: transparent on the yellow fill; hover raises opacity (class).
 const pillRemoveStyle: React.CSSProperties = {
-    width: 20, height: 20, borderRadius: '50%', border: 'none', background: 'none', color: 'inherit',
+    width: 20, height: 20, minWidth: 24, minHeight: 24, borderRadius: '50%', border: 'none', background: 'none', color: 'inherit',
     cursor: 'pointer', padding: 0, fontSize: 14, lineHeight: 1, fontFamily: 'inherit',
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 };
@@ -168,6 +168,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                         variant="ghost"
                                         size="sm"
                                         aria-label={`Delete view ${view.name}`}
+                                        disabled={deleteView.isPending && deleteView.variables === view.id}
                                         onClick={async () => { if (await confirm({ title: `Delete view ${view.name}?`, danger: true })) deleteView.mutate(view.id); }}
                                         style={{ color: 'var(--red-ink)', padding: '2px 6px', minWidth: 0 }}
                                     >
@@ -291,7 +292,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                             style={{ width: 180, padding: '6px 13px', fontSize: 13.5 }}
                         />
                         <Button variant="primary" size="sm" onClick={submitView} disabled={createView.isPending || !newViewName.trim()}>Save</Button>
-                        <Button variant="ghost" size="sm" onClick={() => { setSavingView(false); setNewViewName(''); }}>Cancel</Button>
+                        <Button variant="secondary" size="sm" onClick={() => { setSavingView(false); setNewViewName(''); }}>Cancel</Button>
                     </span>
                 ) : (
                     <Button variant="secondary" size="sm" onClick={() => setSavingView(true)}>Save view</Button>

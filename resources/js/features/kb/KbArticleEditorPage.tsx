@@ -462,7 +462,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                             <div data-testid="kb-danger-zone" style={dangerCard}>
                                 <div style={{ ...kbLabel, marginBottom: 6 }}>Danger zone</div>
                                 <p style={{ margin: '0 0 11px', fontSize: 12, lineHeight: 1.5, color: 'var(--fg2)' }}>Deleting removes the article and its URL. Customers with the link will get a 404.</p>
-                                <button type="button" onClick={onDelete} className={DANGER_PILL_CLASSES} style={pillBtn}>Delete article</button>
+                                <button type="button" onClick={onDelete} disabled={deleteArticle.isPending} className={DANGER_PILL_CLASSES} style={pillBtn}>Delete article</button>
                                 {deleteError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginTop: 8 }}>{deleteError}</div>}
                             </div>
                         )}
@@ -509,7 +509,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                 {saveError && <span role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{saveError}</span>}
                 <Button variant="secondary" size="sm" onClick={() => navigate('/support/kb')}>Close</Button>
                 {canSave ? (
-                    <Button size="sm" onClick={onSave}>Save changes</Button>
+                    <Button size="sm" onClick={onSave} disabled={pending}>Save changes</Button>
                 ) : (
                     <Button size="sm" disabled>Saved</Button>
                 )}

@@ -233,7 +233,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 className={chipClasses(priority === p.value)}
                                 onClick={() => setPriority(p.value)}
                             >
-                                <PriorityIcon priority={p.value} />
+                                <PriorityIcon priority={p.value} decorative />
                                 {p.label}
                             </button>
                         ))}
@@ -267,7 +267,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
 
                 {/* Color row */}
                 <PropertyRow label="Color">
-                    <div style={{ display: 'flex', gap: 8 }}>
+                    <div role="group" aria-label="Colour" style={{ display: 'flex', gap: 8 }}>
                         {COLORS.map(c => (
                             <button
                                 key={c}
@@ -298,7 +298,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     marginTop: 14,
                 }}
             >
-                <Button variant="ghost" size="sm" onClick={onCancel}>Cancel</Button>
+                <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
                 <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!name.trim() || create.isPending}>Create project</Button>
             </div>
         </div>

@@ -4,6 +4,9 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import ReleaseDetailPage from './ReleaseDetailPage';
 import type { ReleaseDetail } from '../../lib/types';
+import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
+import * as hooksModule from './hooks';
+import * as settingsStyles from '../settings/settingsStyles';
 
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -134,7 +137,8 @@ describe('ReleaseDetailPage', () => {
         renderPage();
         fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
         expect(window.confirm).toHaveBeenCalled();
-        expect(deleteMutate).toHaveBeenCalledWith('r1', expect.anything());
+        // V2-G3c: the delete awaits the app's confirm (window.confirm is its no-provider fallback).
+        await vi.waitFor(() => expect(deleteMutate).toHaveBeenCalledWith('r1', expect.anything()));
     });
 
     it('Delete does nothing when the confirmation is declined', () => {
@@ -233,5 +237,56 @@ describe('ReleaseDetailPage', () => {
         detail = undefined as unknown as ReleaseDetail;
         renderPage();
         expect(screen.getByText('Release not found.').style.padding).toBe('28px 28px 28px calc(28px + var(--nav-inset, 0px))');
+    });
+
+    function renderWithConfirm() {
+        return render(
+            <ConfirmProvider>
+                <MemoryRouter initialEntries={['/releases/r1']}>
+                    <Routes><Route path="/releases/:id" element={<ReleaseDetailPage />} /></Routes>
+                </MemoryRouter>
+            </ConfirmProvider>,
+        );
+    }
+
+    it('G3c: Delete opens the in-app confirm dialog and deletes only on confirm', async () => {
+        const nativeConfirm = vi.spyOn(window, 'confirm');
+        renderWithConfirm();
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+        fireEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        await vi.waitFor(() => expect(deleteMutate).toHaveBeenCalledWith('r1', expect.objectContaining({ onSuccess: expect.any(Function) })));
+        expect(nativeConfirm).not.toHaveBeenCalled();
+    });
+
+    it('G3c: cancelling the Delete dialog does not delete', async () => {
+        const nativeConfirm = vi.spyOn(window, 'confirm');
+        renderWithConfirm();
+        fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+        expect(await screen.findByText('Delete v1.1?')).toBeInTheDocument();
+        expect(screen.getByText('This cannot be undone.')).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('confirm-dialog-cancel'));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(deleteMutate).not.toHaveBeenCalled();
+        expect(nativeConfirm).not.toHaveBeenCalled();
+    });
+
+    it('G3c: the description Save is disabled while the update is pending', async () => {
+        const spy = vi.spyOn(hooksModule, 'useUpdateRelease').mockReturnValue({ mutate: updateMutate, mutateAsync: updateMutate, isPending: true } as never);
+        try {
+            renderPage();
+            await userEvent.click(screen.getByRole('button', { name: 'Edit description' }));
+            expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+        } finally { spy.mockRestore(); }
+    });
+
+    it('G3c: a disabled danger pill dims (the Delete button while its delete is pending)', () => {
+        const spy = vi.spyOn(hooksModule, 'useDeleteRelease').mockReturnValue({ mutate: deleteMutate, mutateAsync: deleteMutate, isPending: true } as never);
+        try {
+            renderPage();
+            const del = screen.getByRole('button', { name: 'Delete' });
+            expect(del).toBeDisabled();
+            expect(del.className).toContain('disabled:opacity-50');
+            expect(del.className).toContain(settingsStyles.DANGER_PILL_CLASSES);
+        } finally { spy.mockRestore(); }
     });
 });

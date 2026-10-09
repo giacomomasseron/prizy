@@ -306,7 +306,7 @@ describe('G3a: drawer edge and the danger button', () => {
         render(<Button variant="danger">Delete</Button>);
         const b = screen.getByRole('button', { name: 'Delete' });
         expect(b.className).toContain('bg-red');
-        expect(b.className).toContain('enabled:hover:bg-red-ink');
+        expect(b.className).toContain('enabled:hover:bg-red-hover');
         expect(b.className).toContain('text-on-accent');
         expect(b.style.background).toBe('');
     });
@@ -366,5 +366,24 @@ describe('G3b: dialog backdrops', () => {
         expect(modalBackdrop).toHaveAttribute('role', 'presentation');
         fireEvent.click(modalBackdrop);
         expect(onClose).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('G3c: Drawer side and searchable Menu', () => {
+    it('G3c: side="left" reverses the row so the panel sits on the left; the default stays on the right', () => {
+        const { unmount } = render(<Drawer open onClose={() => {}} side="left" label="L"><p>x</p></Drawer>);
+        expect((screen.getByRole('dialog').parentElement as HTMLElement).style.flexDirection).toBe('row-reverse');
+        unmount();
+        render(<Drawer open onClose={() => {}} label="R"><p>x</p></Drawer>);
+        expect((screen.getByRole('dialog').parentElement as HTMLElement).style.flexDirection).toBe('row');
+    });
+
+    it('G3c: the search box sticks to the top of the scrolling list', async () => {
+        render(<Menu searchable trigger={<button type="button">Pick</button>} items={[{ key: 'a', label: 'Alpha', onActivate: () => {} }]} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        const box = screen.getByRole('searchbox');
+        expect(box.style.position).toBe('sticky');
+        expect(box.style.top).toBe('0px');
+        expect(box.style.zIndex).toBe('1');
     });
 });

@@ -1,8 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import CyclesPage from './CyclesPage';
+import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import type { Cycle } from '../../lib/types';
 
 function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
@@ -58,5 +60,37 @@ describe('CyclesPage', () => {
         const active = screen.getAllByTestId('cycle-tag').find((t) => t.textContent === 'Active')!;
         expect(active.style.background).toBe('color-mix(in srgb, var(--amber) 15%, transparent)');
         expect((await screen.findByRole('button', { name: 'Delete Cycle 22' })).className).toContain('hover:text-red');
+    });
+
+    it("G3c: a failed cycles load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return j({ data: ME });
+            if (url.includes('/cycles')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', created_at: '', updated_at: '' }], links: { next: null } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/teams/t1/cycles']}><Routes><Route path="/teams/:id/cycles" element={<CyclesPage />} /></Routes></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load cycles.");
+        expect(screen.queryByText('No cycles in this team yet.')).toBeNull();
+    });
+
+    it('G3c: only the cycle being deleted has its Delete disabled', async () => {
+        let release: () => void = () => {};
+        const gate = new Promise<void>((r) => { release = r; });
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (init?.method === 'DELETE') { await gate; return new Response(null, { status: 204 }); }
+            if (url.includes('/v1/me')) return j({ data: ME });
+            if (url.includes('/cycles')) return j({ data: CYCLES, links: { next: null } });
+            if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', created_at: '', updated_at: '' }], links: { next: null } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><ConfirmProvider><MemoryRouter initialEntries={['/teams/t1/cycles']}><Routes><Route path="/teams/:id/cycles" element={<CyclesPage />} /></Routes></MemoryRouter></ConfirmProvider></QueryClientProvider>);
+        await userEvent.click(await screen.findByRole('button', { name: 'Delete Cycle 22' }));
+        await userEvent.click(await screen.findByTestId('confirm-dialog-confirm'));
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Delete Cycle 22' })).toBeDisabled());
+        expect(screen.getByRole('button', { name: 'Delete Cycle 99' })).toBeEnabled();
+        release();
     });
 });

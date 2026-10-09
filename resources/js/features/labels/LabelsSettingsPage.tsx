@@ -3,6 +3,7 @@ import { ApiError } from '../../lib/apiClient';
 import { useMe } from '../../auth/useAuth';
 import { canUseTracker, canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { Input } from '../../components/ui/Input';
 import { LabelChip } from '../../components/ui/LabelChip';
 import type { Label } from '../../lib/types';
@@ -92,7 +93,7 @@ export default function LabelsSettingsPage() {
                         <datalist id="label-groups">{existingGroups.map((g) => <option key={g} value={g} />)}</datalist>
                         <Button size="sm" type="submit" disabled={create.isPending}>Add label</Button>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <div role="group" aria-label="Colour" style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <span style={{ ...groupLabel, width: 44 }}>Color</span>
                         {SWATCHES.map((hex) => (
                             <button key={hex} type="button" aria-label={`color ${hex}`} aria-pressed={color === hex} onClick={() => setColor(hex)}
@@ -104,45 +105,46 @@ export default function LabelsSettingsPage() {
 
             {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
-            <div style={statGrid}>
-                <div style={statCard}><div style={statLabel}>Total labels</div><div style={statValue} data-testid="stat-total">{stats.total}</div></div>
-                <div style={statCard}><div style={statLabel}>Groups</div><div style={statValue} data-testid="stat-groups">{stats.groups}</div></div>
-                <div style={statCard}><div style={statLabel}>Most used</div><div style={statValue} title={stats.mostUsed} data-testid="stat-mostused">{stats.mostUsed}</div></div>
-                <div style={statCard}><div style={statLabel}>Total uses</div><div style={statValue} data-testid="stat-totaluses">{stats.totalUses}</div></div>
-            </div>
-
-            {labelsQ.isLoading && <p style={{ color: 'var(--fg3)' }}>Loading…</p>}
-            {!labelsQ.isLoading && labels.length === 0 && <div style={emptyState}>No labels yet.</div>}
-
-            {grouped.map((g) => (
-                <div key={g.group ?? '__ungrouped'} style={{ marginBottom: 14 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8, padding: '0 2px' }}>
-                        <span style={groupLabel}>{g.group ?? 'Other'}</span>
-                        {g.exclusive && <span style={exclusiveBadge}>Group · one of</span>}
-                    </div>
-                    <div style={listCard}>
-                        {g.labels.map((l) => (
-                            <div key={l.id} className={ROW_CLASSES} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
-                                <LabelChip name={l.name} color={l.color} />
-                                <span style={{ flex: 1 }} />
-                                <span style={{ ...mono, fontSize: 12, color: 'var(--fg3)', width: 120, textAlign: 'right', flexShrink: 0 }}>{l.issue_count ?? 0} uses</span>
-                                {canDevelop && (
-                                    <div style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
-                                        {SWATCHES.map((hex) => (
-                                            <button key={hex} type="button" aria-label={`recolor ${l.name} ${hex}`} aria-pressed={l.color === hex} data-testid={`recolor-${l.id}`} onClick={() => recolor(l, hex)}
-                                                style={swatchStyle(hex, l.color === hex, 16)} />
-                                        ))}
-                                    </div>
-                                )}
-                                {canDevelop && (
-                                    <button type="button" title="Delete" data-testid={`delete-${l.id}`} onClick={() => remove(l)}
-                                        className={DELETE_X_CLASSES} style={xBtn}>×</button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
+            <QueryState query={labelsQ} what="labels">
+                <div style={statGrid}>
+                    <div style={statCard}><div style={statLabel}>Total labels</div><div style={statValue} data-testid="stat-total">{stats.total}</div></div>
+                    <div style={statCard}><div style={statLabel}>Groups</div><div style={statValue} data-testid="stat-groups">{stats.groups}</div></div>
+                    <div style={statCard}><div style={statLabel}>Most used</div><div style={statValue} title={stats.mostUsed} data-testid="stat-mostused">{stats.mostUsed}</div></div>
+                    <div style={statCard}><div style={statLabel}>Total uses</div><div style={statValue} data-testid="stat-totaluses">{stats.totalUses}</div></div>
                 </div>
-            ))}
+
+                {labels.length === 0 && <div style={emptyState}>No labels yet.</div>}
+
+                {grouped.map((g) => (
+                    <div key={g.group ?? '__ungrouped'} style={{ marginBottom: 14 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 8, padding: '0 2px' }}>
+                            <span style={groupLabel}>{g.group ?? 'Other'}</span>
+                            {g.exclusive && <span style={exclusiveBadge}>Group · one of</span>}
+                        </div>
+                        <div style={listCard}>
+                            {g.labels.map((l) => (
+                                <div key={l.id} className={ROW_CLASSES} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px' }}>
+                                    <LabelChip name={l.name} color={l.color} />
+                                    <span style={{ flex: 1 }} />
+                                    <span style={{ ...mono, fontSize: 12, color: 'var(--fg3)', width: 120, textAlign: 'right', flexShrink: 0 }}>{l.issue_count ?? 0} uses</span>
+                                    {canDevelop && (
+                                        <div role="group" aria-label={`Colour for ${l.name}`} style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
+                                            {SWATCHES.map((hex) => (
+                                                <button key={hex} type="button" aria-label={`recolor ${l.name} ${hex}`} aria-pressed={l.color === hex} data-testid={`recolor-${l.id}`} onClick={() => recolor(l, hex)}
+                                                    style={swatchStyle(hex, l.color === hex, 16)} />
+                                            ))}
+                                        </div>
+                                    )}
+                                    {canDevelop && (
+                                        <button type="button" title="Delete" data-testid={`delete-${l.id}`} onClick={() => remove(l)}
+                                            className={DELETE_X_CLASSES} style={xBtn}>×</button>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))}
+            </QueryState>
         </div>
     );
 }

@@ -21,7 +21,7 @@ export const RAIL_ACTIVE_CLASSES = 'bg-sup2 text-sup-ink';
 export function SupportRail({ children }: { children: ReactNode }) {
     const me = useMe();
     return (
-        <div style={{ width: 56, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 0', gap: 6 }}>
+        <div style={{ width: 56, flexShrink: 0, background: 'var(--bg2)', borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 'calc(12px + var(--nav-inset, 0px))', paddingBottom: 12, gap: 6 }}>
             <Link to="/support" aria-label="Prizy" style={{ display: 'inline-flex', borderRadius: '50%', marginBottom: 8 }}>
                 <BrandMark size={32} />
             </Link>

@@ -12,11 +12,14 @@ export const rowPrimary: CSSProperties = {
     letterSpacing: 'inherit',
 };
 
-/** The primary control drops its own ring: the row draws it (ROW_FOCUS_CLASSES). */
-export const ROW_PRIMARY_CLASSES = 'focus-visible:outline-none';
+/** The primary control drops its own ring (the row draws it, ROW_FOCUS_CLASSES) and carries the marker class the row's ring follows. */
+export const ROW_PRIMARY_CLASSES = 'row-primary focus-visible:outline-none';
 
-/** The row shows the ink ring while its primary control has keyboard focus — inset, so a rounded or scrolling card does not clip it. */
-export const ROW_FOCUS_CLASSES = 'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-fg has-[:focus-visible]:-outline-offset-2';
+/**
+ * The row shows the ink ring while its primary control (.row-primary) has keyboard focus — inset, so a rounded or
+ * scrolling card does not clip it. A focused nested button keeps only its own ring.
+ */
+export const ROW_FOCUS_CLASSES = 'has-[.row-primary:focus-visible]:outline-2 has-[.row-primary:focus-visible]:outline-fg has-[.row-primary:focus-visible]:-outline-offset-2';
 
 /**
  * A navigation row's primary control is a <Link> (Tab, Enter, open in a new tab). A plain click — or Enter — is

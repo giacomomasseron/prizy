@@ -115,4 +115,18 @@ describe('ProjectOverview', () => {
         expect(tags.find((t) => t.textContent === 'Done')!.style.color).toBe('var(--green-ink)');
         expect(screen.getByTestId('seg-done').style.background).toBe('var(--green)');
     });
+
+    it("G3c: a failed milestones load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return j({ data: ME });
+            if (url.includes('/milestones')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/issues')) return j({ data: ISSUES, links: { next: null, prev: null } });
+            if (url.includes('/projects/')) return j({ data: PROJECT });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/projects/p1']}><Routes><Route path="/projects/:id" element={<ProjectOverview />} /></Routes></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load milestones.");
+        expect(screen.queryByText('No milestones yet.')).toBeNull();
+    });
 });

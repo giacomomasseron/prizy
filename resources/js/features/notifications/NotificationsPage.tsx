@@ -54,6 +54,7 @@ export default function NotificationsPage() {
                         <NotificationList
                             items={items}
                             isLoading={list.isLoading}
+                            query={list}
                             category={category}
                             unreadOnly={unreadOnly}
                             onToggleUnread={() => setUnreadOnly((v) => !v)}

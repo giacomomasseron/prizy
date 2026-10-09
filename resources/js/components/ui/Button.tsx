@@ -31,8 +31,8 @@ const VARIANT_CLASSES: Record<NonNullable<ButtonProps['variant']>, string> = {
     primary: 'border-transparent bg-fg text-bg enabled:hover:bg-accent',
     secondary: 'border-border2 bg-transparent text-fg enabled:hover:border-fg',
     ghost: 'border-transparent bg-transparent text-fg enabled:hover:bg-hover',
-    // Destructive confirm: on-accent is white in light (4.5:1 on red, 6.8:1 on red-ink) and ink in dark.
-    danger: 'border-transparent bg-red text-on-accent enabled:hover:bg-red-ink',
+    // Destructive confirm: on-accent is white in light (4.5:1 on red, 6.82:1 on red-hover #af2226) and ink in dark (8.87:1 on red-hover #f99a9a).
+    danger: 'border-transparent bg-red text-on-accent enabled:hover:bg-red-hover',
 };
 
 export function Button({ variant = 'primary', size = 'md', style, className, children, ...rest }: ButtonProps) {
