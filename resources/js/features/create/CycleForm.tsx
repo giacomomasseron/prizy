@@ -124,6 +124,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                     }}
                 />
                 <input
+                    aria-label="Cycle name"
                     placeholder="Cycle name"
                     style={{
                         flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none',
@@ -218,6 +219,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
             <div style={{ marginTop: 22 }}>
                 <div style={fieldLabel}>Description</div>
                 <Textarea
+                    aria-label="Cycle description"
                     placeholder="What is the focus of this cycle?"
                     value={description}
                     onChange={e => setDescription(e.target.value)}

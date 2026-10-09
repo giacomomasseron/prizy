@@ -270,4 +270,10 @@ describe('KbArticleEditorPage', () => {
         await userEvent.click(screen.getByTestId('kb-slug-shell').firstElementChild as HTMLElement);
         expect(slug).toHaveFocus();
     });
+
+    it('G3b: the title and the body fields are named', async () => {
+        renderEditor();
+        expect(await screen.findByRole('textbox', { name: 'Article title' })).toHaveValue('Published one');
+        expect(screen.getByRole('textbox', { name: 'Article body' })).toBeInTheDocument();
+    });
 });

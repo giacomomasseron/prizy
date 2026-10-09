@@ -365,12 +365,14 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
     const editor = tab === 'write' ? (
         <>
             <Input
+                aria-label="Translated title"
                 placeholder="Translated title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', marginBottom: 10 }}
             />
             <Textarea
+                aria-label="Translated body"
                 placeholder="Write the translation in markdown, matching the English structure."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}

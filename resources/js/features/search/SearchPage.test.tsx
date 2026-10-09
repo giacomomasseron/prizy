@@ -279,4 +279,10 @@ describe('G3b: result rows are reachable by keyboard', () => {
         await userEvent.keyboard('{Enter}');
         expect(await screen.findByText('issue page')).toBeInTheDocument();
     });
+
+    it('the save-view name field is named', () => {
+        wrap(<SearchPage />);
+        fireEvent.click(screen.getByRole('button', { name: /save this view/i }));
+        expect(screen.getByRole('textbox', { name: 'View name' })).toBeInTheDocument();
+    });
 });

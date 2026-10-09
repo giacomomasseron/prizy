@@ -125,4 +125,10 @@ describe('SupportViewsSidebar', () => {
         expect(chip).toHaveAttribute('title', `Tag: ${name}`);
         expect(screen.getByText(`Tag: ${name}`).style.textOverflow).toBe('ellipsis');
     });
+
+    it('G3b: the view name field is named', () => {
+        render(<SupportViewsSidebar {...sidebarProps({})} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save view/ }));
+        expect(screen.getByRole('textbox', { name: 'View name' })).toBeInTheDocument();
+    });
 });

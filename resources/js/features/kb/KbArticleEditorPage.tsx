@@ -308,6 +308,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         </button>
 
                         <Input
+                            aria-label="Article title"
                             placeholder="Article title"
                             value={title}
                             onChange={(e) => onTitleChange(e.target.value)}
@@ -368,6 +369,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
 
                         {tab === 'write' ? (
                             <Textarea
+                                aria-label="Article body"
                                 value={body}
                                 onChange={(e) => onBodyChange(e.target.value)}
                                 placeholder={'# Heading\n\nWrite the article in markdown. Use ## for sections, - for bullets, **bold** and `code`.'}

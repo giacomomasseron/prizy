@@ -195,4 +195,9 @@ describe('KbLibraryPage', () => {
         expect(row.style.opacity).toBe('');
         expect(within(row).getByText('Archived')).toBeInTheDocument();
     });
+
+    it('G3b: the title search field is named', async () => {
+        renderPage();
+        expect(await screen.findByRole('textbox', { name: 'Search titles' })).toBeInTheDocument();
+    });
 });

@@ -74,7 +74,7 @@ export default function KbLibraryPage() {
                                     { value: 'all', label: `All ${counts.all}` }, { value: 'draft', label: `Draft ${counts.draft}` },
                                     { value: 'published', label: `Published ${counts.published}` }, { value: 'archived', label: `Archived ${counts.archived}` },
                                 ]} />
-                                <Input placeholder="Search titles" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 240, padding: '7px 14px', fontSize: 13 }} />
+                                <Input aria-label="Search titles" placeholder="Search titles" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: 240, padding: '7px 14px', fontSize: 13 }} />
                                 <div style={{ flex: 1 }} />
                                 <Button size="sm" onClick={newArticle}>＋ New article</Button>
                             </div>

@@ -146,4 +146,12 @@ describe('ProjectForm', () => {
         expect(container.querySelector('input[type="date"]')!.className).toContain('focus:border-fg');
         expect(screen.getAllByRole('button', { name: /^#/i })[0].style.boxShadow).toBe('0 0 0 2px var(--panel), 0 0 0 3.5px var(--fg)');
     });
+
+    it('G3b: the name, summary and timeline fields are named', () => {
+        wrap();
+        expect(screen.getByRole('textbox', { name: 'Project name' })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Project summary' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Start date')).toHaveAttribute('type', 'date');
+        expect(screen.getByLabelText('Target date')).toHaveAttribute('type', 'date');
+    });
 });

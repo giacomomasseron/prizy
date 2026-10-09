@@ -126,6 +126,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     }}
                 />
                 <input
+                    aria-label="Project name"
                     placeholder="Project name"
                     style={nameInput}
                     value={name}
@@ -135,6 +136,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
 
             {/* Description textarea */}
             <textarea
+                aria-label="Project summary"
                 placeholder="Add a short summary…"
                 style={{
                     width: '100%',
@@ -238,6 +240,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                 <PropertyRow label="Timeline">
                     <input
                         type="date"
+                        aria-label="Start date"
                         value={startDate}
                         onChange={e => setStartDate(e.target.value)}
                         className={FIELD_CLASSES}
@@ -246,6 +249,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     <span style={{ color: 'var(--fg3)' }}>→</span>
                     <input
                         type="date"
+                        aria-label="Target date"
                         value={targetDate}
                         onChange={e => setTargetDate(e.target.value)}
                         className={FIELD_CLASSES}

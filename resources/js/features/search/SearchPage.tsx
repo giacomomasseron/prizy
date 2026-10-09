@@ -194,6 +194,7 @@ export default function SearchPage() {
                             >
                                 <Input
                                     autoFocus
+                                    aria-label="View name"
                                     placeholder="View name…"
                                     value={saveName}
                                     onChange={(e) => setSaveName(e.target.value)}

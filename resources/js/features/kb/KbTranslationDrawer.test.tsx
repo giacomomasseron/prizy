@@ -302,4 +302,10 @@ describe('KbTranslationDrawer', () => {
         await userEvent.click(await screen.findByRole('button', { name: 'Compare with source' }));
         expect(screen.getByRole('heading', { level: 2, name: 'Create your first project' }).style.color).toBe('var(--fg)');
     });
+
+    it('G3b: the translated title and body fields are named', async () => {
+        renderDrawer({ initialLocale: 'es' });
+        expect(await screen.findByRole('textbox', { name: 'Translated title' })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Translated body' })).toBeInTheDocument();
+    });
 });

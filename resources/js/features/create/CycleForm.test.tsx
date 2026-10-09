@@ -106,4 +106,10 @@ describe('CycleForm', () => {
         expect(screen.getByRole('button', { name: /Team picker/i }).className).toContain('hover:border-fg');
         expect(screen.getByText('Description').style.textTransform).toBe('');
     });
+
+    it('G3b: the name and the description fields are named', () => {
+        wrap();
+        expect(screen.getByRole('textbox', { name: 'Cycle name' })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Cycle description' })).toBeInTheDocument();
+    });
 });

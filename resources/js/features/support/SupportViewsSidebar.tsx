@@ -87,7 +87,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                 })}
                 {saving ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 4px' }}>
-                        <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
+                        <Input autoFocus aria-label="View name" value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
                         <div style={{ display: 'flex', gap: 6 }}>
                             <Button size="sm" onClick={submit}>Save</Button>
                             <Button variant="secondary" size="sm" onClick={() => { setSaving(false); setName(''); }}>Cancel</Button>

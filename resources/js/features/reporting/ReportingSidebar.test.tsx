@@ -69,4 +69,10 @@ describe('ReportingSidebar', () => {
         expect(screen.getByPlaceholderText('Report name').className).toContain('focus:border-fg');
         expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
     });
+
+    it('G3b: the report name field is named', () => {
+        render(<ReportingSidebar {...sidebarProps({})} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
+        expect(screen.getByRole('textbox', { name: 'Report name' })).toBeInTheDocument();
+    });
 });
