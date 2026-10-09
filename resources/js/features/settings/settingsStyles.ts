@@ -41,7 +41,7 @@ export const pillBtn: CSSProperties = {
     fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
 };
 export const PILL_CLASSES = 'border-border2 bg-transparent text-fg hover:border-fg';
-export const DANGER_PILL_CLASSES = 'border-border2 bg-transparent text-fg2 hover:border-red hover:text-red-ink';
+export const DANGER_PILL_CLASSES = 'border-border2 bg-transparent text-fg2 enabled:hover:border-red enabled:hover:text-red-ink disabled:opacity-50';
 
 export const fieldLabel: CSSProperties = { display: 'block', fontSize: 12.5, fontWeight: 700, color: 'var(--fg2)', marginBottom: 7 };
 /** Native <select> as a pill; pair with FIELD_CLASSES from components/ui/Input (border + focus colour). */

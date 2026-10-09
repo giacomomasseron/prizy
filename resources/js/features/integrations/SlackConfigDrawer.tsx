@@ -70,8 +70,8 @@ export function SlackConfigDrawer({ open, onClose }: { open: boolean; onClose():
                     <input type="checkbox" aria-label="Slack active" checked={active} onChange={(e) => setActive(e.target.checked)} style={checkboxStyle} /> Active
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
-                    <Button size="sm" onClick={onSave}>Save</Button>
-                    <Button variant="secondary" size="sm" onClick={onTest}>Send test</Button>
+                    <Button size="sm" onClick={onSave} disabled={save.isPending}>Save</Button>
+                    <Button variant="secondary" size="sm" onClick={onTest} disabled={sendTest.isPending}>Send test</Button>
                     {msg && <span style={msgStyle('var(--green)')}>{msg}</span>}
                     {error && <span style={msgStyle('var(--red)')}>{error}</span>}
                 </div>

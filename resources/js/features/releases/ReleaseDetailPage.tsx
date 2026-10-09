@@ -8,6 +8,7 @@ import { formatTargetDate } from './formatDate';
 import { STATUS_LABELS } from '../issues/StatusEditor';
 import type { IssueStatus } from '../../lib/types';
 import { Button } from '../../components/ui/Button';
+import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { FIELD_CLASSES } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { sectionTitle } from '../issues/issueStyles';
@@ -50,6 +51,7 @@ export default function ReleaseDetailPage() {
     const canDevelop = canDevelopFor(me.data);
     const releaseQ = useRelease(id);
     const ship = useShipRelease(id);
+    const confirm = useConfirm();
     const del = useDeleteRelease();
     const update = useUpdateRelease(id);
     const [copied, setCopied] = useState(false);
@@ -88,8 +90,8 @@ export default function ReleaseDetailPage() {
         }
     }
 
-    function handleDelete() {
-        if (!window.confirm(`Delete ${release.name}? This cannot be undone.`)) return;
+    async function handleDelete() {
+        if (!(await confirm({ title: `Delete ${release.name}?`, message: 'This cannot be undone.', danger: true }))) return;
         del.mutate(release.id, { onSuccess: () => navigate('/releases') });
     }
 
@@ -198,7 +200,7 @@ export default function ReleaseDetailPage() {
                             style={{ minHeight: 80, fontSize: 14, lineHeight: 1.6 }}
                         />
                         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                            <Button size="sm" onClick={saveDescription}>Save</Button>
+                            <Button size="sm" onClick={saveDescription} disabled={update.isPending}>Save</Button>
                             <Button variant="secondary" size="sm" onClick={() => setEditingDescription(false)}>Cancel</Button>
                         </div>
                     </div>

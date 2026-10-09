@@ -49,6 +49,7 @@ export default function TeamDetailPage() {
                                 {canDevelop && (
                                     <button
                                         type="button"
+                                        disabled={del.isPending}
                                         onClick={async () => { if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id); }}
                                         style={{ ...pillBtn, marginLeft: 'auto' }}
                                         className={DANGER_PILL_CLASSES}

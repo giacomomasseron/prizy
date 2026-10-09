@@ -1,8 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GithubIntegration, SlackIntegration } from '../../lib/types';
 import { SlackConfigDrawer } from './SlackConfigDrawer';
 import { GithubConfigDrawer } from './GithubConfigDrawer';
+import * as hooksModule from './hooks';
 
 const slackSave = vi.fn().mockResolvedValue(undefined);
 const slackTest = vi.fn().mockResolvedValue(undefined);
@@ -116,5 +117,34 @@ describe('config drawers (G3a ink)', () => {
         ghSave.mockRejectedValueOnce(new Error('boom'));
         fireEvent.click(screen.getByRole('button', { name: 'Save GitHub' }));
         expect((await screen.findByText('Failed to save.')).style.color).toBe('var(--red-ink)');
+    });
+});
+
+describe('config drawers (G3c saving)', () => {
+    it('G3c: Slack Save and Send test are disabled while their own mutation is pending', () => {
+        const saveSpy = vi.spyOn(hooksModule, 'useSaveSlackIntegration').mockReturnValue({ mutateAsync: slackSave, isPending: true } as never);
+        try {
+            render(<SlackConfigDrawer open onClose={() => {}} />);
+            expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+            expect(screen.getByRole('button', { name: 'Send test' })).toBeEnabled();
+        } finally { saveSpy.mockRestore(); }
+        cleanup();
+        const testSpy = vi.spyOn(hooksModule, 'useSendSlackTest').mockReturnValue({ mutateAsync: slackTest, isPending: true } as never);
+        try {
+            render(<SlackConfigDrawer open onClose={() => {}} />);
+            expect(screen.getByRole('button', { name: 'Send test' })).toBeDisabled();
+        } finally { testSpy.mockRestore(); }
+    });
+    it('G3c: Slack buttons are enabled when nothing is pending', () => {
+        render(<SlackConfigDrawer open onClose={() => {}} />);
+        expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Send test' })).toBeEnabled();
+    });
+    it('G3c: Save GitHub is disabled while its mutation is pending', () => {
+        const spy = vi.spyOn(hooksModule, 'useSaveGithubIntegration').mockReturnValue({ mutateAsync: ghSave, isPending: true } as never);
+        try {
+            render(<GithubConfigDrawer open onClose={() => {}} />);
+            expect(screen.getByRole('button', { name: 'Save GitHub' })).toBeDisabled();
+        } finally { spy.mockRestore(); }
     });
 });

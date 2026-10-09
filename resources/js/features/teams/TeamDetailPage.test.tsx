@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import TeamDetailPage from './TeamDetailPage';
+import * as hooksModule from './hooks';
 
 // Mock useNavigate while preserving all other react-router-dom exports.
 const mockNavigate = vi.fn();
@@ -97,5 +98,14 @@ describe('TeamDetailPage', () => {
         );
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load cycles.");
         expect(screen.queryByText('No cycles in this team yet.')).toBeNull();
+    });
+
+    it('G3c: a cycle Delete is disabled while the delete is pending', async () => {
+        const spy = vi.spyOn(hooksModule, 'useDeleteCycle').mockReturnValue({ mutate: vi.fn(), isPending: true } as never);
+        try {
+            renderPage();
+            await screen.findByText('Sprint 1');
+            expect(await screen.findByRole('button', { name: 'Delete' })).toBeDisabled();
+        } finally { spy.mockRestore(); }
     });
 });
