@@ -69,7 +69,7 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
                     items.push({ key: 'delete', label: 'Delete…', danger: true, onActivate: () => onDelete(a) });
 
                     return (
-                        <div key={a.id} role="row" className="border-b border-border hover:bg-hover" style={{ display: 'grid', gridTemplateColumns: GRID, gap: 12, alignItems: 'center', padding: '12px 22px', opacity: a.status === 'archived' ? 0.62 : 1 }}>
+                        <div key={a.id} role="row" className="border-b border-border hover:bg-hover" style={{ display: 'grid', gridTemplateColumns: GRID, gap: 12, alignItems: 'center', padding: '12px 22px' }}>
                             <div><StatusPill status={a.status} /></div>
 
                             <div style={{ minWidth: 0 }}>

@@ -187,4 +187,12 @@ describe('KbLibraryPage', () => {
         expect(screen.queryByPlaceholderText('Search titles')).toBeNull();
         expect(screen.queryByRole('button', { name: '＋ New article' })).toBeNull();
     });
+
+    it('G3a: an archived row is not faded (the Archived pill marks it), so its text keeps full contrast', async () => {
+        const archived = { categories: [{ ...library.categories[0], sections: [{ ...library.categories[0].sections[0], articles: [art({ id: 'a3', title: 'Old one', slug: 'old-one', status: 'archived', published_at: null, public_url: null })] }] }] };
+        renderPage(archived);
+        const row = (await screen.findByText('Old one')).closest('[role=row]') as HTMLElement;
+        expect(row.style.opacity).toBe('');
+        expect(within(row).getByText('Archived')).toBeInTheDocument();
+    });
 });

@@ -83,6 +83,9 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
         borderRadius: 'var(--radius-pop)',
         boxShadow: 'var(--pop-shadow)',
         padding: 6,
+        // A long list scrolls inside the popover instead of spilling past a dialog's edge.
+        maxHeight: 'min(320px, 60vh)',
+        overflowY: 'auto',
         animation: 'prizy-pop .14s cubic-bezier(.2,.8,.2,1)',
         ...PLACEMENT_STYLE[placement],
     };
@@ -174,11 +177,12 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
                                 fontWeight: 600,
                                 fontFamily: 'inherit',
                                 textAlign: 'left',
-                                color: item.danger ? 'var(--red)' : 'var(--fg)',
+                                color: item.danger ? 'var(--red-ink)' : 'var(--fg)',
                                 opacity: item.disabled ? 0.5 : 1,
                                 outline: 'none',
                             }}
-                            className="bg-transparent hover:bg-hover focus-visible:bg-accent2"
+                            // A disabled item gets no hover/focus tint, so it doesn't look clickable.
+                            className={item.disabled ? 'bg-transparent' : 'bg-transparent hover:bg-hover focus-visible:bg-accent2'}
                             aria-label={item.label}
                         >
                             {item.icon && (
