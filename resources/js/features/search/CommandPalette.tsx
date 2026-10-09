@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from './hooks';
 import { filterCommands } from './commands';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { Kbd } from '../../components/ui/Kbd';
+import { useFocusTrap } from '../../components/ui/useFocusTrap';
 
 interface Row {
     key: string;
@@ -20,6 +21,13 @@ export default function CommandPalette() {
     const [active, setActive] = useState(0);
     const navigate = useNavigate();
     const inputRef = useRef<HTMLInputElement>(null);
+    const dialogRef = useRef<HTMLDivElement>(null);
+    const listId = useId();
+    const optionId = (idx: number) => `${listId}-${idx}`;
+
+    // V2-G3b: Tab stays inside the open palette, and focus returns to where it was when it closes. Declared before
+    // the effect that focuses the input, so the trap remembers the element focused before the palette opened.
+    useFocusTrap(dialogRef, open);
 
     // Global Cmd/Ctrl+K toggle.
     useEffect(() => {
@@ -103,6 +111,7 @@ export default function CommandPalette() {
             style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--backdrop)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '12vh', animation: 'prizy-fade .12s ease' }}
         >
             <div
+                ref={dialogRef}
                 role="dialog"
                 aria-modal="true"
                 aria-label="Command palette"
@@ -114,6 +123,13 @@ export default function CommandPalette() {
                     <input
                         ref={inputRef}
                         type="text"
+                        // V2-G3b: the ARIA 1.2 combobox pattern — focus stays here while ↑/↓ move the active result,
+                        // which aria-activedescendant announces.
+                        role="combobox"
+                        aria-expanded="true"
+                        aria-controls={listId}
+                        aria-autocomplete="list"
+                        aria-activedescendant={rows[active] ? optionId(active) : undefined}
                         aria-label="Search"
                         placeholder="Search issues, jump to a page, or run a command…"
                         value={q}
@@ -128,25 +144,28 @@ export default function CommandPalette() {
                     />
                     <span style={{ color: 'var(--fg3)', flexShrink: 0 }}><Kbd>esc</Kbd></span>
                 </div>
-                <ul style={{ listStyle: 'none', margin: 0, maxHeight: 340, overflowY: 'auto', padding: 6 }}>
+                <ul id={listId} role="listbox" aria-label="Results" style={{ listStyle: 'none', margin: 0, maxHeight: 340, overflowY: 'auto', padding: 6 }}>
                     {rows.map((r, idx) => (
-                        <li key={r.key}>
-                            {/* The highlight follows the keyboard selection; onMouseEnter keeps the two in sync. */}
-                            <button
-                                type="button"
-                                onMouseEnter={() => setActive(idx)}
-                                onClick={r.onActivate}
-                                className={idx === active ? 'bg-hover' : 'bg-transparent'}
-                                style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', padding: '9px 11px', border: 'none', borderRadius: 'var(--radius-row)', textAlign: 'left', color: 'var(--fg)', fontSize: 13.5, fontFamily: 'inherit', cursor: 'pointer' }}
-                            >
-                                {r.leading && r.leading}
-                                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
-                                {r.hint && <span style={{ fontSize: 11.5, color: 'var(--fg3)', flexShrink: 0 }}>{r.hint}</span>}
-                            </button>
+                        // The highlight follows the keyboard selection; onMouseEnter keeps the two in sync. The active
+                        // result is the accent tint plus an ink bar on its left edge (V2-G3b), not a faint tint.
+                        <li
+                            key={r.key}
+                            id={optionId(idx)}
+                            role="option"
+                            aria-selected={idx === active}
+                            onMouseEnter={() => setActive(idx)}
+                            onClick={r.onActivate}
+                            className={idx === active ? 'bg-accent2' : 'bg-transparent'}
+                            style={{ display: 'flex', alignItems: 'center', gap: 11, width: '100%', boxSizing: 'border-box', padding: '9px 11px', borderRadius: 'var(--radius-row)', textAlign: 'left', color: 'var(--fg)', fontSize: 13.5, cursor: 'pointer', ...(idx === active ? { boxShadow: 'inset 3px 0 0 var(--fg)' } : {}) }}
+                        >
+                            {r.leading && r.leading}
+                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.label}</span>
+                            {r.hint && <span style={{ fontSize: 11.5, color: 'var(--fg3)', flexShrink: 0 }}>{r.hint}</span>}
                         </li>
                     ))}
-                    {rows.length === 0 && <li style={{ padding: 22, textAlign: 'center', color: 'var(--fg3)', fontSize: 13 }}>No results.</li>}
                 </ul>
+                {/* Outside the listbox: a listbox holds options only. */}
+                {rows.length === 0 && <div style={{ padding: '0 22px 22px', textAlign: 'center', color: 'var(--fg3)', fontSize: 13 }}>No results.</div>}
                 <div style={{ borderTop: '1px solid var(--border)' }}>
                     <button
                         type="button"
