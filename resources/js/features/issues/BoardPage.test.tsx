@@ -116,6 +116,14 @@ describe('BoardPage', () => {
         expect(mockOpenPeek).toHaveBeenCalledWith('c1');
     });
 
+    it('G3b: a card is announced as a button, without dnd-kit\'s drag instructions (there is no keyboard drag)', () => {
+        mountBoard();
+        const card = screen.getByTestId('card-c1');
+        expect(card).not.toHaveAttribute('aria-roledescription');
+        expect(card).not.toHaveAttribute('aria-describedby');
+        expect(card).toHaveAttribute('role', 'button');
+    });
+
     it('plain click on a card calls openPeek with the issue id', () => {
         mockOpenPeek.mockClear();
         mountBoard();

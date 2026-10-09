@@ -290,4 +290,23 @@ describe('G3b: result rows are reachable by keyboard', () => {
         wrap(<SearchPage />);
         expect(screen.getByRole('complementary', { name: 'Saved views' })).toBeInTheDocument();
     });
+
+    it('a modified click on a result link is left to the browser (new tab), not to the row', async () => {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/search']}>
+                    <Routes>
+                        <Route path="/search" element={<SearchPage />} />
+                        <Route path="/issues/:id" element={<div>issue page</div>} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        const link = await screen.findByRole('link', { name: 'Fix login bug' });
+        // jsdom cannot open a tab; stop its default hyperlink follow so the test checks only the row.
+        link.addEventListener('click', (e) => e.preventDefault());
+        fireEvent.click(link, { metaKey: true });
+        expect(screen.queryByText('issue page')).toBeNull();
+    });
 });

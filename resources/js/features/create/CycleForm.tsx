@@ -166,6 +166,7 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                                 key={n}
                                 type="button"
                                 style={chip}
+                                aria-pressed={activeDuration === n}
                                 className={chipClasses(activeDuration === n)}
                                 onClick={() => handleDurationClick(n)}
                             >

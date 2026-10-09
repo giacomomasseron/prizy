@@ -219,4 +219,11 @@ describe('KbVersionDrawer', () => {
         const sign = (await screen.findByText('added')).previousElementSibling as HTMLElement;
         expect(sign.style.userSelect).toBe('none');
     });
+
+    it('G3b: the selected version is the current row', async () => {
+        renderDrawer({ initialVersionId: 'vPrev' });
+        await screen.findByText('gone');
+        expect(screen.getByRole('button', { name: /Body only/ })).toHaveAttribute('aria-current', 'true');
+        expect(screen.getByRole('button', { name: /Created/ })).not.toHaveAttribute('aria-current');
+    });
 });

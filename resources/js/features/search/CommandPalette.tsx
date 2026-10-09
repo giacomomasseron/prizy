@@ -1,10 +1,11 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSearch } from './hooks';
 import { filterCommands } from './commands';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { Kbd } from '../../components/ui/Kbd';
 import { useFocusTrap } from '../../components/ui/useFocusTrap';
+import { useOverlayEscape } from '../../components/ui/useOverlayEscape';
 
 interface Row {
     key: string;
@@ -28,6 +29,10 @@ export default function CommandPalette() {
     // V2-G3b: Tab stays inside the open palette, and focus returns to where it was when it closes. Declared before
     // the effect that focuses the input, so the trap remembers the element focused before the palette opened.
     useFocusTrap(dialogRef, open);
+    // Escape closes the palette from anywhere inside it; on the overlay stack, so it closes only the palette and not
+    // a drawer open under it.
+    const close = useCallback(() => setOpen(false), []);
+    useOverlayEscape(close, open);
 
     // Global Cmd/Ctrl+K toggle.
     useEffect(() => {
@@ -102,11 +107,18 @@ export default function CommandPalette() {
 
     useEffect(() => setActive(0), [rows.length]);
 
+    // aria-activedescendant moves the active option without scrolling: keep it in view (jsdom has no scrollIntoView).
+    useEffect(() => {
+        if (open) document.getElementById(optionId(active))?.scrollIntoView?.({ block: 'nearest' });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [active, open]);
+
     if (!open) return null;
 
     // v2 (prizy-v2.html palette): the Modal primitive's frame — ink border, offset shadow, token backdrop.
     return (
         <div
+            role="presentation"
             onClick={() => setOpen(false)}
             style={{ position: 'fixed', inset: 0, zIndex: 50, background: 'var(--backdrop)', display: 'flex', justifyContent: 'center', alignItems: 'flex-start', paddingTop: '12vh', animation: 'prizy-fade .12s ease' }}
         >
@@ -138,7 +150,6 @@ export default function CommandPalette() {
                             if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(a + 1, rows.length - 1)); }
                             else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
                             else if (e.key === 'Enter') { e.preventDefault(); rows[active]?.onActivate(); }
-                            else if (e.key === 'Escape') { setOpen(false); }
                         }}
                         style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none', color: 'var(--fg)', fontSize: 15, fontFamily: 'inherit' }}
                     />

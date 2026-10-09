@@ -169,4 +169,11 @@ describe('ProjectForm', () => {
         expect(name.className).toBe('border-transparent focus:border-fg');
         expect(name.style.borderStyle).toBe('solid');
     });
+
+    it('G3b: the summary field shows an ink underline while focused (no edge at rest)', () => {
+        wrap();
+        const summary = screen.getByRole('textbox', { name: 'Project summary' });
+        expect(summary.className).toBe('border-transparent focus:border-fg');
+        expect(summary.style.borderStyle).toBe('solid');
+    });
 });

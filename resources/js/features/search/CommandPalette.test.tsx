@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import CommandPalette from './CommandPalette';
+import { Drawer } from '../../components/ui/Drawer';
 
 const navigate = vi.fn();
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
@@ -175,4 +176,44 @@ it('G3b: Tab stays inside the open palette, and focus returns to where it was wh
     await userEvent.keyboard('{Escape}');
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(document.activeElement).toBe(before);
+});
+
+it('G3b: ↓ keeps the active option scrolled into view', async () => {
+    const scrolled: { el: Element; arg: unknown }[] = [];
+    Element.prototype.scrollIntoView = function (this: Element, arg?: unknown) { scrolled.push({ el: this, arg }); } as never;
+    try {
+        renderPalette();
+        await openPalette();
+        await userEvent.type(screen.getByRole('combobox', { name: 'Search' }), 'payment');
+        await screen.findByText('Payment webhook');
+        await userEvent.keyboard('{ArrowDown}');
+        const [, seeAll] = screen.getAllByRole('option');
+        expect(scrolled.at(-1)).toEqual({ el: seeAll, arg: { block: 'nearest' } });
+    } finally {
+        delete (Element.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    }
+});
+
+it('G3b: Escape closes the palette from anywhere inside it, and the backdrop is presentational', async () => {
+    renderPalette();
+    await openPalette();
+    expect(screen.getByRole('dialog').parentElement).toHaveAttribute('role', 'presentation');
+    screen.getByRole('button', { name: /advanced search/i }).focus();
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+});
+
+it('G3b: Escape closes only the palette, not a drawer open under it', async () => {
+    const onClose = vi.fn();
+    render(
+        <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter><Drawer open onClose={onClose} label="Peek">peek</Drawer><CommandPalette /></MemoryRouter>
+        </QueryClientProvider>,
+    );
+    await openPalette();
+    await screen.findByRole('dialog', { name: 'Command palette' });
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Command palette' })).toBeNull());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: 'Peek' })).toBeInTheDocument();
 });

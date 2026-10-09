@@ -51,13 +51,16 @@ function Card({ issue, onCardClick, projects }: CardProps) {
             {...listeners}
             {...attributes}
             // V2-G3b: dnd-kit's attributes already make the card focusable; role and tabIndex are restated (same values)
-            // for readers and the guard. Only the pointer sensor is on, so Enter/Space open the peek, like a click.
-            // Dragging stays mouse-only.
+            // for readers and the guard. Only the pointer sensor is on, so Enter/Space open the peek, like a click, and
+            // dragging stays mouse-only — so dnd-kit's "draggable" role description and its keyboard drag instructions
+            // are dropped: they would tell a screen-reader user Space picks the card up.
             role="button"
             tabIndex={0}
+            aria-roledescription={undefined}
+            aria-describedby={undefined}
             data-testid={`card-${issue.id}`}
             onClick={() => onCardClick(issue.id)}
-            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardClick(issue.id); } }}
+            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onCardClick(issue.id); } }}
         >
             {/* Top row: identifier + priority */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

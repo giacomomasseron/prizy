@@ -139,11 +139,12 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
             <textarea
                 aria-label="Project summary"
                 placeholder="Add a short summary…"
+                className={TITLE_FIELD_CLASSES}
                 style={{
                     width: '100%',
                     height: 52,
                     resize: 'none',
-                    border: 'none',
+                    ...titleFieldEdge,
                     background: 'transparent',
                     outline: 'none',
                     fontSize: 15,
@@ -167,6 +168,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 key={s.value}
                                 type="button"
                                 style={chip}
+                                aria-pressed={status === s.value}
                                 className={chipClasses(status === s.value)}
                                 onClick={() => setStatus(s.value)}
                             >
@@ -195,6 +197,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                         <button
                             type="button"
                             style={chip}
+                            aria-pressed={leadId === null}
                             className={chipClasses(leadId === null)}
                             onClick={() => setLeadId(null)}
                         >
@@ -205,6 +208,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 key={m.id}
                                 type="button"
                                 style={chip}
+                                aria-pressed={leadId === m.id}
                                 className={chipClasses(leadId === m.id)}
                                 onClick={() => setLeadId(m.id)}
                             >
@@ -225,6 +229,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 key={p.value}
                                 type="button"
                                 style={chip}
+                                aria-pressed={priority === p.value}
                                 className={chipClasses(priority === p.value)}
                                 onClick={() => setPriority(p.value)}
                             >

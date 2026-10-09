@@ -96,8 +96,8 @@ describe('V2-G3b: keyboard and screen-reader guards', () => {
         expect(offenders).toEqual([]);
     });
 
-    it('a control drawn as selected by a selection style says so (aria-pressed / aria-current / aria-selected)', () => {
-        const SELECTION_STYLE = /\b(navRow|sideRow|rowBtn|swatchStyle)\(\s*(?!false\b)[^,)]/;
+    it('a control drawn as selected by a selection style or class helper says so (aria-pressed / aria-current / aria-selected)', () => {
+        const SELECTION_STYLE = /\b(navRow|sideRow|rowBtn|swatchStyle|chipClasses|pickRowClasses)\(\s*(?!false\b)[^,)]/;
         const offenders: string[] = [];
         for (const { rel, src } of files) {
             for (const t of tags(src, 'button|Link|a')) {

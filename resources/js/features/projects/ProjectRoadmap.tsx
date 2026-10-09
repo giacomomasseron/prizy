@@ -28,7 +28,7 @@ export default function ProjectRoadmap() {
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
                 <span style={filterLabel}>State</span>
                 {CHIPS.map(([k, label]) => (
-                    <button key={k} type="button" onClick={() => setState(k)} className={chipClasses(state === k)} style={chipStyle}>{label}</button>
+                    <button key={k} type="button" onClick={() => setState(k)} aria-pressed={state === k} className={chipClasses(state === k)} style={chipStyle}>{label}</button>
                 ))}
             </div>
 

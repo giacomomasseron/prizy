@@ -119,4 +119,11 @@ describe('CycleForm', () => {
         expect(name.className).toBe('border-transparent focus:border-fg');
         expect(name.style.borderStyle).toBe('solid');
     });
+
+    it('G3b: the duration chips say which one is selected', async () => {
+        wrap();
+        await userEvent.click(screen.getByRole('button', { name: '2 weeks' }));
+        expect(screen.getByRole('button', { name: '2 weeks' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '1 week' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

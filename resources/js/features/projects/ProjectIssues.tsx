@@ -49,27 +49,27 @@ export default function ProjectIssues() {
                 <div style={filterRow}>
                     <span style={filterLabel}>Status</span>
                     {STATUS_CHIPS.map(([k, label]) => (
-                        <button key={k} type="button" onClick={() => setStatus(k)} className={chipClasses(status === k)} style={chipStyle}>{label}</button>
+                        <button key={k} type="button" onClick={() => setStatus(k)} aria-pressed={status === k} className={chipClasses(status === k)} style={chipStyle}>{label}</button>
                     ))}
                 </div>
                 <div style={filterRow}>
                     <span style={filterLabel}>Priority</span>
                     {PRIORITY_CHIPS.map(([k, label]) => (
-                        <button key={k} type="button" aria-label={label} onClick={() => setPriority(k)} className={chipClasses(priority === k)} style={chipStyle}>
+                        <button key={k} type="button" aria-label={label} onClick={() => setPriority(k)} aria-pressed={priority === k} className={chipClasses(priority === k)} style={chipStyle}>
                             {k !== 'all' && <PriorityIcon priority={k} />}{label}
                         </button>
                     ))}
                 </div>
                 <div style={filterRow}>
                     <span style={filterLabel}>Assignee</span>
-                    <button type="button" onClick={() => setAssignee('all')} className={chipClasses(assignee === 'all')} style={chipStyle}>All</button>
+                    <button type="button" onClick={() => setAssignee('all')} aria-pressed={assignee === 'all'} className={chipClasses(assignee === 'all')} style={chipStyle}>All</button>
                     {members.map((m) => (
-                        <button key={m.id} type="button" aria-label={m.name.split(' ')[0]} onClick={() => setAssignee(m.id)} className={chipClasses(assignee === m.id)} style={chipStyle}>
+                        <button key={m.id} type="button" aria-label={m.name.split(' ')[0]} onClick={() => setAssignee(m.id)} aria-pressed={assignee === m.id} className={chipClasses(assignee === m.id)} style={chipStyle}>
                             <Avatar {...avatarFor(m)} size={18} />{m.name.split(' ')[0]}
                         </button>
                     ))}
                     {hasUnassigned && (
-                        <button type="button" aria-label="Unassigned" onClick={() => setAssignee('none')} className={chipClasses(assignee === 'none')} style={chipStyle}>
+                        <button type="button" aria-label="Unassigned" onClick={() => setAssignee('none')} aria-pressed={assignee === 'none'} className={chipClasses(assignee === 'none')} style={chipStyle}>
                             <Avatar size={18} />Unassigned
                         </button>
                     )}

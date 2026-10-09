@@ -145,6 +145,6 @@ describe('TicketComposer', () => {
 
     it('G3b: the composer box shows the ink ring while its text box has focus', () => {
         render(<TicketComposer ticket={ticket()} />);
-        expect(screen.getByTestId('composer-box').className).toBe('focus-within:outline-2 focus-within:outline-fg focus-within:outline-offset-2');
+        expect(screen.getByTestId('composer-box').className).toBe('has-[textarea:focus]:outline-2 has-[textarea:focus]:outline-fg has-[textarea:focus]:outline-offset-2');
     });
 });

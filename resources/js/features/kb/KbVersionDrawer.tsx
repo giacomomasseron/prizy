@@ -166,7 +166,7 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
 function VersionRow({ version, selected, onSelect }: { version: KbVersionSummary; selected: boolean; onSelect(): void }) {
     return (
         // No inline background: the selected tint and the hover both live in classes (pickRowClasses).
-        <button type="button" onClick={onSelect} className={pickRowClasses(selected)} style={{ ...pickRow, display: 'flex', alignItems: 'flex-start', gap: 9 }}>
+        <button type="button" aria-current={selected ? 'true' : undefined} onClick={onSelect} className={pickRowClasses(selected)} style={{ ...pickRow, display: 'flex', alignItems: 'flex-start', gap: 9 }}>
             <Avatar {...avatarFor(version.author)} size={22} />
             <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
