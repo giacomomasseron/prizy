@@ -199,7 +199,7 @@ export default function SearchPage() {
                                     style={{ width: 170, padding: '5px 12px', fontSize: 12.5 }}
                                 />
                                 {saveError && (
-                                    <span style={{ fontSize: 12.5, color: 'var(--red)' }}>{saveError}</span>
+                                    <span style={{ fontSize: 12.5, color: 'var(--red-ink)' }}>{saveError}</span>
                                 )}
                                 <Button type="submit" size="sm" disabled={!saveName.trim() || createSavedView.isPending}>
                                     Save

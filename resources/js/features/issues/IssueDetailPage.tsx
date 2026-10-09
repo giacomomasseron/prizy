@@ -151,7 +151,7 @@ export default function IssueDetailPage() {
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg)' }}>{identifier}</span>
             </div>
 
-            {error && <p style={{ color: 'var(--red)', fontSize: 13, margin: '0 34px 12px' }}>{error}</p>}
+            {error && <p style={{ color: 'var(--red-ink)', fontSize: 13, margin: '0 34px 12px' }}>{error}</p>}
 
             {/* Two-column layout: main content + sticky right rail */}
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 40, alignItems: 'flex-start', padding: '22px 34px 80px' }}>

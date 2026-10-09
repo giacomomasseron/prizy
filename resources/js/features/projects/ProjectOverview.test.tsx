@@ -108,4 +108,11 @@ describe('ProjectOverview', () => {
         expect(screen.queryByText('Handles escalations automatically.')).toBeNull();
         expect(screen.getByTestId('progress-empty')).toBeInTheDocument();
     });
+
+    it('G3a: the Done milestone tag writes its text in the ink partner; the progress segments keep the base fills', async () => {
+        renderView();
+        const tags = await screen.findAllByTestId('milestone-tag');
+        expect(tags.find((t) => t.textContent === 'Done')!.style.color).toBe('var(--green-ink)');
+        expect(screen.getByTestId('seg-done').style.background).toBe('var(--green)');
+    });
 });

@@ -6,6 +6,7 @@ import { MS_TAG, MS_ICON } from './milestoneMeta';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { chipClasses, chipStyle } from '../issues/issueStyles';
 import { emptyState, filterLabel, pageCount, pageTitle, tagPill, titleRow } from './projectStyles';
+import { ink } from '../../lib/ink';
 
 type MsState = 'all' | 'done' | 'active' | 'upcoming';
 const CHIPS: Array<[MsState, string]> = [['all', 'All'], ['done', 'Done'], ['active', 'In progress'], ['upcoming', 'Upcoming']];
@@ -47,7 +48,7 @@ export default function ProjectRoadmap() {
                                             <div style={{ fontSize: 15.5, fontWeight: 700, color: 'var(--fg)' }}>{m.name}</div>
                                             <div style={{ fontSize: 12.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{fmtDate(m.target_date)}</div>
                                         </div>
-                                        <span data-testid="roadmap-tag" style={{ ...tagPill, color: tag.color, background: tag.bg }}>{tag.label}</span>
+                                        <span data-testid="roadmap-tag" style={{ ...tagPill, color: ink(tag.color), background: tag.bg }}>{tag.label}</span>
                                     </div>
                                 </div>
                             );

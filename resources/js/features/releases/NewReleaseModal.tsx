@@ -53,7 +53,7 @@ export function NewReleaseModal({ open, onClose }: { open: boolean; onClose(): v
                     <Input id="new-release-target-date" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} />
                 </div>
 
-                {error && <div role="alert" style={{ ...alertBox, color: 'var(--red)', background: tint('var(--red)', 10) }}>{error}</div>}
+                {error && <div role="alert" style={{ ...alertBox, color: 'var(--red-ink)', background: tint('var(--red)', 10) }}>{error}</div>}
             </div>
 
             <div style={modalFooter}>

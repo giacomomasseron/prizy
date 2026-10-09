@@ -14,7 +14,7 @@ describe('projectStyles', () => {
         expect(tagPill).toMatchObject({ fontSize: 12, fontWeight: 700, padding: '3px 11px', borderRadius: 'var(--radius-pill)' });
     });
     it('delete × keeps its colour in classes so the red hover works', () => {
-        expect(DELETE_X_CLASSES).toBe('text-fg3 hover:text-red');
+        expect(DELETE_X_CLASSES).toBe('text-fg3 hover:text-red-ink');
         expect(deleteXStyle).not.toHaveProperty('color');
     });
 });

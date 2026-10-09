@@ -19,7 +19,7 @@ export function VelocityTable({ rows, selectedId, onSelect }: { rows: VelocityRo
                             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{c.name}</span>
                             <span style={{ fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{c.starts_at} → {c.ends_at}</span>
                             <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>{c.completed_count}/{c.total_count}</span>
-                            <span style={{ width: 40, textAlign: 'right', fontSize: 12.5, fontWeight: 700, color: pct >= 70 ? 'var(--green)' : 'var(--fg2)' }}>{pct}%</span>
+                            <span style={{ width: 40, textAlign: 'right', fontSize: 12.5, fontWeight: 700, color: pct >= 70 ? 'var(--green-ink)' : 'var(--fg2)' }}>{pct}%</span>
                         </button>
                     );
                 })}
