@@ -50,6 +50,6 @@ describe('kbStyles', () => {
         expect(s.DIFF_TINT).toEqual({ add: 'color-mix(in srgb, var(--green) 12%, transparent)', del: 'color-mix(in srgb, var(--red) 10%, transparent)' });
         expect(s.diffBox).toEqual({ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-row)', overflow: 'hidden', background: 'var(--panel)' });
         expect(s.fieldShell).toMatchObject({ height: 38, borderRadius: 'var(--radius-pill)', background: 'var(--panel)' });
-        expect(s.FIELD_SHELL_CLASSES).toBe('border-[1.5px] border-solid border-border2 focus-within:border-fg');
+        expect(s.FIELD_SHELL_CLASSES).toBe('border-[1.5px] border-solid border-field focus-within:border-fg');
     });
 });

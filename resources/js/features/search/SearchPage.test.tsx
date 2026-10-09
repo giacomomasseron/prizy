@@ -248,4 +248,12 @@ describe('v2 look', () => {
         fireEvent.click(screen.getByRole('button', { name: /save this view/i }));
         expect(screen.getByRole('button', { name: /^save$/i }).className).toContain('bg-fg');
     });
+
+    it('G3a: the query pill rests on the 3:1 field border and keeps its ink focus border', () => {
+        wrap(<SearchPage />);
+        const classes = screen.getByLabelText('Search issues').parentElement!.className.split(' ');
+        expect(classes).toContain('border-field');
+        expect(classes).not.toContain('border-border2');
+        expect(classes).toContain('focus-within:border-fg');
+    });
 });

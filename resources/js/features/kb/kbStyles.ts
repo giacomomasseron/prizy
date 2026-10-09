@@ -87,4 +87,4 @@ export const fieldShell: CSSProperties = {
     display: 'flex', alignItems: 'center', gap: 2, height: 38, padding: '0 15px', background: 'var(--panel)',
     borderRadius: 'var(--radius-pill)', boxSizing: 'border-box', minWidth: 0,
 };
-export const FIELD_SHELL_CLASSES = 'border-[1.5px] border-solid border-border2 focus-within:border-fg';
+export const FIELD_SHELL_CLASSES = 'border-[1.5px] border-solid border-field focus-within:border-fg';

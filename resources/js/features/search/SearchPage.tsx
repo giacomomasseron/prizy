@@ -148,7 +148,7 @@ export default function SearchPage() {
                 <div style={{ flex: 1, minWidth: 0 }}>
                     {/* Query field: a pill whose border turns ink while the input has focus. */}
                     <div
-                        className="border-border2 focus-within:border-fg"
+                        className="border-field focus-within:border-fg"
                         style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'var(--panel)', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', padding: '10px 18px' }}
                     >
                         <span aria-hidden="true" style={{ fontSize: 17, color: 'var(--fg3)', flexShrink: 0 }}>⌕</span>

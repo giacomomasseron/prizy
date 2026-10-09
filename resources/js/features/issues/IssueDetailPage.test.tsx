@@ -532,4 +532,12 @@ describe('IssueDetailPage v2 layout', () => {
         expect(spy).toHaveBeenCalledWith({ title: 'Renamed issue' });
         vi.mocked(hooks.useUpdateIssue).mockReturnValue({ mutateAsync: vi.fn() } as any);
     });
+
+    it('G3a: the comment box rests on the 3:1 field border and keeps its ink focus border', () => {
+        renderPage();
+        const classes = (screen.getByLabelText(/Leave a comment/i).parentElement as HTMLElement).className.split(' ');
+        expect(classes).toContain('border-field');
+        expect(classes).not.toContain('border-border2');
+        expect(classes).toContain('focus-within:border-fg');
+    });
 });

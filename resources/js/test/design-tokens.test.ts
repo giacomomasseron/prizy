@@ -88,6 +88,9 @@ describe('login aside', () => {
         // forced-colours mode drops the shadow and overrides borders; a transparent outline still shows there.
         expect(css).toMatch(/\.login-input:focus\s*\{[^}]*outline:\s*2px solid transparent/);
     });
+    it('G3a: auth fields rest on the 3:1 field border', () => {
+        expect(css).toMatch(/\.login-input\s*\{[^}]*border-color:\s*var\(--field\)/);
+    });
 });
 
 describe('vite.config.js fonts', () => {

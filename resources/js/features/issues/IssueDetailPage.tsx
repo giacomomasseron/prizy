@@ -313,7 +313,7 @@ export default function IssueDetailPage() {
                     <form onSubmit={submitComment} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginTop: 22 }}>
                         <Avatar {...(me.data?.name ? avatarFor(me.data) : {})} size={34} />
                         <div
-                            className="border-border2 focus-within:border-fg"
+                            className="border-field focus-within:border-fg"
                             style={{
                                 flex: 1, minWidth: 0, borderWidth: 'var(--line)', borderStyle: 'solid',
                                 borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '12px 14px 10px',
