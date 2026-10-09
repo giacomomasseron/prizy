@@ -10,6 +10,7 @@ import { useTeams, useTeamMembers, useAddTeamMember, useSetTeamMemberRole, useRe
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { ROLES } from './roles';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { TITLE_FIELD_CLASSES, titleFieldEdge } from '../../components/ui/Input';
 import { DELETE_X_CLASSES, deleteXStyle } from '../projects/projectStyles';
 import { DANGER_PILL_CLASSES, PILL_CLASSES, alertBox, groupLabel, pillBtn, swatchStyle } from '../settings/settingsStyles';
 
@@ -66,7 +67,8 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                         <input aria-label="Team name" defaultValue={live.name} key={`${live.id}-${live.name}-${live.color}`}
                             onBlur={(e) => commitName(e.target.value)}
                             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); (e.target as HTMLInputElement).blur(); } }}
-                            style={{ width: '100%', minWidth: 0, padding: 0, fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, letterSpacing: '-.02em', background: 'transparent', border: 'none', color: 'var(--fg)', outline: 'none' }} />
+                            className={TITLE_FIELD_CLASSES}
+                            style={{ width: '100%', minWidth: 0, padding: 0, fontFamily: 'var(--font-display)', fontSize: 20, fontWeight: 800, letterSpacing: '-.02em', background: 'transparent', ...titleFieldEdge, color: 'var(--fg)', outline: 'none' }} />
                         <div style={{ fontSize: 11.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{live.identifier}</div>
                     </div>
                     <button type="button" onClick={onClose} aria-label="Close" className="bg-transparent text-fg2 hover:bg-hover"

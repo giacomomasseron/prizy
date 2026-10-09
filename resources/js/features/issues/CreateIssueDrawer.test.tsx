@@ -206,4 +206,12 @@ describe('CreateIssueDrawer', () => {
         expect(classes).not.toContain('border-border');
         expect(classes).toContain('focus:border-fg');
     });
+
+    it('G3b: the title field shows an ink underline while focused (no edge at rest)', () => {
+        mount({});
+        const title = screen.getByLabelText(/Issue title/i);
+        expect(title.className).toContain('border-transparent');
+        expect(title.className).toContain('focus:border-fg');
+        expect(title.style.borderStyle).toBe('solid');
+    });
 });

@@ -112,4 +112,11 @@ describe('CycleForm', () => {
         expect(screen.getByRole('textbox', { name: 'Cycle name' })).toBeInTheDocument();
         expect(screen.getByRole('textbox', { name: 'Cycle description' })).toBeInTheDocument();
     });
+
+    it('G3b: the name field shows an ink underline while focused (no edge at rest)', () => {
+        wrap();
+        const name = screen.getByRole('textbox', { name: 'Cycle name' });
+        expect(name.className).toBe('border-transparent focus:border-fg');
+        expect(name.style.borderStyle).toBe('solid');
+    });
 });

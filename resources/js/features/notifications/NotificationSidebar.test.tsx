@@ -144,4 +144,10 @@ describe('NotificationSidebar', () => {
         expect(screen.getByRole('button', { name: 'Mentions' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('G3b: Notification settings says when it is the open pane', () => {
+        wrap({ settingsActive: true });
+        expect(screen.getByRole('button', { name: 'Notification settings' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

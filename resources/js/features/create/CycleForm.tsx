@@ -7,7 +7,7 @@ import { PropertyRow } from '../../components/ui/PropertyRow';
 import { Switch } from '../../components/ui/Switch';
 import { Textarea } from '../../components/ui/Textarea';
 import { Menu } from '../../components/ui/Menu';
-import { FIELD_CLASSES } from '../../components/ui/Input';
+import { FIELD_CLASSES, TITLE_FIELD_CLASSES, titleFieldEdge } from '../../components/ui/Input';
 import { TOOL_PILL_CLASSES, chipClasses, chipStyle, toolPillStyle } from '../issues/issueStyles';
 import { alertBox, fieldLabel } from '../settings/settingsStyles';
 import { deskCard, tint } from '../support/supportStyles';
@@ -126,8 +126,9 @@ export default function CycleForm({ defaultTeamId, onSuccess, onCancel }: CycleF
                 <input
                     aria-label="Cycle name"
                     placeholder="Cycle name"
+                    className={TITLE_FIELD_CLASSES}
                     style={{
-                        flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none',
+                        flex: 1, minWidth: 0, ...titleFieldEdge, background: 'none', outline: 'none',
                         fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--fg)',
                     }}
                     value={name}

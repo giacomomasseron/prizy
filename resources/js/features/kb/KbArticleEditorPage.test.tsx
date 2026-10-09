@@ -281,4 +281,11 @@ describe('KbArticleEditorPage', () => {
         renderEditor();
         expect(await screen.findByRole('complementary', { name: 'Article settings' })).toBeInTheDocument();
     });
+
+    it('G3b: the title field shows an ink underline while focused (no edge at rest)', async () => {
+        renderEditor();
+        const title = await screen.findByRole('textbox', { name: 'Article title' });
+        expect(title.className).toBe('border-transparent focus:border-fg');
+        expect(title.style.borderStyle).toBe('solid');
+    });
 });

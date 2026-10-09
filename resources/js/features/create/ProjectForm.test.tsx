@@ -162,4 +162,11 @@ describe('ProjectForm', () => {
         expect(screen.getByRole('button', { name: '#3a9a68' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: '#5b8def' })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('G3b: the name field shows an ink underline while focused (no edge at rest)', () => {
+        wrap();
+        const name = screen.getByRole('textbox', { name: 'Project name' });
+        expect(name.className).toBe('border-transparent focus:border-fg');
+        expect(name.style.borderStyle).toBe('solid');
+    });
 });

@@ -200,4 +200,13 @@ describe('KbLibraryPage', () => {
         renderPage();
         expect(await screen.findByRole('textbox', { name: 'Search titles' })).toBeInTheDocument();
     });
+
+    it('G3b: the tree says which row is selected, and rings it at 3:1', async () => {
+        renderPage();
+        const cat = await screen.findByRole('button', { name: /Getting started/ });
+        const all = screen.getByRole('button', { name: 'All articles' });
+        expect(all).toHaveAttribute('aria-pressed', 'true');
+        expect(all.style.boxShadow).toBe('0 0 0 1.5px var(--field)');
+        expect(cat).toHaveAttribute('aria-pressed', 'false');
+    });
 });

@@ -23,7 +23,7 @@ describe('VelocityTable', () => {
         expect(screen.getByText('Velocity').style.fontFamily).toBe('var(--font-display)');
         const [selected, other] = screen.getAllByRole('button');
         expect(selected).toHaveAttribute('aria-pressed', 'true');
-        expect(selected.style.boxShadow).toBe('inset 0 0 0 1.5px var(--border2)');
+        expect(selected.style.boxShadow).toBe('inset 0 0 0 1.5px var(--field)');
         expect(other.className).toContain('hover:bg-hover');
         expect(other.style.background).toBe('');
     });

@@ -9,7 +9,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { PropertyRow } from '../../components/ui/PropertyRow';
-import { FIELD_CLASSES } from '../../components/ui/Input';
+import { FIELD_CLASSES, TITLE_FIELD_CLASSES, titleFieldEdge } from '../../components/ui/Input';
 import { chipClasses, chipStyle } from '../issues/issueStyles';
 import { alertBox, swatchStyle } from '../settings/settingsStyles';
 import { deskCard, tint } from '../support/supportStyles';
@@ -55,7 +55,7 @@ const dateInput: CSSProperties = {
 
 /** The new-issue composer's display-font title input. */
 const nameInput: CSSProperties = {
-    flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none',
+    flex: 1, minWidth: 0, ...titleFieldEdge, background: 'none', outline: 'none',
     fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-.03em', color: 'var(--fg)',
 };
 
@@ -128,6 +128,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                 <input
                     aria-label="Project name"
                     placeholder="Project name"
+                    className={TITLE_FIELD_CLASSES}
                     style={nameInput}
                     value={name}
                     onChange={e => setName(e.target.value)}

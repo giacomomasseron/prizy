@@ -97,7 +97,7 @@ export function NotificationSidebar({
             </div>
 
             <div style={{ marginTop: 'auto', padding: 8, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button type="button" onClick={onOpenSettings} style={sideRow(settingsActive)} className={settingsActive ? '' : NAV_ROW_HOVER}>
+                <button type="button" aria-pressed={settingsActive} onClick={onOpenSettings} style={sideRow(settingsActive)} className={settingsActive ? '' : NAV_ROW_HOVER}>
                     Notification settings
                 </button>
                 <Link to="/" style={sideRow(false)} className={NAV_ROW_HOVER}>

@@ -75,4 +75,10 @@ describe('ReportingSidebar', () => {
         fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
         expect(screen.getByRole('textbox', { name: 'Report name' })).toBeInTheDocument();
     });
+
+    it('G3b: the selected report section says it is pressed', () => {
+        render(<ReportingSidebar {...sidebarProps({})} />);
+        expect(screen.getByRole('button', { name: /Overview/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

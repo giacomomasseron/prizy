@@ -59,4 +59,10 @@ describe('ProjectSidebar', () => {
         renderSidebar();
         expect(await screen.findByRole('navigation', { name: 'Project' })).toBeInTheDocument();
     });
+
+    it('G3b: the switch-project list marks the current project', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('link', { name: 'Escalation Engine' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'Unified Inbox' })).not.toHaveAttribute('aria-current');
+    });
 });

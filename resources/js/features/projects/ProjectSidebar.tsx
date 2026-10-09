@@ -53,7 +53,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
             <div style={{ ...sectionLabel, padding: '16px 18px 6px' }}>Switch project</div>
             <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1, overflow: 'auto' }}>
                 {list.map((other) => (
-                    <Link key={other.id} to={`/projects/${other.id}`} style={{ ...navRow(other.id === projectId), fontSize: 13.5 }} className={other.id === projectId ? '' : NAV_ROW_HOVER}>
+                    <Link key={other.id} to={`/projects/${other.id}`} aria-current={other.id === projectId ? 'page' : undefined} style={{ ...navRow(other.id === projectId), fontSize: 13.5 }} className={other.id === projectId ? '' : NAV_ROW_HOVER}>
                         <span style={{ width: 10, height: 10, borderRadius: 3, background: other.color, flexShrink: 0 }} />
                         <span style={{ flex: 1, textAlign: 'left', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{other.name}</span>
                     </Link>

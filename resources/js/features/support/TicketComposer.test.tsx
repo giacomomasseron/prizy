@@ -142,4 +142,9 @@ describe('TicketComposer', () => {
         expect(screen.getByRole('button', { name: 'Public reply' }).style.boxShadow).toBe('0 0 0 1.5px var(--field)');
         expect(screen.getByRole('button', { name: 'Internal note' }).style.boxShadow).toBe('none');
     });
+
+    it('G3b: the composer box shows the ink ring while its text box has focus', () => {
+        render(<TicketComposer ticket={ticket()} />);
+        expect(screen.getByTestId('composer-box').className).toBe('focus-within:outline-2 focus-within:outline-fg focus-within:outline-offset-2');
+    });
 });

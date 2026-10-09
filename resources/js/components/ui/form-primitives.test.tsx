@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Button } from './Button';
 import { IconButton } from './IconButton';
 import { Kbd } from './Kbd';
-import { Input } from './Input';
+import { Input, TITLE_FIELD_CLASSES, titleFieldEdge } from './Input';
 import { Textarea } from './Textarea';
 import { Switch } from './Switch';
 import { SegmentedControl } from './SegmentedControl';
@@ -202,4 +202,11 @@ describe('G3a: toggles announce and ring the selected segment', () => {
     expect(screen.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'false');
   });
+});
+
+describe('G3b: borderless title fields', () => {
+    it('show no edge at rest and an ink underline while focused; the colour lives in classes', () => {
+        expect(TITLE_FIELD_CLASSES).toBe('border-transparent focus:border-fg');
+        expect(titleFieldEdge).toEqual({ borderWidth: '0 0 1.5px', borderStyle: 'solid' });
+    });
 });

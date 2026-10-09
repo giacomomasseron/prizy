@@ -20,7 +20,7 @@ import { timeAgo } from '../../lib/timeAgo';
 import { CommentReactions } from './CommentReactions';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
+import { Input, TITLE_FIELD_CLASSES, titleFieldEdge } from '../../components/ui/Input';
 import { PropertyRow } from '../../components/ui/PropertyRow';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
@@ -178,8 +178,8 @@ export default function IssueDetailPage() {
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') { e.preventDefault(); titleRef.current?.blur(); }
                                 }}
-                                className="hl"
-                                style={{ outline: 'none' }}
+                                className={`hl ${TITLE_FIELD_CLASSES}`}
+                                style={{ ...titleFieldEdge, outline: 'none' }}
                             >
                                 {data.title}
                             </span>

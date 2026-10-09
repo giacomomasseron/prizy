@@ -545,4 +545,13 @@ describe('IssueDetailPage v2 layout', () => {
         renderPage();
         expect(screen.getByRole('complementary', { name: 'Issue properties' })).toBeInTheDocument();
     });
+
+    it('G3b: the editable title shows an ink underline while focused (no edge at rest)', () => {
+        dev();
+        renderPage();
+        const title = screen.getByRole('heading', { level: 1 });
+        expect(title.className).toContain('border-transparent');
+        expect(title.className).toContain('focus:border-fg');
+        expect(title.style.borderStyle).toBe('solid');
+    });
 });

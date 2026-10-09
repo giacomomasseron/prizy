@@ -38,7 +38,7 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
             <div style={sideSection}>Reports</div>
             <div style={rowList}>
                 {REPORT_SECTIONS.map((s) => (
-                    <button key={s.key} type="button" onClick={() => onSelectSection(s.key)} style={sideRow(section === s.key)} className={section === s.key ? '' : NAV_ROW_HOVER}>
+                    <button key={s.key} type="button" aria-pressed={section === s.key} onClick={() => onSelectSection(s.key)} style={sideRow(section === s.key)} className={section === s.key ? '' : NAV_ROW_HOVER}>
                         <span style={icon}>{s.icon}</span>
                         <span style={{ flex: 1 }}>{s.label}</span>
                     </button>
