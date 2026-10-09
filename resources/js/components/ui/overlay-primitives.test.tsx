@@ -351,3 +351,20 @@ describe('G3b: Menu focus skips disabled items', () => {
         expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
     });
 });
+
+describe('G3b: dialog backdrops', () => {
+    it('a backdrop is presentational and still closes the dialog on click', () => {
+        const onClose = vi.fn();
+        const { unmount } = render(<Drawer open onClose={onClose} label="Panel">x</Drawer>);
+        const drawerBackdrop = screen.getByRole('dialog').previousElementSibling as HTMLElement;
+        expect(drawerBackdrop).toHaveAttribute('role', 'presentation');
+        fireEvent.click(drawerBackdrop);
+        expect(onClose).toHaveBeenCalledTimes(1);
+        unmount();
+        render(<Modal open onClose={onClose} label="Dialog">x</Modal>);
+        const modalBackdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+        expect(modalBackdrop).toHaveAttribute('role', 'presentation');
+        fireEvent.click(modalBackdrop);
+        expect(onClose).toHaveBeenCalledTimes(2);
+    });
+});
