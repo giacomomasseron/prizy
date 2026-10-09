@@ -73,7 +73,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
                 </div>
 
                 {error && (
-                    <div role="alert" style={{ marginBottom: 8, padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'var(--line) solid ' + tint('var(--red)', 45), background: tint('var(--red)', 10), color: 'var(--red)', fontSize: 12.5 }}>
+                    <div role="alert" style={{ marginBottom: 8, padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'var(--line) solid ' + tint('var(--red)', 45), background: tint('var(--red)', 10), color: 'var(--red-ink)', fontSize: 12.5 }}>
                         {error}
                     </div>
                 )}

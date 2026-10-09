@@ -25,4 +25,9 @@ describe('BreachRiskCard', () => {
         expect(screen.getByText('42m').style.borderRadius).toBe('var(--radius-pill)');
         expect(screen.getByText('sso').style.borderRadius).toBe('var(--radius-pill)');
     });
+
+    it('G3a: the remaining badge writes its risk colour in the ink partner; the bar keeps the base colour', () => {
+        render(<BreachRiskCard breachRisk={[{ ...risk, pct: 20 }]} tags={[]} />);
+        expect(screen.getByText('42m').style.color).toBe('var(--red-ink)');
+    });
 });

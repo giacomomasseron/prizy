@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useTicket } from './hooks';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
+import { ink } from '../../lib/ink';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { slaMetricPresentation } from './sla';
 import { SMALL_PILL_CLASSES, deskCard, smallLabel, smallPill } from './supportStyles';
@@ -44,10 +45,10 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
                         return (
                             <div key={metric.metric} data-testid="sla-card" style={{ ...deskCard, padding: '13px 15px' }}>
                                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: pres.color }}>{pres.title}</span>
+                                    <span style={{ fontSize: 12.5, fontWeight: 700, color: ink(pres.color) }}>{pres.title}</span>
                                     <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                                         {pres.paused && <span style={{ fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: 'var(--fg3)', background: 'var(--hover)' }}>⏸ Paused</span>}
-                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: pres.color }}>{pres.remaining}</span>
+                                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 15, fontWeight: 700, color: ink(pres.color) }}>{pres.remaining}</span>
                                     </span>
                                 </div>
                                 <div style={{ marginTop: 9, height: 5, borderRadius: 'var(--radius-pill)', background: 'var(--border)', overflow: 'hidden' }}>

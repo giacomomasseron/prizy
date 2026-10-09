@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { navRow, sectionLabel } from '../../components/sidebarStyles';
+import { ink } from '../../lib/ink';
 
 /*
  * Shared v2 styles for the support desk and reporting (V2-G1). Same rule as the other *Styles modules:
@@ -44,13 +45,13 @@ export const cardSub: CSSProperties = { fontSize: 12.5, color: 'var(--fg3)', mar
 /** Sentence-case small label: table heads, "By channel", context labels. */
 export const smallLabel: CSSProperties = { fontSize: 12.5, fontWeight: 700, color: 'var(--fg3)' };
 
-/** Ticket status pill: sentence case on a tint of its colour. */
+/** Ticket status pill: sentence case on a tint of its colour; the text uses the colour's ink partner (4.5:1). */
 export function statusTag(color: string): CSSProperties {
-    return { fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)', color, background: tint(color), whiteSpace: 'nowrap' };
+    return { fontSize: 11.5, fontWeight: 700, padding: '2px 9px', borderRadius: 'var(--radius-pill)', color: ink(color), background: tint(color), whiteSpace: 'nowrap' };
 }
 /** Linked engineering issue tag ("↩ PRJ-42"). */
 export const accentTag: CSSProperties = {
-    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-pill)', color: 'var(--accent)',
+    fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 'var(--radius-pill)', color: 'var(--accent-ink)',
     background: 'var(--accent2)', fontFamily: 'var(--font-mono)', whiteSpace: 'nowrap',
 };
 

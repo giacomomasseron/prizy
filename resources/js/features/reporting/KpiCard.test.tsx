@@ -61,4 +61,10 @@ describe('KpiCard', () => {
         render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: -9 }} />);
         expect(screen.getByText('-9%').style.background).toBe('color-mix(in srgb, var(--red) 14%, transparent)');
     });
+
+    it('G3a: a good or bad delta writes its text in the ink partner (4.5:1); the tint keeps the base colour', () => {
+        render(<KpiCard meta={{ key: 'solved', label: 'Solved', unit: '', positiveIsGood: true }} kpi={{ value: 71, delta_pct: 14 }} />);
+        expect(screen.getByText('+14%').style.color).toBe('var(--green-ink)');
+        expect(screen.getByText('+14%').style.background).toBe('color-mix(in srgb, var(--green) 14%, transparent)');
+    });
 });

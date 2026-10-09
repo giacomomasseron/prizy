@@ -12,7 +12,7 @@ export const railItem: CSSProperties = {
     fontSize: 16, textDecoration: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit',
 };
 export const RAIL_ITEM_CLASSES = 'bg-transparent text-fg3 hover:bg-hover hover:text-fg';
-export const RAIL_ACTIVE_CLASSES = 'bg-sup2 text-sup';
+export const RAIL_ACTIVE_CLASSES = 'bg-sup2 text-sup-ink';
 
 /**
  * The support product's icon rail (desk, reporting, KB): the ink brand, the surface's own items,

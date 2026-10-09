@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { Kpi } from '../../lib/types';
 import { Sparkline } from './Sparkline';
+import { ink } from '../../lib/ink';
 import { deskCard, smallLabel, tint } from '../support/supportStyles';
 
 export interface KpiDisplayMeta { label: string; unit: string; positiveIsGood: boolean }
@@ -18,7 +19,7 @@ export function KpiCard<M extends KpiDisplayMeta>({ meta, kpi, series, format }:
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ ...smallLabel, flex: 1 }}>{meta.label}</span>
                 {kpi.delta_pct !== null && (
-                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color, background: bg, fontFamily: 'var(--font-mono)' }}>
+                    <span style={{ fontSize: 11.5, fontWeight: 700, padding: '1px 8px', borderRadius: 'var(--radius-pill)', color: neutral ? color : ink(color), background: bg, fontFamily: 'var(--font-mono)' }}>
                         {kpi.delta_pct > 0 ? '+' : ''}{kpi.delta_pct}%
                     </span>
                 )}
