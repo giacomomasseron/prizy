@@ -263,4 +263,21 @@ describe('NotificationList', () => {
         expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
         expect(second.className).toContain('has-[:focus-visible]:outline-2');
     });
+
+    it("G3c: a failed query shows a retryable alert, not the all-caught-up state", () => {
+        render(
+            <NotificationList
+                items={[]}
+                isLoading={false}
+                query={{ isLoading: false, isError: true, data: undefined, refetch: vi.fn() }}
+                category="all"
+                unreadOnly={false}
+                onToggleUnread={vi.fn()}
+                selectedId={null}
+                onSelect={vi.fn()}
+            />,
+        );
+        expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load notifications.");
+        expect(screen.queryByText(/all caught up/i)).toBeNull();
+    });
 });

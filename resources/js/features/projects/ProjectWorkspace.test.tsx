@@ -55,4 +55,12 @@ describe('ProjectWorkspace', () => {
         expect(name.style.textOverflow).toBe('ellipsis');
         expect((name.parentElement as HTMLElement).style.overflow).toBe('hidden');
     });
+
+    it("G3c: a failed project load (not a 404) shows a retryable alert, not 'not found'", async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } })));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/projects/p1']}><Routes><Route path="/projects/:id" element={<ProjectWorkspace />} /></Routes></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load this project.");
+        expect(screen.queryByText('Project not found.')).toBeNull();
+    });
 });

@@ -285,4 +285,16 @@ describe('ProjectsPage', () => {
         fireEvent.click(link, { ctrlKey: true });
         expect(mockNavigate).not.toHaveBeenCalled();
     });
+
+    it("G3c: a failed projects load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return j({ data: meOwnerDev });
+            if (url.includes('/projects')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><ProjectsPage /></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load projects.");
+        expect(screen.queryByText('No projects yet.')).toBeNull();
+    });
 });

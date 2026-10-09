@@ -310,3 +310,15 @@ describe('G3b: result rows are reachable by keyboard', () => {
         expect(screen.queryByText('issue page')).toBeNull();
     });
 });
+
+describe('G3c: a failed search', () => {
+    it("G3c: a failed results load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (String(url).includes('/search/issues')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        }));
+        wrap(<SearchPage />);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load results.");
+        expect(screen.queryByText(/No issues match your search/i)).toBeNull();
+    });
+});

@@ -19,6 +19,7 @@ import { StatusIcon } from '../../components/ui/StatusIcon';
 import { IconButton } from '../../components/ui/IconButton';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { avatarFor } from '../../lib/avatarFor';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 
@@ -129,34 +130,36 @@ export default function ProjectOverview() {
                         </form>
                     )}
                     {error && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 13, marginBottom: 10 }}>{error}</div>}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                        {(milestones.data?.items ?? []).map((m: Milestone) => {
-                            const state = milestoneState(m.target_date, new Date());
-                            const tag = MS_TAG[state];
-                            return (
-                                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                    <StatusIcon status={MS_ICON[state]} size={20} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--fg)' }}>{m.name}</div>
-                                        <div style={{ ...mono, color: 'var(--fg3)' }}>{fmtDate(m.target_date)}</div>
+                    <QueryState query={milestones} what="milestones">
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            {(milestones.data?.items ?? []).map((m: Milestone) => {
+                                const state = milestoneState(m.target_date, new Date());
+                                const tag = MS_TAG[state];
+                                return (
+                                    <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <StatusIcon status={MS_ICON[state]} size={20} />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--fg)' }}>{m.name}</div>
+                                            <div style={{ ...mono, color: 'var(--fg3)' }}>{fmtDate(m.target_date)}</div>
+                                        </div>
+                                        <span data-testid="milestone-tag" style={{ ...tagPill, color: ink(tag.color), background: tag.bg }}>{tag.label}</span>
+                                        {canDevelop && (
+                                            <button
+                                                type="button"
+                                                aria-label={`Delete ${m.name}`}
+                                                onClick={async () => { setError(null); if (await confirm({ title: `Delete "${m.name}"?`, danger: true })) delMs.mutate(m.id, { onError: (e) => setError((e as ApiError).message) }); }}
+                                                className={DELETE_X_CLASSES}
+                                                style={deleteXStyle}
+                                            >
+                                                ×
+                                            </button>
+                                        )}
                                     </div>
-                                    <span data-testid="milestone-tag" style={{ ...tagPill, color: ink(tag.color), background: tag.bg }}>{tag.label}</span>
-                                    {canDevelop && (
-                                        <button
-                                            type="button"
-                                            aria-label={`Delete ${m.name}`}
-                                            onClick={async () => { setError(null); if (await confirm({ title: `Delete "${m.name}"?`, danger: true })) delMs.mutate(m.id, { onError: (e) => setError((e as ApiError).message) }); }}
-                                            className={DELETE_X_CLASSES}
-                                            style={deleteXStyle}
-                                        >
-                                            ×
-                                        </button>
-                                    )}
-                                </div>
-                            );
-                        })}
-                        {(milestones.data?.items ?? []).length === 0 && <div style={{ fontSize: 13.5, color: 'var(--fg3)' }}>No milestones yet.</div>}
-                    </div>
+                                );
+                            })}
+                            {(milestones.data?.items ?? []).length === 0 && <div style={{ fontSize: 13.5, color: 'var(--fg3)' }}>No milestones yet.</div>}
+                        </div>
+                    </QueryState>
                 </section>
             </div>
         </>

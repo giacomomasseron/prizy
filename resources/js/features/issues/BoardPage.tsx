@@ -14,6 +14,7 @@ import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
 import { LabelChip } from '../../components/ui/LabelChip';
 import { ProjectPill } from '../../components/ui/ProjectPill';
+import { QueryState } from '../../components/ui/QueryState';
 import { IconButton } from '../../components/ui/IconButton';
 import { avatarFor } from '../../lib/avatarFor';
 
@@ -146,7 +147,8 @@ function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnPr
 
 export default function BoardPage() {
     const [searchParams] = useSearchParams();
-    const { data } = useIssues(paramsToFilters(searchParams));
+    const issuesQ = useIssues(paramsToFilters(searchParams));
+    const data = issuesQ.data;
     const transition = useTransitionStatus();
     const sensors = useSensors(useSensor(PointerSensor));
     const grouped = groupByStatus(data?.items ?? []);
@@ -178,20 +180,22 @@ export default function BoardPage() {
         <>
             <IssuesHeader view="board" />
             <FilterBar viewType="board" />
-            <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-                <div style={{ display: 'flex', gap: 18, padding: '4px 26px 26px', overflowX: 'auto', flexShrink: 0 }}>
-                    {BOARD_STATUSES.map((status) => (
-                        <Column
-                            key={status}
-                            status={status}
-                            issues={grouped[status]}
-                            onCardClick={guardedCardClick}
-                            onColumnAdd={onColumnAdd}
-                            projects={projects}
-                        />
-                    ))}
-                </div>
-            </DndContext>
+            <QueryState query={issuesQ} what="issues" frame={{ padding: '4px 26px 26px' }}>
+                <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+                    <div style={{ display: 'flex', gap: 18, padding: '4px 26px 26px', overflowX: 'auto', flexShrink: 0 }}>
+                        {BOARD_STATUSES.map((status) => (
+                            <Column
+                                key={status}
+                                status={status}
+                                issues={grouped[status]}
+                                onCardClick={guardedCardClick}
+                                onColumnAdd={onColumnAdd}
+                                projects={projects}
+                            />
+                        ))}
+                    </div>
+                </DndContext>
+            </QueryState>
         </>
     );
 }

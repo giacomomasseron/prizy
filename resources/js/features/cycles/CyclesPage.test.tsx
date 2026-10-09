@@ -59,4 +59,17 @@ describe('CyclesPage', () => {
         expect(active.style.background).toBe('color-mix(in srgb, var(--amber) 15%, transparent)');
         expect((await screen.findByRole('button', { name: 'Delete Cycle 22' })).className).toContain('hover:text-red');
     });
+
+    it("G3c: a failed cycles load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return j({ data: ME });
+            if (url.includes('/cycles')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', created_at: '', updated_at: '' }], links: { next: null } });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/teams/t1/cycles']}><Routes><Route path="/teams/:id/cycles" element={<CyclesPage />} /></Routes></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load cycles.");
+        expect(screen.queryByText('No cycles in this team yet.')).toBeNull();
+    });
 });

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { sectionTitle } from '../issues/issueStyles';
 import { emptyState, pageTitle } from '../projects/projectStyles';
 import { DANGER_PILL_CLASSES, pillBtn } from '../settings/settingsStyles';
@@ -37,28 +38,29 @@ export default function TeamDetailPage() {
                 )}
             </div>
 
-            {cycles.isLoading && <p style={{ margin: 0, fontSize: 13, color: 'var(--fg3)' }}>Loading…</p>}
-            {!cycles.isLoading && items.length === 0 && <div style={emptyState}>No cycles in this team yet.</div>}
-            {items.length > 0 && (
-                <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
-                    {items.map((c) => (
-                        <div key={c.id} className="border-b border-border last:border-b-0" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px' }}>
-                            <span style={{ fontSize: 14, fontWeight: 700 }}>{c.name}</span>
-                            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' }}>{c.starts_at} → {c.ends_at}</span>
-                            {canDevelop && (
-                                <button
-                                    type="button"
-                                    onClick={async () => { if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id); }}
-                                    style={{ ...pillBtn, marginLeft: 'auto' }}
-                                    className={DANGER_PILL_CLASSES}
-                                >
-                                    Delete
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                </div>
-            )}
+            <QueryState query={cycles} what="cycles">
+                {items.length === 0 && <div style={emptyState}>No cycles in this team yet.</div>}
+                {items.length > 0 && (
+                    <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', background: 'var(--panel)', overflow: 'hidden' }}>
+                        {items.map((c) => (
+                            <div key={c.id} className="border-b border-border last:border-b-0" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '13px 18px' }}>
+                                <span style={{ fontSize: 14, fontWeight: 700 }}>{c.name}</span>
+                                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' }}>{c.starts_at} → {c.ends_at}</span>
+                                {canDevelop && (
+                                    <button
+                                        type="button"
+                                        onClick={async () => { if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id); }}
+                                        style={{ ...pillBtn, marginLeft: 'auto' }}
+                                        className={DANGER_PILL_CLASSES}
+                                    >
+                                        Delete
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </QueryState>
         </div>
     );
 }

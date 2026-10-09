@@ -120,4 +120,17 @@ describe('ReleasesPage', () => {
         renderPage();
         expect(screen.getByTestId('releases-upcoming').parentElement!.parentElement!.style.maxWidth).toBe('');
     });
+
+    it("G3c: a failed releases load shows a retryable alert, not the empty state", async () => {
+        const hooks = await import('./hooks');
+        const spy = vi.spyOn(hooks, 'useReleases').mockReturnValue({ isLoading: false, isError: true, data: undefined, refetch: vi.fn() } as never);
+        try {
+            renderPage();
+            expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load releases.");
+            expect(screen.queryByText('No upcoming releases.')).toBeNull();
+            expect(screen.queryByText('No shipped releases yet.')).toBeNull();
+        } finally {
+            spy.mockRestore();
+        }
+    });
 });

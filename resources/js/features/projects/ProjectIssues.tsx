@@ -9,6 +9,7 @@ import { useIssueDrawers } from '../issues/useIssueDrawers';
 import { STATUS_LABELS } from '../issues/issueMeta';
 import { chipClasses, chipStyle } from '../issues/issueStyles';
 import { cardStyle, emptyState, filterLabel, pageCount, pageTitle, titleRow } from './projectStyles';
+import { QueryState } from '../../components/ui/QueryState';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
 import { StatusIcon } from '../../components/ui/StatusIcon';
@@ -76,25 +77,27 @@ export default function ProjectIssues() {
                 </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
-                {ORDER.filter((s) => grouped[s].length > 0).map((s) => (
-                    <section key={s}>
-                        {/* Group label is a span: the h1 must stay the only heading containing "issues". */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px 10px' }}>
-                            <StatusIcon status={s} size={15} />
-                            <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 19, letterSpacing: '-.02em', color: 'var(--fg)' }}>{STATUS_LABELS[s]}</span>
-                            <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg3)' }}>{grouped[s].length}</span>
-                        </div>
-                        <div style={{ ...cardStyle, borderRadius: 18, overflow: 'hidden' }}>
-                            {grouped[s].map((issue) => <IssueRow key={issue.id} issue={issue} onPeek={openPeek} projects={p ? [p] : []} />)}
-                        </div>
-                    </section>
-                ))}
-            </div>
+            <QueryState query={issuesQ} what="issues">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+                    {ORDER.filter((s) => grouped[s].length > 0).map((s) => (
+                        <section key={s}>
+                            {/* Group label is a span: the h1 must stay the only heading containing "issues". */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 4px 10px' }}>
+                                <StatusIcon status={s} size={15} />
+                                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 19, letterSpacing: '-.02em', color: 'var(--fg)' }}>{STATUS_LABELS[s]}</span>
+                                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg3)' }}>{grouped[s].length}</span>
+                            </div>
+                            <div style={{ ...cardStyle, borderRadius: 18, overflow: 'hidden' }}>
+                                {grouped[s].map((issue) => <IssueRow key={issue.id} issue={issue} onPeek={openPeek} projects={p ? [p] : []} />)}
+                            </div>
+                        </section>
+                    ))}
+                </div>
 
-            {shown.length === 0 && !issuesQ.isLoading && (
-                <div style={emptyState}>No issues match these filters.</div>
-            )}
+                {shown.length === 0 && (
+                    <div style={emptyState}>No issues match these filters.</div>
+                )}
+            </QueryState>
         </>
     );
 }

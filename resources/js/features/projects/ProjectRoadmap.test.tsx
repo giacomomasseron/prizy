@@ -48,4 +48,12 @@ describe('ProjectRoadmap', () => {
         const card = screen.getByText('Beta Launch').parentElement!.parentElement as HTMLElement;
         expect(card.style.borderRadius).toBe('var(--radius-card)');
     });
+
+    it("G3c: a failed milestones load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } })));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/projects/p1/roadmap']}><Routes><Route path="/projects/:id/roadmap" element={<ProjectRoadmap />} /></Routes></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load milestones.");
+        expect(screen.queryByText('No milestones in this state.')).toBeNull();
+    });
 });

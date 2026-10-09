@@ -123,4 +123,11 @@ describe('NotificationsPage', () => {
         expect(screen.getByRole('complementary', { name: 'Inbox' })).toBeInTheDocument();
         expect(screen.getByRole('navigation', { name: 'Inbox filters' })).toBeInTheDocument();
     });
+
+    it("G3c: a failed notifications load shows a retryable alert, not the all-caught-up state", () => {
+        useNotifications.mockReturnValueOnce({ isLoading: false, isError: true, data: undefined, refetch: vi.fn() } as never);
+        renderPage();
+        expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load notifications.");
+        expect(screen.queryByText(/all caught up/i)).toBeNull();
+    });
 });

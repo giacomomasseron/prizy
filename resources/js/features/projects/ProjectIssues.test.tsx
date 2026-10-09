@@ -99,4 +99,16 @@ describe('ProjectIssues', () => {
         expect(screen.getByRole('button', { name: 'Active' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: 'Urgent' })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it("G3c: a failed issues load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/issues')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/projects/')) return j({ data: PROJECT });
+            return j({ data: {} });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/projects/p1/issues']}><Routes><Route path="/projects/:id/issues" element={<ProjectIssues />} /></Routes></MemoryRouter></QueryClientProvider>);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load issues.");
+        expect(screen.queryByText('No issues match these filters.')).toBeNull();
+    });
 });

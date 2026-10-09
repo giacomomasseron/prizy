@@ -80,4 +80,22 @@ describe('TeamDetailPage', () => {
         expect(await screen.findByText('No cycles in this team yet.')).toBeInTheDocument();
         expect(screen.getByText('Cycles')).toBeInTheDocument(); // still the only element reading exactly "Cycles"
     });
+
+    it("G3c: a failed cycles load shows a retryable alert, not the empty state", async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/cycles')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return new Response(JSON.stringify({ data: meOwnerDev }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [{ id: 't1', name: 'Eng', identifier: 'ENG', color: '#111', created_at: '', updated_at: '' }], links: { next: null } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/teams/t1']}>
+                    <Routes><Route path="/teams/:id" element={<TeamDetailPage />} /></Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load cycles.");
+        expect(screen.queryByText('No cycles in this team yet.')).toBeNull();
+    });
 });

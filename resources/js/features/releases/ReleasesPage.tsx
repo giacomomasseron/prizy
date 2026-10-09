@@ -4,6 +4,7 @@ import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { sectionLabel } from '../../components/sidebarStyles';
 import { useReleases } from './hooks';
 import { NewReleaseModal } from './NewReleaseModal';
@@ -71,21 +72,23 @@ export default function ReleasesPage() {
             />
 
             <div style={{ padding: '4px 26px 40px' }}>
-                <section style={{ marginBottom: 26 }}>
-                    <div style={{ ...sectionLabel, marginBottom: 10 }}>Upcoming</div>
-                    <div data-testid="releases-upcoming" style={card}>
-                        {upcoming.map((r) => <UpcomingRow key={r.id} release={r} />)}
-                        {upcoming.length === 0 && <div style={emptyRow}>No upcoming releases.</div>}
-                    </div>
-                </section>
+                <QueryState query={releasesQ} what="releases">
+                    <section style={{ marginBottom: 26 }}>
+                        <div style={{ ...sectionLabel, marginBottom: 10 }}>Upcoming</div>
+                        <div data-testid="releases-upcoming" style={card}>
+                            {upcoming.map((r) => <UpcomingRow key={r.id} release={r} />)}
+                            {upcoming.length === 0 && <div style={emptyRow}>No upcoming releases.</div>}
+                        </div>
+                    </section>
 
-                <section>
-                    <div style={{ ...sectionLabel, marginBottom: 10 }}>Shipped</div>
-                    <div data-testid="releases-shipped" style={card}>
-                        {shipped.map((r) => <ShippedRow key={r.id} release={r} />)}
-                        {shipped.length === 0 && <div style={emptyRow}>No shipped releases yet.</div>}
-                    </div>
-                </section>
+                    <section>
+                        <div style={{ ...sectionLabel, marginBottom: 10 }}>Shipped</div>
+                        <div data-testid="releases-shipped" style={card}>
+                            {shipped.map((r) => <ShippedRow key={r.id} release={r} />)}
+                            {shipped.length === 0 && <div style={emptyRow}>No shipped releases yet.</div>}
+                        </div>
+                    </section>
+                </QueryState>
             </div>
 
             <NewReleaseModal open={showNew} onClose={() => setShowNew(false)} />
