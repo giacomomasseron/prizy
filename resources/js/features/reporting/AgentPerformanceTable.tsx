@@ -7,7 +7,7 @@ import { sectionTitle } from '../issues/issueStyles';
 import { bar, cardSub, deskCard, smallLabel } from '../support/supportStyles';
 
 const GRID = 'minmax(140px,2fr) repeat(5,minmax(64px,1fr))';
-const head: CSSProperties = { display: 'grid', gridTemplateColumns: GRID, padding: '10px 20px', borderBottom: '1px solid var(--border)', ...smallLabel };
+const head: CSSProperties = { display: 'grid', gridTemplateColumns: GRID, padding: '10px 20px', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', ...smallLabel };
 const num: CSSProperties = { textAlign: 'right', fontFamily: 'var(--font-mono)', fontSize: 12.5 };
 
 function csatColor(pct: number): string {

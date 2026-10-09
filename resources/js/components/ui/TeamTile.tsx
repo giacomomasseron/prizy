@@ -9,6 +9,7 @@ export interface TeamTileProps {
 export function TeamTile({ identifier, color, size = 34 }: TeamTileProps) {
     return (
         <span
+            title={identifier}
             style={{
                 width: size,
                 height: size,
@@ -24,7 +25,8 @@ export function TeamTile({ identifier, color, size = 34 }: TeamTileProps) {
                 letterSpacing: '.02em',
             }}
         >
-            {identifier}
+            {/* V2-G3c: only what fits the tile — three characters from 34px up, two below; the full key is the title. */}
+            {identifier.slice(0, size >= 34 ? 3 : 2)}
         </span>
     );
 }

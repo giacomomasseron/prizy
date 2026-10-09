@@ -30,3 +30,10 @@ describe('SupportRail', () => {
         expect(railItem).toMatchObject({ width: 38, height: 38, borderRadius: 10 });
     });
 });
+
+describe('G3c: SupportRail inset', () => {
+    it('G3c: the top padding leaves room for the floating expand button', () => {
+        const { container } = render(<MemoryRouter><SupportRail><span /></SupportRail></MemoryRouter>);
+        expect((container.firstElementChild as HTMLElement).style.paddingTop).toBe('calc(12px + var(--nav-inset, 0px))');
+    });
+});

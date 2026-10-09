@@ -157,3 +157,11 @@ describe('G3a: labels on user colours use readableOn', () => {
         expect(screen.getByTitle('Green').style.color).toBe('var(--on-hi)');
     });
 });
+
+describe('G3c: TeamTile long identifiers', () => {
+    it('G3c: shows only what fits — three characters from 34px up, two below — and keeps the full key in the title', () => {
+        render(<><TeamTile identifier="PLATFORM" color="#6d69f2" /><TeamTile identifier="SUPPORT" color="#6d69f2" size={30} /></>);
+        expect(screen.getByTitle('PLATFORM')).toHaveTextContent(/^PLA$/);
+        expect(screen.getByTitle('SUPPORT')).toHaveTextContent(/^SU$/);
+    });
+});
