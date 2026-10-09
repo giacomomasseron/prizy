@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useProjects, useDeleteProject } from './hooks';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
@@ -13,6 +13,7 @@ import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
 import type { Project } from '../../lib/types';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, onRowLinkClick, rowPrimary } from '../../components/ui/rowPrimary';
 
 const COL = 'minmax(180px,1fr) 150px 160px 180px 90px 54px 22px';
 const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' };
@@ -72,12 +73,13 @@ export default function ProjectsPage() {
                                     data-testid={`project-row-${p.id}`}
                                     onClick={() => navigate(`/projects/${p.id}`)}
                                     // Separator + hover are classes (an inline background would beat hover:).
-                                    className="border-b border-border last:border-b-0 hover:bg-hover"
+                                    className={`border-b border-border last:border-b-0 hover:bg-hover ${ROW_FOCUS_CLASSES}`}
                                     style={{ display: 'grid', gridTemplateColumns: COL, gap: 11, padding: '16px 20px', cursor: 'pointer', alignItems: 'center' }}
                                 >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600, color: 'var(--fg)', minWidth: 0 }}>
                                         <span style={{ width: 14, height: 14, borderRadius: 4, background: p.color, flexShrink: 0 }} />
-                                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                                        {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
+                                        <Link to={`/projects/${p.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</Link>
                                     </div>
                                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, fontSize: 12.5, fontWeight: 600, color: 'var(--fg2)' }}>
                                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: st.color }} />

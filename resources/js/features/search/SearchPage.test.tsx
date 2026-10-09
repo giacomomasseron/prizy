@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
 import SearchPage from './SearchPage';
 
 function wrap(ui: React.ReactElement) {
@@ -255,5 +256,27 @@ describe('v2 look', () => {
         expect(classes).toContain('border-field');
         expect(classes).not.toContain('border-border2');
         expect(classes).toContain('focus-within:border-fg');
+    });
+});
+
+describe('G3b: result rows are reachable by keyboard', () => {
+    it('each title is the row\'s link — Enter opens the issue', async () => {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/search']}>
+                    <Routes>
+                        <Route path="/search" element={<SearchPage />} />
+                        <Route path="/issues/:id" element={<div>issue page</div>} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        const link = await screen.findByRole('link', { name: 'Fix login bug' });
+        expect(link).toHaveAttribute('href', '/issues/i1');
+        expect(screen.getByTestId('search-row').className).toContain('has-[:focus-visible]:outline-2');
+        link.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(await screen.findByText('issue page')).toBeInTheDocument();
     });
 });

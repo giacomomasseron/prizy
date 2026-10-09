@@ -250,4 +250,15 @@ describe('ProjectsPage', () => {
         expect(card.style.overflowX).toBe('auto');
         expect(card.style.overflow).not.toBe('hidden');
     });
+
+    it('G3b: the project name is the row\'s link — Enter opens the project once', async () => {
+        renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })]);
+        const link = await screen.findByRole('link', { name: 'Alpha Project' });
+        expect(link).toHaveAttribute('href', '/projects/p1');
+        link.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(mockNavigate).toHaveBeenCalledTimes(1);
+        expect(mockNavigate).toHaveBeenCalledWith('/projects/p1');
+        expect(screen.getByTestId('project-row-p1').className).toContain('has-[:focus-visible]:outline-2');
+    });
 });

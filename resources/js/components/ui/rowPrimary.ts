@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react';
+import type { CSSProperties, MouseEvent } from 'react';
 
 /**
  * V2-G3b: a clickable row's primary control — the real <button type="button"> (or <Link>) that holds the row's
@@ -17,3 +17,13 @@ export const ROW_PRIMARY_CLASSES = 'focus-visible:outline-none';
 
 /** The row shows the ink ring while its primary control has keyboard focus — inset, so a rounded or scrolling card does not clip it. */
 export const ROW_FOCUS_CLASSES = 'has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-fg has-[:focus-visible]:-outline-offset-2';
+
+/**
+ * A navigation row's primary control is a <Link> (Tab, Enter, open in a new tab). A plain click — or Enter — is
+ * handed to the row's own onClick, so the row navigates once, the same as a click anywhere else in it; a modified
+ * click (new tab or window) is left to the browser and kept from the row.
+ */
+export function onRowLinkClick(e: MouseEvent): void {
+    if (e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey) e.preventDefault();
+    else e.stopPropagation();
+}

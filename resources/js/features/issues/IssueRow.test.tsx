@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { vi, describe, it, expect } from 'vitest';
 import { IssueRow, formatRelativeShort } from './IssueRow';
@@ -35,6 +36,17 @@ describe('IssueRow', () => {
         );
         return { onPeek, container };
     }
+
+    it('G3b: the title is the row\'s button — Enter or Space peeks the issue, and the row draws the focus ring', async () => {
+        const { onPeek } = renderRow();
+        const title = screen.getByRole('button', { name: 'Fix login bug' });
+        title.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(onPeek).toHaveBeenCalledWith('abc-123-xyz-qrs');
+        await userEvent.keyboard(' ');
+        expect(onPeek).toHaveBeenCalledTimes(2);
+        expect(screen.getByTestId('issue-row').className).toContain('has-[:focus-visible]:outline-2');
+    });
 
     it('renders priority icon aria-label=high', () => {
         renderRow();

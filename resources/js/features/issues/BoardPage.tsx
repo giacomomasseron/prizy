@@ -50,8 +50,14 @@ function Card({ issue, onCardClick, projects }: CardProps) {
             className={CARD_CLASSES}
             {...listeners}
             {...attributes}
+            // V2-G3b: dnd-kit's attributes already make the card focusable; role and tabIndex are restated (same values)
+            // for readers and the guard. Only the pointer sensor is on, so Enter/Space open the peek, like a click.
+            // Dragging stays mouse-only.
+            role="button"
+            tabIndex={0}
             data-testid={`card-${issue.id}`}
             onClick={() => onCardClick(issue.id)}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onCardClick(issue.id); } }}
         >
             {/* Top row: identifier + priority */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
