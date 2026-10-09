@@ -198,4 +198,12 @@ describe('CreateIssueDrawer', () => {
         expect(screen.getByRole('button', { name: 'Priority High' }).className).toContain('[--prio-bar:var(--bg)]');
         expect(screen.getByRole('button', { name: 'Priority Low' }).className).not.toContain('--prio-bar');
     });
+
+    it('G3a: the description field rests on the 3:1 field border and keeps its ink focus border', () => {
+        mount({});
+        const classes = screen.getByLabelText(/Issue description/i).className.split(' ');
+        expect(classes).toContain('border-field');
+        expect(classes).not.toContain('border-border');
+        expect(classes).toContain('focus:border-fg');
+    });
 });

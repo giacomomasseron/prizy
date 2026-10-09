@@ -273,7 +273,9 @@ describe('KbTranslationDrawer', () => {
         renderDrawer({ initialLocale: 'fr' });
         const published = await screen.findByRole('button', { name: 'Published' });
         await waitFor(() => expect(published.style.background).toBe('var(--panel)'));
-        expect(published.style.boxShadow).toBe('0 0 0 1.5px var(--border)');
+        expect(published.style.boxShadow).toBe('0 0 0 1.5px var(--field)');
+        expect(published).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Draft' })).toHaveAttribute('aria-pressed', 'false');
         expect(published.style.borderRadius).toBe('var(--radius-pill)');
         expect(published.parentElement?.style.borderRadius).toBe('var(--radius-pill)');
         const del = screen.getByRole('button', { name: 'Delete translation' });

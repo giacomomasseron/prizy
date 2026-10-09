@@ -496,6 +496,7 @@ function StatusControl({ value, onChange, disabledAll, disabledPublish }: {
                         type="button"
                         disabled={disabled}
                         onClick={() => onChange(opt.value)}
+                        aria-pressed={active}
                         style={{
                             padding: '5px 12px',
                             borderRadius: 'var(--radius-pill)',
@@ -507,7 +508,7 @@ function StatusControl({ value, onChange, disabledAll, disabledPublish }: {
                             background: active ? 'var(--panel)' : 'transparent',
                             color: active ? 'var(--fg)' : 'var(--fg2)',
                             opacity: disabled ? 0.5 : 1,
-                            boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
+                            boxShadow: active ? '0 0 0 1.5px var(--field)' : 'none',
                         }}
                     >
                         {opt.label}

@@ -63,8 +63,9 @@
   --color-field: var(--field);
 }
 
-/* One keyboard focus ring app-wide (v2 ink). :where keeps specificity at zero, so a component that styles its own
-   focus keeps it; text fields keep their ink-border focus (FIELD_CLASSES). */
+/* One keyboard focus ring app-wide (v2 ink). The element list sits in :where, so the selector weighs one
+   pseudo-class; the rule is unlayered, so it also beats Tailwind utilities. A component that needs its own focus
+   style sets it inline. Text fields keep their ink-border focus (FIELD_CLASSES). */
 :where(a, button, summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible {
   outline: 2px solid var(--fg);
   outline-offset: 2px;
