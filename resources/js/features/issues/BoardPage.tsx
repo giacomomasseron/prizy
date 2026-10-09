@@ -1,4 +1,3 @@
-import { useRef } from 'react';
 import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { useSearchParams } from 'react-router-dom';
 import type { Issue, IssueStatus, Project } from '../../lib/types';
@@ -8,6 +7,7 @@ import { FilterBar } from '../views/FilterBar';
 import { paramsToFilters } from '../views/filters';
 import { IssuesHeader } from './IssuesHeader';
 import { useIssueDrawers } from './useIssueDrawers';
+import { useDragClickGuard } from './useDragClickGuard';
 import { STATUS_LABELS } from './issueMeta';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
@@ -155,7 +155,7 @@ export default function BoardPage() {
     const projectsQuery = useProjects();
     const projects = projectsQuery.data?.items ?? [];
     const { openCreate, openPeek } = useIssueDrawers();
-    const justDragged = useRef(false);
+    const { markDragged, guard } = useDragClickGuard();
 
     function onDragEnd(e: DragEndEvent) {
         const id = String(e.active.id);
@@ -163,14 +163,11 @@ export default function BoardPage() {
         const current = data?.items.find((i) => i.id === id);
         if (target && current && current.status !== target) {
             transition.mutate({ id, status: target });
-            justDragged.current = true;
+            markDragged();
         }
     }
 
-    const guardedCardClick = (id: string) => {
-        if (justDragged.current) { justDragged.current = false; return; }
-        openPeek(id);
-    };
+    const guardedCardClick = (id: string) => guard(() => openPeek(id));
 
     function onColumnAdd(status: IssueStatus) {
         openCreate({ status });

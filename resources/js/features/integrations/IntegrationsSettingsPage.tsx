@@ -8,9 +8,10 @@ import { SlackConfigDrawer } from './SlackConfigDrawer';
 import { GithubConfigDrawer } from './GithubConfigDrawer';
 import { useSlackIntegration, useGithubIntegration, useDisconnectSlack, useDisconnectGithub } from './hooks';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { readableOn } from '../../lib/readableOn';
 import { DANGER_PILL_CLASSES, cardFrame, pageFrame, pageLead, pageTitle, pillBtn } from '../settings/settingsStyles';
 
-const glyphStyle = (color: string): CSSProperties => ({ width: 40, height: 40, borderRadius: 10, background: color, color: color === '#e6e6e6' ? '#111' : '#fff', fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, letterSpacing: '.02em' });
+const glyphStyle = (color: string): CSSProperties => ({ width: 40, height: 40, borderRadius: 10, background: color, color: readableOn(color), fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, letterSpacing: '.02em' });
 const cardBase: CSSProperties = { ...cardFrame, padding: 16 };
 const sectionLabel: CSSProperties = { fontSize: 12.5, fontWeight: 600, color: 'var(--fg)' };
 const grid: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 };

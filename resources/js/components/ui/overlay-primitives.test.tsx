@@ -306,7 +306,7 @@ describe('G3a: drawer edge and the danger button', () => {
         render(<Button variant="danger">Delete</Button>);
         const b = screen.getByRole('button', { name: 'Delete' });
         expect(b.className).toContain('bg-red');
-        expect(b.className).toContain('enabled:hover:bg-red-ink');
+        expect(b.className).toContain('enabled:hover:bg-red-hover');
         expect(b.className).toContain('text-on-accent');
         expect(b.style.background).toBe('');
     });

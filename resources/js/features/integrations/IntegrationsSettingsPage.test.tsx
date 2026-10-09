@@ -56,3 +56,9 @@ it('shows an error banner when a show query fails', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/couldn.t load/i);
     slackIsError = false;
 });
+
+it('G3c: a tile glyph takes the readable text colour for its catalog colour', () => {
+    render(<IntegrationsSettingsPage />);
+    expect(screen.getByText('GH').style.color).toBe('var(--on-hi)'); // pale #e6e6e6
+    expect(screen.getByText('DC').style.color).toBe('rgb(255, 255, 255)'); // deep #6d69f2
+});
