@@ -24,7 +24,9 @@ function propsOf(selector: string): string[][] {
 
 const PALETTE = ['--bg', '--bg2', '--panel', '--border', '--border2', '--fg', '--fg2', '--fg3', '--hover',
     '--accent', '--accent2', '--on-accent', '--hi', '--on-hi', '--red', '--amber', '--green', '--blue', '--teal',
-    '--sup', '--sup2', '--on-sup', '--note', '--note2', '--backdrop'];
+    '--sup', '--sup2', '--on-sup', '--note', '--note2', '--backdrop',
+    // V2-G3a: text-only status colours and the 3:1 field border.
+    '--red-ink', '--amber-ink', '--green-ink', '--blue-ink', '--teal-ink', '--accent-ink', '--sup-ink', '--note-ink', '--field'];
 
 describe('design tokens (app.css)', () => {
     it('light palette is the default :root block with the v2 values', () => {
@@ -100,5 +102,20 @@ describe('vite.config.js fonts', () => {
 describe('app.blade.php no-flash script', () => {
     it('defaults to light and only honours a stored "dark" (same rule as lib/theme.ts)', () => {
         expect(blade).toContain("(t==='dark')?'dark':'light'");
+    });
+});
+
+describe('V2-G3a: dark color-scheme and the keyboard focus ring', () => {
+    it('declares color-scheme light in the light block and dark in the dark block', () => {
+        expect(css).toMatch(/:root \{[^}]*color-scheme: light;/);
+        expect(css).toMatch(/:root\[data-theme="dark"\] \{[^}]*color-scheme: dark;/);
+    });
+    it('draws one ink focus ring for keyboard focus, at zero specificity', () => {
+        expect(css).toMatch(/:where\(a, button,.*\):focus-visible \{\s*outline: 2px solid var\(--fg\);\s*outline-offset: 2px;/);
+    });
+    it('maps the ink and field tokens to utilities', () => {
+        for (const t of ['--color-red-ink: var(--red-ink)', '--color-sup-ink: var(--sup-ink)', '--color-accent-ink: var(--accent-ink)', '--color-field: var(--field)']) {
+            expect(css).toContain(t);
+        }
     });
 });
