@@ -86,4 +86,19 @@ describe('TeamDrawer', () => {
         expect(classes).not.toContain('text-accent');
         expect(classes).toContain('bg-accent2');
     });
+
+    it('G3b: colour swatches say which is the team\'s colour', async () => {
+        mockFetch(() => new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 }));
+        wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
+        expect(await screen.findByRole('button', { name: 'Set color #6366f1' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Set color #e0a13a' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('G3b: the team name field shows an ink underline while focused (no edge at rest)', async () => {
+        mockFetch(() => new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 }));
+        wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
+        const name = await screen.findByLabelText('Team name');
+        expect(name.className).toBe('border-transparent focus:border-fg');
+        expect(name.style.borderStyle).toBe('solid');
+    });
 });

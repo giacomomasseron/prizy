@@ -115,7 +115,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                             <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} aria-expanded={workspaceOpen} style={sectionBtn} className="text-fg3 hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
                         </div>
                         {workspaceOpen && (
-                            <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <nav aria-label="Workspace" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 <NavLink to="/" end style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
                                     <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
@@ -143,7 +143,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                     <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
                             <button type="button" onClick={() => setTeamsOpen((o) => !o)} aria-expanded={teamsOpen} style={sectionBtn} className="text-fg3 hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
-                            {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 22, height: 22, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
+                            {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 24, height: 24, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
                         </div>
                         {teamsOpen && (
                             <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>

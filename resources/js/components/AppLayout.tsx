@@ -55,6 +55,7 @@ export default function AppLayout() {
             {/* ── Sidebar ── */}
             {!navHidden && (
                 <aside
+                    aria-label="Sidebar"
                     style={{
                         width: 240,
                         flexShrink: 0,

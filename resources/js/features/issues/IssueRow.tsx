@@ -4,6 +4,7 @@ import { Avatar } from '../../components/ui/Avatar';
 import { LabelChip } from '../../components/ui/LabelChip';
 import { ProjectPill } from '../../components/ui/ProjectPill';
 import { avatarFor } from '../../lib/avatarFor';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { Issue, Project } from '../../lib/types';
 
 export interface IssueRowProps {
@@ -28,7 +29,7 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
             data-testid="issue-row"
             // Background, hover and the separator are classes (an inline background would beat
             // `hover:`); the last row in a group card drops its separator.
-            className="border-b border-border last:border-b-0 bg-transparent hover:bg-hover"
+            className={`border-b border-border last:border-b-0 bg-transparent hover:bg-hover ${ROW_FOCUS_CLASSES}`}
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', cursor: 'pointer' }}
             onClick={() => onPeek(issue.id)}
         >
@@ -40,15 +41,18 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
                 {issue.identifier ?? issue.id.slice(0, 6).toUpperCase()}
             </span>
 
-            {/* Title */}
-            <span
+            {/* Title: the row's primary control (V2-G3b) — Tab reaches it, Enter/Space click it, the click bubbles to the row. */}
+            <button
+                type="button"
+                className={ROW_PRIMARY_CLASSES}
                 style={{
+                    ...rowPrimary,
                     flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                     fontSize: 15, fontWeight: 600, color: 'var(--fg)',
                 }}
             >
                 {issue.title}
-            </span>
+            </button>
 
             {/* Right cluster */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>

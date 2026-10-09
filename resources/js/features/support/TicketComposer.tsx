@@ -78,7 +78,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
                     </div>
                 )}
 
-                <div data-testid="composer-box" style={{ border: `var(--line) solid ${accent}`, borderRadius: 'var(--radius-card)', background: isNote ? 'var(--note2)' : 'var(--panel)', overflow: 'hidden' }}>
+                <div data-testid="composer-box" className="has-[textarea:focus]:outline-2 has-[textarea:focus]:outline-fg has-[textarea:focus]:outline-offset-2" style={{ border: `var(--line) solid ${accent}`, borderRadius: 'var(--radius-card)', background: isNote ? 'var(--note2)' : 'var(--panel)', overflow: 'hidden' }}>
                     <textarea
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}

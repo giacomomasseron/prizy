@@ -270,4 +270,22 @@ describe('KbArticleEditorPage', () => {
         await userEvent.click(screen.getByTestId('kb-slug-shell').firstElementChild as HTMLElement);
         expect(slug).toHaveFocus();
     });
+
+    it('G3b: the title and the body fields are named', async () => {
+        renderEditor();
+        expect(await screen.findByRole('textbox', { name: 'Article title' })).toHaveValue('Published one');
+        expect(screen.getByRole('textbox', { name: 'Article body' })).toBeInTheDocument();
+    });
+
+    it('G3b: the settings column is a named landmark', async () => {
+        renderEditor();
+        expect(await screen.findByRole('complementary', { name: 'Article settings' })).toBeInTheDocument();
+    });
+
+    it('G3b: the title field shows an ink underline while focused (no edge at rest)', async () => {
+        renderEditor();
+        const title = await screen.findByRole('textbox', { name: 'Article title' });
+        expect(title.className).toBe('border-transparent focus:border-fg');
+        expect(title.style.borderStyle).toBe('solid');
+    });
 });

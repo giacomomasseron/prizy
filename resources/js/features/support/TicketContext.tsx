@@ -17,11 +17,11 @@ const ellipsis: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', text
 export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void }) {
     const q = useTicket(ticketId ?? '');
     const t = q.data;
-    if (!ticketId || !t) return <aside style={asideStyle} />;
+    if (!ticketId || !t) return <aside aria-label="Ticket details" style={asideStyle} />;
     const req = t.requester;
     const linked = t.linked_issues[0];
     return (
-        <aside style={asideStyle}>
+        <aside aria-label="Ticket details" style={asideStyle}>
             <div style={{ padding: '18px 18px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                     {req && <Avatar {...avatarFor(req)} size={42} />}

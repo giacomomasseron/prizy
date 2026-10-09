@@ -17,4 +17,8 @@ describe('projectStyles', () => {
         expect(DELETE_X_CLASSES).toBe('text-fg3 hover:text-red-ink');
         expect(deleteXStyle).not.toHaveProperty('color');
     });
+
+    it('G3b: the delete × has at least a 24×24 target', () => {
+        expect(deleteXStyle).toMatchObject({ minWidth: 24, minHeight: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' });
+    });
 });

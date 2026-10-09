@@ -38,11 +38,11 @@ function MessageRow({ m }: { m: TicketMessage }) {
 export function TicketConversation({ ticketId }: { ticketId: string | undefined }) {
     const q = useTicket(ticketId ?? '');
     const t = q.data;
-    if (!ticketId) return <main style={mainStyle}><Empty text="Select a ticket" /></main>;
-    if (q.isLoading || !t) return <main style={mainStyle}><Empty text="Loading…" /></main>;
+    if (!ticketId) return <div style={mainStyle}><Empty text="Select a ticket" /></div>;
+    if (q.isLoading || !t) return <div style={mainStyle}><Empty text="Loading…" /></div>;
     const linked = t.linked_issues[0];
     return (
-        <main style={mainStyle}>
+        <div style={mainStyle}>
             <header style={paneHeader}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={paneTitle}>{t.subject}</div>
@@ -64,6 +64,6 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
                 </div>
             </div>
             <TicketComposer ticket={t} />
-        </main>
+        </div>
     );
 }

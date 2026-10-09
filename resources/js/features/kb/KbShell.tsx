@@ -11,7 +11,7 @@ export function KbShell({ children }: { children: ReactNode }) {
                 <Link to="/support/kb" title="Knowledge base" aria-label="Knowledge base" aria-current="page" className={RAIL_ACTIVE_CLASSES} style={railItem}>📚</Link>
             </SupportRail>
 
-            <main style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>{children}</main>
+            <div style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)', overflow: 'hidden' }}>{children}</div>
         </div>
     );
 }

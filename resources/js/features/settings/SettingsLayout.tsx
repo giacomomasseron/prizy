@@ -109,7 +109,7 @@ export default function SettingsLayout() {
 
                 <div style={{ ...sectionLabel, padding: '8px 18px 6px' }}>Workspace settings</div>
 
-                <nav style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '2px 8px' }}>
+                <nav aria-label="Settings" style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '2px 8px' }}>
                     {navItem('/settings/general', 'General', 'general')}
                     {canManage && navItem('/settings/members', 'Members', 'members', memberCount)}
                     {canManage && navItem('/settings/teams', 'Teams', 'teams', teamCount)}

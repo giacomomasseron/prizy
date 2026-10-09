@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -249,5 +249,40 @@ describe('ProjectsPage', () => {
         expect(inner.style.minWidth).toBe('942px');
         expect(card.style.overflowX).toBe('auto');
         expect(card.style.overflow).not.toBe('hidden');
+    });
+
+    it('G3b: the project name is the row\'s link — Enter opens the project once', async () => {
+        // A real router around the page: if the link navigated on its own, "project page" would render — the row's
+        // (mocked) navigate is the only navigation.
+        stubFetch([makeProject({ id: 'p1', name: 'Alpha Project' })]);
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/projects']}>
+                    <Routes>
+                        <Route path="/projects" element={<ProjectsPage />} />
+                        <Route path="/projects/:id" element={<div>project page</div>} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        const link = await screen.findByRole('link', { name: 'Alpha Project' });
+        expect(link).toHaveAttribute('href', '/projects/p1');
+        link.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(mockNavigate).toHaveBeenCalledTimes(1);
+        expect(mockNavigate).toHaveBeenCalledWith('/projects/p1');
+        expect(screen.queryByText('project page')).toBeNull();
+        expect(screen.getByTestId('project-row-p1').className).toContain('has-[:focus-visible]:outline-2');
+    });
+
+    it('G3b: a modified click on the project link is left to the browser (new tab), not to the row', async () => {
+        renderPage([makeProject({ id: 'p1', name: 'Alpha Project' })]);
+        const link = await screen.findByRole('link', { name: 'Alpha Project' });
+        // jsdom cannot open a tab; stop its default hyperlink follow so the test checks only the row.
+        link.addEventListener('click', (e) => e.preventDefault());
+        fireEvent.click(link, { metaKey: true });
+        fireEvent.click(link, { ctrlKey: true });
+        expect(mockNavigate).not.toHaveBeenCalled();
     });
 });

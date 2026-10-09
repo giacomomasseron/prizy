@@ -90,4 +90,13 @@ describe('ProjectIssues', () => {
         expect(await screen.findByText('No issues match these filters.')).toBeInTheDocument();
         expect(screen.queryByTestId('issue-row')).toBeNull();
     });
+
+    it('G3b: the filter chips say which one is selected', async () => {
+        renderView();
+        await screen.findAllByTestId('issue-row');
+        expect(screen.getByRole('button', { name: 'Backlog' })).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(screen.getByRole('button', { name: 'Active' }));
+        expect(screen.getByRole('button', { name: 'Active' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Urgent' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

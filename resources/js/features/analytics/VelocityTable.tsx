@@ -15,7 +15,7 @@ export function VelocityTable({ rows, selectedId, onSelect }: { rows: VelocityRo
                         // Selected: tinted with a ring (the card is already white). Unselected rows hover through classes.
                         <button key={c.id} type="button" onClick={() => onSelect(c.id)} aria-pressed={active}
                             className={active ? '' : 'bg-transparent hover:bg-hover'}
-                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: 'var(--fg)', ...(active ? { background: 'var(--bg2)', boxShadow: 'inset 0 0 0 1.5px var(--border2)' } : {}) }}>
+                            style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: 'var(--fg)', ...(active ? { background: 'var(--bg2)', boxShadow: 'inset 0 0 0 1.5px var(--field)' } : {}) }}>
                             <span style={{ flex: 1, fontSize: 13.5, fontWeight: 700 }}>{c.name}</span>
                             <span style={{ fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{c.starts_at} → {c.ends_at}</span>
                             <span style={{ fontSize: 12, fontFamily: 'var(--font-mono)' }}>{c.completed_count}/{c.total_count}</span>

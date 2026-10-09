@@ -69,4 +69,16 @@ describe('ReportingSidebar', () => {
         expect(screen.getByPlaceholderText('Report name').className).toContain('focus:border-fg');
         expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
     });
+
+    it('G3b: the report name field is named', () => {
+        render(<ReportingSidebar {...sidebarProps({})} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
+        expect(screen.getByRole('textbox', { name: 'Report name' })).toBeInTheDocument();
+    });
+
+    it('G3b: the selected report section says it is pressed', () => {
+        render(<ReportingSidebar {...sidebarProps({})} />);
+        expect(screen.getByRole('button', { name: /Overview/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

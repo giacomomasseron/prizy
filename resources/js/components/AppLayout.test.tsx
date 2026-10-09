@@ -262,4 +262,10 @@ describe('AppLayout project sidebar swap', () => {
         renderLayout('member', '/');
         expect(await screen.findByText('My Teams')).toBeInTheDocument();
     });
+
+    it('G3b: the sidebar is a named landmark and the page has exactly one main', async () => {
+        renderLayout();
+        expect(await screen.findByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+        expect(screen.getAllByRole('main')).toHaveLength(1);
+    });
 });

@@ -117,4 +117,10 @@ describe('NotificationsPage', () => {
         fireEvent.click(screen.getByText('You were assigned an issue'));
         expect(screen.getByText("You're the assignee.")).toBeInTheDocument();
     });
+
+    it('G3b: the inbox rail and its filters are named landmarks', () => {
+        renderPage();
+        expect(screen.getByRole('complementary', { name: 'Inbox' })).toBeInTheDocument();
+        expect(screen.getByRole('navigation', { name: 'Inbox filters' })).toBeInTheDocument();
+    });
 });

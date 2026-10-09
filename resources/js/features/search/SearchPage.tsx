@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useIssueSearch, type AdvancedSearchFilters } from './hooks';
 import { SearchFilterBuilder } from './SearchFilterBuilder';
 import { StatusIcon } from '../../components/ui/StatusIcon';
@@ -15,6 +15,7 @@ import { ApiError } from '../../lib/apiClient';
 import { PageHeader } from '../../components/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, onRowLinkClick, rowPrimary } from '../../components/ui/rowPrimary';
 import { NAV_ROW_HOVER, navRow, sectionLabel } from '../../components/sidebarStyles';
 import { TOOL_PILL_CLASSES, sectionTitle, toolPillStyle } from '../issues/issueStyles';
 
@@ -124,7 +125,7 @@ export default function SearchPage() {
             <PageHeader title="Search" />
             <div style={{ display: 'flex', gap: 24, padding: '4px 26px 80px', maxWidth: 1132, boxSizing: 'border-box' }}>
                 {/* Saved views sidebar */}
-                <aside style={{ width: 200, flexShrink: 0 }}>
+                <aside aria-label="Saved views" style={{ width: 200, flexShrink: 0 }}>
                     <div style={{ ...sectionLabel, display: 'block', padding: '0 12px', marginBottom: 6 }}>Saved views</div>
                     {savedViews.isLoading ? null : savedViewItems.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>
@@ -193,6 +194,7 @@ export default function SearchPage() {
                             >
                                 <Input
                                     autoFocus
+                                    aria-label="View name"
                                     placeholder="View name…"
                                     value={saveName}
                                     onChange={(e) => setSaveName(e.target.value)}
@@ -237,7 +239,7 @@ export default function SearchPage() {
                                 key={it.id}
                                 data-testid="search-row"
                                 onClick={() => navigate(`/issues/${it.id}`)}
-                                className="border-b border-border last:border-b-0 hover:bg-hover"
+                                className={`border-b border-border last:border-b-0 hover:bg-hover ${ROW_FOCUS_CLASSES}`}
                                 style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '11px 18px', cursor: 'pointer' }}
                             >
                                 <PriorityIcon priority={it.priority} />
@@ -245,9 +247,10 @@ export default function SearchPage() {
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
                                     {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
                                 </span>
-                                <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
+                                {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
+                                <Link to={`/issues/${it.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
                                     {highlight(it.title, debounced)}
-                                </span>
+                                </Link>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
                                     {(it.labels ?? []).map((l) => (
                                         <LabelChip key={l.id} name={l.name} color={l.color} />

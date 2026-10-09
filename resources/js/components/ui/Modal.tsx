@@ -18,7 +18,8 @@ export function Modal({ open, onClose, children, width = 520, label }: ModalProp
     if (!open) return null;
 
     return (
-        <div onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--backdrop)', animation: 'prizy-fade .12s ease' }}>
+        // The backdrop is a mouse convenience (Escape closes for the keyboard), so it carries no role of its own.
+        <div role="presentation" onClick={onClose} style={{ position: 'fixed', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--backdrop)', animation: 'prizy-fade .12s ease' }}>
             <div
                 ref={panelRef}
                 role="dialog"

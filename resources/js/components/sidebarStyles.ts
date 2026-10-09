@@ -10,7 +10,7 @@ export function navRow(active: boolean): CSSProperties {
         borderRadius: 'var(--radius-row)', border: 'none', fontSize: 14, fontFamily: 'inherit',
         textDecoration: 'none', cursor: 'pointer', textAlign: 'left',
         ...(active
-            ? { background: 'var(--panel)', color: 'var(--fg)', fontWeight: 700, boxShadow: '0 0 0 1.5px var(--border)' }
+            ? { background: 'var(--panel)', color: 'var(--fg)', fontWeight: 700, boxShadow: '0 0 0 1.5px var(--field)' }
             : { color: 'var(--fg2)', fontWeight: 600 }),
     };
 }

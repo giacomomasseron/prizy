@@ -61,11 +61,12 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
         return () => document.removeEventListener('keydown', onKey);
     }, [open]);
 
-    // On open, focus the search box (searchable) or the first item; reset the query on close.
+    // On open, focus the search box (searchable) or the first enabled item (a disabled button cannot take focus);
+    // reset the query on close.
     useEffect(() => {
         if (open) {
             if (searchable) searchInputRef.current?.focus();
-            else itemRefs.current[0]?.focus();
+            else itemRefs.current[items.findIndex((it) => !it.disabled)]?.focus();
         } else {
             setQuery('');
         }
@@ -104,7 +105,7 @@ export function Menu({ trigger, items, placement = 'bottom-start', searchable = 
     function onMenuKeyDown(e: React.KeyboardEvent) {
         // While typing in the search box, only steer navigation keys — let text keys through.
         if (searchable && e.target === searchInputRef.current) {
-            if (e.key === 'ArrowDown') { e.preventDefault(); itemRefs.current[0]?.focus(); }
+            if (e.key === 'ArrowDown') { e.preventDefault(); itemRefs.current[filtered.findIndex((it) => !it.disabled)]?.focus(); }
             else if (e.key === 'Enter') {
                 e.preventDefault();
                 const first = filtered.find((it) => !it.disabled);

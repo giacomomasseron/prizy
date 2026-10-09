@@ -30,7 +30,7 @@ const rowBtn = (active: boolean, indent: number): CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 8, flex: 1, minWidth: 0,
     padding: `6px 9px 6px ${indent}px`, borderRadius: 'var(--radius-pill)', border: 'none',
     fontWeight: active ? 600 : 500, fontSize: 13.4, fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer',
-    ...(active ? { background: 'var(--panel)', boxShadow: '0 0 0 1.5px var(--border)', color: 'var(--fg)' } : {}),
+    ...(active ? { background: 'var(--panel)', boxShadow: '0 0 0 1.5px var(--field)', color: 'var(--fg)' } : {}),
 });
 const rowClasses = (active: boolean): string => (active ? '' : 'bg-transparent text-fg2 hover:bg-hover');
 const nameStyle: CSSProperties = { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
@@ -103,7 +103,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
             </div>
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 8px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button type="button" onClick={() => onSelect({ kind: 'all' })} className={rowClasses(node.kind === 'all')} style={{ ...rowBtn(node.kind === 'all', 9), flex: 'none' }}>
+                <button type="button" aria-pressed={node.kind === 'all'} onClick={() => onSelect({ kind: 'all' })} className={rowClasses(node.kind === 'all')} style={{ ...rowBtn(node.kind === 'all', 9), flex: 'none' }}>
                     <span aria-hidden="true">▤</span>
                     <span style={nameStyle}>All articles</span>
                 </button>
@@ -118,7 +118,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                 <button type="button" aria-label={expanded ? 'Collapse' : 'Expand'} onClick={() => toggle(c.id)} style={caretBtn}>
                                     <span aria-hidden="true" style={{ display: 'inline-block', transform: expanded ? 'rotate(90deg)' : 'none' }}>▶</span>
                                 </button>
-                                <button type="button" onClick={() => onSelect({ kind: 'category', id: c.id })} className={rowClasses(active)} style={rowBtn(active, 0)}>
+                                <button type="button" aria-pressed={active} onClick={() => onSelect({ kind: 'category', id: c.id })} className={rowClasses(active)} style={rowBtn(active, 0)}>
                                     <span aria-hidden="true" style={{ color: c.color }}>{c.icon}</span>
                                     <span style={nameStyle}>{c.name}</span>
                                     <span style={countStyle}>{articleCount}</span>
@@ -144,7 +144,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                         const sActive = node.kind === 'section' && node.id === s.id;
                                         return (
                                             <div key={s.id} className={ROW_WRAP_CLASSES} style={rowWrap}>
-                                                <button type="button" onClick={() => onSelect({ kind: 'section', id: s.id, categoryId: c.id })} className={rowClasses(sActive)} style={rowBtn(sActive, 30)}>
+                                                <button type="button" aria-pressed={sActive} onClick={() => onSelect({ kind: 'section', id: s.id, categoryId: c.id })} className={rowClasses(sActive)} style={rowBtn(sActive, 30)}>
                                                     <span aria-hidden="true">·</span>
                                                     <span style={nameStyle}>{s.name}</span>
                                                     <span style={countStyle}>{s.articles.length}</span>

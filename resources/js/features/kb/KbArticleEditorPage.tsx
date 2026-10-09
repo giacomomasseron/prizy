@@ -5,7 +5,7 @@ import { KbHeader } from './KbHeader';
 import { StatusPill } from './StatusPill';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
-import { FIELD_CLASSES, Input } from '../../components/ui/Input';
+import { FIELD_CLASSES, Input, TITLE_FIELD_CLASSES, titleFieldEdge } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
@@ -307,11 +307,14 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                             ‹ Library
                         </button>
 
-                        <Input
+                        {/* A bare input, not the pill Input: the title field has no edge at rest (V2-G3b). */}
+                        <input
+                            aria-label="Article title"
                             placeholder="Article title"
                             value={title}
                             onChange={(e) => onTitleChange(e.target.value)}
-                            style={{ border: 'none', background: 'transparent', padding: 0, borderRadius: 0, fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.15 }}
+                            className={TITLE_FIELD_CLASSES}
+                            style={{ ...titleFieldEdge, width: '100%', boxSizing: 'border-box', outline: 'none', color: 'var(--fg)', background: 'transparent', padding: 0, borderRadius: 0, fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.15 }}
                         />
 
                         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 16 }}>
@@ -368,6 +371,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
 
                         {tab === 'write' ? (
                             <Textarea
+                                aria-label="Article body"
                                 value={body}
                                 onChange={(e) => onBodyChange(e.target.value)}
                                 placeholder={'# Heading\n\nWrite the article in markdown. Use ## for sections, - for bullets, **bold** and `code`.'}
@@ -395,7 +399,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         )}
                     </div>
 
-                    <aside style={{ flex: '0 1 296px', minWidth: 264, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <aside aria-label="Article settings" style={{ flex: '0 1 296px', minWidth: 264, display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <div style={cardColumn}>
                             <div style={kbLabel}>Status</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>

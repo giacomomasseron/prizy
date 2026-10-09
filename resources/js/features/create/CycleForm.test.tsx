@@ -106,4 +106,24 @@ describe('CycleForm', () => {
         expect(screen.getByRole('button', { name: /Team picker/i }).className).toContain('hover:border-fg');
         expect(screen.getByText('Description').style.textTransform).toBe('');
     });
+
+    it('G3b: the name and the description fields are named', () => {
+        wrap();
+        expect(screen.getByRole('textbox', { name: 'Cycle name' })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Cycle description' })).toBeInTheDocument();
+    });
+
+    it('G3b: the name field shows an ink underline while focused (no edge at rest)', () => {
+        wrap();
+        const name = screen.getByRole('textbox', { name: 'Cycle name' });
+        expect(name.className).toBe('border-transparent focus:border-fg');
+        expect(name.style.borderStyle).toBe('solid');
+    });
+
+    it('G3b: the duration chips say which one is selected', async () => {
+        wrap();
+        await userEvent.click(screen.getByRole('button', { name: '2 weeks' }));
+        expect(screen.getByRole('button', { name: '2 weeks' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '1 week' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

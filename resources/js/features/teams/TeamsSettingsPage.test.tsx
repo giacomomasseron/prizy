@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import TeamsSettingsPage from './TeamsSettingsPage';
@@ -54,5 +55,18 @@ describe('TeamsSettingsPage', () => {
         vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
         wrap(<TeamsSettingsPage />);
         expect(screen.queryByText('No teams yet.')).toBeNull();
+    });
+
+    it('G3b: the team name is the row\'s button — Enter opens the team drawer', async () => {
+        const teams = (globalThis.fetch as unknown as (u: string) => Promise<Response>);
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).includes('/members')
+            ? new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 })
+            : teams(url))));
+        wrap(<TeamsSettingsPage />);
+        const name = await screen.findByRole('button', { name: 'Engineering' });
+        expect(screen.getByTestId('team-row-ENG').className).toContain('has-[:focus-visible]:outline-2');
+        name.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
     });
 });

@@ -35,7 +35,7 @@ export default function NotificationsPage() {
     return (
         <div style={{ display: 'flex', height: '100%', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
             {/* The desk sidebar frame, kept at the inbox's 232px (subscription rows need the room). */}
-            <aside style={{ ...sideFrame, width: 232 }}>
+            <aside aria-label="Inbox" style={{ ...sideFrame, width: 232 }}>
                 <NotificationSidebar
                     category={category}
                     onCategory={handleCategory}

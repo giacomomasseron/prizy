@@ -8,6 +8,7 @@ import type { Team } from '../../lib/types';
 import CreateTeamModal from './CreateTeamModal';
 import TeamDrawer from './TeamDrawer';
 import { emptyState } from '../projects/projectStyles';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import { ROW_CLASSES, listCard, pageFrame, pageLead, pageTitle, tableHead, titleRow } from '../settings/settingsStyles';
 
 const TEAM_COLS = 'minmax(180px,1.5fr) 90px minmax(0,1fr) 20px';
@@ -37,12 +38,13 @@ export default function TeamsSettingsPage() {
                         <span>Team</span><span>Members</span><span>Lead</span><span />
                     </div>
                     {rows.map((t) => (
-                        <div key={t.id} data-testid={`team-row-${t.identifier}`} onClick={() => setSelected(t)} className={ROW_CLASSES}
+                        <div key={t.id} data-testid={`team-row-${t.identifier}`} onClick={() => setSelected(t)} className={`${ROW_CLASSES} ${ROW_FOCUS_CLASSES}`}
                             style={{ display: 'grid', gridTemplateColumns: TEAM_COLS, gap: 12, padding: '14px 18px', alignItems: 'center', cursor: 'pointer' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                                 <TeamTile identifier={t.identifier} color={t.color} size={34} />
                                 <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', ...ellipsis }}>{t.name}</div>
+                                    {/* The row's primary control (V2-G3b): its click bubbles to the row. */}
+                                    <button type="button" className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', maxWidth: '100%', fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', ...ellipsis }}>{t.name}</button>
                                     <div style={{ fontSize: 11.5, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' }}>{t.identifier}</div>
                                 </div>
                             </div>

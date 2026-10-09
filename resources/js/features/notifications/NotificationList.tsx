@@ -4,6 +4,7 @@ import { notificationMeta, notificationText } from './text';
 import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { AppNotification } from '../../lib/types';
 import { HI_PILL_CLASSES, TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
 import { sectionLabel } from '../../components/sidebarStyles';
@@ -35,8 +36,8 @@ const actionBtn: CSSProperties = {
 };
 const ACTION_BTN_CLASSES = 'border-border2 bg-panel text-fg2 hover:border-fg hover:text-fg';
 
-/** Selected row: white with a ring, like a selected ticket on the desk. */
-const selectedRow: CSSProperties = { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--border2)' };
+/** Selected row: white with a 3:1 ring, like a selected ticket on the desk. */
+const selectedRow: CSSProperties = { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--field)' };
 
 function isSameDay(a: Date, b: Date): boolean {
     return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
@@ -152,7 +153,7 @@ export function NotificationList({
                                         key={n.id}
                                         data-testid={`notif-row-${n.id}`}
                                         onClick={() => selectRow(n)}
-                                        className={selected ? 'group' : 'group bg-transparent hover:bg-hover'}
+                                        className={`${selected ? 'group' : 'group bg-transparent hover:bg-hover'} ${ROW_FOCUS_CLASSES}`}
                                         style={{
                                             display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 18px',
                                             borderBottom: '1px solid var(--border)', cursor: 'pointer',
@@ -173,7 +174,8 @@ export function NotificationList({
                                         {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={24} title={n.actor?.name} />}
 
                                         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 3 }}>
-                                            <div style={{ fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.45 }}>
+                                            {/* The row's primary control (V2-G3b): its click bubbles to the row. */}
+                                            <button type="button" aria-current={selected ? 'true' : undefined} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%', fontSize: 13.5, color: 'var(--fg)', lineHeight: 1.45 }}>
                                                 {showActorName ? (
                                                     <>
                                                         <span style={{ fontWeight: 700 }}>{n.actor!.name}</span> <span>{notificationText(n.type)}</span>
@@ -181,7 +183,7 @@ export function NotificationList({
                                                 ) : (
                                                     notificationText(n.type)
                                                 )}
-                                            </div>
+                                            </button>
                                             {n.body && (
                                                 <div style={{ fontSize: 12.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                     {n.body}

@@ -107,4 +107,15 @@ describe('LabelsSettingsPage', () => {
         expect(badge.style.color).toBe('var(--accent-ink)');
         expect(badge.style.background).toBe('var(--accent2)');
     });
+
+    it('G3b: colour swatches say which colour is selected', () => {
+        render(<LabelsSettingsPage />);
+        expect(screen.getByRole('button', { name: 'recolor Bug #5b8def' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'recolor Bug #eb5757' })).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(screen.getByRole('button', { name: 'New label' }));
+        expect(screen.getByRole('button', { name: 'color #5b8def' })).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(screen.getByRole('button', { name: 'color #eb5757' }));
+        expect(screen.getByRole('button', { name: 'color #eb5757' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'color #5b8def' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

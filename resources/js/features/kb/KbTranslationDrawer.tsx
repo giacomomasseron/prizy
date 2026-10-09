@@ -173,7 +173,7 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
 function LocaleRow({ row, selected, onSelect }: { row: KbTranslationSummary; selected: boolean; onSelect(): void }) {
     return (
         // No inline background: the selected tint and the hover both live in classes (pickRowClasses).
-        <button type="button" onClick={onSelect} className={pickRowClasses(selected)} style={pickRow}>
+        <button type="button" aria-current={selected ? 'true' : undefined} onClick={onSelect} className={pickRowClasses(selected)} style={pickRow}>
             <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                 <span style={{ flex: 1, minWidth: 0, fontSize: 12.6, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.name}</span>
                 {row.stale && <span title="Source changed since this was translated" style={staleDot} />}
@@ -365,12 +365,14 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
     const editor = tab === 'write' ? (
         <>
             <Input
+                aria-label="Translated title"
                 placeholder="Translated title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', marginBottom: 10 }}
             />
             <Textarea
+                aria-label="Translated body"
                 placeholder="Write the translation in markdown, matching the English structure."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}

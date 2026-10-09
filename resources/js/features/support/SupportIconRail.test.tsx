@@ -45,4 +45,11 @@ describe('SupportIconRail', () => {
         expect(screen.getByRole('link', { name: 'Prizy' })).toHaveAttribute('href', '/support');
         expect(screen.getByRole('link', { name: 'Reporting' }).className).toContain('hover:bg-hover');
     });
+
+    it('G3b: Home is a link to the desk, marked as the current page', () => {
+        render(<MemoryRouter><SupportIconRail viewsOpen={false} onToggleViews={vi.fn()} onNewTicket={vi.fn()} /></MemoryRouter>);
+        const home = screen.getByRole('link', { name: 'Home' });
+        expect(home).toHaveAttribute('href', '/support');
+        expect(home).toHaveAttribute('aria-current', 'page');
+    });
 });

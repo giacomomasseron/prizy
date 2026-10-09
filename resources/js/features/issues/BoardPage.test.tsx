@@ -104,6 +104,26 @@ describe('BoardPage', () => {
         expect(screen.getByText('Card one')).toBeInTheDocument();
     });
 
+    it('G3b: a focused card opens its peek on Enter or Space', () => {
+        mockOpenPeek.mockClear();
+        mountBoard();
+        const card = screen.getByTestId('card-c1');
+        expect(card).toHaveAttribute('role', 'button');
+        expect(card).toHaveAttribute('tabindex', '0');
+        fireEvent.keyDown(card, { key: 'Enter' });
+        fireEvent.keyDown(card, { key: ' ' });
+        expect(mockOpenPeek).toHaveBeenCalledTimes(2);
+        expect(mockOpenPeek).toHaveBeenCalledWith('c1');
+    });
+
+    it('G3b: a card is announced as a button, without dnd-kit\'s drag instructions (there is no keyboard drag)', () => {
+        mountBoard();
+        const card = screen.getByTestId('card-c1');
+        expect(card).not.toHaveAttribute('aria-roledescription');
+        expect(card).not.toHaveAttribute('aria-describedby');
+        expect(card).toHaveAttribute('role', 'button');
+    });
+
     it('plain click on a card calls openPeek with the issue id', () => {
         mockOpenPeek.mockClear();
         mountBoard();

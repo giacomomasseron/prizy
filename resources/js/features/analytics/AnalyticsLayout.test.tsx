@@ -78,4 +78,9 @@ describe('AnalyticsLayout', () => {
         expect(screen.getByText('Issues and cycles').style.padding).toBe('2px 16px 8px calc(16px + var(--nav-inset, 0px))');
         expect(screen.getByText('Reports')).toBeInTheDocument();
     });
+
+    it('G3b: the analytics pane is not a second main landmark (the app layout owns main)', () => {
+        renderLayout();
+        expect(screen.queryByRole('main')).toBeNull();
+    });
 });

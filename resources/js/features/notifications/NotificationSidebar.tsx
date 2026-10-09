@@ -73,11 +73,11 @@ export function NotificationSidebar({
                 )}
             </div>
 
-            <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <nav aria-label="Inbox filters" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {FILTERS.map((f) => {
                     const active = category === f.key && !settingsActive;
                     return (
-                        <button key={f.key} type="button" onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                        <button key={f.key} type="button" aria-pressed={active} onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
                             {f.label}
                         </button>
                     );
@@ -97,7 +97,7 @@ export function NotificationSidebar({
             </div>
 
             <div style={{ marginTop: 'auto', padding: 8, borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <button type="button" onClick={onOpenSettings} style={sideRow(settingsActive)} className={settingsActive ? '' : NAV_ROW_HOVER}>
+                <button type="button" aria-pressed={settingsActive} onClick={onOpenSettings} style={sideRow(settingsActive)} className={settingsActive ? '' : NAV_ROW_HOVER}>
                     Notification settings
                 </button>
                 <Link to="/" style={sideRow(false)} className={NAV_ROW_HOVER}>

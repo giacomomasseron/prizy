@@ -16,6 +16,7 @@ import { useCreateIssue } from './hooks';
 import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
 import { chipClasses, chipStyle } from './issueStyles';
 import type { IssueStatus, IssuePriority } from '../../lib/types';
+import { TITLE_FIELD_CLASSES, titleFieldEdge } from '../../components/ui/Input';
 
 export interface CreateIssueDrawerProps {
     open: boolean;
@@ -163,8 +164,9 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                         placeholder="Issue title"
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
+                        className={TITLE_FIELD_CLASSES}
                         style={{
-                            border: 'none', background: 'none', outline: 'none', width: '100%', boxSizing: 'border-box',
+                            ...titleFieldEdge, background: 'none', outline: 'none', width: '100%', boxSizing: 'border-box',
                             fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, letterSpacing: '-.03em',
                             color: 'var(--fg)', padding: '0 0 12px', margin: 0,
                         }}

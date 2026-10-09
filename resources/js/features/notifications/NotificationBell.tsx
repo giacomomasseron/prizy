@@ -5,6 +5,7 @@ import { notificationMeta, notificationText, subjectPath } from './text';
 import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { AppNotification } from '../../lib/types';
 
 /**
@@ -51,6 +52,8 @@ export function NotificationBell() {
                 type="button"
                 aria-label="Notifications"
                 title="Notifications"
+                aria-haspopup="dialog"
+                aria-expanded={open}
                 onClick={() => setOpen((o) => !o)}
                 className={open ? 'border-accent bg-accent2 text-fg' : 'border-border bg-panel text-fg2 hover:border-border2'}
                 style={{
@@ -115,16 +118,17 @@ export function NotificationBell() {
                                 <div
                                     key={n.id}
                                     onClick={() => openItem(n)}
-                                    className="hover:bg-hover"
+                                    className={`hover:bg-hover ${ROW_FOCUS_CLASSES}`}
                                     style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 13px 10px 10px', borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
                                 >
                                     <span style={{ width: 6, height: 6, borderRadius: '50%', marginTop: 7, flexShrink: 0, background: n.read_at ? 'transparent' : 'var(--accent)' }} />
                                     {avatar && <Avatar initials={avatar.initials} color={avatar.color} size={20} title={n.actor?.name} />}
                                     <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                        <div style={{ fontSize: 12.3, color: 'var(--fg)', lineHeight: 1.45 }}>
+                                        {/* The item's primary control (V2-G3b): its click bubbles to the item. */}
+                                        <button type="button" className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%', fontSize: 12.3, color: 'var(--fg)', lineHeight: 1.45 }}>
                                             {showActorName && <span style={{ fontWeight: 600 }}>{n.actor!.name} </span>}
                                             {notificationText(n.type)}
-                                        </div>
+                                        </button>
                                         {n.body && (
                                             <div style={{ fontSize: 11.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                                 {n.body}

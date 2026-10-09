@@ -39,7 +39,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
     };
 
     return (
-        <aside style={sideFrame}>
+        <aside aria-label="Support views" style={sideFrame}>
             <div style={sideTitle}>Support</div>
             <div style={sideSub}>Agent workspace</div>
 
@@ -48,7 +48,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                 {TICKET_VIEWS.map((v) => {
                     const active = view === v.key && !savedViewId;
                     return (
-                        <button key={v.key} type="button" onClick={() => onSelectView(v.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                        <button key={v.key} type="button" aria-pressed={active} onClick={() => onSelectView(v.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
                             <span style={icon}>{v.icon}</span>
                             <span style={{ flex: 1 }}>{v.label}</span>
                             <span style={countStyle}>{counts ? viewCount(v.key, counts) : ''}</span>
@@ -77,7 +77,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                     const active = savedViewId === sv.id;
                     return (
                         <div key={sv.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }} className="group">
-                            <button type="button" onClick={() => onSelectSavedView(sv.id)} style={{ ...sideRow(active), flex: 1, minWidth: 0 }} className={active ? '' : NAV_ROW_HOVER}>
+                            <button type="button" aria-pressed={active} onClick={() => onSelectSavedView(sv.id)} style={{ ...sideRow(active), flex: 1, minWidth: 0 }} className={active ? '' : NAV_ROW_HOVER}>
                                 <span style={icon}>☰</span>
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sv.name}</span>
                             </button>
@@ -87,7 +87,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                 })}
                 {saving ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 4px' }}>
-                        <Input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
+                        <Input autoFocus aria-label="View name" value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
                         <div style={{ display: 'flex', gap: 6 }}>
                             <Button size="sm" onClick={submit}>Save</Button>
                             <Button variant="secondary" size="sm" onClick={() => { setSaving(false); setName(''); }}>Cancel</Button>

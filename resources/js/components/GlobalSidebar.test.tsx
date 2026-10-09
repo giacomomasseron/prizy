@@ -166,4 +166,16 @@ describe('GlobalSidebar', () => {
         expect(projects.style.background).toBe('');
         expect(projects.className).toContain('hover:bg-hover');
     });
+
+    it('G3b: the + New team link is a 24×24 target', async () => {
+        renderSidebar();
+        const link = await screen.findByRole('link', { name: 'New team' });
+        expect(link.style.width).toBe('24px');
+        expect(link.style.height).toBe('24px');
+    });
+
+    it('G3b: the workspace links are a named navigation landmark', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('navigation', { name: 'Workspace' })).toBeInTheDocument();
+    });
 });

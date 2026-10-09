@@ -333,3 +333,38 @@ describe('G3a: Menu disabled and danger items, and long lists', () => {
         expect(menu.style.overflowY).toBe('auto');
     });
 });
+
+describe('G3b: Menu focus skips disabled items', () => {
+    const items = [
+        { key: 'a', label: 'Locked', onActivate: vi.fn(), disabled: true },
+        { key: 'b', label: 'Open', onActivate: vi.fn() },
+    ];
+    it('opening a menu whose first item is disabled focuses the first enabled item', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
+    });
+    it('ArrowDown from the search box skips a disabled first item', async () => {
+        render(<Menu searchable trigger={<button type="button">Pick</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'ArrowDown' });
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
+    });
+});
+
+describe('G3b: dialog backdrops', () => {
+    it('a backdrop is presentational and still closes the dialog on click', () => {
+        const onClose = vi.fn();
+        const { unmount } = render(<Drawer open onClose={onClose} label="Panel">x</Drawer>);
+        const drawerBackdrop = screen.getByRole('dialog').previousElementSibling as HTMLElement;
+        expect(drawerBackdrop).toHaveAttribute('role', 'presentation');
+        fireEvent.click(drawerBackdrop);
+        expect(onClose).toHaveBeenCalledTimes(1);
+        unmount();
+        render(<Modal open onClose={onClose} label="Dialog">x</Modal>);
+        const modalBackdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+        expect(modalBackdrop).toHaveAttribute('role', 'presentation');
+        fireEvent.click(modalBackdrop);
+        expect(onClose).toHaveBeenCalledTimes(2);
+    });
+});
