@@ -100,4 +100,11 @@ describe('LabelsSettingsPage', () => {
         expect(screen.getByText('No labels yet.').style.border).toBe('var(--line) dashed var(--border2)');
         labelItems = DEFAULT_LABELS;
     });
+
+    it('G3a: the exclusive-group badge writes accent text in the ink partner on its accent tint', () => {
+        render(<LabelsSettingsPage />);
+        const badge = screen.getByText('Group · one of');
+        expect(badge.style.color).toBe('var(--accent-ink)');
+        expect(badge.style.background).toBe('var(--accent2)');
+    });
 });

@@ -87,4 +87,15 @@ describe('PeekDrawer', () => {
         expect(link.style.borderRadius).toBe('var(--radius-pill)');
         expect(link.className).toContain('hover:border-fg');
     });
+
+    it('G3a: the escalation banner writes accent text in the ink partner on its accent tint', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        const header = screen.getByText(/Escalated from Support/);
+        expect(header.style.color).toBe('var(--accent-ink)');
+        expect((header.parentElement as HTMLElement).style.background).toBe('var(--accent2)');
+        const open = screen.getByRole('link', { name: /Open original ticket/ }).className.split(' ');
+        expect(open).toContain('text-accent-ink');
+        expect(open).not.toContain('text-accent');
+        expect(open).toContain('hover:bg-accent');
+    });
 });

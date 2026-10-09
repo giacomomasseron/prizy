@@ -183,4 +183,13 @@ describe('TicketContext', () => {
         expect(sla.style.borderRadius).toBe('var(--radius-card)');
         expect(screen.getByText('First reply due').style.textTransform).toBe('');
     });
+
+    it('G3a: the linked issue card writes its identifier and arrow in the accent ink on the accent tint', () => {
+        ticketData = ticket({ linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }] });
+        renderWithRouter('t1');
+        const id = screen.getByText('PRJ-42');
+        expect(id.style.color).toBe('var(--accent-ink)');
+        expect((id.nextElementSibling as HTMLElement).style.color).toBe('var(--accent-ink)');
+        expect((id.closest('a') as HTMLElement).style.background).toBe('var(--accent2)');
+    });
 });

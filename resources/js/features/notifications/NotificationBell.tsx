@@ -89,7 +89,7 @@ export function NotificationBell() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '11px 13px', borderBottom: '1px solid var(--border)' }}>
                         <span style={{ fontSize: 13.5, fontWeight: 700 }}>Notifications</span>
                         {count > 0 && (
-                            <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px', fontFamily: 'var(--font-mono)' }}>{badge}</span>
+                            <span style={{ fontSize: 10.5, fontWeight: 600, color: 'var(--accent-ink)', background: 'var(--accent2)', borderRadius: 20, padding: '1px 7px', fontFamily: 'var(--font-mono)' }}>{badge}</span>
                         )}
                         <button
                             type="button"

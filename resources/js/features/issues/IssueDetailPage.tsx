@@ -194,7 +194,7 @@ export default function IssueDetailPage() {
                             border: 'var(--line) solid var(--fg)', borderRadius: 'var(--radius-modal)', padding: '18px 20px',
                             boxShadow: 'var(--pop-shadow)', background: 'var(--panel)', marginBottom: 30,
                         }}>
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 11px', borderRadius: 'var(--radius-pill)', background: 'var(--accent2)', color: 'var(--accent)', fontSize: 12.5, fontWeight: 700 }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '4px 11px', borderRadius: 'var(--radius-pill)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700 }}>
                                 ↩ Escalated from Support
                                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, fontWeight: 600 }}>{data.support_ticket.ref}</span>
                             </span>

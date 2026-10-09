@@ -55,7 +55,7 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
                         {t.csat_rating === 'thumbs_up' ? '👍 Rated good' : '👎 Rated poor'}
                     </span>
                 )}
-                {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
+                {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
                 <TicketStatusMenu ticket={t} />
             </header>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '22px 20px 20px' }}>

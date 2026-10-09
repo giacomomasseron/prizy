@@ -138,4 +138,13 @@ describe('TicketConversation', () => {
         expect(card.style.borderRadius).toBe('16px');
         expect(within(card).getByText('Internal note').style.borderRadius).toBe('var(--radius-pill)');
     });
+
+    it('G3a: the linked-issue pill writes accent text in the ink partner on its accent tint', () => {
+        ticketData = ticket({ linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }] });
+        isLoading = false;
+        renderWithRouter('t1');
+        const pill = screen.getByText('↩ PRJ-42 ↗');
+        expect(pill.style.color).toBe('var(--accent-ink)');
+        expect(pill.style.background).toBe('var(--accent2)');
+    });
 });

@@ -18,7 +18,7 @@ import {
 const SWATCHES = ['#eb5757', '#e0894a', '#d0a23a', '#3a9a68', '#3aa8a0', '#5b8def'];
 
 const mono: CSSProperties = { fontFamily: 'var(--font-mono)' };
-const exclusiveBadge: CSSProperties = { fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.03em', color: 'var(--accent)', background: 'var(--accent2)', borderRadius: 5, padding: '1px 6px' };
+const exclusiveBadge: CSSProperties = { fontSize: 9.5, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.03em', color: 'var(--accent-ink)', background: 'var(--accent2)', borderRadius: 5, padding: '1px 6px' };
 const xBtn: CSSProperties = { ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 };
 
 export default function LabelsSettingsPage() {

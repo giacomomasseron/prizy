@@ -21,7 +21,7 @@ const rolePill: CSSProperties = {
     fontSize: 11.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap',
 };
 const ROLE_CLASSES = {
-    lead: 'border-accent bg-accent2 text-accent',
+    lead: 'border-accent bg-accent2 text-accent-ink',
     member: 'border-border bg-transparent text-fg2 hover:border-fg',
 } as const;
 

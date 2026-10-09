@@ -204,6 +204,25 @@ describe('IssueDetailPage', () => {
         } as any);
     });
 
+    it('G3a: the escalated pill writes accent text in the ink partner on its accent tint', () => {
+        const issue = {
+            id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+            description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+            assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+            created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+        };
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false, isError: false,
+            data: { ...issue, support_ticket: { id: 'tk1', ref: 'TKT-9', subject: 'Login is broken', customer: 'Acme Corp', plan: 'Pro' } },
+        } as any);
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        const pill = screen.getByText(/Escalated from Support/);
+        // Reset first so a failed assertion cannot leak the ticket into later tests.
+        vi.mocked(hooks.useIssue).mockReturnValue({ isLoading: false, isError: false, data: { ...issue, support_ticket: null } } as any);
+        expect(pill.style.color).toBe('var(--accent-ink)');
+        expect(pill.style.background).toBe('var(--accent2)');
+    });
+
     it('activity feed: shows the synthetic "Auto-linked from support ticket" row when support_ticket is set', () => {
         vi.mocked(hooks.useIssue).mockReturnValue({
             isLoading: false,

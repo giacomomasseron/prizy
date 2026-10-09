@@ -72,4 +72,18 @@ describe('TeamDrawer', () => {
         expect(screen.getByRole('button', { name: /add member/i }).className).toContain('hover:border-fg');
         expect(screen.getByLabelText('Team name').style.fontFamily).toBe('var(--font-display)');
     });
+
+    it('G3a: a lead pill writes accent text in the ink partner on its accent tint', async () => {
+        mockFetch((url) => {
+            if (url.includes('/teams/t1/members')) return new Response(JSON.stringify({ data: [{ id: 'u1', name: 'Ada', email: 'a@x.test', role: 'lead' }] }), { status: 200 });
+            if (url.includes('/workspace/members')) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+            return new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 });
+        });
+        wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
+        await screen.findByText('Ada');
+        const classes = screen.getByTestId('role-btn-a@x.test').className.split(' ');
+        expect(classes).toContain('text-accent-ink');
+        expect(classes).not.toContain('text-accent');
+        expect(classes).toContain('bg-accent2');
+    });
 });
