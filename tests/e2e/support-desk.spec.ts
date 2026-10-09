@@ -40,7 +40,8 @@ test('agent desk: post a public reply, add an internal note, change status', asy
 
 test('agent desk: create a new ticket from the rail', async ({ page }) => {
     await page.goto('/support');
-    await page.getByRole('button', { name: 'New ticket' }).click();
+    // exact: a ticket subject is now a button too (V2-G3b), and "E2E new ticket …" subjects contain "new ticket".
+    await page.getByRole('button', { name: 'New ticket', exact: true }).click();
 
     const subject = `E2E new ticket ${Date.now()}`;
     await page.getByLabel('Subject').fill(subject);
@@ -56,7 +57,8 @@ test('agent desk: create a new ticket from the rail', async ({ page }) => {
 
 test('agent desk: file a ticket for a newly-created contact', async ({ page }) => {
     await page.goto('/support');
-    await page.getByRole('button', { name: 'New ticket' }).click();
+    // exact: a ticket subject is now a button too (V2-G3b), and "E2E new ticket …" subjects contain "new ticket".
+    await page.getByRole('button', { name: 'New ticket', exact: true }).click();
 
     const subject = `E2E new-contact ticket ${Date.now()}`;
     await page.getByLabel('Subject').fill(subject);
@@ -101,7 +103,8 @@ test('agent desk: filter by channel then by tag', async ({ page }) => {
 
     // Open the chat ticket and click its billing tag chip → list stays filtered to the tagged ticket + a clear chip appears.
     await page.locator('[data-testid="ticket-row"]', { hasText: 'Cannot invite new agents — seat limit error' }).click();
-    await page.getByRole('button', { name: 'billing' }).click();
+    // exact: ticket subjects are buttons now (V2-G3b), and "How do I export my billing history?" contains "billing".
+    await page.getByRole('button', { name: 'billing', exact: true }).click();
     await expect(page.getByRole('button', { name: /Tag: billing/ })).toBeVisible();
     await expect(page.locator('[data-testid="ticket-row"]', { hasText: 'Cannot invite new agents — seat limit error' })).toBeVisible();
 });

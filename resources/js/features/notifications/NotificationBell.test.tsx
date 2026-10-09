@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { NotificationBell } from './NotificationBell';
 
@@ -162,5 +163,19 @@ describe('NotificationBell', () => {
         const count = screen.getAllByText('3').find((el) => panel.contains(el)) as HTMLElement;
         expect(count.style.color).toBe('var(--accent-ink)');
         expect(count.style.background).toBe('var(--accent2)');
+    });
+
+    it('G3b: the bell says whether its panel is open, and each item is a button that opens on Enter', async () => {
+        wrap();
+        const bell = screen.getByRole('button', { name: 'Notifications' });
+        expect(bell).toHaveAttribute('aria-haspopup', 'dialog');
+        expect(bell).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(bell);
+        expect(bell).toHaveAttribute('aria-expanded', 'true');
+        const item = screen.getByRole('button', { name: 'You were assigned an issue' });
+        item.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(markRead).toHaveBeenCalledWith('n1');
+        await waitFor(() => expect(screen.getByText('issue page')).toBeInTheDocument());
     });
 });

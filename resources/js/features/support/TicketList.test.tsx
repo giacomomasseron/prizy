@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TicketList } from './TicketList';
 import type { TicketListItem } from '../../lib/types';
 
@@ -104,7 +105,29 @@ describe('TicketList', () => {
     it('v2: the selected row carries a border2 ring, so it reads apart from a hovered row', () => {
         render(<TicketList tickets={tickets} selectedId="a" onSelect={vi.fn()} {...baseProps()} />);
         const [selected, other] = screen.getAllByTestId('ticket-row');
-        expect(selected.style.boxShadow).toBe('inset 0 0 0 1.5px var(--border2)');
+        expect(selected.style.boxShadow).toBe('inset 0 0 0 1.5px var(--field)');
         expect(other.style.boxShadow).toBe('');
+    });
+
+    it('G3b: each subject is the row\'s button — Enter or Space selects the ticket, and the open ticket is current', async () => {
+        const onSelect = vi.fn();
+        render(<TicketList tickets={tickets} selectedId="a" onSelect={onSelect} {...baseProps()} />);
+        const open = screen.getByRole('button', { name: 'Cannot log in' });
+        const other = screen.getByRole('button', { name: 'Billing question' });
+        expect(open).toHaveAttribute('aria-current', 'true');
+        expect(other).not.toHaveAttribute('aria-current');
+        other.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(onSelect).toHaveBeenLastCalledWith('b');
+        await userEvent.keyboard(' ');
+        expect(onSelect).toHaveBeenCalledTimes(2);
+    });
+
+    it('G3b: a row draws the inset ink ring while its subject has keyboard focus', () => {
+        render(<TicketList tickets={tickets} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} />);
+        const row = screen.getAllByTestId('ticket-row')[0];
+        expect(row.className).toContain('has-[:focus-visible]:outline-2');
+        expect(row.className).toContain('has-[:focus-visible]:-outline-offset-2');
+        expect(screen.getByRole('button', { name: 'Cannot log in' }).className).toContain('focus-visible:outline-none');
     });
 });

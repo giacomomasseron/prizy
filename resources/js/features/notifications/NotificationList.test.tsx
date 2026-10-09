@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { NotificationList } from './NotificationList';
 import type { AppNotification } from '../../lib/types';
 
@@ -213,7 +214,7 @@ describe('NotificationList', () => {
         wrap({ items: [makeItem({ id: 'n7' })], selectedId: 'n7' });
         const row = screen.getByTestId('notif-row-n7');
         expect(row.style.background).toBe('var(--panel)');
-        expect(row.style.boxShadow).toBe('inset 0 0 0 1.5px var(--border2)');
+        expect(row.style.boxShadow).toBe('inset 0 0 0 1.5px var(--field)');
         expect(row.className).not.toContain('hover:bg-hover');
     });
 
@@ -248,5 +249,18 @@ describe('NotificationList', () => {
         expect(snooze.style.borderRadius).toBe('50%');
         expect(snooze.className).toContain('hover:border-fg');
         expect(snooze.parentElement!.className).toContain('group-focus-within:opacity-100');
+    });
+
+    it('G3b: each notification\'s text is the row\'s button — Enter selects it, and the selected one is current', async () => {
+        const { onSelect } = wrap({ items: [makeItem({ id: 'a' }), makeItem({ id: 'b', type: 'issue_unblocked' })], selectedId: 'a' });
+        const [first, second] = [screen.getByTestId('notif-row-a'), screen.getByTestId('notif-row-b')];
+        const firstBtn = within(first).getByRole('button', { name: 'You were assigned an issue' });
+        expect(firstBtn).toHaveAttribute('aria-current', 'true');
+        const secondBtn = within(second).getAllByRole('button')[0];
+        expect(secondBtn).not.toHaveAttribute('aria-current');
+        secondBtn.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'b' }));
+        expect(second.className).toContain('has-[:focus-visible]:outline-2');
     });
 });

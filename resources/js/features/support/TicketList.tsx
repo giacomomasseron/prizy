@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/Button';
 import { avatarFor } from '../../lib/avatarFor';
 import { ink } from '../../lib/ink';
 import { Menu, type MenuItem } from '../../components/ui/Menu';
+import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import { TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { primarySlaMetric, slaMetricPresentation } from './sla';
@@ -65,10 +66,11 @@ export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, 
                     const active = t.id === selectedId;
                     const linked = t.linked_issues[0];
                     return (
-                        // No inline background on unselected rows: it would beat hover:bg-hover.
+                        // No inline background on unselected rows: it would beat hover:bg-hover. The subject is the row's
+                        // primary control (V2-G3b): Tab reaches it, Enter/Space click it, and the click bubbles to the row.
                         <div key={t.id} data-testid="ticket-row" onClick={() => onSelect(t.id)}
-                            style={{ display: 'flex', gap: 10, padding: '12px 14px 13px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', ...(active ? { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--border2)' } : {}) }}
-                            className={active ? '' : 'bg-transparent hover:bg-hover'}>
+                            style={{ display: 'flex', gap: 10, padding: '12px 14px 13px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)', ...(active ? { background: 'var(--panel)', boxShadow: 'inset 0 0 0 1.5px var(--field)' } : {}) }}
+                            className={`${active ? '' : 'bg-transparent hover:bg-hover'} ${ROW_FOCUS_CLASSES}`}>
                             <div style={{ width: 3, alignSelf: 'stretch', borderRadius: 'var(--radius-pill)', background: st.color, flexShrink: 0 }} />
                             <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 5 }}>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
@@ -85,7 +87,9 @@ export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, 
                                         );
                                     })()}
                                 </div>
-                                <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{t.subject}</div>
+                                <button type="button" aria-current={active ? 'true' : undefined} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, display: 'block', width: '100%' }}>
+                                    <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg)', lineHeight: 1.35, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{t.subject}</span>
+                                </button>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                                     {t.requester && <Avatar {...avatarFor(t.requester)} size={20} />}
                                     <span style={{ fontSize: 12, color: 'var(--fg2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>{t.requester?.name}{t.requester?.org ? ` · ${t.requester.org}` : ''}</span>
