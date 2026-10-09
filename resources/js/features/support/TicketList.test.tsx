@@ -99,7 +99,7 @@ describe('TicketList', () => {
     it('v2: Load more is a Button, and the urgent chip uses a token for its text', () => {
         render(<TicketList tickets={[t({ id: 'u', priority: 'urgent' })]} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} hasMore />);
         expect(screen.getByRole('button', { name: 'Load more' }).className).toContain('border-border2');
-        expect(screen.getByLabelText('urgent').style.color).toBe('var(--on-hi)');
+        expect(screen.getByRole('img', { name: 'Priority: Urgent' }).style.color).toBe('var(--on-hi)');
     });
 
     it('v2: the selected row carries a border2 ring, so it reads apart from a hovered row', () => {
@@ -129,5 +129,11 @@ describe('TicketList', () => {
         expect(row.className).toContain('has-[.row-primary:focus-visible]:outline-2');
         expect(row.className).toContain('has-[.row-primary:focus-visible]:-outline-offset-2');
         expect(screen.getByRole('button', { name: 'Cannot log in' }).className).toContain('focus-visible:outline-none');
+    });
+
+    it('G3c: the ticket priority icon is an image named "Priority: <Label>"', () => {
+        render(<TicketList tickets={[t({ id: 'h', priority: 'high' }), t({ id: 'u2', priority: 'urgent' })]} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} />);
+        expect(screen.getByRole('img', { name: 'Priority: High' })).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Priority: Urgent' })).toBeInTheDocument();
     });
 });

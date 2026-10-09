@@ -50,12 +50,12 @@ describe('IssueRow', () => {
 
     it('renders priority icon aria-label=high', () => {
         renderRow();
-        expect(screen.getByLabelText('high')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Priority: High' })).toBeInTheDocument();
     });
 
     it('renders status icon aria-label=in_progress', () => {
         renderRow();
-        expect(screen.getByLabelText('in_progress')).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: 'Status: In Progress' })).toBeInTheDocument();
     });
 
     it('uses id prefix as identifier fallback (first 6 chars uppercased)', () => {

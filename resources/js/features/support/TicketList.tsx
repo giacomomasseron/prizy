@@ -20,10 +20,10 @@ const SORTS = [
 
 function PriorityIcon({ priority }: { priority: TicketPriority }) {
     if (priority === 'urgent') {
-        return <span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--amber)', color: 'var(--on-hi)', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} aria-label="urgent">!</span>;
+        return <span style={{ width: 14, height: 14, borderRadius: 4, background: 'var(--amber)', color: 'var(--on-hi)', fontSize: 11, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} role="img" aria-label="Priority: Urgent">!</span>;
     }
     const fill = TICKET_PRIORITY[priority].bars;
-    return <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 11, flexShrink: 0 }} aria-label={priority}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 3, borderRadius: 1, height: 4 + i * 3, background: i < fill ? 'var(--fg2)' : 'var(--border2)' }} />)}</span>;
+    return <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 11, flexShrink: 0 }} role="img" aria-label={`Priority: ${TICKET_PRIORITY[priority].label}`}>{[0, 1, 2].map((i) => <span key={i} style={{ width: 3, borderRadius: 1, height: 4 + i * 3, background: i < fill ? 'var(--fg2)' : 'var(--border2)' }} />)}</span>;
 }
 
 export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, hasMore, onLoadMore, loadingMore, query }: {

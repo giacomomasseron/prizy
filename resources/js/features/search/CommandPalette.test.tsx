@@ -114,7 +114,7 @@ it('issue rows render StatusIcon + identifier + title', async () => {
     // Identifier renders
     expect(screen.getByText('PRZ-42')).toBeInTheDocument();
     // StatusIcon renders with aria-label matching the status
-    expect(screen.getByRole('generic', { name: 'in_progress' })).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Status: In Progress' })).toBeInTheDocument();
 });
 
 it('shows an Advanced search footer that navigates to /search', async () => {

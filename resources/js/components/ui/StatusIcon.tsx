@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { STATUS_LABELS } from '../../features/issues/issueMeta';
 import type { IssueStatus } from '../../lib/types';
 
 export interface StatusIconProps {
@@ -19,11 +20,13 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
         fontWeight: 800,
     };
 
+    const a11y = { role: 'img', 'aria-label': `Status: ${STATUS_LABELS[status]}` } as const;
+
     if (status === 'backlog') {
-        return <span style={{ ...base, border: '2px dashed var(--fg3)' }} aria-label="backlog" />;
+        return <span style={{ ...base, border: '2px dashed var(--fg3)' }} {...a11y} />;
     }
     if (status === 'todo') {
-        return <span style={{ ...base, border: '2px solid var(--fg3)' }} aria-label="todo" />;
+        return <span style={{ ...base, border: '2px solid var(--fg3)' }} {...a11y} />;
     }
     if (status === 'in_progress') {
         return (
@@ -33,7 +36,7 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
                     border: '2px solid var(--amber)',
                     background: 'conic-gradient(var(--amber) 0deg 180deg, transparent 180deg 360deg)',
                 }}
-                aria-label="in_progress"
+                {...a11y}
             />
         );
     }
@@ -45,7 +48,7 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
                     border: '2px solid var(--green)',
                     background: 'conic-gradient(var(--green) 0deg 270deg, transparent 270deg 360deg)',
                 }}
-                aria-label="in_review"
+                {...a11y}
             />
         );
     }
@@ -53,7 +56,7 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
         return (
             <span
                 style={{ ...base, background: 'var(--accent)', color: 'var(--on-accent)', fontSize: size * 0.6 }}
-                aria-label="done"
+                {...a11y}
             >
                 ✓
             </span>
@@ -63,11 +66,11 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
         return (
             <span
                 style={{ ...base, background: 'var(--fg2)', color: 'var(--bg)', fontSize: size * 0.58 }}
-                aria-label="cancelled"
+                {...a11y}
             >
                 ✕
             </span>
         );
     }
-    return <span style={base} aria-label={status} />;
+    return <span style={base} {...a11y} />;
 }

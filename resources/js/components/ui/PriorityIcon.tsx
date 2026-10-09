@@ -1,3 +1,4 @@
+import { PRIORITY_LABELS } from '../../features/issues/issueMeta';
 import type { IssuePriority } from '../../lib/types';
 
 export interface PriorityIconProps {
@@ -12,6 +13,9 @@ const BAR_FILL: Record<Exclude<IssuePriority, 'urgent'>, number> = {
 };
 
 export function PriorityIcon({ priority }: PriorityIconProps) {
+    const label = priority === 'no_priority' ? PRIORITY_LABELS.no_priority : `Priority: ${PRIORITY_LABELS[priority]}`;
+    const a11y = { role: 'img', 'aria-label': label } as const;
+
     if (priority === 'urgent') {
         return (
             <span
@@ -28,7 +32,7 @@ export function PriorityIcon({ priority }: PriorityIconProps) {
                     justifyContent: 'center',
                     flexShrink: 0,
                 }}
-                aria-label="urgent"
+                {...a11y}
             >
                 !
             </span>
@@ -39,7 +43,7 @@ export function PriorityIcon({ priority }: PriorityIconProps) {
     return (
         <span
             style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 2, height: 12, width: 16, justifyContent: 'center', flexShrink: 0 }}
-            aria-label={priority}
+            {...a11y}
         >
             {[0, 1, 2].map((i) => (
                 <span
