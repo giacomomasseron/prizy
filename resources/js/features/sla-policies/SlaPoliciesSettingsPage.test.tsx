@@ -30,9 +30,10 @@ const POLICIES: SlaPolicy[] = [
 ];
 
 let policiesData: SlaPolicy[] = POLICIES;
+let policiesQuery: Record<string, unknown> | null = null;
 
 vi.mock('./hooks', () => ({
-    useSlaPolicies: () => ({ isLoading: false, data: policiesData }),
+    useSlaPolicies: () => policiesQuery ?? ({ isLoading: false, data: policiesData }),
     useDeleteSlaPolicy: () => ({ mutateAsync: deleteMutate }),
     useCreateSlaPolicy: () => ({ mutateAsync: createMutate, isPending: false }),
     useUpdateSlaPolicy: () => ({ mutateAsync: updateMutate, isPending: false }),
@@ -111,5 +112,15 @@ describe('SlaPoliciesSettingsPage', () => {
         render(<SlaPoliciesSettingsPage />);
         expect(screen.getByText('Priority support').style.overflowWrap).toBe('anywhere');
         expect(screen.getByText(/First 30m/).style.overflowWrap).toBe('anywhere');
+    });
+    it('G3c: a failed policies load shows the retryable alert, not the empty state', () => {
+        policiesQuery = { isLoading: false, isError: true, data: undefined, refetch: vi.fn() };
+        try {
+            render(<SlaPoliciesSettingsPage />);
+            expect(screen.getByRole('alert').textContent).toContain("Couldn't load SLA policies.");
+            expect(screen.queryByText('No SLA policies yet.')).toBeNull();
+        } finally {
+            policiesQuery = null;
+        }
     });
 });

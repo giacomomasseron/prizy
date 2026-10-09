@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TicketContext } from './TicketContext';
 import type { TicketDetail } from '../../lib/types';
@@ -28,9 +28,10 @@ function ticket(over: Partial<TicketDetail>): TicketDetail {
 
 let ticketData: TicketDetail | undefined;
 const onFilterTag = vi.fn();
+let ticketError = false;
 
 vi.mock('./hooks', () => ({
-    useTicket: () => ({ data: ticketData, isLoading: false }),
+    useTicket: () => ({ data: ticketData, isLoading: false, isError: ticketError, refetch: vi.fn() }),
 }));
 
 function renderWithRouter(ticketId: string | undefined) {
@@ -204,5 +205,15 @@ describe('TicketContext', () => {
         ticketData = undefined;
         renderWithRouter(undefined);
         expect(screen.getByRole('complementary', { name: 'Ticket details' })).toBeInTheDocument();
+    });
+    it('G3c: a failed ticket load shows the retryable alert inside the aside', () => {
+        ticketData = undefined;
+        ticketError = true;
+        try {
+            renderWithRouter('t1');
+            expect(within(screen.getByRole('complementary', { name: 'Ticket details' })).getByRole('alert').textContent).toContain("Couldn't load ticket details.");
+        } finally {
+            ticketError = false;
+        }
     });
 });

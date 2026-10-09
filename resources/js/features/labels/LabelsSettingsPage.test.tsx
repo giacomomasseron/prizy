@@ -13,11 +13,13 @@ const L = (id: string, name: string, group: string | null, issue_count = 0): Lab
 const DEFAULT_LABELS: Label[] = [L('1', 'Bug', 'Type', 4), L('2', 'chore', null, 1)];
 let labelItems: Label[] = DEFAULT_LABELS;
 
+let labelsQuery: Record<string, unknown> | null = null;
+
 let meData: Record<string, unknown> = { is_developer: true, admin_level: 'member' };
 
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: meData }) }));
 vi.mock('./hooks', () => ({
-    useLabels: () => ({ isLoading: false, data: { items: labelItems, next: null } }),
+    useLabels: () => labelsQuery ?? ({ isLoading: false, data: { items: labelItems, next: null } }),
     useCreateLabel: () => ({ mutateAsync: createMutate, isPending: false }),
     useUpdateLabel: () => ({ mutateAsync: updateMutate }),
     useDeleteLabel: () => ({ mutateAsync: deleteMutate }),
@@ -117,5 +119,15 @@ describe('LabelsSettingsPage', () => {
         fireEvent.click(screen.getByRole('button', { name: 'color #eb5757' }));
         expect(screen.getByRole('button', { name: 'color #eb5757' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: 'color #5b8def' })).toHaveAttribute('aria-pressed', 'false');
+    });
+    it('G3c: a failed labels load shows the retryable alert, not the empty state', () => {
+        labelsQuery = { isLoading: false, isError: true, data: undefined, refetch: vi.fn() };
+        try {
+            render(<LabelsSettingsPage />);
+            expect(screen.getByRole('alert').textContent).toContain("Couldn't load labels.");
+            expect(screen.queryByText('No labels yet.')).toBeNull();
+        } finally {
+            labelsQuery = null;
+        }
     });
 });

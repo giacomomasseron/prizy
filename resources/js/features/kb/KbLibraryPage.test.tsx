@@ -209,4 +209,11 @@ describe('KbLibraryPage', () => {
         expect(all.style.boxShadow).toBe('0 0 0 1.5px var(--field)');
         expect(cat).toHaveAttribute('aria-pressed', 'false');
     });
+    it('G3c: a failed library load shows the retryable alert, not the empty state', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } }) : j({ data: {} }))));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><KbLibraryPage /></MemoryRouter></QueryClientProvider>);
+        expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load the library.");
+        expect(screen.queryByText('No categories yet')).toBeNull();
+    });
 });

@@ -3,6 +3,7 @@ import { ApiError } from '../../lib/apiClient';
 import { downloadBlob } from '../../lib/downloadBlob';
 import { useMe } from '../../auth/useAuth';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { FIELD_CLASSES } from '../../components/ui/Input';
 import { Switch } from '../../components/ui/Switch';
 import { sectionTitle } from '../issues/issueStyles';
@@ -73,54 +74,56 @@ export default function GeneralPage() {
             <div style={{ ...titleRow, marginBottom: 22 }}>
                 <h1 style={pageTitle}><span className="hl">General</span></h1>
             </div>
-            <section style={card}>
-                <h2 style={cardHeading}>Notifications</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600 }}>
-                        Email digest
-                        <select
-                            aria-label="Email digest frequency"
-                            value={me.data?.email_digest_frequency ?? 'off'}
-                            onChange={(e) => change(e.target.value as DigestFrequency)}
-                            className={FIELD_CLASSES}
-                            style={selectStyle}
-                        >
-                            <option value="off">Off</option>
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                        </select>
-                    </label>
-                    {saved && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-ink)' }}>Saved</span>}
-                </div>
-                {error && <p style={errorText}>{error}</p>}
-            </section>
-            {(me.data?.admin_level === 'owner' || me.data?.admin_level === 'admin') && (
-                <section style={{ ...card, marginTop: 16 }}>
-                    <h2 style={cardHeading}>Modules</h2>
-                    <Switch
-                        checked={me.data?.workspace?.helpdesk_enabled ?? false}
-                        disabled={updateHelpdesk.isPending}
-                        onChange={switchHelpdesk}
-                        label="Support — help desk, knowledge base and customer portal"
-                    />
-                    <p style={{ ...bodyText, margin: '10px 0 0' }}>
-                        Switching this off closes the help centre, the customer portal, the agent desk and
-                        knowledge-base authoring for everyone in this workspace. Nothing is deleted — switch it
-                        back on and every ticket, contact and article is where you left it.
-                    </p>
-                    {moduleError && <p style={errorText}>{moduleError}</p>}
+            <QueryState query={me} what="workspace settings">
+                <section style={card}>
+                    <h2 style={cardHeading}>Notifications</h2>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 14, fontWeight: 600 }}>
+                            Email digest
+                            <select
+                                aria-label="Email digest frequency"
+                                value={me.data?.email_digest_frequency ?? 'off'}
+                                onChange={(e) => change(e.target.value as DigestFrequency)}
+                                className={FIELD_CLASSES}
+                                style={selectStyle}
+                            >
+                                <option value="off">Off</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                            </select>
+                        </label>
+                        {saved && <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green-ink)' }}>Saved</span>}
+                    </div>
+                    {error && <p style={errorText}>{error}</p>}
                 </section>
-            )}
-            {me.data?.admin_level === 'owner' && (
-                <section style={{ ...card, marginTop: 16 }}>
-                    <h2 style={cardHeading}>Data export</h2>
-                    <p style={{ ...bodyText, margin: '0 0 14px' }}>Everything your team has put into Prizy — yours to take, any time.</p>
-                    <Button variant="secondary" size="sm" onClick={downloadExport} disabled={exporting}>
-                        {exporting ? 'Preparing export…' : 'Download export'}
-                    </Button>
-                    {exportError && <p style={errorText}>{exportError}</p>}
-                </section>
-            )}
+                {(me.data?.admin_level === 'owner' || me.data?.admin_level === 'admin') && (
+                    <section style={{ ...card, marginTop: 16 }}>
+                        <h2 style={cardHeading}>Modules</h2>
+                        <Switch
+                            checked={me.data?.workspace?.helpdesk_enabled ?? false}
+                            disabled={updateHelpdesk.isPending}
+                            onChange={switchHelpdesk}
+                            label="Support — help desk, knowledge base and customer portal"
+                        />
+                        <p style={{ ...bodyText, margin: '10px 0 0' }}>
+                            Switching this off closes the help centre, the customer portal, the agent desk and
+                            knowledge-base authoring for everyone in this workspace. Nothing is deleted — switch it
+                            back on and every ticket, contact and article is where you left it.
+                        </p>
+                        {moduleError && <p style={errorText}>{moduleError}</p>}
+                    </section>
+                )}
+                {me.data?.admin_level === 'owner' && (
+                    <section style={{ ...card, marginTop: 16 }}>
+                        <h2 style={cardHeading}>Data export</h2>
+                        <p style={{ ...bodyText, margin: '0 0 14px' }}>Everything your team has put into Prizy — yours to take, any time.</p>
+                        <Button variant="secondary" size="sm" onClick={downloadExport} disabled={exporting}>
+                            {exporting ? 'Preparing export…' : 'Download export'}
+                        </Button>
+                        {exportError && <p style={errorText}>{exportError}</p>}
+                    </section>
+                )}
+            </QueryState>
         </div>
     );
 }

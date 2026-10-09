@@ -71,4 +71,16 @@ describe('SupportLayout', () => {
         expect(lastFilters).toEqual({ channel: 'email' });
         expect(lastSort).toBe('created_at');
     });
+    it('G3c: a failed tickets load shows the retryable alert in the list column, not the empty state', () => {
+        const impl = useTicketsSpy.getMockImplementation()!;
+        useTicketsSpy.mockImplementation(() => ({ data: undefined, hasNextPage: false, fetchNextPage: vi.fn(), isFetchingNextPage: false, isLoading: false, isError: true, refetch: vi.fn() }) as never);
+        try {
+            render(<SupportLayout />, { wrapper: ({ children }) => wrapper(children) });
+            expect(screen.getByRole('alert').textContent).toContain("Couldn't load tickets.");
+            expect(screen.queryByText('No tickets in this view.')).toBeNull();
+            expect(screen.getByText('Your unsolved tickets')).toBeInTheDocument();
+        } finally {
+            useTicketsSpy.mockImplementation(impl);
+        }
+    });
 });

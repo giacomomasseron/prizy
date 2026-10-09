@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '../../components/ui/Button';
+import { QueryState } from '../../components/ui/QueryState';
 import { RAIL_ACTIVE_CLASSES, RAIL_ITEM_CLASSES, SupportRail, railItem } from '../support/SupportRail';
 import { paneHeader, paneSub, paneTitle } from '../support/supportStyles';
 import { useOverviewReport, useAgentsReport, useSlaReport, useSavedReports, useCreateSavedReport, useDeleteSavedReport } from './hooks';
@@ -60,16 +61,16 @@ export default function ReportingLayout() {
 
                 <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 22 }}>
                     <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 22 }}>
-                        {!report ? (
-                            <div style={{ color: 'var(--fg3)', fontSize: 13 }}>Loading…</div>
-                        ) : (
-                            <>
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
-                                    {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} series={report.sparklines?.[m.key]} />)}
-                                </div>
-                                {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <SlaSection range={range} />}
-                            </>
-                        )}
+                        <QueryState query={q} what="the report">
+                            {report && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
+                                        {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} series={report.sparklines?.[m.key]} />)}
+                                    </div>
+                                    {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <SlaSection range={range} />}
+                                </>
+                            )}
+                        </QueryState>
                     </div>
                 </div>
             </div>

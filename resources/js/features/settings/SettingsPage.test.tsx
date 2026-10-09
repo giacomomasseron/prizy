@@ -202,3 +202,15 @@ describe('GeneralPage (v2 look)', () => {
         expect(screen.getByRole('button', { name: 'Download export' }).style.borderRadius).toBe('var(--radius-pill)');
     });
 });
+
+describe('GeneralPage (G3c states)', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('G3c: a failed workspace load shows the retryable alert, not a default form', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } })));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><GeneralPage /></MemoryRouter></QueryClientProvider>);
+        expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load workspace settings.");
+        expect(screen.queryByLabelText('Email digest frequency')).toBeNull();
+    });
+});

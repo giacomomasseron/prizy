@@ -323,4 +323,15 @@ describe('MembersPage', () => {
         const frame = screen.getByTestId('members-table').parentElement as HTMLElement;
         expect(frame.style.minWidth).toBe('728px');
     });
+    it('G3c: a failed members load shows the retryable alert, not an empty table of zeros', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/workspace/members')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            return j({ data: makeMe('owner') });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><MembersPage /></MemoryRouter></QueryClientProvider>);
+        expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load members.");
+        expect(screen.queryByTestId('members-table')).toBeNull();
+        expect(screen.queryByTestId('stat-total')).toBeNull();
+    });
 });
