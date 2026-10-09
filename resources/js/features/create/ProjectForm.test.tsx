@@ -154,4 +154,12 @@ describe('ProjectForm', () => {
         expect(screen.getByLabelText('Start date')).toHaveAttribute('type', 'date');
         expect(screen.getByLabelText('Target date')).toHaveAttribute('type', 'date');
     });
+
+    it('G3b: colour swatches say which colour is selected', async () => {
+        wrap();
+        expect(screen.getByRole('button', { name: '#5b8def' })).toHaveAttribute('aria-pressed', 'true');
+        await userEvent.click(screen.getByRole('button', { name: '#3a9a68' }));
+        expect(screen.getByRole('button', { name: '#3a9a68' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '#5b8def' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

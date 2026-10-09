@@ -74,7 +74,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                 </div>
                 <div style={{ display: 'flex', gap: 8, margin: '14px 0 18px' }}>
                     {EDIT_COLORS.map((c) => (
-                        <button key={c} type="button" aria-label={`Set color ${c}`}
+                        <button key={c} type="button" aria-label={`Set color ${c}`} aria-pressed={live.color === c}
                             onClick={() => { clear(); updateTeam.mutate({ id: team.id, color: c }, { onError: surface }); }}
                             style={swatchStyle(c, live.color === c, 22)} />
                     ))}

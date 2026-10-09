@@ -95,7 +95,7 @@ export default function LabelsSettingsPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                         <span style={{ ...groupLabel, width: 44 }}>Color</span>
                         {SWATCHES.map((hex) => (
-                            <button key={hex} type="button" aria-label={`color ${hex}`} onClick={() => setColor(hex)}
+                            <button key={hex} type="button" aria-label={`color ${hex}`} aria-pressed={color === hex} onClick={() => setColor(hex)}
                                 style={swatchStyle(hex, color === hex, 24)} />
                         ))}
                     </div>
@@ -129,7 +129,7 @@ export default function LabelsSettingsPage() {
                                 {canDevelop && (
                                     <div style={{ display: 'flex', gap: 9, flexShrink: 0 }}>
                                         {SWATCHES.map((hex) => (
-                                            <button key={hex} type="button" aria-label={`recolor ${l.name} ${hex}`} data-testid={`recolor-${l.id}`} onClick={() => recolor(l, hex)}
+                                            <button key={hex} type="button" aria-label={`recolor ${l.name} ${hex}`} aria-pressed={l.color === hex} data-testid={`recolor-${l.id}`} onClick={() => recolor(l, hex)}
                                                 style={swatchStyle(hex, l.color === hex, 16)} />
                                         ))}
                                     </div>

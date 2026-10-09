@@ -58,4 +58,12 @@ describe('CreateTeamModal', () => {
         expect(screen.getByRole('button', { name: 'Color #6366f1' }).style.boxShadow).toBe('none');
         expect(screen.getByRole('heading', { name: 'Create team' }).style.fontFamily).toBe('var(--font-display)');
     });
+
+    it('G3b: colour swatches say which colour is selected', () => {
+        wrap(<CreateTeamModal open onClose={() => {}} />);
+        expect(screen.getByRole('button', { name: 'Color #6366f1' })).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(screen.getByRole('button', { name: 'Color #4bab66' }));
+        expect(screen.getByRole('button', { name: 'Color #4bab66' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Color #6366f1' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

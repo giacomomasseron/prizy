@@ -138,4 +138,10 @@ describe('NotificationSidebar', () => {
         wrap();
         expect(screen.getByTestId('rail-unread-badge').parentElement!.style.padding).toBe('16px 16px 10px calc(16px + var(--nav-inset, 0px))');
     });
+
+    it('G3b: the selected filter says it is pressed', () => {
+        wrap({ category: 'mention' });
+        expect(screen.getByRole('button', { name: 'Mentions' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

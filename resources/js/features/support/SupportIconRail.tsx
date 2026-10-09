@@ -4,7 +4,8 @@ import { RAIL_ACTIVE_CLASSES, RAIL_ITEM_CLASSES, SupportRail, railItem } from '.
 export function SupportIconRail({ viewsOpen, onToggleViews, onNewTicket }: { viewsOpen: boolean; onToggleViews: () => void; onNewTicket: () => void }) {
     return (
         <SupportRail>
-            <button type="button" title="Home" aria-label="Home" className={RAIL_ACTIVE_CLASSES} style={railItem}>⌂</button>
+            {/* V2-G3b: Home is the desk itself — a real link, marked as the current page (it used to do nothing). */}
+            <Link to="/support" title="Home" aria-label="Home" aria-current="page" className={RAIL_ACTIVE_CLASSES} style={railItem}>⌂</Link>
             <button type="button" title="Views" aria-label="Views" aria-pressed={viewsOpen} onClick={onToggleViews} className={viewsOpen ? RAIL_ACTIVE_CLASSES : RAIL_ITEM_CLASSES} style={railItem}>▤</button>
             <button type="button" title="New ticket" aria-label="New ticket" onClick={onNewTicket} className={RAIL_ITEM_CLASSES} style={railItem}>＋</button>
             <Link to="/support/reporting" title="Reporting" aria-label="Reporting" className={RAIL_ITEM_CLASSES} style={railItem}>📊</Link>

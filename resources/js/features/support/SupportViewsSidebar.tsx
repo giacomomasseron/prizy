@@ -48,7 +48,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                 {TICKET_VIEWS.map((v) => {
                     const active = view === v.key && !savedViewId;
                     return (
-                        <button key={v.key} type="button" onClick={() => onSelectView(v.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                        <button key={v.key} type="button" aria-pressed={active} onClick={() => onSelectView(v.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
                             <span style={icon}>{v.icon}</span>
                             <span style={{ flex: 1 }}>{v.label}</span>
                             <span style={countStyle}>{counts ? viewCount(v.key, counts) : ''}</span>
@@ -77,7 +77,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                     const active = savedViewId === sv.id;
                     return (
                         <div key={sv.id} style={{ display: 'flex', alignItems: 'center', gap: 2 }} className="group">
-                            <button type="button" onClick={() => onSelectSavedView(sv.id)} style={{ ...sideRow(active), flex: 1, minWidth: 0 }} className={active ? '' : NAV_ROW_HOVER}>
+                            <button type="button" aria-pressed={active} onClick={() => onSelectSavedView(sv.id)} style={{ ...sideRow(active), flex: 1, minWidth: 0 }} className={active ? '' : NAV_ROW_HOVER}>
                                 <span style={icon}>☰</span>
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sv.name}</span>
                             </button>

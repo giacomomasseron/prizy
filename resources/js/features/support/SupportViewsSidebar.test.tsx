@@ -131,4 +131,13 @@ describe('SupportViewsSidebar', () => {
         fireEvent.click(screen.getByRole('button', { name: /\+ Save view/ }));
         expect(screen.getByRole('textbox', { name: 'View name' })).toBeInTheDocument();
     });
+
+    it('G3b: the selected view and saved view say they are pressed', () => {
+        const { rerender } = render(<SupportViewsSidebar {...sidebarProps({})} />);
+        expect(screen.getByRole('button', { name: /Your unsolved tickets/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByText('Email backlog').closest('button')).toHaveAttribute('aria-pressed', 'false');
+        rerender(<SupportViewsSidebar {...sidebarProps({ savedViewId: 'sv1' })} />);
+        expect(screen.getByText('Email backlog').closest('button')).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /Your unsolved tickets/ })).toHaveAttribute('aria-pressed', 'false');
+    });
 });

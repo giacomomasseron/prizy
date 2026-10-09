@@ -88,6 +88,7 @@ export default function CreateTeamModal({ open, onClose }: { open: boolean; onCl
                                 key={c}
                                 type="button"
                                 aria-label={`Color ${c}`}
+                                aria-pressed={color === c}
                                 onClick={() => setColor(c)}
                                 style={swatchStyle(c, color === c, 26)}
                             />

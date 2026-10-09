@@ -267,6 +267,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 key={c}
                                 type="button"
                                 aria-label={c}
+                                aria-pressed={color === c}
                                 style={swatchStyle(c, color === c, 26)}
                                 onClick={() => setColor(c)}
                             />

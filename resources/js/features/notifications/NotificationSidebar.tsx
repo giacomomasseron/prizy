@@ -77,7 +77,7 @@ export function NotificationSidebar({
                 {FILTERS.map((f) => {
                     const active = category === f.key && !settingsActive;
                     return (
-                        <button key={f.key} type="button" onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                        <button key={f.key} type="button" aria-pressed={active} onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
                             {f.label}
                         </button>
                     );
