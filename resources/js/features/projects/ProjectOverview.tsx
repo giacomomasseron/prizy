@@ -137,7 +137,7 @@ export default function ProjectOverview() {
                                 const tag = MS_TAG[state];
                                 return (
                                     <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <StatusIcon status={MS_ICON[state]} size={20} />
+                                        <StatusIcon status={MS_ICON[state]} size={20} decorative />
                                         <div style={{ flex: 1, minWidth: 0 }}>
                                             <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--fg)' }}>{m.name}</div>
                                             <div style={{ ...mono, color: 'var(--fg3)' }}>{fmtDate(m.target_date)}</div>
@@ -147,6 +147,7 @@ export default function ProjectOverview() {
                                             <button
                                                 type="button"
                                                 aria-label={`Delete ${m.name}`}
+                                                disabled={delMs.isPending && delMs.variables === m.id}
                                                 onClick={async () => { setError(null); if (await confirm({ title: `Delete "${m.name}"?`, danger: true })) delMs.mutate(m.id, { onError: (e) => setError((e as ApiError).message) }); }}
                                                 className={DELETE_X_CLASSES}
                                                 style={deleteXStyle}

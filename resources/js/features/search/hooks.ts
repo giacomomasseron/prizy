@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { Issue, SearchResults } from '../../lib/types';
 
@@ -63,5 +63,7 @@ export function useIssueSearch(params: IssueSearchParams) {
                 lastPage: res.meta?.last_page ?? 1,
             };
         },
+        // Keep the previous page on screen while the next loads, so the pager (and its focus) stays mounted.
+        placeholderData: keepPreviousData,
     });
 }

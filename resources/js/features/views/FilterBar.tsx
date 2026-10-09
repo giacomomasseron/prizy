@@ -168,6 +168,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                         variant="ghost"
                                         size="sm"
                                         aria-label={`Delete view ${view.name}`}
+                                        disabled={deleteView.isPending && deleteView.variables === view.id}
                                         onClick={async () => { if (await confirm({ title: `Delete view ${view.name}?`, danger: true })) deleteView.mutate(view.id); }}
                                         style={{ color: 'var(--red-ink)', padding: '2px 6px', minWidth: 0 }}
                                     >

@@ -206,12 +206,15 @@ describe('TicketContext', () => {
         renderWithRouter(undefined);
         expect(screen.getByRole('complementary', { name: 'Ticket details' })).toBeInTheDocument();
     });
-    it('G3c: a failed ticket load shows the retryable alert inside the aside', () => {
+    it('G3c: while the ticket fails the aside stays named but holds no alert and no loading line (the conversation pane carries the message)', () => {
         ticketData = undefined;
         ticketError = true;
         try {
             renderWithRouter('t1');
-            expect(within(screen.getByRole('complementary', { name: 'Ticket details' })).getByRole('alert').textContent).toContain("Couldn't load ticket details.");
+            const aside = screen.getByRole('complementary', { name: 'Ticket details' });
+            expect(within(aside).queryByRole('alert')).toBeNull();
+            expect(within(aside).queryByRole('status')).toBeNull();
+            expect(within(aside).queryByText(/Loading/)).toBeNull();
         } finally {
             ticketError = false;
         }

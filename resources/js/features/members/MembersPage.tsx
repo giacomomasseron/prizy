@@ -322,7 +322,7 @@ export default function MembersPage() {
                                             key={t.id}
                                             style={{ borderRadius: 5, overflow: 'hidden', display: 'inline-flex', flexShrink: 0 }}
                                         >
-                                            <TeamTile identifier={t.identifier.slice(0, 2)} color={t.color} size={16} />
+                                            <TeamTile identifier={t.identifier} color={t.color} size={16} />
                                         </span>
                                     ))}
                                     {row.teams.length > 3 && (
@@ -370,6 +370,7 @@ export default function MembersPage() {
                                     <button
                                         type="button"
                                         data-testid={`remove-${row.email}`}
+                                        disabled={!isInvited && removeMember.isPending && removeMember.variables === row.id}
                                         onClick={async () => {
                                             setActionError(null);
                                             if (isInvited) {

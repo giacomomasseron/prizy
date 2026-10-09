@@ -6,6 +6,9 @@ export interface QueryLike {
     isLoading: boolean;
     isError: boolean;
     data?: unknown;
+    /** react-query pauses a query while offline: status pending, not loading, not error. */
+    isPaused?: boolean;
+    isFetching?: boolean;
     refetch: () => unknown;
 }
 
@@ -24,11 +27,12 @@ const failed: CSSProperties = {
 export function QueryState({ query, what, frame, children }: { query: QueryLike; what: string; frame?: CSSProperties; children: ReactNode }) {
     const framed = (node: ReactNode) => (frame ? <div style={frame}>{node}</div> : node);
     if (query.isLoading) return framed(<p role="status" style={loading}>Loading…</p>);
+    if (query.isPaused && query.data === undefined) return framed(<p role="status" style={loading}>Waiting for the network…</p>);
     if (query.isError && query.data === undefined) {
         return framed(
             <div role="alert" style={failed}>
                 <span>Couldn't load {what}.</span>
-                <Button variant="secondary" size="sm" onClick={() => { void query.refetch(); }}>Retry</Button>
+                <Button variant="secondary" size="sm" disabled={query.isFetching} onClick={() => { void query.refetch(); }}>Retry</Button>
             </div>,
         );
     }

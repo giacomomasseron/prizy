@@ -5,9 +5,11 @@ import type { IssueStatus } from '../../lib/types';
 export interface StatusIconProps {
     status: IssueStatus;
     size?: number;
+    /** The icon sits beside its own visible label: hide it from assistive tech instead of announcing it twice. */
+    decorative?: boolean;
 }
 
-export function StatusIcon({ status, size = 14 }: StatusIconProps) {
+export function StatusIcon({ status, size = 14, decorative = false }: StatusIconProps) {
     const base: CSSProperties = {
         width: size,
         height: size,
@@ -20,7 +22,9 @@ export function StatusIcon({ status, size = 14 }: StatusIconProps) {
         fontWeight: 800,
     };
 
-    const a11y = { role: 'img', 'aria-label': `Status: ${STATUS_LABELS[status]}` } as const;
+    const a11y = decorative
+        ? ({ 'aria-hidden': true } as const)
+        : ({ role: 'img', 'aria-label': `Status: ${STATUS_LABELS[status]}` } as const);
 
     if (status === 'backlog') {
         return <span style={{ ...base, border: '2px dashed var(--fg3)' }} {...a11y} />;

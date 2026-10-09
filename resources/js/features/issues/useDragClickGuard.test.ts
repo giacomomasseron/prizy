@@ -28,4 +28,14 @@ describe('useDragClickGuard', () => {
         act(() => result.current.guard(fn));
         expect(fn).toHaveBeenCalledTimes(1);
     });
+    it('G3c: swallows only that one click — the next guarded click goes through', () => {
+        vi.useFakeTimers();
+        const { result } = renderHook(() => useDragClickGuard());
+        const fn = vi.fn();
+        act(() => result.current.markDragged());
+        act(() => result.current.guard(fn));
+        expect(fn).not.toHaveBeenCalled();
+        act(() => result.current.guard(fn));
+        expect(fn).toHaveBeenCalledTimes(1);
+    });
 });

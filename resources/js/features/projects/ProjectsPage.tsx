@@ -43,7 +43,7 @@ export default function ProjectsPage() {
                 title="All projects"
                 actions={canDevelop ? <Button variant="primary" onClick={() => navigate('/create?tab=project')}>New project</Button> : undefined}
             >
-                <span style={pageCount}>{rows.length}</span>
+                {projects.data !== undefined && <span style={pageCount}>{rows.length}</span>}
             </PageHeader>
 
             <div style={{ padding: '4px 26px 40px' }}>

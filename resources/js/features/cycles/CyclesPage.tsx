@@ -48,7 +48,7 @@ export default function CyclesPage() {
 
             <div style={titleRow}>
                 <h1 style={pageTitle}><span className="hl">Cycles</span></h1>
-                <span data-testid="cycles-count" style={pageCount}>{items.length}</span>
+                {cycles.data !== undefined && <span data-testid="cycles-count" style={pageCount}>{items.length}</span>}
                 {canDevelop && (
                     <Button style={{ marginLeft: 'auto', alignSelf: 'center' }} onClick={() => navigate(`/create?tab=cycle&team=${id}`)}>New cycle</Button>
                 )}
@@ -68,7 +68,7 @@ export default function CyclesPage() {
                                         <span data-testid="cycle-tag" style={statusTag(tag.tone)}>{tag.label}</span>
                                         <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)' }}>{c.starts_at.slice(0, 10)} → {c.ends_at.slice(0, 10)}</span>
                                         {canDevelop && (
-                                            <button type="button" aria-label={`Delete ${c.name}`}
+                                            <button type="button" aria-label={`Delete ${c.name}`} disabled={del.isPending && del.variables === c.id}
                                                 onClick={async () => { setError(null); if (await confirm({ title: `Delete ${c.name}?`, danger: true })) del.mutate(c.id, { onError: (e) => setError((e as ApiError).message) }); }}
                                                 style={deleteXStyle} className={DELETE_X_CLASSES}>×</button>
                                         )}

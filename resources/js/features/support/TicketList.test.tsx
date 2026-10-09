@@ -136,4 +136,11 @@ describe('TicketList', () => {
         expect(screen.getByRole('img', { name: 'Priority: High' })).toBeInTheDocument();
         expect(screen.getByRole('img', { name: 'Priority: Urgent' })).toBeInTheDocument();
     });
+
+    it('G3c: a failed load shows no "0 tickets" count', () => {
+        const query = { isLoading: false, isError: true, data: undefined, refetch: vi.fn() };
+        render(<TicketList tickets={[]} selectedId={undefined} onSelect={vi.fn()} {...baseProps()} query={query} />);
+        expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load tickets.");
+        expect(screen.queryByText(/\d+ tickets/)).toBeNull();
+    });
 });

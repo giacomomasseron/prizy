@@ -99,8 +99,8 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
 
                 {/* Properties card */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 2, border: 'var(--line) solid var(--border)', borderRadius: 16, padding: 6 }}>
-                    <div style={propRow}><span style={propLabel}>Status</span><span style={propVal}><StatusIcon status={data.status} size={14} />{STATUS_LABELS[data.status] ?? data.status}</span></div>
-                    <div style={propRow}><span style={propLabel}>Priority</span><span style={propVal}><PriorityIcon priority={data.priority} />{PRIORITY_LABELS[data.priority] ?? data.priority}</span></div>
+                    <div style={propRow}><span style={propLabel}>Status</span><span style={propVal}><StatusIcon status={data.status} size={14} decorative />{STATUS_LABELS[data.status] ?? data.status}</span></div>
+                    <div style={propRow}><span style={propLabel}>Priority</span><span style={propVal}><PriorityIcon priority={data.priority} decorative />{PRIORITY_LABELS[data.priority] ?? data.priority}</span></div>
                     <div style={propRow}><span style={propLabel}>Assignee</span><span style={propVal}>{data.assignee ? <Avatar {...avatarFor(data.assignee)} size={20} /> : <Avatar size={20} />}{data.assignee?.name ?? 'Unassigned'}</span></div>
                     <div style={propRow}><span style={propLabel}>Project</span>{project ? <ProjectPill name={project.name} color={project.color} /> : <span style={muted}>No project</span>}</div>
                     {/* Peek is a read-only quick view (no *Editor components for any other property

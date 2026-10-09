@@ -454,7 +454,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                         disabledAll={status === null}
                         disabledPublish={articleStatus !== 'published'}
                     />
-                    <Button size="sm" onClick={handleSave} disabled={!dirty}>Save translation</Button>
+                    <Button size="sm" onClick={handleSave} disabled={!dirty || upsert.isPending}>Save translation</Button>
                 </div>
                 {/* Only shown when the publish rule is actually why Published is disabled — not
                     when the real reason every option is disabled is that nothing has been saved

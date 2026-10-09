@@ -3,6 +3,8 @@ import type { IssuePriority } from '../../lib/types';
 
 export interface PriorityIconProps {
     priority: IssuePriority;
+    /** The icon sits beside its own visible label: hide it from assistive tech instead of announcing it twice. */
+    decorative?: boolean;
 }
 
 const BAR_FILL: Record<Exclude<IssuePriority, 'urgent'>, number> = {
@@ -12,9 +14,9 @@ const BAR_FILL: Record<Exclude<IssuePriority, 'urgent'>, number> = {
     high: 3,
 };
 
-export function PriorityIcon({ priority }: PriorityIconProps) {
+export function PriorityIcon({ priority, decorative = false }: PriorityIconProps) {
     const label = priority === 'no_priority' ? PRIORITY_LABELS.no_priority : `Priority: ${PRIORITY_LABELS[priority]}`;
-    const a11y = { role: 'img', 'aria-label': label } as const;
+    const a11y = decorative ? ({ 'aria-hidden': true } as const) : ({ role: 'img', 'aria-label': label } as const);
 
     if (priority === 'urgent') {
         return (

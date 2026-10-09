@@ -1,7 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useTicket } from './hooks';
-import { QueryState } from '../../components/ui/QueryState';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ink } from '../../lib/ink';
@@ -21,9 +20,8 @@ export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: 
     if (!ticketId) return <aside aria-label="Ticket details" style={asideStyle} />;
     return (
         <aside aria-label="Ticket details" style={asideStyle}>
-            <QueryState query={q} what="ticket details" frame={{ padding: 18 }}>
-                {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} />}
-            </QueryState>
+            {/* While the ticket loads or fails the aside stays empty: the conversation pane (same useTicket) carries the message. */}
+            {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} />}
         </aside>
     );
 }

@@ -56,4 +56,10 @@ describe('ProjectRoadmap', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load milestones.");
         expect(screen.queryByText('No milestones in this state.')).toBeNull();
     });
+
+    it('G3c: a milestone row is not announced as an issue status (its tag is the label)', async () => {
+        renderView();
+        await screen.findByText('Beta Launch');
+        expect(screen.queryByRole('img', { name: /^Status:/ })).toBeNull();
+    });
 });

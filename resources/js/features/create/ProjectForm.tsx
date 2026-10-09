@@ -233,7 +233,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                                 className={chipClasses(priority === p.value)}
                                 onClick={() => setPriority(p.value)}
                             >
-                                <PriorityIcon priority={p.value} />
+                                <PriorityIcon priority={p.value} decorative />
                                 {p.label}
                             </button>
                         ))}

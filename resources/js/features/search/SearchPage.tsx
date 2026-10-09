@@ -128,22 +128,24 @@ export default function SearchPage() {
                 {/* Saved views sidebar */}
                 <aside aria-label="Saved views" style={{ width: 200, flexShrink: 0 }}>
                     <div style={{ ...sectionLabel, display: 'block', padding: '0 12px', marginBottom: 6 }}>Saved views</div>
-                    {savedViews.isLoading ? null : savedViewItems.length === 0 ? (
-                        <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>
-                    ) : (
-                        savedViewItems.map((view) => (
-                            <button
-                                key={view.id}
-                                type="button"
-                                onClick={() => loadSavedView(view)}
-                                style={{ ...navRow(false), fontSize: 13.5 }}
-                                className={NAV_ROW_HOVER}
-                            >
-                                <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, display: 'inline-block' }} />
-                                {view.name}
-                            </button>
-                        ))
-                    )}
+                    <QueryState query={savedViews} what="saved views">
+                        {savedViewItems.length === 0 ? (
+                            <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>
+                        ) : (
+                            savedViewItems.map((view) => (
+                                <button
+                                    key={view.id}
+                                    type="button"
+                                    onClick={() => loadSavedView(view)}
+                                    style={{ ...navRow(false), fontSize: 13.5 }}
+                                    className={NAV_ROW_HOVER}
+                                >
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent)', flexShrink: 0, display: 'inline-block' }} />
+                                    {view.name}
+                                </button>
+                            ))
+                        )}
+                    </QueryState>
                 </aside>
 
                 {/* Main search area */}

@@ -93,7 +93,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                     <span style={groupLabel}>Members</span>
                     {workspace.data && addable.length === 0 ? (
                         <button type="button" aria-label="Add member" disabled title="Everyone is already on this team"
-                            className="border-border2 bg-transparent text-fg disabled:opacity-50" style={pillBtn}>+ Add member</button>
+                            className="border-border2 bg-transparent text-fg disabled:opacity-50" style={{ ...pillBtn, cursor: 'not-allowed' }}>+ Add member</button>
                     ) : (
                         <Menu
                             placement="bottom-end"
@@ -125,7 +125,7 @@ export default function TeamDrawer({ team, onClose }: { team: Team | null; onClo
                                     { key: 'member', label: 'Member', onActivate: () => { clear(); setRole.mutate({ userId: m.id, role: 'member' }, { onError: surface }); } },
                                 ]}
                             />
-                            <button type="button" data-testid={`remove-${m.email}`} aria-label={`Remove ${m.name}`} onClick={() => { clear(); remove.mutate(m.id, { onError: surface }); }}
+                            <button type="button" data-testid={`remove-${m.email}`} aria-label={`Remove ${m.name}`} disabled={remove.isPending && remove.variables === m.id} onClick={() => { clear(); remove.mutate(m.id, { onError: surface }); }}
                                 className={DELETE_X_CLASSES} style={deleteXStyle}>×</button>
                         </div>
                     ))}

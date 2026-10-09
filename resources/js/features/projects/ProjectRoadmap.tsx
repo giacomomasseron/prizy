@@ -24,7 +24,7 @@ export default function ProjectRoadmap() {
         <>
             <div style={titleRow}>
                 <h1 style={pageTitle}><span className="hl">Roadmap</span></h1>
-                <span data-testid="roadmap-count" style={pageCount}>{items.length}</span>
+                {milestones.data !== undefined && <span data-testid="roadmap-count" style={pageCount}>{items.length}</span>}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 18 }}>
                 <span style={filterLabel}>State</span>
@@ -43,7 +43,7 @@ export default function ProjectRoadmap() {
                                 return (
                                     <div key={m.id} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 16 }}>
                                         <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                            <StatusIcon status={MS_ICON[st]} size={20} />
+                                            <StatusIcon status={MS_ICON[st]} size={20} decorative />
                                         </span>
                                         <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 14, border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-card)', padding: '14px 20px', background: 'var(--panel)' }}>
                                             <div style={{ flex: 1, minWidth: 0 }}>

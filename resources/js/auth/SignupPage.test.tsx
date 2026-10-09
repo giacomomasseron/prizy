@@ -60,3 +60,18 @@ it('G3c: the signup page renders exactly one main landmark', () => {
     render(<SignupPage />);
     expect(screen.getAllByRole('main')).toHaveLength(1);
 });
+
+it('G3c: Create is disabled while the request runs and enabled again after a failure', async () => {
+    let fail: (v: unknown) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn().mockReturnValue(new Promise((r) => { fail = r; })));
+    render(<SignupPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Create' })).toBeDisabled());
+    fail({
+        ok: false, status: 422,
+        headers: { get: () => 'application/problem+json' },
+        json: async () => ({ status: 422, title: 'Unprocessable', detail: 'Invalid.', errors: { slug: ['Taken.'] } }),
+    });
+    expect(await screen.findByText('Taken.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled();
+});

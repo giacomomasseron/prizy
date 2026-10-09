@@ -34,8 +34,8 @@ export default function TeamsPage() {
                                         className="hover:bg-hover"
                                         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', textDecoration: 'none', color: 'var(--fg)' }}
                                     >
-                                        {/* Two letters fit the tile; the full identifier is shown on the right. */}
-                                        <TeamTile identifier={team.identifier.slice(0, 2)} color={team.color} size={30} />
+                                        {/* The tile clips the key to what fits; its title carries the whole key. */}
+                                        <TeamTile identifier={team.identifier} color={team.color} size={30} />
                                         <span style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{team.name}</span>
                                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>{team.identifier}</span>
                                     </Link>

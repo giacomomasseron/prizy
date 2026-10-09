@@ -45,7 +45,7 @@ export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, 
             <header style={{ ...paneHeader, gap: 8, padding: '10px 14px' }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={paneTitle}>Tickets</div>
-                    <div style={paneSub}>{tickets.length} tickets</div>
+                    {(!query || query.data !== undefined) && <div style={paneSub}>{tickets.length} tickets</div>}
                 </div>
                 <Menu
                     placement="bottom-start"

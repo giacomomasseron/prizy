@@ -322,3 +322,37 @@ describe('G3c: a failed search', () => {
         expect(screen.queryByText(/No issues match your search/i)).toBeNull();
     });
 });
+
+describe('G3c: final-fix wave', () => {
+    it('G3c: a failed saved-views load says so instead of "No saved views"', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (String(url).includes('/saved-views')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            return new Response(JSON.stringify({ data: [], meta: { current_page: 1, last_page: 1 } }), { status: 200 });
+        }));
+        wrap(<SearchPage />);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load saved views.");
+        expect(screen.queryByText('No saved views')).toBeNull();
+    });
+
+    it('G3c: the pager stays mounted (and focused) while the next page loads', async () => {
+        let release: () => void = () => {};
+        const gate = new Promise<void>((r) => { release = r; });
+        const row = { id: 'i1', title: 'Fix login bug', status: 'todo', priority: 'high', team_id: 't1', project_id: null, assignee_id: null, created_by: 'u', archived_at: null, created_at: '', updated_at: '', labels: [] };
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (String(url).includes('/search/issues')) {
+                if (String(url).includes('page=2')) await gate;
+                return new Response(JSON.stringify({ data: [row], meta: { current_page: String(url).includes('page=2') ? 2 : 1, last_page: 3 } }), { status: 200 });
+            }
+            return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        }));
+        wrap(<SearchPage />);
+        const next = await screen.findByTestId('search-next');
+        next.focus();
+        fireEvent.click(next);
+        await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.some((c) => String(c[0]).includes('page=2'))).toBe(true));
+        expect(screen.getByTestId('search-next')).toBe(next);
+        expect(document.activeElement).toBe(next);
+        release();
+        await screen.findByText(/Page 2 of 3/);
+    });
+});

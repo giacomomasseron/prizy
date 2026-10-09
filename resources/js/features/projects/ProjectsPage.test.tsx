@@ -296,5 +296,6 @@ describe('ProjectsPage', () => {
         render(<QueryClientProvider client={qc}><MemoryRouter><ProjectsPage /></MemoryRouter></QueryClientProvider>);
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load projects.");
         expect(screen.queryByText('No projects yet.')).toBeNull();
+        expect(screen.queryByText('0')).toBeNull();
     });
 });

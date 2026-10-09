@@ -11,7 +11,7 @@ const report: SlaReport = {
     tags: [{ name: 'sso', count: 7 }],
 };
 
-const useSlaReport = vi.fn((_range: string, _enabled: boolean) => ({ data: report, isLoading: false }));
+const useSlaReport = vi.fn((_range: string, _enabled: boolean) => ({ data: report, isLoading: false, isError: false, refetch: vi.fn() }));
 vi.mock('./hooks', () => ({ useSlaReport: (r: string, e: boolean) => useSlaReport(r, e) }));
 
 describe('SlaSection', () => {
@@ -24,8 +24,15 @@ describe('SlaSection', () => {
     });
 
     it('shows a loading state while data is pending', () => {
-        useSlaReport.mockReturnValueOnce({ data: undefined as unknown as SlaReport, isLoading: true });
+        useSlaReport.mockReturnValueOnce({ data: undefined as unknown as SlaReport, isLoading: true, isError: false, refetch: vi.fn() });
         render(<SlaSection range="7d" />);
         expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    });
+
+    it('G3c: a failed load shows the retryable alert, not a stuck "Loading…"', () => {
+        useSlaReport.mockReturnValueOnce({ data: undefined as unknown as SlaReport, isLoading: false, isError: true, refetch: vi.fn() });
+        render(<SlaSection range="7d" />);
+        expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the SLA report.");
+        expect(screen.queryByText(/loading/i)).toBeNull();
     });
 });

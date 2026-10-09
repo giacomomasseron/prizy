@@ -42,7 +42,7 @@ export default function ProjectIssues() {
         <>
             <div style={titleRow}>
                 <h1 style={pageTitle}><span className="hl">Issues</span></h1>
-                <span data-testid="issues-count" style={pageCount}>{shown.length}</span>
+                {issuesQ.data !== undefined && <span data-testid="issues-count" style={pageCount}>{shown.length}</span>}
             </div>
 
             {/* Filters — plain rows of composer-style pills (ink-filled when selected) */}

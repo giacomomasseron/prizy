@@ -133,6 +133,7 @@ describe('TeamDrawer', () => {
         await waitFor(() => expect(btn).toBeDisabled());
         expect(btn).toHaveAttribute('title', 'Everyone is already on this team');
         expect(btn).toHaveTextContent('+ Add member');
+        expect(btn.style.cursor).toBe('not-allowed');
         fireEvent.click(btn);
         expect(screen.queryByRole('menu')).toBeNull();
     });
@@ -141,5 +142,21 @@ describe('TeamDrawer', () => {
         mockFetch(() => new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 }));
         wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
         expect(await screen.findByRole('group', { name: 'Colour' })).toBeInTheDocument();
+    });
+
+    it('G3c: only the member being removed has its remove button disabled', async () => {
+        let release: () => void = () => {};
+        const gate = new Promise<void>((r) => { release = r; });
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            if (init?.method === 'DELETE' && url.includes('/teams/t1/members/')) { await gate; return new Response(null, { status: 204 }); }
+            if (url.includes('/teams/t1/members')) return new Response(JSON.stringify({ data: [{ id: 'u1', name: 'Ada', email: 'a@x.test', role: 'lead' }, { id: 'u2', name: 'Bob', email: 'b@x.test', role: 'member' }] }), { status: 200 });
+            if (url.includes('/workspace/members')) return new Response(JSON.stringify({ data: [] }), { status: 200 });
+            return new Response(JSON.stringify({ data: [], links: { next: null } }), { status: 200 });
+        }));
+        wrap(<TeamDrawer team={team as any} onClose={vi.fn()} />);
+        fireEvent.click(await screen.findByTestId('remove-b@x.test'));
+        await waitFor(() => expect(screen.getByTestId('remove-b@x.test')).toBeDisabled());
+        expect(screen.getByTestId('remove-a@x.test')).toBeEnabled();
+        release();
     });
 });
