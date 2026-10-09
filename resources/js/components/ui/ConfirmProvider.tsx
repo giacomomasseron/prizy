@@ -50,19 +50,20 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
             <Modal open={opts !== null} onClose={() => settle(false)} width={420} label={opts?.title}>
                 {opts && (
                     <div style={{ padding: 24 }}>
-                        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>{opts.title}</h2>
-                        {opts.message && <p style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--fg2)', lineHeight: 1.5 }}>{opts.message}</p>}
+                        {/* The v2 dialog title (display font), as in every other dialog. */}
+                        <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 21, fontWeight: 800, letterSpacing: '-.02em', color: 'var(--fg)' }}>{opts.title}</h2>
+                        {opts.message && <p style={{ margin: '10px 0 0', fontSize: 14, color: 'var(--fg2)', lineHeight: 1.5 }}>{opts.message}</p>}
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 22 }}>
                             <Button variant="secondary" size="sm" data-testid="confirm-dialog-cancel" onClick={() => settle(false)}>
                                 {opts.cancelLabel ?? 'Cancel'}
                             </Button>
+                            {/* A danger confirm is the red Button variant: its colours are classes, so its hover works. */}
                             <Button
-                                variant="primary"
+                                variant={opts.danger ? 'danger' : 'primary'}
                                 size="sm"
                                 data-testid="confirm-dialog-confirm"
                                 autoFocus
                                 onClick={() => settle(true)}
-                                style={opts.danger ? { background: 'var(--red)', color: 'var(--on-accent)' } : undefined}
                             >
                                 {opts.confirmLabel ?? 'Confirm'}
                             </Button>
