@@ -115,7 +115,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                             <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} aria-expanded={workspaceOpen} style={sectionBtn} className="text-fg3 hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
                         </div>
                         {workspaceOpen && (
-                            <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+                            <nav aria-label="Workspace" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                                 <NavLink to="/" end style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
                                     <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}

@@ -397,7 +397,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         )}
                     </div>
 
-                    <aside style={{ flex: '0 1 296px', minWidth: 264, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <aside aria-label="Article settings" style={{ flex: '0 1 296px', minWidth: 264, display: 'flex', flexDirection: 'column', gap: 14 }}>
                         <div style={cardColumn}>
                             <div style={kbLabel}>Status</div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>

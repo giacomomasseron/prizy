@@ -285,4 +285,9 @@ describe('G3b: result rows are reachable by keyboard', () => {
         fireEvent.click(screen.getByRole('button', { name: /save this view/i }));
         expect(screen.getByRole('textbox', { name: 'View name' })).toBeInTheDocument();
     });
+
+    it('the saved views rail is a named landmark', () => {
+        wrap(<SearchPage />);
+        expect(screen.getByRole('complementary', { name: 'Saved views' })).toBeInTheDocument();
+    });
 });

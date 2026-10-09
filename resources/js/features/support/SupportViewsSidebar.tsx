@@ -39,7 +39,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
     };
 
     return (
-        <aside style={sideFrame}>
+        <aside aria-label="Support views" style={sideFrame}>
             <div style={sideTitle}>Support</div>
             <div style={sideSub}>Agent workspace</div>
 

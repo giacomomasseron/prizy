@@ -35,7 +35,7 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 </div>
             </div>
 
-            <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <nav aria-label="Project" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 <NavLink end to={`/projects/${projectId}`} style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span><span style={{ flex: 1 }}>Overview</span>
                 </NavLink>

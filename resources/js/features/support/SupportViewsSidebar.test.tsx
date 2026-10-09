@@ -140,4 +140,9 @@ describe('SupportViewsSidebar', () => {
         expect(screen.getByText('Email backlog').closest('button')).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: /Your unsolved tickets/ })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('G3b: the views rail is a named landmark', () => {
+        render(<SupportViewsSidebar {...sidebarProps({})} />);
+        expect(screen.getByRole('complementary', { name: 'Support views' })).toBeInTheDocument();
+    });
 });

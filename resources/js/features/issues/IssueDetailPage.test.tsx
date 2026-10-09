@@ -540,4 +540,9 @@ describe('IssueDetailPage v2 layout', () => {
         expect(classes).not.toContain('border-border2');
         expect(classes).toContain('focus-within:border-fg');
     });
+
+    it('G3b: the properties rail is a named landmark', () => {
+        renderPage();
+        expect(screen.getByRole('complementary', { name: 'Issue properties' })).toBeInTheDocument();
+    });
 });

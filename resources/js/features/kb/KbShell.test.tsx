@@ -58,4 +58,9 @@ describe('KbHeader', () => {
         expect(help.className).toContain('hover:text-accent');
         expect(screen.getByRole('button', { name: /Switch to (dark|light) theme/ })).toBeInTheDocument();
     });
+
+    it('G3b: the shell is not a second main landmark (the app layout owns main)', () => {
+        renderShell();
+        expect(screen.queryByRole('main')).toBeNull();
+    });
 });

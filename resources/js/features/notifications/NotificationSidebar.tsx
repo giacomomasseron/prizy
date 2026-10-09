@@ -73,7 +73,7 @@ export function NotificationSidebar({
                 )}
             </div>
 
-            <nav style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
+            <nav aria-label="Inbox filters" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {FILTERS.map((f) => {
                     const active = category === f.key && !settingsActive;
                     return (

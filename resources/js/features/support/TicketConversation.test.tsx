@@ -147,4 +147,11 @@ describe('TicketConversation', () => {
         expect(pill.style.color).toBe('var(--accent-ink)');
         expect(pill.style.background).toBe('var(--accent2)');
     });
+
+    it('G3b: the conversation pane is not a second main landmark, in every state', () => {
+        ticketData = undefined;
+        isLoading = false;
+        renderWithRouter(undefined);
+        expect(screen.queryByRole('main')).toBeNull();
+    });
 });

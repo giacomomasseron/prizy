@@ -173,4 +173,9 @@ describe('GlobalSidebar', () => {
         expect(link.style.width).toBe('24px');
         expect(link.style.height).toBe('24px');
     });
+
+    it('G3b: the workspace links are a named navigation landmark', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('navigation', { name: 'Workspace' })).toBeInTheDocument();
+    });
 });

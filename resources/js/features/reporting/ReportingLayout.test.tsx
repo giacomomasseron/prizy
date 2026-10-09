@@ -152,4 +152,10 @@ describe('ReportingLayout', () => {
         renderLayout();
         expect(screen.getByRole('button', { name: '7d' }).style.boxShadow).toBe('0 0 0 1.5px var(--field)');
     });
+
+    it('G3b: the reporting rail is a named landmark and the pane is not a second main', () => {
+        renderLayout();
+        expect(screen.getByRole('complementary', { name: 'Reporting' })).toBeInTheDocument();
+        expect(screen.queryByRole('main')).toBeNull();
+    });
 });

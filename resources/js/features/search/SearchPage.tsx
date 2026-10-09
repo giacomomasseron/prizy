@@ -125,7 +125,7 @@ export default function SearchPage() {
             <PageHeader title="Search" />
             <div style={{ display: 'flex', gap: 24, padding: '4px 26px 80px', maxWidth: 1132, boxSizing: 'border-box' }}>
                 {/* Saved views sidebar */}
-                <aside style={{ width: 200, flexShrink: 0 }}>
+                <aside aria-label="Saved views" style={{ width: 200, flexShrink: 0 }}>
                     <div style={{ ...sectionLabel, display: 'block', padding: '0 12px', marginBottom: 6 }}>Saved views</div>
                     {savedViews.isLoading ? null : savedViewItems.length === 0 ? (
                         <div style={{ fontSize: 13, color: 'var(--fg3)', padding: '0 12px' }}>No saved views</div>

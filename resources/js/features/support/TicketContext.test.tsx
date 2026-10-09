@@ -199,4 +199,10 @@ describe('TicketContext', () => {
         expect(screen.getByText('SLA breached').style.color).toBe('var(--red-ink)');
         expect(screen.getByText('Overdue').style.color).toBe('var(--red-ink)');
     });
+
+    it('G3b: the context pane is a named landmark, also while empty', () => {
+        ticketData = undefined;
+        renderWithRouter(undefined);
+        expect(screen.getByRole('complementary', { name: 'Ticket details' })).toBeInTheDocument();
+    });
 });

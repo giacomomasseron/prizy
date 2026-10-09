@@ -31,7 +31,7 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
     };
 
     return (
-        <aside style={sideFrame}>
+        <aside aria-label="Reporting" style={sideFrame}>
             <div style={sideTitle}>Reporting</div>
             <div style={sideSub}>Support analytics</div>
 

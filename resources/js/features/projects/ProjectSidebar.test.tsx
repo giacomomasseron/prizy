@@ -54,4 +54,9 @@ describe('ProjectSidebar', () => {
         expect(badge.style.borderRadius).toBe('50%');
         expect(badge.textContent).toBe('E');
     });
+
+    it('G3b: the project links are a named navigation landmark', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('navigation', { name: 'Project' })).toBeInTheDocument();
+    });
 });

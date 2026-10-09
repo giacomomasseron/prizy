@@ -276,4 +276,9 @@ describe('KbArticleEditorPage', () => {
         expect(await screen.findByRole('textbox', { name: 'Article title' })).toHaveValue('Published one');
         expect(screen.getByRole('textbox', { name: 'Article body' })).toBeInTheDocument();
     });
+
+    it('G3b: the settings column is a named landmark', async () => {
+        renderEditor();
+        expect(await screen.findByRole('complementary', { name: 'Article settings' })).toBeInTheDocument();
+    });
 });

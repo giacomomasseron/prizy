@@ -29,7 +29,7 @@ export default function AnalyticsLayout() {
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
             <AnalyticsSidebar section={section} onSelectSection={setSection} />
-            <main style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+            <div style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
                 {/* v2: the reporting header. The section name is a plain div; the rail owns the "Analytics" heading. */}
                 <header style={{ ...paneHeader, padding: '10px 22px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -47,7 +47,7 @@ export default function AnalyticsLayout() {
                         {section === 'cycles' && <CyclesSection />}
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }

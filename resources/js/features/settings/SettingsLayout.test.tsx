@@ -134,4 +134,9 @@ describe('StubPage', () => {
         const note = screen.getByText('Billing — coming soon.');
         expect(note.style.border).toBe('var(--line) dashed var(--border2)');
     });
+
+    it('G3b: the settings links are a named navigation landmark', async () => {
+        renderLayout('owner');
+        expect(await screen.findByRole('navigation', { name: 'Settings' })).toBeInTheDocument();
+    });
 });

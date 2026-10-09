@@ -350,7 +350,7 @@ export default function IssueDetailPage() {
                 </div>
 
                 {/* ── Right rail: properties + activity ── */}
-                <aside style={{ flex: '1 1 300px', maxWidth: 340, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 28, position: 'sticky', top: 20 }}>
+                <aside aria-label="Issue properties" style={{ flex: '1 1 300px', maxWidth: 340, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 28, position: 'sticky', top: 20 }}>
 
                     {/* Properties panel */}
                     <div style={{ border: 'var(--line) solid var(--border)', borderRadius: 20, padding: 8, background: 'var(--panel)' }}>

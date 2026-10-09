@@ -48,7 +48,7 @@ export default function ReportingLayout() {
                 onDeleteReport={(id) => deleteReport.mutate(id)}
             />
 
-            <main style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+            <div style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
                 <header style={{ ...paneHeader, padding: '10px 22px' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={paneTitle}>{sectionLabel}</div>
@@ -72,7 +72,7 @@ export default function ReportingLayout() {
                         )}
                     </div>
                 </div>
-            </main>
+            </div>
         </div>
     );
 }
