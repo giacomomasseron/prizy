@@ -48,7 +48,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
         display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 14px', borderRadius: 'var(--radius-pill)', border: 'none',
         fontSize: 13, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
         color: active ? 'var(--fg)' : 'var(--fg2)', background: active ? 'var(--panel)' : 'transparent',
-        boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none',
+        boxShadow: active ? '0 0 0 1.5px var(--field)' : 'none',
     });
     const dot = (color: string, active: boolean): CSSProperties => ({ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0, opacity: active ? 1 : 0.35 });
 

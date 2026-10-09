@@ -84,12 +84,12 @@ describe('Input', () => {
 });
 
 describe('Input/Textarea v2', () => {
-  it('Input is a pill with a 1.5px border2 outline and a visible focus border', () => {
+  it('Input is a pill with a 1.5px field outline (3:1) and a visible focus border', () => {
     render(<Input aria-label="Name" />);
     const el = screen.getByRole('textbox', { name: 'Name' }) as HTMLElement;
     expect(el.style.borderRadius).toBe('var(--radius-pill)');
     expect(el.style.border).toBe('');
-    expect(el.className).toContain('border-border2');
+    expect(el.className).toContain('border-field');
     expect(el.className).toContain('focus:border-fg');
   });
   it('Textarea uses the card radius and the same focus border', () => {
@@ -163,11 +163,11 @@ describe('SegmentedControl', () => {
     render(<SegmentedControl options={[...opts]} value="list" onChange={() => {}} />);
     expect(screen.getByRole('button', { name: 'List' })).toHaveStyle({ background: 'var(--panel)' });
   });
-  it('track and options are pills; active option has a hairline ring', () => {
+  it('track and options are pills; active option has a 3:1 field ring', () => {
     render(<SegmentedControl options={[...opts]} value="list" onChange={() => {}} />);
     const active = screen.getByRole('button', { name: 'List' }) as HTMLElement;
     expect(active.style.borderRadius).toBe('var(--radius-pill)');
-    expect(active.style.boxShadow).toBe('0 0 0 1.5px var(--border)');
+    expect(active.style.boxShadow).toBe('0 0 0 1.5px var(--field)');
     expect((active.parentElement as HTMLElement).style.borderRadius).toBe('var(--radius-pill)');
   });
   it('inactive option has transparent background', () => {
@@ -193,5 +193,13 @@ describe('ThemeToggle', () => {
     await user.click(screen.getByRole('button'));
     // Defaults to light (localStorage empty), so one click → dark
     expect(document.documentElement.dataset.theme).toBe('dark');
+  });
+});
+
+describe('G3a: toggles announce and ring the selected segment', () => {
+  it('SegmentedControl buttons carry aria-pressed, true only on the selected one', () => {
+    render(<SegmentedControl options={[{ label: 'List', value: 'list' }, { label: 'Board', value: 'board' }]} value="board" onChange={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Board' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'List' })).toHaveAttribute('aria-pressed', 'false');
   });
 });

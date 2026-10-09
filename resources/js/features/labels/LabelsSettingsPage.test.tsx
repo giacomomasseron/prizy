@@ -82,7 +82,7 @@ describe('LabelsSettingsPage', () => {
         expect(screen.getByTestId('delete-1').className).toContain('hover:text-red');
         fireEvent.click(screen.getByRole('button', { name: 'New label' }));
         expect(screen.getByRole('button', { name: 'Add label' }).className).toContain('bg-fg');
-        expect(screen.getByLabelText('Label name').className).toContain('border-border2');
+        expect(screen.getByLabelText('Label name').className).toContain('border-field');
     });
 
     it('v2: a long "Most used" name truncates and keeps the full name in its title', () => {

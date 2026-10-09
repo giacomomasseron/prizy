@@ -8,7 +8,7 @@ export function RangeToggle({ range, onSelect }: { range: ReportRange; onSelect:
                 const active = r.key === range;
                 return (
                     <button key={r.key} type="button" onClick={() => onSelect(r.key)} aria-pressed={active}
-                        style={{ padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', background: active ? 'var(--panel)' : 'transparent', color: active ? 'var(--fg)' : 'var(--fg2)', boxShadow: active ? '0 0 0 1.5px var(--border)' : 'none' }}>
+                        style={{ padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', background: active ? 'var(--panel)' : 'transparent', color: active ? 'var(--fg)' : 'var(--fg2)', boxShadow: active ? '0 0 0 1.5px var(--field)' : 'none' }}>
                         {r.label}
                     </button>
                 );

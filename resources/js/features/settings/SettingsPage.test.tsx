@@ -194,7 +194,7 @@ describe('GeneralPage (v2 look)', () => {
     it('v2: highlighted title, display card headings, pill select, switch toggle and pill export button', async () => {
         renderPage();
         const select = await screen.findByLabelText('Email digest frequency');
-        expect(select.className).toContain('border-border2');
+        expect(select.className).toContain('border-field');
         expect(screen.getByRole('heading', { level: 1, name: 'General' }).querySelector('.hl')).not.toBeNull();
         expect(screen.getByRole('heading', { level: 2, name: 'Notifications' }).style.fontFamily).toBe('var(--font-display)');
         const toggle = screen.getByRole('checkbox', { name: /Support/ });
