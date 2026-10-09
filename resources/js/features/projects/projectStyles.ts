@@ -29,9 +29,10 @@ export const tagPill: CSSProperties = {
     whiteSpace: 'nowrap', flexShrink: 0,
 };
 
-/** Delete "×" buttons: layout inline, colour + red hover in DELETE_X_CLASSES. */
+/** Delete "×" buttons: layout inline, colour + red hover in DELETE_X_CLASSES; a 24×24 minimum target (WCAG 2.5.8). */
 export const deleteXStyle: CSSProperties = {
     background: 'transparent', border: 'none', fontSize: 15, lineHeight: 1, cursor: 'pointer',
     padding: '0 4px', fontFamily: 'inherit',
+    minWidth: 24, minHeight: 24, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
 };
 export const DELETE_X_CLASSES = 'text-fg3 hover:text-red-ink';

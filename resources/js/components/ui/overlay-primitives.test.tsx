@@ -333,3 +333,21 @@ describe('G3a: Menu disabled and danger items, and long lists', () => {
         expect(menu.style.overflowY).toBe('auto');
     });
 });
+
+describe('G3b: Menu focus skips disabled items', () => {
+    const items = [
+        { key: 'a', label: 'Locked', onActivate: vi.fn(), disabled: true },
+        { key: 'b', label: 'Open', onActivate: vi.fn() },
+    ];
+    it('opening a menu whose first item is disabled focuses the first enabled item', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
+    });
+    it('ArrowDown from the search box skips a disabled first item', async () => {
+        render(<Menu searchable trigger={<button type="button">Pick</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'ArrowDown' });
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
+    });
+});

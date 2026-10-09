@@ -143,7 +143,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                     <>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
                             <button type="button" onClick={() => setTeamsOpen((o) => !o)} aria-expanded={teamsOpen} style={sectionBtn} className="text-fg3 hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
-                            {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 22, height: 22, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
+                            {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 24, height: 24, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
                         </div>
                         {teamsOpen && (
                             <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>

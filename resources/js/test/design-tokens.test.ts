@@ -122,3 +122,9 @@ describe('V2-G3a: dark color-scheme and the keyboard focus ring', () => {
         }
     });
 });
+
+describe('V2-G3b: the focus ring is layered', () => {
+    it('sits in the base layer, so a focus-visible: utility can replace it', () => {
+        expect(css).toMatch(/@layer base \{\s*:where\(a, button,.*\):focus-visible \{\s*outline: 2px solid var\(--fg\);\s*outline-offset: 2px;\s*\}\s*\}/);
+    });
+});
