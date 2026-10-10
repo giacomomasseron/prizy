@@ -20,6 +20,16 @@ final class PortalTicketRepository
     ];
 
     /**
+     * Each status's pill colour on the portal: the agent desk's colour for the status its label stands for, so a
+     * label always has one colour (Received blue, In progress red, Awaiting you amber, Solved green).
+     */
+    public const STATUS_TONES = [
+        'new' => 'blue', 'open' => 'red',
+        'pending' => 'amber', 'on_hold' => 'amber',
+        'solved' => 'green', 'closed' => 'green',
+    ];
+
+    /**
      * The contact's own tickets, newest activity first, each with an
      * `unread` attribute: a PUBLIC agent message newer than contact_seen_at
      * (or any at all when never seen). One query, no N+1.

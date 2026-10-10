@@ -3,53 +3,54 @@
 @section('title', $title)
 
 @section('content')
-    <div class="wrap" style="max-width:760px;padding:32px 0 72px">
-        <div class="faint" style="font-size:13px;margin-bottom:18px">
+    <div class="hc-wrap hc-wrap--narrow hc-page">
+        <nav class="hc-crumbs" aria-label="Breadcrumb">
             <a href="{{ \App\Services\HelpLocale::url('help.home', [], $lang) }}">Help center</a>
             › <a href="{{ \App\Services\HelpLocale::url('help.topic', [$category->slug], $lang) }}">{{ $category->name }}</a>
             › {{ $section->name }}
-        </div>
+        </nav>
 
         @if ($is_fallback)
-            <div class="card" style="padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:14px">
-                <span class="faint" style="font-size:13px;flex:1">This article isn't available in {{ \App\Services\KbLocales::name($lang) }} yet — showing the English version.</span>
-                <a href="{{ \App\Services\HelpLocale::url('help.article', [$category->slug, $section->slug, $article->slug]) }}" style="font-size:13px;white-space:nowrap">Switch to English</a>
+            <div class="hc-notice">
+                <span class="hc-notice__text">This article isn't available in {{ \App\Services\KbLocales::name($lang) }} yet — showing the English version.</span>
+                <a href="{{ \App\Services\HelpLocale::url('help.article', [$category->slug, $section->slug, $article->slug]) }}">Switch to English</a>
             </div>
         @endif
 
         {{-- WCAG 2.1 AA 3.1.2 (Language of Parts): mark the translated passage
              only when it actually IS the translation. On a fallback the body is
              genuinely English (the page chrome's own language), so lang here
-             would mislabel it — $is_fallback is the definitive signal. --}}
-        <h1 @if (! $is_fallback)lang="{{ $lang }}" @endif style="font-size:26px;font-weight:700;margin:0 0 8px">{{ $title }}</h1>
-        <div class="faint" style="font-size:12.5px;margin-bottom:28px">Updated {{ $updated_at->format('M j, Y') }}</div>
+             would mislabel it — $is_fallback is the definitive signal. The lang
+             attribute stays first on the h1: a test pins `<h1 lang="…"`. --}}
+        <h1 @if (! $is_fallback)lang="{{ $lang }}" @endif class="hc-title">{{ $title }}</h1>
+        <div class="hc-article__updated">Updated {{ $updated_at->format('M j, Y') }}</div>
 
         <article class="kb" @if (! $is_fallback)lang="{{ $lang }}"@endif>{!! $html !!}</article>
 
-        <div class="card" style="padding:22px;margin-top:40px;text-align:center">
+        <div class="hc-card hc-feedback">
             @if (request()->query('voted'))
-                <p style="margin:0;font-weight:600">Thanks for the feedback!</p>
+                <p class="hc-feedback__thanks">Thanks for the feedback!</p>
             @else
-                <p style="margin:0 0 12px;font-weight:600">Was this helpful?</p>
-                <div style="display:flex;gap:10px;justify-content:center">
+                <p class="hc-feedback__q">Was this helpful?</p>
+                <div class="hc-actions hc-actions--center">
                     <form action="{{ route('help.feedback', $article->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="vote" value="up">
-                        <button type="submit" class="btn">Yes</button>
+                        <button type="submit" class="hc-btn">Yes</button>
                     </form>
                     <form action="{{ route('help.feedback', $article->id) }}" method="POST">
                         @csrf
                         <input type="hidden" name="vote" value="down">
-                        <button type="submit" class="btn">No</button>
+                        <button type="submit" class="hc-btn">No</button>
                     </form>
                 </div>
             @endif
         </div>
 
         @if ($related->isNotEmpty())
-            <div style="margin-top:40px">
-                <h2 style="font-size:15px;font-weight:600;margin:0 0 14px">Related articles</h2>
-                <ul style="list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px">
+            <div class="hc-related">
+                <h2 class="hc-card__title">Related articles</h2>
+                <ul class="hc-list">
                     @foreach ($related as $r)
                         <li><a href="{{ \App\Services\HelpLocale::url('help.article', [$category->slug, $section->slug, $r->slug], $lang) }}">{{ $r->display_title }}</a></li>
                     @endforeach

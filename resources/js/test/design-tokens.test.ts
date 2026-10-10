@@ -2,7 +2,10 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { describe, expect, it } from 'vitest';
 
-const css = readFileSync(resolve(__dirname, '../../../resources/css/app.css'), 'utf8');
+// The palette and the highlighter live in shared.css (imported by app.css and the Help Center's help.css); the
+// @theme mapping, the focus ring and the auth rules stay in app.css. These checks read the two as one stylesheet.
+const css = readFileSync(resolve(__dirname, '../../../resources/css/shared.css'), 'utf8') + '\n'
+    + readFileSync(resolve(__dirname, '../../../resources/css/app.css'), 'utf8');
 const vite = readFileSync(resolve(__dirname, '../../../vite.config.js'), 'utf8');
 const blade = readFileSync(resolve(__dirname, '../../../resources/views/app.blade.php'), 'utf8');
 

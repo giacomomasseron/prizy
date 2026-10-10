@@ -3,20 +3,21 @@
 @section('title', 'Sign in')
 
 @section('content')
-    <section class="wrap" style="max-width:440px;padding:64px 28px">
-        <h1 style="font-size:24px;font-weight:600;letter-spacing:-.02em;margin:0 0 8px">Sign in to view your requests</h1>
+    <section class="hc-wrap hc-wrap--solo hc-solo-page">
+        <h1 class="hc-title hc-title--sm">Sign in to view your requests</h1>
         @if ($sent)
-            <div class="card" style="padding:18px 20px;margin-top:16px">
-                <p style="margin:0" class="muted">{{ "If that address has requests with us, we've emailed a sign-in link. It expires in 15 minutes." }}</p>
+            <div class="hc-card hc-sent">
+                <p>{{ "If that address has requests with us, we've emailed a sign-in link. It expires in 15 minutes." }}</p>
             </div>
         @else
-            <p class="muted" style="margin:0 0 22px">We'll email you a one-time link — no password needed.</p>
-            <form method="POST" action="{{ route('help.login') }}" class="card" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+            <p class="hc-lead">We'll email you a one-time link — no password needed.</p>
+            <form method="POST" action="{{ route('help.login') }}" class="hc-card hc-form">
                 @csrf
-                <label style="display:flex;flex-direction:column;gap:7px;font-size:12.5px;font-weight:500" class="muted">Email
-                    <input type="email" name="email" required style="height:42px;border-radius:10px;border:1px solid var(--border2);background:var(--bg2);color:var(--fg);font-size:14px;padding:0 13px;outline:none">
-                </label>
-                <button type="submit" class="btn btn-primary" style="justify-content:center">Email me a sign-in link</button>
+                <div>
+                    <label for="email" class="hc-label">Email</label>
+                    <input type="email" id="email" name="email" required autocomplete="email" class="hc-field">
+                </div>
+                <button type="submit" class="hc-btn hc-btn--primary hc-btn--block">Email me a sign-in link</button>
             </form>
         @endif
     </section>
