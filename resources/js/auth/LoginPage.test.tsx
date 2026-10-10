@@ -2,7 +2,7 @@ import { readFileSync } from 'fs';
 import { resolve } from 'path';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, expect, it, vi } from 'vitest';
 import LoginPage from './LoginPage';
 
@@ -95,4 +95,28 @@ it('v2: the auth files carry no fixed hex or rgb(a) colours', () => {
 it('G3c: the login page renders exactly one main landmark', () => {
     renderLogin();
     expect(screen.getAllByRole('main')).toHaveLength(1);
+});
+
+it('P7-B: signing in lands on Today, the home (the route guard sends others to theirs)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: true, status: 200,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ user: { id: 'me' } }),
+    }));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+        <QueryClientProvider client={qc}>
+            <MemoryRouter initialEntries={['/login']}>
+                <Routes>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/today" element={<div>TODAY</div>} />
+                </Routes>
+            </MemoryRouter>
+        </QueryClientProvider>,
+    );
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'a@b.com' } });
+    fireEvent.change(screen.getByLabelText(/password/i), { target: { value: 'x' } });
+    fireEvent.click(screen.getByRole('button', { name: /sign in/i }));
+
+    expect(await screen.findByText('TODAY')).toBeInTheDocument();
 });

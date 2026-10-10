@@ -19,7 +19,7 @@ function renderAt(me: { data?: Me; isLoading: boolean }) {
         <MemoryRouter initialEntries={['/support']}>
             <Routes>
                 <Route path="/support" element={<RequireAgent><div>DESK</div></RequireAgent>} />
-                <Route path="/" element={<div>TRACKER</div>} />
+                <Route path="/today" element={<div>TODAY</div>} />
                 <Route path="/settings" element={<div>SETTINGS</div>} />
             </Routes>
         </MemoryRouter>,
@@ -37,8 +37,8 @@ describe('RequireAgent', () => {
         // No tracker capability either, so settings is the only place left.
         expect(screen.getByText('SETTINGS')).toBeInTheDocument();
     });
-    it('sends a developer who is not an agent to the tracker', () => {
+    it('sends a developer who is not an agent to Today, their home', () => {
         renderAt({ data: { ...base, is_developer: true }, isLoading: false });
-        expect(screen.getByText('TRACKER')).toBeInTheDocument();
+        expect(screen.getByText('TODAY')).toBeInTheDocument();
     });
 });

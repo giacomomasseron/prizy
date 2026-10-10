@@ -32,10 +32,10 @@ describe('canWorkHelpdesk', () => {
 });
 
 describe('homePathFor', () => {
-    it('sends a developer to the tracker', () => expect(homePathFor(me({ is_developer: true }))).toBe('/'));
-    it('sends an owner to the tracker', () => expect(homePathFor(me({ admin_level: 'owner' }))).toBe('/'));
+    it('sends a developer to Today (P7-B: the tracker user\'s home)', () => expect(homePathFor(me({ is_developer: true }))).toBe('/today'));
+    it('sends an owner to Today', () => expect(homePathFor(me({ admin_level: 'owner' }))).toBe('/today'));
     it('sends an agent-only user to the support desk', () => expect(homePathFor(me({ is_agent: true }))).toBe('/support'));
     it('sends a no-capability member to settings', () => expect(homePathFor(me({}))).toBe('/settings'));
     it('sends an agent to settings when the helpdesk is off, not to a desk that 404s', () => expect(homePathFor(me({ is_agent: true, workspace: { helpdesk_enabled: false } }))).toBe('/settings'));
-    it('prefers the tracker for a dev+agent user', () => expect(homePathFor(me({ is_developer: true, is_agent: true }))).toBe('/'));
+    it('prefers Today for a dev+agent user', () => expect(homePathFor(me({ is_developer: true, is_agent: true }))).toBe('/today'));
 });

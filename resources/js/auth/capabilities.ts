@@ -23,9 +23,9 @@ export function canWorkHelpdesk(me: Me | undefined): boolean {
     return !!me && me.is_agent && me.workspace?.helpdesk_enabled === true;
 }
 
-/** Where a user belongs on landing / when redirected off a route they can't use. */
+/** Where a user belongs on landing / when redirected off a route they can't use. Tracker users: Today (P7-B). */
 export function homePathFor(me: Me | undefined): string {
-    if (canUseTracker(me)) return '/';
+    if (canUseTracker(me)) return '/today';
     if (canWorkHelpdesk(me)) return '/support';
     return '/settings';
 }

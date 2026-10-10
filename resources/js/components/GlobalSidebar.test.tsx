@@ -179,3 +179,30 @@ describe('GlobalSidebar', () => {
         expect(await screen.findByRole('navigation', { name: 'Workspace' })).toBeInTheDocument();
     });
 });
+
+describe('P7-B: the Today entry', () => {
+    beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('comes first in the sidebar, before My Issues, and links to /today', async () => {
+        renderSidebar();
+        const today = await screen.findByRole('link', { name: /Today/ });
+        expect(today).toHaveAttribute('href', '/today');
+        expect(screen.getAllByRole('link')[0]).toBe(today);
+        const myIssues = screen.getByRole('link', { name: /My Issues/ });
+        expect(today.compareDocumentPosition(myIssues) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('is only for tracker users', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true } } });
+            if (url.includes('/unread-count')) return j({ data: { count: 0 } });
+            return j({ data: [], links: { next: null } });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><GlobalSidebar onCollapse={() => {}} /></MemoryRouter></QueryClientProvider>);
+
+        expect(await screen.findByRole('link', { name: /Support inbox/ })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Today/ })).toBeNull();
+    });
+});
