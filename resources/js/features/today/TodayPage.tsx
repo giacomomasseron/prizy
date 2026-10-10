@@ -1,5 +1,6 @@
 import { useMe } from '../../auth/useAuth';
 import { firstName, greetingFor, todayLabel } from './greeting';
+import { TodoCard } from './TodoCard';
 
 /**
  * Today (P7-B, the Today v2 design): the tracker user's home. The date, a greeting on the highlighter, and the
@@ -18,6 +19,7 @@ export default function TodayPage() {
                     {greetingFor(now.getHours())}{name ? `, ${name}` : ''}. Here’s <span className="hl">your day.</span>
                 </h1>
             </header>
+            <TodoCard />
         </div>
     );
 }
