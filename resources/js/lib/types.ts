@@ -1,4 +1,12 @@
 export type IssueStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done' | 'cancelled';
+
+/** One issue picker row from GET /v1/issues/lookup (PRD §3.2.1): the reference, the title and the status. */
+export interface IssueLookupItem {
+    id: string;
+    identifier: string;
+    title: string;
+    status: IssueStatus;
+}
 export type IssuePriority = 'no_priority' | 'urgent' | 'high' | 'medium' | 'low';
 
 export interface Issue {

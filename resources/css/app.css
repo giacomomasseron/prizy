@@ -44,6 +44,10 @@ html, body { background: var(--bg); color: var(--fg); }
 @keyframes prizy-slide { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes prizy-pop   { from { transform: scale(.97) translateY(6px); opacity: 0 } to { transform: none; opacity: 1 } }
 
+/* The @ mention picker's popover (P7-B): pops in, unless the user asked for less motion. */
+.mention-pop { animation: prizy-pop .12s ease; }
+@media (prefers-reduced-motion: reduce) { .mention-pop { animation: none; } }
+
 /* ── Auth pages (login + signup, v2). Inline styles set only the field border's width and style, so the
       colour and the offset focus shadow below can change on :focus. ── */
 @keyframes login-fade   { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
