@@ -158,7 +158,8 @@ export function useToggleStar() {
             const starredAt = vars.starred ? new Date().toISOString() : null;
             const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
             for (const [key, page] of snapshots) {
-                qc.setQueryData(key, applyStarOptimistic(page, vars.id, vars.starred, starredAt));
+                // A list still loading has nothing to flip; writing a page into it would show it empty.
+                if (page) qc.setQueryData(key, applyStarOptimistic(page, vars.id, vars.starred, starredAt));
             }
             const prevDetail = qc.getQueryData<Issue>(['issue', vars.id]);
             if (prevDetail) {

@@ -21,7 +21,7 @@ export function StarToggle({ issue, style }: { issue: Starrable; style?: CSSProp
             aria-label="Star"
             aria-pressed={starred}
             title={starred ? 'Unstar' : 'Star — pin to top'}
-            disabled={toggle.isPending}
+            aria-disabled={toggle.isPending || undefined}
             className="bg-transparent text-fg3 hover:bg-hover aria-pressed:text-accent"
             style={{
                 width: 24, height: 24, flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
@@ -31,6 +31,8 @@ export function StarToggle({ issue, style }: { issue: Starrable; style?: CSSProp
             onPointerDown={(e) => e.stopPropagation()}
             onClick={(e) => {
                 e.stopPropagation();
+                // aria-disabled, not disabled, while the request runs: a disabled button drops keyboard focus.
+                if (toggle.isPending) return;
                 toggle.mutate({ id: issue.id, starred: !starred });
             }}
         >
@@ -49,9 +51,11 @@ export function StarButton({ issue, style }: { issue: Starrable; style?: CSSProp
             variant="secondary"
             size="sm"
             aria-pressed={starred}
-            disabled={toggle.isPending}
+            aria-disabled={toggle.isPending || undefined}
             style={style}
-            onClick={() => toggle.mutate({ id: issue.id, starred: !starred })}
+            onClick={() => {
+                if (!toggle.isPending) toggle.mutate({ id: issue.id, starred: !starred });
+            }}
         >
             <span aria-hidden="true" className={starred ? 'text-accent' : undefined}>{starred ? '★' : '☆'}</span>
             {starred ? 'Starred' : 'Star'}

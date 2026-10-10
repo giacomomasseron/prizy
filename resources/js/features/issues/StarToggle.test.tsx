@@ -113,3 +113,46 @@ describe('P7-A: StarButton (the issue headers)', () => {
         expect(on.querySelector('[aria-hidden="true"]')?.className).toContain('text-accent');
     });
 });
+
+describe('P7-A: the star while its request runs', () => {
+    it('ignores a second click but stays enabled, so keyboard focus stays on it', async () => {
+        const fetchMock = pendingFetch();
+        withClient(<StarToggle issue={ISSUE} />);
+        const star = screen.getByRole('button', { name: 'Star' });
+
+        fireEvent.click(star);
+        await waitFor(() => expect(star).toHaveAttribute('aria-disabled', 'true'));
+        expect(star).not.toBeDisabled();
+        fireEvent.click(star);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('does the same on the header button', async () => {
+        const fetchMock = pendingFetch();
+        withClient(<StarButton issue={ISSUE} />);
+        const button = screen.getByRole('button', { name: 'Star' });
+
+        fireEvent.click(button);
+        await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'));
+        expect(button).not.toBeDisabled();
+        fireEvent.click(button);
+        await new Promise((resolve) => setTimeout(resolve, 20));
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaves a list that has not loaded yet alone', async () => {
+        pendingFetch();
+        const qc = client();
+        qc.setQueryData(['issues', {}], { items: [ISSUE], next: null });
+        void qc.prefetchQuery({ queryKey: ['issues', { starred: 'true' }], queryFn: () => new Promise(() => {}) });
+        withClient(<StarToggle issue={ISSUE} />, qc);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Star' }));
+
+        await waitFor(() => expect(qc.getQueryData<{ items: Issue[] }>(['issues', {}])?.items[0].starred).toBe(true));
+        expect(qc.getQueryData(['issues', { starred: 'true' }])).toBeUndefined();
+    });
+});
