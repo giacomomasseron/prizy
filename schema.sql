@@ -461,6 +461,20 @@ CREATE TABLE issue_blockers (
 );
 
 -- ---------------------------------------------------------------------------
+-- issue_stars
+-- A user's personal star on an issue (PRD §3.2.9). Private to the user;
+-- scoped through the issue (no workspace_id, no RLS of its own). Never
+-- broadcast, never exported.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE issue_stars (
+    user_id             UUID            NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    issue_id            UUID            NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    PRIMARY KEY (user_id, issue_id)
+);
+
+-- ---------------------------------------------------------------------------
 -- issue_comments
 -- Comments and internal notes on an issue.
 -- ---------------------------------------------------------------------------
@@ -1022,6 +1036,7 @@ CREATE INDEX idx_issues_assignee           ON issues(assignee_id);
 CREATE INDEX idx_issues_status             ON issues(status);
 CREATE INDEX idx_issues_parent             ON issues(parent_issue_id);
 CREATE INDEX idx_issue_blockers_blocked    ON issue_blockers(blocked_issue_id);
+CREATE INDEX issue_stars_issue_idx        ON issue_stars(issue_id);
 CREATE INDEX idx_issue_activities_issue    ON issue_activities(issue_id);
 CREATE INDEX idx_issue_comments_issue      ON issue_comments(issue_id);
 

@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\V1\IssueCommentReactionController;
 use App\Http\Controllers\Api\V1\IssueController;
 use App\Http\Controllers\Api\V1\IssueGithubLinkController;
 use App\Http\Controllers\Api\V1\IssueLabelController;
+use App\Http\Controllers\Api\V1\IssueStarController;
 use App\Http\Controllers\Api\V1\IssueTicketLinkController;
 use App\Http\Controllers\Api\V1\KbArticleController;
 use App\Http\Controllers\Api\V1\KbCategoryController;
@@ -167,6 +168,8 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/issues/{issue}/github-links/{link}', [IssueGithubLinkController::class, 'destroy'])->middleware('verified');
         Route::get('/issues/{issue}/labels', [IssueLabelController::class, 'index']);
         Route::put('/issues/{issue}/labels', [IssueLabelController::class, 'update'])->middleware('verified');
+        Route::put('/issues/{issue}/star', [IssueStarController::class, 'star'])->middleware('verified');
+        Route::delete('/issues/{issue}/star', [IssueStarController::class, 'unstar'])->middleware('verified');
 
         Route::get('/labels', [LabelController::class, 'index'])->middleware('can:viewAny,App\\Models\\Label');
         Route::get('/labels/{label}', [LabelController::class, 'show']);

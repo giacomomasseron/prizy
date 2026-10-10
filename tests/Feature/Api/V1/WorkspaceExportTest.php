@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Models\Contact;
 use App\Models\Issue;
 use App\Models\IssueComment;
+use App\Models\IssueStar;
 use App\Models\Label;
 use App\Models\Project;
 use App\Models\Release;
@@ -48,6 +49,8 @@ function exportFixtures(Workspace $ws, User $owner): array
         'id' => (string) Str::uuid(), 'issue_id' => $issue->id, 'user_id' => $owner->id,
         'body' => 'Exported comment',
     ]);
+    // A personal star (PRD §3.2.9): it must NOT reach the export.
+    IssueStar::query()->insert(['user_id' => $owner->id, 'issue_id' => $issue->id, 'created_at' => now()]);
     Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'export-label', 'color' => '#ff0000']);
     Project::factory()->for($ws, 'workspace')->create();
     Release::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Export v1']);
@@ -128,7 +131,8 @@ it('exports a valid zip for the owner with manifest, content, and no secrets', f
         expect($m)->toHaveKeys(['id', 'name', 'email', 'admin_level', 'is_developer', 'is_agent', 'verified']);
     }
 
-    foreach (['notifications.json', 'personal_access_tokens.json', 'github_integrations.json', 'invitations.json', 'oauth_identities.json'] as $absent) {
+    // issue_stars: stars are personal (PRD §3.2.9) — never exported.
+    foreach (['notifications.json', 'personal_access_tokens.json', 'github_integrations.json', 'invitations.json', 'oauth_identities.json', 'issue_stars.json'] as $absent) {
         expect($zip->getFromName($absent))->toBeFalse();
     }
 
