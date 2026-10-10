@@ -164,7 +164,7 @@ it('ticks and unticks a to-do: completed_at is set, kept on a second tick, clear
         ->assertStatus(200)
         ->assertJsonPath('data.done', false)
         ->assertJsonPath('data.completed_at', null)
-        ->assertJsonPath('data.position', 7.0);
+        ->assertJsonPath('data.position', 7);
 });
 
 it('moves a to-do by position and renumbers the open list when two positions crowd together', function (): void {
@@ -178,10 +178,10 @@ it('moves a to-do by position and renumbers the open list when two positions cro
 
     // A lands a hair after C: closer than the minimum gap, so the open list is renumbered 1, 2, 3 in its order.
     $this->withToken($token)->patchJson("/v1/me/todos/{$a->id}", ['position' => 0.5 + 1e-9])
-        ->assertStatus(200)->assertJsonPath('data.position', 2.0);
+        ->assertStatus(200)->assertJsonPath('data.position', 2);
     $res = $this->withToken($token)->getJson('/v1/me/todos');
     expect(todoTexts($res))->toBe(['C', 'A', 'B']);
-    expect(collect($res->json('data'))->pluck('position')->all())->toBe([1.0, 2.0, 3.0]);
+    expect(collect($res->json('data'))->pluck('position')->all())->toBe([1, 2, 3]);
 });
 
 it('rejects a PATCH with nothing to change (422)', function (): void {
