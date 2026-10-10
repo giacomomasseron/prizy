@@ -36,7 +36,7 @@ afterEach(fn () => Workspace::forgetCurrent());
 
 it('finds an issue by its PRZ- reference, its bare characters or a prefix, in any case', function (): void {
     ['token' => $token, 'make' => $make] = lookupWorld();
-    $issue = $make(['id' => 'abc12300-0000-4000-8000-000000000001', 'title' => 'Alpha']);
+    $issue = $make(['id' => 'abc12300-0000-4000-8000-000000000001', 'title' => 'Alpha', 'status' => 'todo']);
     $make(['title' => 'Beta']);
 
     foreach (['PRZ-ABC123', 'prz-abc1', 'ABC123', 'abc'] as $q) {
