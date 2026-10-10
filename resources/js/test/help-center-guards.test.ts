@@ -22,8 +22,7 @@ const lineOf = (src: string, index: number) => src.slice(0, index).split('\n').l
 
 // Views not restyled yet — the later tasks of the restyle empty this list, and the last one removes it.
 const NOT_YET = [
-    'help/login.blade.php', 'help/link-expired.blade.php', 'help/requests.blade.php', 'help/request.blade.php',
-    'help/new.blade.php', 'csat/thanks.blade.php', 'csat/expired.blade.php',
+    'csat/thanks.blade.php', 'csat/expired.blade.php',
 ];
 const restyled = files.filter((f) => !NOT_YET.includes(f.rel));
 
@@ -158,5 +157,41 @@ describe('Help Center v2: knowledge-base pages', () => {
         const article = src('help/article.blade.php');
         expect(article).toContain('<div class="hc-notice">');
         expect(article).toContain('<nav class="hc-crumbs" aria-label="Breadcrumb">');
+    });
+});
+
+describe('Help Center v2: portal pages', () => {
+    const src = (rel: string) => files.find((f) => f.rel === rel)!.src;
+
+    it('one status map: both request views draw the status through the shared partial, which reads STATUS_TONES', () => {
+        expect(src('help/requests.blade.php')).toContain("@include('help.partials.status', ['status' => $t->status])");
+        expect(src('help/request.blade.php')).toContain("@include('help.partials.status', ['status' => $ticket->status])");
+        for (const rel of ['help/requests.blade.php', 'help/request.blade.php']) expect(src(rel), rel).not.toContain('$statusColors');
+        const partial = src('help/partials/status.blade.php');
+        expect(partial).toContain('hc-status--{{ \\App\\Repositories\\PortalTicketRepository::STATUS_TONES[$status]');
+        expect(partial).toContain('\\App\\Repositories\\PortalTicketRepository::STATUS_LABELS[$status]');
+    });
+    it('STATUS_TONES gives each customer label the desk colour of the status it stands for', () => {
+        const php = readFileSync(resolve(__dirname, '../../../app/Repositories/PortalTicketRepository.php'), 'utf8');
+        const tones = Object.fromEntries([.../STATUS_TONES = \[([^\]]*)\]/.exec(php)![1].matchAll(/'(\w+)' => '(\w+)'/g)].map((m) => [m[1], m[2]]));
+        expect(tones).toEqual({ new: 'blue', open: 'red', pending: 'amber', on_hold: 'amber', solved: 'green', closed: 'green' });
+    });
+    it('every field error is announced and tied to its field (role="alert", an id the field names in aria-describedby)', () => {
+        const offenders: string[] = [];
+        for (const { rel, src: s } of restyled) {
+            for (const m of s.matchAll(/<span\b[^>]*class="hc-error"[^>]*>/g)) {
+                const id = /\bid="([^"]+)"/.exec(m[0])?.[1];
+                if (!/role="alert"/.test(m[0]) || id === undefined || !s.includes(`aria-describedby="${id}"`)) offenders.push(`${rel}: ${m[0]}`);
+            }
+        }
+        expect(offenders).toEqual([]);
+        expect(src('help/new.blade.php').match(/class="hc-error"/g)).toHaveLength(3);
+        expect(src('help/request.blade.php').match(/class="hc-error"/g)).toHaveLength(1);
+    });
+    it('"New reply" is an accent chip, not a button class on a span', () => {
+        expect(src('help/requests.blade.php')).toContain('<span class="hc-chip hc-chip--accent">New reply</span>');
+    });
+    it('the active request filter says so', () => {
+        expect(src('help/requests.blade.php')).toContain('@if ($filter === $key) aria-current="true" @endif');
     });
 });
