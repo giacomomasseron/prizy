@@ -284,7 +284,7 @@ export default function ReleaseDetailPage() {
                         style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', textDecoration: 'none', color: 'inherit' }}
                         className="border-b border-border last:border-b-0 hover:bg-hover"
                     >
-                        <span style={{ width: 70, flexShrink: 0, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: 'var(--fg3)' }}>{issue.ref}</span>
+                        <span style={{ width: 76, flexShrink: 0, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: 'var(--fg3)' }}>{issue.ref}</span>
                         <span style={{ flex: '1 1 auto', minWidth: 0, fontSize: 14, color: 'var(--fg)' }}>{issue.title}</span>
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--fg2)', width: 110, flexShrink: 0 }}>
                             <span style={{ width: 8, height: 8, borderRadius: '50%', background: STATUS_COLOR[issue.status], display: 'inline-block' }} />

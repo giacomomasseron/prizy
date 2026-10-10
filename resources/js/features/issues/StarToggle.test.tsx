@@ -156,3 +156,19 @@ describe('P7-A: the star while its request runs', () => {
         expect(qc.getQueryData(['issues', { starred: 'true' }])).toBeUndefined();
     });
 });
+
+describe('P7-A: a double click on the star', () => {
+    it('ignores the second click of a double click, even once the first request has answered', async () => {
+        const fetchMock = pendingFetch();
+        withClient(<><StarToggle issue={ISSUE} /><StarButton issue={ISSUE} /></>);
+        const [toggle, button] = screen.getAllByRole('button', { name: 'Star' });
+
+        fireEvent.click(toggle, { detail: 2 });
+        fireEvent.click(button, { detail: 2 });
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(fetchMock).not.toHaveBeenCalled();
+
+        fireEvent.click(toggle, { detail: 1 });
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    });
+});

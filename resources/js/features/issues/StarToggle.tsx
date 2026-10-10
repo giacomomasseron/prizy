@@ -32,7 +32,8 @@ export function StarToggle({ issue, style }: { issue: Starrable; style?: CSSProp
             onClick={(e) => {
                 e.stopPropagation();
                 // aria-disabled, not disabled, while the request runs: a disabled button drops keyboard focus.
-                if (toggle.isPending) return;
+                // The second click of a double click (detail 2) is ignored too: the first request may already have answered.
+                if (toggle.isPending || e.detail > 1) return;
                 toggle.mutate({ id: issue.id, starred: !starred });
             }}
         >
@@ -53,8 +54,8 @@ export function StarButton({ issue, style }: { issue: Starrable; style?: CSSProp
             aria-pressed={starred}
             aria-disabled={toggle.isPending || undefined}
             style={style}
-            onClick={() => {
-                if (!toggle.isPending) toggle.mutate({ id: issue.id, starred: !starred });
+            onClick={(e) => {
+                if (!toggle.isPending && e.detail < 2) toggle.mutate({ id: issue.id, starred: !starred });
             }}
         >
             <span aria-hidden="true" className={starred ? 'text-accent' : undefined}>{starred ? '★' : '☆'}</span>

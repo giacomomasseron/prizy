@@ -249,7 +249,7 @@ export default function SearchPage() {
                                 >
                                     <PriorityIcon priority={it.priority} />
                                     <StatusIcon status={it.status} size={14} />
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 76, flexShrink: 0 }}>
                                         {issueRef(it)}
                                     </span>
                                     {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}

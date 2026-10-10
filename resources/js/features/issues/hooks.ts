@@ -107,7 +107,8 @@ export function useTransitionStatus() {
             // Optimistic update for the list/board
             const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
             for (const [key, page] of snapshots) {
-                qc.setQueryData(key, applyStatusOptimistic(page, vars.id, vars.status));
+                // A list still loading has nothing to move; writing a page into it would show it empty.
+                if (page) qc.setQueryData(key, applyStatusOptimistic(page, vars.id, vars.status));
             }
             // Optimistic update for the detail page (IssueDetailPage uses ['issue', id])
             const prevDetail = qc.getQueryData<Issue>(['issue', vars.id]);

@@ -125,7 +125,7 @@ describe('ReleaseDetailPage', () => {
             fireEvent.click(btn);
             await Promise.resolve(); // flush the clipboard.writeText() microtask
         });
-        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('## v1.1\n- Fix login bug (#AAA000)');
+        expect(navigator.clipboard.writeText).toHaveBeenCalledWith('## v1.1\n- Fix login bug (AAA000)');
         expect(screen.getByRole('button', { name: 'Copied' })).toBeInTheDocument();
         act(() => { vi.advanceTimersByTime(2000); });
         expect(screen.getByRole('button', { name: 'Copy changelog' })).toBeInTheDocument();
@@ -288,5 +288,14 @@ describe('ReleaseDetailPage', () => {
             expect(del.className).toContain('disabled:opacity-50');
             expect(del.className).toContain(settingsStyles.DANGER_PILL_CLASSES);
         } finally { spy.mockRestore(); }
+    });
+});
+
+describe('P7-A: the reference column', () => {
+    it('is wide enough for PRZ- and 6 characters (76px, like the list row)', () => {
+        renderPage();
+        const row = screen.getAllByTestId('release-issue-row')[1];
+        const ref = Array.from(row.querySelectorAll('span')).find((s) => s.textContent === 'AAA000');
+        expect(ref?.style.width).toBe('76px');
     });
 });

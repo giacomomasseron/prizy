@@ -103,3 +103,16 @@ it('requires a query (422)', function (): void {
     $this->withToken($token)->getJson('/v1/issues/lookup')->assertStatus(422);
     $this->withToken($token)->getJson('/v1/issues/lookup?q=%20%20')->assertStatus(422);
 });
+
+it('lists an older reference match before newer title matches', function (): void {
+    ['token' => $token, 'make' => $make] = lookupWorld();
+    $byRef = $make(['id' => 'add00000-0000-4000-8000-000000000002', 'title' => 'Zeta', 'updated_at' => now()->subDay()]);
+    for ($i = 1; $i <= 8; $i++) {
+        $make(['id' => sprintf('00000000-0000-4000-8000-%012d', $i), 'title' => "Add widget {$i}"]);
+    }
+
+    $res = $this->withToken($token)->getJson('/v1/issues/lookup?q=add')->assertStatus(200);
+
+    expect($res->json('data'))->toHaveCount(8);
+    expect($res->json('data.0.id'))->toBe($byRef->id);
+});
