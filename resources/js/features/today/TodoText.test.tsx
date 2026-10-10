@@ -39,7 +39,7 @@ describe('TodoText', () => {
         const { container } = render(<MemoryRouter><TodoText todo={todo('Follow up', ISSUE)} names={[]} /></MemoryRouter>);
 
         const link = screen.getByRole('link', { name: 'PRZ-ABC123' });
-        expect(container.textContent).toBe('Follow upPRZ-ABC123');
+        expect(container.textContent).toBe('Follow up PRZ-ABC123');
         expect(link.previousElementSibling?.textContent).toBe('Follow up');
     });
 

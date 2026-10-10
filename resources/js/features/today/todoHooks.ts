@@ -3,6 +3,8 @@ import { api } from '../../lib/apiClient';
 import type { IssueLookupItem, Todo } from '../../lib/types';
 
 const KEY = ['todos'] as const;
+/** A counter, not a timestamp: two adds in one millisecond still get their own ids. */
+let pendingSeq = 0;
 
 /** The caller's own to-dos (PRD §3.2.10): GET /v1/me/todos. */
 export function useTodos() {
@@ -29,6 +31,7 @@ export function topPosition(todos: Todo[]): number {
 function useTodoMutation<V>(request: (vars: V) => Promise<unknown>, apply: (todos: Todo[], vars: V) => Todo[]) {
     const qc = useQueryClient();
     return useMutation({
+        mutationKey: KEY,
         mutationFn: request,
         onMutate: async (vars: V) => {
             await qc.cancelQueries({ queryKey: KEY });
@@ -39,7 +42,11 @@ function useTodoMutation<V>(request: (vars: V) => Promise<unknown>, apply: (todo
         onError: (_err, _vars, ctx) => {
             if (ctx?.previous) qc.setQueryData<Todo[]>(KEY, ctx.previous);
         },
-        onSettled: () => qc.invalidateQueries({ queryKey: KEY }),
+        // Refetch only once no other to-do write is pending: an earlier refetch would repaint a later write's
+        // optimistic change with the server's older state.
+        onSettled: () => {
+            if (qc.isMutating({ mutationKey: KEY }) === 1) void qc.invalidateQueries({ queryKey: KEY });
+        },
     });
 }
 
@@ -49,7 +56,7 @@ export function useAddTodo() {
         (vars: { text: string; issue: IssueLookupItem | null }) => api.post<Todo>('/me/todos', { text: vars.text, issue_id: vars.issue?.id ?? null }),
         (todos, vars) => [
             {
-                id: `pending-${Date.now()}`, text: vars.text, done: false, completed_at: null,
+                id: `pending-${++pendingSeq}`, text: vars.text, done: false, completed_at: null,
                 position: topPosition(todos), issue: vars.issue, created_at: new Date().toISOString(),
             },
             ...todos,

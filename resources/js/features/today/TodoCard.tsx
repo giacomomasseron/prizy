@@ -8,6 +8,8 @@ import { TodoText } from './TodoText';
 import { splitTodos, useAddTodo, useClearDoneTodos, useDeleteTodo, useTodos, useUpdateTodo } from './todoHooks';
 
 const MAX_TEXT = 500;
+/** The loading and failure states sit on the yellow note in both themes: give them its ink. */
+const NOTE_INK = { '--fg': 'var(--on-hi)', '--fg2': 'var(--on-hi)', '--fg3': 'var(--on-hi)', '--border2': 'var(--sticky-rule)' } as React.CSSProperties;
 const FAILED = 'That change didn’t save. Try again.';
 
 /** A to-do that exists only in the cache until the server answers: nothing can act on it yet. */
@@ -65,7 +67,7 @@ export function TodoCard() {
     return (
         <section aria-labelledby={headingId} style={{ position: 'relative', maxWidth: 400 }}>
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: 22, background: 'var(--hi)', boxShadow: 'var(--sticky-shadow)', transform: 'rotate(-.6deg)' }} />
-            <div style={{ position: 'relative', padding: '20px 18px 14px', color: 'var(--on-hi)' }}>
+            <div className="sticky-note" style={{ position: 'relative', padding: '20px 18px 14px', color: 'var(--on-hi)' }}>
                 <div style={{ display: 'flex', alignItems: 'baseline', gap: 9, padding: '0 4px 4px' }}>
                     <h2 id={headingId} style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 24, letterSpacing: '-.025em' }}>My to-dos</h2>
                     <span data-testid="todo-open-count" style={{ fontSize: 14, fontWeight: 700, opacity: 0.7 }}>{open.length}</span>
@@ -93,7 +95,7 @@ export function TodoCard() {
 
                 {error && <p role="alert" style={{ margin: '0 4px 8px', fontSize: 13, fontWeight: 600 }}>{error}</p>}
 
-                <QueryState query={todos} what="your to-dos">
+                <QueryState query={todos} what="your to-dos" frame={NOTE_INK}>
                     {open.length === 0 ? (
                         <p style={{ margin: 0, padding: 16, textAlign: 'center', fontSize: 14, opacity: 0.75 }}>All clear. Enjoy it.</p>
                     ) : (

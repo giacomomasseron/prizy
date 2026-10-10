@@ -1,5 +1,7 @@
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { Todo } from '../../lib/types';
@@ -20,6 +22,10 @@ let server: Todo[];
 let failWrites = false;
 /** Writes never answer: whatever the card shows then comes from its optimistic update. */
 let holdWrites = false;
+/** Reads never answer (after the first load): a refetch cannot repaint the list. */
+let holdReads = false;
+/** PATCHes for these to-do ids never answer. */
+let heldIds = new Set<string>();
 let fetchMock: ReturnType<typeof vi.fn>;
 
 /** A small in-memory /v1/me/todos, plus /me, /members and the issue lookup. */
@@ -34,6 +40,8 @@ function stubApi() {
         if (!u.includes('/me/todos')) return j({ data: [] });
         if (method !== 'GET' && failWrites) return j({ title: 'Error', detail: 'Server error' }, 500);
         if (method !== 'GET' && holdWrites) return new Promise<Response>(() => {});
+        if (method === 'GET' && holdReads) return new Promise<Response>(() => {});
+        if (method === 'PATCH' && heldIds.has(u.split('/').pop() ?? '')) return new Promise<Response>(() => {});
         if (method === 'GET') return j({ data: server });
         if (method === 'POST') {
             const created = todo(`t${server.length + 10}`, body.text, Math.min(0, ...server.map((t) => t.position)) - 1, { issue: body.issue_id ? ISSUE : null });
@@ -63,6 +71,8 @@ const openRows = () => within(screen.getByRole('list', { name: 'Open to-dos' }))
 beforeEach(() => {
     failWrites = false;
     holdWrites = false;
+    holdReads = false;
+    heldIds = new Set();
     server = [
         todo('t1', 'Book 1:1 with Priya', 1),
         todo('t2', 'Read the on-call notes', 2),
@@ -196,6 +206,7 @@ describe('P7-B: the My to-dos card', () => {
         renderCard();
         await screen.findByText('Book 1:1 with Priya');
         failWrites = true;
+        holdReads = true; // only the rollback can put the row back: the refetch never answers
 
         fireEvent.click(screen.getByRole('checkbox', { name: 'Book 1:1 with Priya' }));
 
@@ -226,5 +237,40 @@ describe('P7-B: the My to-dos card', () => {
         expect(layer.style.transform).toBe('rotate(-.6deg)');
         let el: HTMLElement | null = screen.getByRole('combobox', { name: 'Add a to-do' });
         while (el && el !== section) { expect(el.style.transform).toBe(''); el = el.parentElement; }
+    });
+});
+
+describe('P7-B: the card, review fixes', () => {
+    it('keeps a second tick in place while the first one settles: no refetch under a pending write', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        heldIds = new Set(['t2']); // B's PATCH never answers; the server still has B open
+
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Read the on-call notes' })); // B
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Book 1:1 with Priya' }));    // A answers at once
+        await waitFor(() => expect(calls('PATCH', '/me/todos/t1')).toHaveLength(1));
+        await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+
+        expect(screen.getByRole('checkbox', { name: 'Read the on-call notes' })).toBeChecked();
+    });
+
+    it('draws the loading and failure states in the note\'s ink, in both themes', async () => {
+        fetchMock.mockImplementation(async (url: string) => (String(url).includes('/me/todos')
+            ? j({ title: 'Error', detail: 'down' }, 500)
+            : j({ data: [] })));
+        renderCard();
+
+        const frame = (await screen.findByText('Couldn\'t load your to-dos.')).closest('[role="alert"]')?.parentElement as HTMLElement;
+        for (const token of ['--fg', '--fg2', '--fg3']) expect(frame.style.getPropertyValue(token)).toBe('var(--on-hi)');
+        expect(frame.style.getPropertyValue('--border2')).toBe('var(--sticky-rule)');
+    });
+
+    it('paints every focus ring on the note in its ink', async () => {
+        const css = readFileSync(resolve(__dirname, '../../../css/app.css'), 'utf8');
+        expect(css).toMatch(/\.sticky-note :focus-visible \{ outline-color: var\(--on-hi\); \}/);
+        renderCard();
+        const heading = await screen.findByRole('heading', { level: 2, name: 'My to-dos' });
+        expect(heading.closest('.sticky-note')).not.toBeNull();
+        expect(screen.getByRole('combobox', { name: 'Add a to-do' }).closest('.sticky-note')).not.toBeNull();
     });
 });

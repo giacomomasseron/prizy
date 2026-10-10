@@ -47,7 +47,7 @@ export function TodoText({ todo, names }: { todo: Todo; names: string[] }) {
                             : <Fragment key={i}>{p.text}</Fragment>
                 ))}
             </span>
-            {issue && !parts.some((p) => p.kind === 'ref') && pill('trailing')}
+            {issue && !parts.some((p) => p.kind === 'ref') && <>{' '}{pill('trailing')}</>}
         </>
     );
 }
