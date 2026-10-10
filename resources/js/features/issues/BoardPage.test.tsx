@@ -180,3 +180,22 @@ describe('BoardPage', () => {
         }
     });
 });
+
+describe('P7-A: the star on board cards', () => {
+    it('sits beside the card\'s own button, not inside it, and clicking it does not open the card', () => {
+        mockOpenPeek.mockClear();
+        vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})));
+        try {
+            mountBoard();
+            const card = screen.getByTestId('card-c1');
+            const star = screen.getByRole('button', { name: 'Star' });
+            // role="button" makes its children presentational — a star inside would be hidden from assistive tech.
+            expect(card.contains(star)).toBe(false);
+            expect(card.parentElement?.contains(star)).toBe(true);
+            fireEvent.click(star);
+            expect(mockOpenPeek).not.toHaveBeenCalled();
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});

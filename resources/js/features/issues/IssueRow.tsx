@@ -7,6 +7,7 @@ import { avatarFor } from '../../lib/avatarFor';
 import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { Issue, Project } from '../../lib/types';
 import { issueRef } from './issueMeta';
+import { StarToggle } from './StarToggle';
 
 export interface IssueRowProps {
     issue: Issue;
@@ -34,6 +35,7 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', cursor: 'pointer' }}
             onClick={() => onPeek(issue.id)}
         >
+            <StarToggle issue={issue} />
             <PriorityIcon priority={issue.priority} />
             <StatusIcon status={issue.status} size={14} />
 
