@@ -1,20 +1,21 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('help.partials.head')
     <meta name="robots" content="noindex">
     <title>Thanks for your feedback — Prizy</title>
 </head>
-<body style="margin:0;background:#0b0b0d;color:#eeeef1;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;">
-    <main style="text-align:center;padding:48px 24px;max-width:440px;">
-        <div style="font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8b8b95;">Prizy</div>
-        <div style="font-size:56px;line-height:1;margin:28px 0 16px;">{{ $rating === 'thumbs_up' ? '👍' : '👎' }}</div>
-        <h1 style="font-size:20px;font-weight:600;margin:0 0 10px;">Thanks — your feedback was recorded</h1>
-        <p style="font-size:14px;line-height:1.6;color:#a8a8b2;margin:0;">
-            You rated “{{ $subject }}” as {{ $rating === 'thumbs_up' ? 'good' : 'poor' }}.
-            Clicked the wrong link? Use the other link in your email to change your answer.
-        </p>
+<body>
+    <main id="content" class="hc-solo">
+        <div class="hc-card hc-solo__card">
+            <div class="hc-solo__brand"><span class="hc-mark" aria-hidden="true">P</span><span class="hc-brand__name">Prizy</span></div>
+            <div class="hc-solo__emoji" aria-hidden="true">{{ $rating === 'thumbs_up' ? '👍' : '👎' }}</div>
+            <h1 class="hc-solo__title">Thanks — your feedback was recorded</h1>
+            <p class="hc-solo__text">
+                You rated “{{ $subject }}” as {{ $rating === 'thumbs_up' ? 'good' : 'poor' }}.
+                Clicked the wrong link? Use the other link in your email to change your answer.
+            </p>
+        </div>
     </main>
 </body>
 </html>

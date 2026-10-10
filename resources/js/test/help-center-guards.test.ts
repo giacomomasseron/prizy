@@ -20,11 +20,8 @@ const files = [...blades(join(VIEWS, 'help')), ...blades(join(VIEWS, 'csat'))]
     .map((f) => ({ rel: relative(VIEWS, f), src: readFileSync(f, 'utf8') }));
 const lineOf = (src: string, index: number) => src.slice(0, index).split('\n').length;
 
-// Views not restyled yet — the later tasks of the restyle empty this list, and the last one removes it.
-const NOT_YET = [
-    'csat/thanks.blade.php', 'csat/expired.blade.php',
-];
-const restyled = files.filter((f) => !NOT_YET.includes(f.rel));
+// Every Help Center and survey-rating view is restyled: the rules hold for all of them.
+const restyled = files;
 
 /** Opening tags `<name …>` with their source (skips `>` inside `{{ }}`, `{!! !!}` and `"…"`). */
 function tags(src: string, name: string): { tag: string; index: number }[] {
@@ -193,5 +190,18 @@ describe('Help Center v2: portal pages', () => {
     });
     it('the active request filter says so', () => {
         expect(src('help/requests.blade.php')).toContain('@if ($filter === $key) aria-current="true" @endif');
+    });
+});
+
+describe('Help Center v2: survey-rating pages', () => {
+    it('take the shared head and stylesheet, keep one main, and show the brand mark', () => {
+        for (const rel of ['csat/thanks.blade.php', 'csat/expired.blade.php']) {
+            const s = files.find((f) => f.rel === rel)!.src;
+            expect(s, rel).toContain("@include('help.partials.head')");
+            expect(s.match(/<main\b/g), rel).toHaveLength(1);
+            expect(s, rel).toContain('<main id="content" class="hc-solo">');
+            expect(s, rel).toContain('<span class="hc-mark" aria-hidden="true">P</span>');
+            expect(s, rel).not.toContain('<body style=');
+        }
     });
 });
