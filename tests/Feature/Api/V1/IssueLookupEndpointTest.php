@@ -63,7 +63,7 @@ it('finds issues by title, case-insensitively, taking % and _ literally', functi
 
 it('lists reference matches before title matches, without duplicates, at most 8', function (): void {
     ['token' => $token, 'make' => $make] = lookupWorld();
-    $byRef = $make(['id' => 'add00000-0000-4000-8000-000000000001', 'title' => 'Matched by reference']);
+    $byRef = $make(['id' => 'add00000-0000-4000-8000-000000000001', 'title' => 'Add the reference one', 'updated_at' => now()->addMinute()]);
     for ($i = 1; $i <= 9; $i++) {
         $make(['title' => "Add widget {$i}"]);
     }
