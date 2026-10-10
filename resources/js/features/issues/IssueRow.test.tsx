@@ -58,10 +58,10 @@ describe('IssueRow', () => {
         expect(screen.getByRole('img', { name: 'Status: In Progress' })).toBeInTheDocument();
     });
 
-    it('uses id prefix as identifier fallback (first 6 chars uppercased)', () => {
+    it('builds the PRZ- reference from the id when there is no identifier (PRD §3.2.1)', () => {
         renderRow();
-        // BASE.id = 'abc-123-xyz-qrs', first 6 uppercase = 'ABC-12'
-        expect(screen.getByText('ABC-12')).toBeInTheDocument();
+        // BASE.id = 'abc-123-xyz-qrs': PRZ- and the first 6 characters in capitals = 'PRZ-ABC-12'
+        expect(screen.getByText('PRZ-ABC-12')).toBeInTheDocument();
     });
 
     it('prefers issue.identifier when present', () => {

@@ -27,7 +27,7 @@ import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { ApiError } from '../../lib/apiClient';
 import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
-import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
+import { PRIORITY_LABELS, STATUS_LABELS, issueRef } from './issueMeta';
 import { sectionTitle } from './issueStyles';
 
 // Status / priority pills above the title (display only — editing lives in the Properties card).
@@ -75,7 +75,7 @@ export default function IssueDetailPage() {
     }
 
     const data       = issue.data;
-    const identifier = data.identifier ?? data.id.slice(0, 6).toUpperCase();
+    const identifier = issueRef(data);
 
     async function handleTitleBlur() {
         const el = titleRef.current;

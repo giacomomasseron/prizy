@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\Issue;
 use App\Repositories\ReleaseRepository;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -32,7 +33,7 @@ final class ReleaseResource extends JsonResource
                 'by_status' => $byStatus,
                 'issues' => $this->issues->map(fn ($i) => [
                     'id' => $i->id,
-                    'ref' => strtoupper(substr($i->id, 0, 6)),
+                    'ref' => Issue::referenceFor($i->id),
                     'title' => $i->title,
                     'status' => $i->status,
                     'assignee' => $i->assignee ? ['id' => $i->assignee->id, 'name' => $i->assignee->name] : null,

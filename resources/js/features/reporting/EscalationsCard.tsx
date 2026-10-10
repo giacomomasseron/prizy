@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import type { OverviewReport } from '../../lib/types';
 import { sectionTitle } from '../issues/issueStyles';
 import { accentTag, cardSub, deskCard } from '../support/supportStyles';
+import { issueRefFromId } from '../issues/issueMeta';
 
 const rowStyle: CSSProperties = { display: 'flex', alignItems: 'center', gap: 9, padding: '8px 11px', borderRadius: 'var(--radius-row)', border: '1px solid var(--border)', background: 'var(--bg2)', textDecoration: 'none' };
 
@@ -21,7 +22,7 @@ export function EscalationsCard({ escalations }: { escalations: OverviewReport['
                     return e.issue_id ? (
                         <Link key={e.ticket_id} to={`/issues/${e.issue_id}`} style={rowStyle}>
                             {label}
-                            <span style={accentTag}>↩ {e.issue_id.slice(0, 6)}</span>
+                            <span style={accentTag}>↩ {issueRefFromId(e.issue_id)}</span>
                         </Link>
                     ) : (
                         <div key={e.ticket_id} style={rowStyle}>{label}</div>

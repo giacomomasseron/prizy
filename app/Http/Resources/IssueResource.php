@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Http\Resources\Concerns\SparseFieldset;
+use App\Models\Issue;
 use App\Models\Ticket;
 use App\Services\HelpdeskAccess;
 use App\Services\StarredIssues;
@@ -42,7 +43,7 @@ final class IssueResource extends JsonResource
             'archived_at' => $this->archived_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
-            'identifier' => $this->identifier ?? null,
+            'identifier' => Issue::referenceFor($this->id),
             // The caller's own star (PRD §3.2.9) — private: another user sees their own state.
             'starred' => $starredAt !== null,
             'starred_at' => $starredAt?->toISOString(),

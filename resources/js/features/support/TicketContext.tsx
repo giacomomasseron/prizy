@@ -9,6 +9,7 @@ import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { slaMetricPresentation } from './sla';
 import { SMALL_PILL_CLASSES, deskCard, smallLabel, smallPill } from './supportStyles';
 import { sectionTitle } from '../issues/issueStyles';
+import { issueRef } from '../issues/issueMeta';
 
 const asideStyle: CSSProperties = { width: 296, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto' };
 const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 };
@@ -82,7 +83,7 @@ function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: 
             {linked && (<>
                 <div style={label}>Linked engineering issue</div>
                 <Link to={`/issues/${linked.id}`} style={{ display: 'block', margin: '0 18px', padding: '13px 14px', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', borderRadius: 'var(--radius-card)', textDecoration: 'none' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent-ink)', fontWeight: 600 }}>{linked.identifier ?? linked.id.slice(0, 6)}</span><span style={{ marginLeft: 'auto', color: 'var(--accent-ink)', fontSize: 12 }}>↗</span></div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}><span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--accent-ink)', fontWeight: 600 }}>{issueRef(linked)}</span><span style={{ marginLeft: 'auto', color: 'var(--accent-ink)', fontSize: 12 }}>↗</span></div>
                     <div style={{ marginTop: 5, fontSize: 12.5, color: 'var(--fg)', fontWeight: 500, lineHeight: 1.4 }}>{linked.title}</div>
                 </Link>
             </>)}

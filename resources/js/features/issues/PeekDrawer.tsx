@@ -18,7 +18,7 @@ import { useMembers } from '../members/hooks';
 import { useMe } from '../../auth/useAuth';
 import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
-import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
+import { PRIORITY_LABELS, STATUS_LABELS, issueRef } from './issueMeta';
 import { sectionTitle } from './issueStyles';
 
 const sectionHead: React.CSSProperties = { ...sectionTitle(16), marginBottom: 10 };
@@ -192,7 +192,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                 {data && (
                     <>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>
-                            {data.identifier ?? data.id.slice(0, 6).toUpperCase()}
+                            {issueRef(data)}
                         </span>
                         <Link
                             to={`/issues/${data.id}`}

@@ -91,3 +91,14 @@ it('rejects an unknown sort field with 422', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+it('gives every issue its PRZ- reference as the identifier', function (): void {
+    [$token, $make] = apiWorld();
+    $issue = $make(['title' => 'Referenced']);
+
+    $this->withToken($token)->getJson('/v1/issues')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.identifier', 'PRZ-'.strtoupper(substr($issue->id, 0, 6)));
+
+    Workspace::forgetCurrent();
+});

@@ -8,7 +8,7 @@ import { paramsToFilters } from '../views/filters';
 import { IssuesHeader } from './IssuesHeader';
 import { useIssueDrawers } from './useIssueDrawers';
 import { useDragClickGuard } from './useDragClickGuard';
-import { STATUS_LABELS } from './issueMeta';
+import { STATUS_LABELS, issueRef } from './issueMeta';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
@@ -66,7 +66,7 @@ function Card({ issue, onCardClick, projects }: CardProps) {
             {/* Top row: identifier + priority */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>
-                    {issue.identifier ?? issue.id.slice(0, 6).toUpperCase()}
+                    {issueRef(issue)}
                 </span>
                 <span style={{ marginLeft: 'auto' }}>
                     <PriorityIcon priority={issue.priority} />

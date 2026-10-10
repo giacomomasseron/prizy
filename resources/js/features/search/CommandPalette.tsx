@@ -6,6 +6,7 @@ import { StatusIcon } from '../../components/ui/StatusIcon';
 import { Kbd } from '../../components/ui/Kbd';
 import { useFocusTrap } from '../../components/ui/useFocusTrap';
 import { useOverlayEscape } from '../../components/ui/useOverlayEscape';
+import { issueRef } from '../issues/issueMeta';
 
 interface Row {
     key: string;
@@ -83,8 +84,8 @@ export default function CommandPalette() {
                 leading: (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
                         <StatusIcon status={i.status} size={12} />
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', width: 48 }}>
-                            {i.identifier ?? i.id.slice(0, 6).toUpperCase()}
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', width: 70 }}>
+                            {issueRef(i)}
                         </span>
                     </span>
                 ),
