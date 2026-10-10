@@ -4,18 +4,18 @@
 @section('robots', 'noindex')
 
 @section('content')
-    <div class="wrap" style="max-width:760px;padding:32px 0 72px">
-        <h1 style="font-size:20px;font-weight:600;margin:0 0 24px">Results for &ldquo;{{ $q }}&rdquo;</h1>
+    <div class="hc-wrap hc-wrap--narrow hc-page">
+        <h1 class="hc-title hc-title--sm hc-title--spaced">Results for &ldquo;{{ $q }}&rdquo;</h1>
 
         @if ($results->isEmpty())
-            <p class="muted">No articles match.</p>
+            <p class="hc-empty">No articles match.</p>
         @else
-            <div style="display:flex;flex-direction:column;gap:20px">
+            <div class="hc-results">
                 @foreach ($results as $r)
-                    <div class="card" style="padding:18px 20px">
-                        <div class="faint" style="font-size:12px;margin-bottom:6px">{{ $r->category_name }}</div>
-                        <a href="{{ \App\Services\HelpLocale::url('help.article', [$r->category_slug, $r->section_slug, $r->slug], $lang) }}" style="font-size:15px;font-weight:600">{{ $r->title }}</a>
-                        <p class="muted" style="font-size:13.5px;margin:8px 0 0;line-height:1.6">{!! $r->snippet_html !!}</p>
+                    <div class="hc-card hc-result">
+                        <div class="hc-result__cat">{{ $r->category_name }}</div>
+                        <a href="{{ \App\Services\HelpLocale::url('help.article', [$r->category_slug, $r->section_slug, $r->slug], $lang) }}" class="hc-result__title">{{ $r->title }}</a>
+                        <p class="hc-result__snippet">{!! $r->snippet_html !!}</p>
                     </div>
                 @endforeach
             </div>

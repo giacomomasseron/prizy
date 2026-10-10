@@ -22,7 +22,6 @@ const lineOf = (src: string, index: number) => src.slice(0, index).split('\n').l
 
 // Views not restyled yet — the later tasks of the restyle empty this list, and the last one removes it.
 const NOT_YET = [
-    'help/home.blade.php', 'help/topic.blade.php', 'help/article.blade.php', 'help/search.blade.php',
     'help/login.blade.php', 'help/link-expired.blade.php', 'help/requests.blade.php', 'help/request.blade.php',
     'help/new.blade.php', 'csat/thanks.blade.php', 'csat/expired.blade.php',
 ];
@@ -134,5 +133,30 @@ describe('Help Center v2 guards', () => {
             for (const fragment of fragments) if (!src.includes(fragment)) missing.push(`${rel}: ${fragment}`);
         }
         expect(missing).toEqual([]);
+    });
+});
+
+describe('Help Center v2: knowledge-base pages', () => {
+    const src = (rel: string) => files.find((f) => f.rel === rel)!.src;
+
+    it('home: the whole heading sits on the highlighter (assertSee needs "How can we help?" unbroken)', () => {
+        expect(src('help/home.blade.php')).toContain('<h1 class="hc-hero__title"><span class="hl">How can we help?</span></h1>');
+    });
+    it('home: the search field has a visually hidden label and keeps its placeholder (Playwright finds it by placeholder)', () => {
+        const home = src('help/home.blade.php');
+        expect(home).toContain('<label for="help-search" class="sr-only">Search articles</label>');
+        expect(home).toMatch(/<input\s+type="search"\s+id="help-search"\s+name="q"\s+placeholder="Search articles, guides, and FAQs…"/);
+    });
+    it('a category tile is tinted only by the category\'s own colour, with no fallback colour', () => {
+        for (const rel of ['help/home.blade.php', 'help/topic.blade.php']) {
+            const s = src(rel);
+            expect(s, rel).toContain('@if ($category->color) style="background:color-mix(in srgb, {{ $category->color }} 18%, var(--panel))" @endif');
+            expect(s, rel).not.toContain("?? '#");
+        }
+    });
+    it('article: the fallback notice is the amber notice, and the breadcrumb is a named nav', () => {
+        const article = src('help/article.blade.php');
+        expect(article).toContain('<div class="hc-notice">');
+        expect(article).toContain('<nav class="hc-crumbs" aria-label="Breadcrumb">');
     });
 });

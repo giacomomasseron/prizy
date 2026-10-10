@@ -74,3 +74,14 @@ describe('Help Center v2: help.css', () => {
         expect(vite).toContain("'resources/css/help.css'");
     });
 });
+
+describe('Help Center v2: the editor preview', () => {
+    it('mirrors the article body rule for rule (.kb-preview in app.css, article.kb in help.css)', () => {
+        const body = (css: string, prefix: string) => [...css.matchAll(/^([^{}\n]+)\{([^{}]*)\}/gm)]
+            .filter((m) => m[1].trim().startsWith(prefix))
+            .map((m) => `${m[1].trim().split(prefix).join('&')} {${m[2]}}`);
+        const article = body(help, 'article.kb');
+        expect(article.length).toBeGreaterThan(10);
+        expect(body(app, '.kb-preview')).toEqual(article);
+    });
+});
