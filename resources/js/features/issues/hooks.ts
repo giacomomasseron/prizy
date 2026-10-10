@@ -78,6 +78,18 @@ export function groupByStatus(issues: Issue[]): Record<IssueStatus, Issue[]> {
     return buckets;
 }
 
+/**
+ * The list's Starred group (PRD §3.2.9): the issues the starred-filter request returned plus any the list holds that
+ * were just starred (optimistic), each once, without those just unstarred; the newest star first.
+ */
+export function starredGroup(starredItems: Issue[], listItems: Issue[]): Issue[] {
+    const byId = new Map<string, Issue>();
+    for (const issue of [...starredItems, ...listItems]) {
+        if (issue.starred === true && !byId.has(issue.id)) byId.set(issue.id, issue);
+    }
+    return [...byId.values()].sort((a, b) => (b.starred_at ?? '').localeCompare(a.starred_at ?? ''));
+}
+
 type IssuePage = { items: Issue[]; next: string | null };
 
 export function applyStatusOptimistic(page: IssuePage | undefined, id: string, status: IssueStatus): IssuePage {
