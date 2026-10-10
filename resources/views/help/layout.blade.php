@@ -1,53 +1,39 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    @include('help.partials.head')
     <title>@yield('title', 'Help Center') — {{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</title>
     @hasSection('robots')
         <meta name="robots" content="@yield('robots')">
     @endif
-    <style>
-        :root{--bg:#0b0b0d;--bg2:#111114;--panel:#151519;--border:#232327;--border2:#31313a;--fg:#eeeef1;--fg2:#a8a8b2;--fg3:#8b8b95;--hover:rgba(255,255,255,.06);--accent:#6d69f2;--sup:#3aa76d;--sup2:rgba(58,167,109,.15);--red:#eb5757;--amber:#e0a13a;--green:#4bab66;--blue:#5b8def;--purple:#b06ae0}
-        *{box-sizing:border-box}
-        html,body{margin:0;padding:0}
-        body{min-height:100vh;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
-        a{color:var(--sup);text-decoration:none}
-        a:hover{color:#5cc78c}
-        .wrap{max-width:1080px;margin:0 auto;padding:0 28px;width:100%}
-        .card{border:1px solid var(--border);border-radius:13px;background:var(--panel)}
-        .muted{color:var(--fg2)}.faint{color:var(--fg3)}
-        .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:9px;border:1px solid var(--border2);background:var(--panel);color:var(--fg);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}
-        .btn:hover{background:var(--hover)}
-        .btn-primary{background:var(--sup);border-color:var(--sup);color:#fff}
-        article.kb h2{font-size:19px;margin:28px 0 10px}
-        article.kb ul,article.kb ol{padding-left:22px}
-        article.kb li{margin:4px 0}
-        article.kb code{background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:1px 5px;font-size:12.5px}
-        article.kb p{margin:12px 0;line-height:1.65}
-    </style>
 </head>
 <body>
-    <header style="position:sticky;top:0;z-index:20;background:rgba(11,11,13,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--border)">
-        <div class="wrap" style="height:62px;display:flex;align-items:center;gap:14px">
+    <a href="#content" class="hc-skip">Skip to content</a>
+    <header class="hc-header">
+        <div class="hc-wrap hc-header__bar">
             @php
                 // The layout is shared with the portal views, whose controllers pass
                 // none of these — hence defaults rather than required variables.
                 $helpLang = $lang ?? \App\Services\KbLocales::SOURCE;
                 $helpAvailable = $available ?? null;
+                // The part of the Help Center this page belongs to, marked as current in the nav: the knowledge
+                // base, the contact's requests, or the new-request form (none on sign-in and link-expired).
+                $helpCurrent = request()->routeIs('help.home', 'help.search', 'help.topic', 'help.article') ? 'kb'
+                    : (request()->routeIs('help.requests', 'help.request') ? 'requests'
+                    : (request()->routeIs('help.new') ? 'new' : null));
             @endphp
-            <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" style="display:flex;align-items:center;gap:10px;color:var(--fg)">
-                <span style="width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,#6d69f2,#3aa76d);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;color:#fff">P</span>
-                <span style="font-size:15px;font-weight:600;letter-spacing:-.03em">{{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</span>
+            <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" class="hc-brand">
+                <span class="hc-mark" aria-hidden="true">P</span>
+                <span class="hc-brand__name">{{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</span>
             </a>
-            <nav style="margin-left:8px;display:flex;gap:4px">
-                <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;background:var(--hover);color:var(--fg)">Help center</a>
+            <nav class="hc-nav" aria-label="Help center">
+                <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" @if ($helpCurrent === 'kb') aria-current="page" @endif>Help center</a>
                 @if (auth('contact')->check())
-                    <a href="{{ route('help.requests') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">My requests</a>
-                    <a href="{{ route('help.new') }}" style="padding:6px 12px;border-radius:8px;font-size:13px;font-weight:600;color:var(--fg2)">Submit a request</a>
+                    <a href="{{ route('help.requests') }}" @if ($helpCurrent === 'requests') aria-current="page" @endif>My requests</a>
+                    <a href="{{ route('help.new') }}" @if ($helpCurrent === 'new') aria-current="page" @endif>Submit a request</a>
                 @endif
             </nav>
-            <div style="flex:1"></div>
+            <div class="hc-header__spacer"></div>
             {{-- The switcher is scoped to the four knowledge-base pages, which pass
                  helpRoute. The portal views (sign-in, requests, submit-a-request,
                  link-expired) never set it: they have no locale to switch (this
@@ -55,27 +41,22 @@
                  helpRoute a language link would bounce a reader off their own
                  ticket page to the help home. --}}
             @if (isset($helpRoute))
-                <details style="position:relative">
-                    <summary class="btn" style="list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:500">
+                <details class="hc-switcher">
+                    <summary class="hc-btn">
                         <span aria-hidden="true">🌐</span>{{ \App\Services\KbLocales::name($helpLang) }}
                     </summary>
-                    <div class="card" style="position:absolute;top:44px;right:0;width:268px;padding:8px;z-index:30">
-                        <div class="faint" style="font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;padding:6px 8px">Read this help center in</div>
+                    <div class="hc-switcher__menu">
+                        <div class="hc-switcher__label">Read this help center in</div>
                         @foreach (\App\Services\KbLocales::NAMES as $code => $name)
-                            <a href="{{ \App\Services\HelpLocale::url($helpRoute, $helpRouteParams ?? [], $code) }}"
-                               style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;font-size:13px;color:{{ $code === $helpLang ? 'var(--sup)' : 'var(--fg)' }}">
-                                @if ($code === $helpLang)
-                                    <span aria-hidden="true" style="width:5px;height:5px;border-radius:50%;background:var(--sup)"></span>
-                                @else
-                                    <span aria-hidden="true" style="width:5px"></span>
-                                @endif
-                                <span style="flex:1">{{ $name }}</span>
+                            <a href="{{ \App\Services\HelpLocale::url($helpRoute, $helpRouteParams ?? [], $code) }}" class="hc-switcher__item" @if ($code === $helpLang) aria-current="true" @endif>
+                                <span aria-hidden="true" class="hc-dot{{ $code === $helpLang ? '' : ' hc-dot--none' }}"></span>
+                                <span class="hc-switcher__name">{{ $name }}</span>
                                 {{-- Only an article page can say whether THIS article exists in a language. --}}
                                 @if ($helpAvailable !== null && $code !== \App\Services\KbLocales::SOURCE)
                                     @if (in_array($code, $helpAvailable, true))
-                                        <span aria-hidden="true" style="color:var(--sup);font-size:12px">✓</span>
+                                        <span aria-hidden="true" class="hc-switcher__has">✓</span>
                                     @else
-                                        <span class="faint" style="font-size:10.5px">English only</span>
+                                        <span class="hc-switcher__only">English only</span>
                                     @endif
                                 @endif
                             </a>
@@ -83,23 +64,25 @@
                     </div>
                 </details>
             @endif
-            @if (auth('contact')->check())
-                @php $contactOrg = auth('contact')->user()->contactMetadata->firstWhere('key', 'organization')?->value; @endphp
-                <span style="font-size:12.5px" class="muted">
-                    {{ auth('contact')->user()->name }}
-                    @if (filled($contactOrg))
-                        <span class="faint">· {{ $contactOrg }}</span>
-                    @endif
-                </span>
-                <form method="POST" action="{{ route('help.logout') }}">@csrf<button type="submit" class="btn" style="font-weight:500">Sign out</button></form>
-            @else
-                <a href="{{ route('help.login') }}" class="btn">Sign in</a>
-            @endif
+            <div class="hc-account">
+                @if (auth('contact')->check())
+                    @php $contactOrg = auth('contact')->user()->contactMetadata->firstWhere('key', 'organization')?->value; @endphp
+                    <span class="hc-account__who hc-muted">
+                        {{ auth('contact')->user()->name }}
+                        @if (filled($contactOrg))
+                            <span class="hc-faint">· {{ $contactOrg }}</span>
+                        @endif
+                    </span>
+                    <form method="POST" action="{{ route('help.logout') }}">@csrf<button type="submit" class="hc-btn">Sign out</button></form>
+                @else
+                    <a href="{{ route('help.login') }}" class="hc-btn">Sign in</a>
+                @endif
+            </div>
         </div>
     </header>
-    <main style="flex:1">@yield('content')</main>
-    <footer style="border-top:1px solid var(--border);background:var(--bg2)">
-        <div class="wrap" style="padding:22px 28px;font-size:12px;color:var(--fg3)">© {{ date('Y') }} Prizy</div>
+    <main id="content" class="hc-main">@yield('content')</main>
+    <footer class="hc-footer">
+        <div class="hc-wrap hc-footer__inner">© {{ date('Y') }} Prizy</div>
     </footer>
 </body>
 </html>
