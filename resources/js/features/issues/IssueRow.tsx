@@ -6,6 +6,8 @@ import { ProjectPill } from '../../components/ui/ProjectPill';
 import { avatarFor } from '../../lib/avatarFor';
 import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { Issue, Project } from '../../lib/types';
+import { issueRef } from './issueMeta';
+import { StarToggle } from './StarToggle';
 
 export interface IssueRowProps {
     issue: Issue;
@@ -33,12 +35,13 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
             style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 18px', cursor: 'pointer' }}
             onClick={() => onPeek(issue.id)}
         >
+            <StarToggle issue={issue} />
             <PriorityIcon priority={issue.priority} />
             <StatusIcon status={issue.status} size={14} />
 
             {/* Identifier */}
-            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
-                {issue.identifier ?? issue.id.slice(0, 6).toUpperCase()}
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 76, flexShrink: 0 }}>
+                {issueRef(issue)}
             </span>
 
             {/* Title: the row's primary control (V2-G3b) — Tab reaches it, Enter/Space click it, the click bubbles to the row. */}

@@ -101,9 +101,8 @@ it('enriches the index payload with actor, body and a resolved issue subject', f
         ->assertJsonPath('data.0.subject', [
             'type' => 'issue',
             'id' => $issue->id,
-            // `identifier` is not a persisted issue column (yet) — ref always falls back to the
-            // uppercased id prefix, matching the frontend fallback (IssueResource/PeekDrawer).
-            'ref' => strtoupper(substr($issue->id, 0, 6)),
+            // The issue's reference (PRD §3.2.1): PRZ- and the uppercased id prefix.
+            'ref' => 'PRZ-'.strtoupper(substr($issue->id, 0, 6)),
             'title' => 'Fix the login bug',
             'path' => "/issues/{$issue->id}",
         ]);

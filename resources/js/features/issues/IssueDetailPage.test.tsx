@@ -34,6 +34,7 @@ vi.mock('./hooks', () => ({
     useUpdateIssue: vi.fn().mockReturnValue({ mutateAsync: vi.fn() }),
     useTransitionStatus: vi.fn().mockReturnValue({ mutateAsync: vi.fn() }),
     useAssignIssue: vi.fn().mockReturnValue({ mutateAsync: vi.fn() }),
+    useToggleStar: vi.fn().mockReturnValue({ mutate: vi.fn(), isPending: false }),
     STATUSES: ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'],
 }));
 vi.mock('./githubLinks', () => ({
@@ -564,5 +565,39 @@ describe('IssueDetailPage v2 layout', () => {
         cleanup();
         render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
         expect(screen.getByRole('button', { name: 'Add PR' })).toBeEnabled();
+    });
+});
+
+describe('P7-A: the full page\'s Star button', () => {
+    it('reads "Star" and stars the issue — for a viewer too', () => {
+        const mutate = vi.fn();
+        vi.mocked(hooks.useToggleStar).mockReturnValue({ mutate, isPending: false } as any);
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: false, admin_level: 'viewer' } } as any);
+        render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+        const star = screen.getByRole('button', { name: 'Star' });
+        expect(star).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(star);
+        expect(mutate).toHaveBeenCalledWith({ id: 'abc123', starred: true });
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+    });
+
+    it('reads "Starred", pressed, for a starred issue', () => {
+        const base = vi.mocked(hooks.useIssue).getMockImplementation();
+        vi.mocked(hooks.useIssue).mockReturnValue({
+            isLoading: false, isError: false,
+            data: {
+                id: 'abc123', title: 'Test Issue', status: 'todo', priority: 'medium',
+                description: 'Desc', team_id: 'team1', project_id: null, cycle_id: null,
+                assignee_id: null, assignee: null, labels: [], identifier: 'PRZ-1',
+                support_ticket: null, starred: true, starred_at: '2026-10-10T10:00:00Z',
+                created_at: '2026-07-04T00:00:00Z', updated_at: '2026-07-04T00:00:00Z',
+            },
+        } as any);
+        try {
+            render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+            expect(screen.getByRole('button', { name: 'Starred' })).toHaveAttribute('aria-pressed', 'true');
+        } finally {
+            if (base) vi.mocked(hooks.useIssue).mockImplementation(base);
+        }
     });
 });

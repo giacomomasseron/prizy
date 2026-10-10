@@ -10,6 +10,7 @@ import { TicketComposer } from './TicketComposer';
 import { TicketStatusMenu } from './TicketStatusMenu';
 import { paneHeader, paneTitle, tint } from './supportStyles';
 import { ink } from '../../lib/ink';
+import { issueRef } from '../issues/issueMeta';
 
 const mainStyle: CSSProperties = { flex: 1, minWidth: 460, display: 'flex', flexDirection: 'column', background: 'var(--bg)' };
 function Empty({ text }: { text: string }) { return <div style={{ margin: 'auto', color: 'var(--fg3)', fontSize: 13 }}>{text}</div>; }
@@ -64,7 +65,7 @@ function TicketBody({ t }: { t: TicketDetail }) {
                         {t.csat_rating === 'thumbs_up' ? '👍 Rated good' : '👎 Rated poor'}
                     </span>
                 )}
-                {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {linked.identifier ?? linked.id.slice(0, 6)} ↗</Link>}
+                {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {issueRef(linked)} ↗</Link>}
                 <TicketStatusMenu ticket={t} />
             </header>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '22px 20px 20px' }}>

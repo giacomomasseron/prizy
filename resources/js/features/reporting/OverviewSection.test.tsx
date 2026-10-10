@@ -45,6 +45,6 @@ describe('OverviewSection', () => {
         expect(screen.getByText('Tickets by status').style.fontFamily).toBe('var(--font-display)');
         expect(screen.getByText('Escalations to engineering').style.fontFamily).toBe('var(--font-display)');
         expect(volume.closest('[style*="border-radius: var(--radius-card)"]')).not.toBeNull();
-        expect(screen.getByText('↩ issue-').style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByText('↩ PRZ-ISSUE-').style.borderRadius).toBe('var(--radius-pill)');
     });
 });

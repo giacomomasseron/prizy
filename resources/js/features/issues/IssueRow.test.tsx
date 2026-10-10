@@ -1,6 +1,7 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { vi, describe, it, expect } from 'vitest';
 import { IssueRow, formatRelativeShort } from './IssueRow';
 import type { Issue } from '../../lib/types';
@@ -29,10 +30,13 @@ const BASE: Issue = {
 describe('IssueRow', () => {
     function renderRow(overrides: Partial<Issue> = {}) {
         const onPeek = vi.fn();
+        // P7-A: the row's star toggle runs a mutation, so the row renders inside a query client.
         const { container } = render(
-            <MemoryRouter>
-                <IssueRow issue={{ ...BASE, ...overrides }} onPeek={onPeek} projects={[]} />
-            </MemoryRouter>
+            <QueryClientProvider client={new QueryClient()}>
+                <MemoryRouter>
+                    <IssueRow issue={{ ...BASE, ...overrides }} onPeek={onPeek} projects={[]} />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
         return { onPeek, container };
     }
@@ -58,10 +62,10 @@ describe('IssueRow', () => {
         expect(screen.getByRole('img', { name: 'Status: In Progress' })).toBeInTheDocument();
     });
 
-    it('uses id prefix as identifier fallback (first 6 chars uppercased)', () => {
+    it('builds the PRZ- reference from the id when there is no identifier (PRD §3.2.1)', () => {
         renderRow();
-        // BASE.id = 'abc-123-xyz-qrs', first 6 uppercase = 'ABC-12'
-        expect(screen.getByText('ABC-12')).toBeInTheDocument();
+        // BASE.id = 'abc-123-xyz-qrs': PRZ- and the first 6 characters in capitals = 'PRZ-ABC-12'
+        expect(screen.getByText('PRZ-ABC-12')).toBeInTheDocument();
     });
 
     it('prefers issue.identifier when present', () => {
@@ -109,9 +113,11 @@ describe('IssueRow', () => {
             created_by: 'u1', created_at: '2026-07-04T00:00:00.000000Z',
             updated_at: '2026-07-04T00:00:00.000000Z' };
         render(
-            <MemoryRouter>
-                <IssueRow issue={{ ...BASE, project_id: 'p1' }} onPeek={vi.fn()} projects={[proj]} />
-            </MemoryRouter>
+            <QueryClientProvider client={new QueryClient()}>
+                <MemoryRouter>
+                    <IssueRow issue={{ ...BASE, project_id: 'p1' }} onPeek={vi.fn()} projects={[proj]} />
+                </MemoryRouter>
+            </QueryClientProvider>
         );
         expect(screen.getByText('Alpha')).toBeInTheDocument();
     });
@@ -138,5 +144,29 @@ describe('formatRelativeShort', () => {
     });
     it('returns "1mo" for 35 days ago', () => {
         expect(formatRelativeShort(new Date(Date.now() - 35 * 86_400_000).toISOString())).toBe('1mo');
+    });
+});
+
+describe('P7-A: the star toggle on a row', () => {
+    it('comes first in the row, and clicking it stars without opening the issue', async () => {
+        const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+        vi.stubGlobal('fetch', fetchMock);
+        try {
+            const onPeek = vi.fn();
+            const { container } = render(
+                <QueryClientProvider client={new QueryClient()}>
+                    <MemoryRouter>
+                        <IssueRow issue={BASE} onPeek={onPeek} projects={[]} />
+                    </MemoryRouter>
+                </QueryClientProvider>
+            );
+            const star = screen.getByRole('button', { name: 'Star' });
+            expect(container.querySelector('[data-testid="issue-row"] button')).toBe(star);
+            fireEvent.click(star);
+            expect(onPeek).not.toHaveBeenCalled();
+            await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/v1/issues/abc-123-xyz-qrs/star', expect.objectContaining({ method: 'PUT' })));
+        } finally {
+            vi.unstubAllGlobals();
+        }
     });
 });

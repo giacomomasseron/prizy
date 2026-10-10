@@ -356,3 +356,12 @@ describe('G3c: final-fix wave', () => {
         await screen.findByText(/Page 2 of 3/);
     });
 });
+
+describe('P7-A: the reference column', () => {
+    it('is wide enough for PRZ- and 6 characters (76px, like the list row)', async () => {
+        wrap(<SearchPage />);
+        const row = (await screen.findAllByTestId('search-row'))[0];
+        const ref = Array.from(row.querySelectorAll('span')).find((s) => s.textContent === 'PRZ-I1');
+        expect(ref?.style.width).toBe('76px');
+    });
+});

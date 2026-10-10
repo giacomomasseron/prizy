@@ -10,6 +10,7 @@ const issue = {
     support_ticket: { id: 'tk1', ref: 'TKT-ABC123', subject: 'Attachments missing', customer: 'Acme Corp', plan: 'Business' },
 };
 const addCommentMutate = vi.fn();
+const toggleStarMutate = vi.fn();
 let overrideIssue: typeof issue | null = null;
 let loadingIssue = false;
 
@@ -19,6 +20,7 @@ vi.mock('./hooks', () => ({
     useActivities: () => ({ data: { items: [{ id: 'a1', user_id: 'u2', type: 'created', to_value: null, created_at: new Date().toISOString() }] } }),
     useComments: () => ({ data: { items: [{ id: 'c1', user_id: 'u2', body: 'Confirmed on staging.', created_at: new Date().toISOString(), reactions: [] }] } }),
     useAddComment: () => ({ mutate: addCommentMutate, isPending: false }),
+    useToggleStar: () => ({ mutate: toggleStarMutate, isPending: false }),
     // Pulled in by the (read-only, canDevelop=false) ReleaseEditor mount.
     useUpdateIssue: () => ({ mutateAsync: vi.fn() }),
 }));
@@ -97,5 +99,16 @@ describe('PeekDrawer', () => {
         expect(open).toContain('text-accent-ink');
         expect(open).not.toContain('text-accent');
         expect(open).toContain('hover:bg-accent');
+    });
+});
+
+describe('P7-A: the drawer\'s Star button', () => {
+    it('sits in the header, says whether the issue is starred, and stars it on click', () => {
+        toggleStarMutate.mockClear();
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        const star = screen.getByRole('button', { name: 'Star' });
+        expect(star).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.click(star);
+        expect(toggleStarMutate).toHaveBeenCalledWith({ id: 'i1', starred: true });
     });
 });

@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { groupByStatus, LIST_GROUP_ORDER } from './hooks';
+import { groupByStatus, LIST_GROUP_ORDER, starredGroup } from './hooks';
 import type { Issue, IssueStatus } from '../../lib/types';
 import IssueListPage from './IssueListPage';
 
@@ -144,5 +144,92 @@ describe('IssueListPage v2 states', () => {
         const card = screen.getByTestId('issue-row').parentElement as HTMLElement;
         expect(card.style.borderRadius).toBe('var(--radius-card)');
         expect(card.style.overflow).toBe('hidden');
+    });
+});
+
+// ---------------------------------------------------------------------------
+// P7-A: the Starred group (PRD §3.2.9)
+// ---------------------------------------------------------------------------
+
+describe('P7-A: starredGroup', () => {
+    const at = (iso: string | null, starred = true) => ({ starred, starred_at: iso });
+
+    it('merges the starred request with the list\'s just-starred issues, once each, newest star first', () => {
+        const server = [{ ...makeIssue('a', 'todo'), ...at('2026-10-10T10:00:00Z') }];
+        const list = [
+            { ...makeIssue('a', 'todo'), ...at('2026-10-10T10:00:00Z') },
+            { ...makeIssue('b', 'done'), ...at('2026-10-10T11:00:00Z') }, // just starred (optimistic)
+            { ...makeIssue('c', 'todo'), ...at(null, false) },
+        ];
+        expect(starredGroup(server, list).map((i) => i.id)).toEqual(['b', 'a']);
+    });
+
+    it('drops an issue just unstarred, even though the starred request still holds it', () => {
+        const server = [{ ...makeIssue('a', 'todo'), ...at(null, false) }]; // flipped by the optimistic update
+        expect(starredGroup(server, [])).toEqual([]);
+    });
+});
+
+describe('P7-A: the Starred group on the list', () => {
+    const page = (items: unknown[]) => ({ data: items, links: { next: null, prev: null }, meta: { per_page: 25 } });
+    const row = (id: string, title: string, status: string, starredAt: string | null) => ({
+        id, title, status, priority: 'medium', assignee_id: null, labels: [], updated_at: '2026-07-04T00:00:00Z',
+        starred: starredAt !== null, starred_at: starredAt,
+    });
+
+    function stub(list: unknown[], starred: unknown[]) {
+        const urls: string[] = [];
+        vi.stubGlobal('fetch', vi.fn().mockImplementation((url: string) => {
+            urls.push(decodeURIComponent(url));
+            let body: unknown = page([]);
+            if (url.includes('/me')) body = { data: { id: 'u1', is_developer: true, admin_level: 'member' } };
+            else if (url.includes('/issues')) body = decodeURIComponent(url).includes('filter[starred]=true') ? page(starred) : page(list);
+            return Promise.resolve({ ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => body });
+        }));
+        return urls;
+    }
+    function renderAt(path: string) {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        return render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={[path]}><IssueListPage /></MemoryRouter>
+            </QueryClientProvider>,
+        );
+    }
+
+    it('pins the starred issues above the status groups, newest star first, and never repeats them under their status', async () => {
+        const older = row('a', 'Older star', 'todo', '2026-10-10T10:00:00Z');
+        const newer = row('c', 'Newer star', 'done', '2026-10-10T11:00:00Z');
+        stub([older, row('b', 'Plain todo', 'todo', null), newer], [older, newer]);
+        renderAt('/');
+
+        const group = await screen.findByTestId('starred-group');
+        expect(within(group).getByText('Starred')).toBeInTheDocument();
+        expect(within(group).getByText('2')).toBeInTheDocument();
+        const titles = within(group).getAllByTestId('issue-row').map((r) => within(r).getAllByRole('button')[1].textContent);
+        expect(titles).toEqual(['Newer star', 'Older star']);
+
+        // The group comes first; starred issues are not repeated under Todo / Done.
+        const sections = document.querySelectorAll('section');
+        expect(sections[0]).toBe(group);
+        expect(screen.getAllByText('Older star')).toHaveLength(1);
+        expect(screen.getAllByText('Newer star')).toHaveLength(1);
+        expect(screen.getByText('Plain todo')).toBeInTheDocument();
+    });
+
+    it('is hidden when nothing is starred', async () => {
+        stub([row('b', 'Plain todo', 'todo', null)], []);
+        renderAt('/');
+        await screen.findByText('Plain todo');
+        expect(screen.queryByTestId('starred-group')).toBeNull();
+    });
+
+    it('follows the active filters: its own request carries them, and starred never counts as a filter', async () => {
+        const urls = stub([], []);
+        renderAt('/?status=todo');
+        await waitFor(() => expect(urls.some((u) => u.includes('filter[starred]=true'))).toBe(true));
+        const starredUrl = urls.find((u) => u.includes('filter[starred]=true'))!;
+        expect(starredUrl).toContain('filter[status]=todo');
+        expect(urls.filter((u) => u.includes('/issues') && !u.includes('filter[starred]')).every((u) => !u.includes('starred'))).toBe(true);
     });
 });

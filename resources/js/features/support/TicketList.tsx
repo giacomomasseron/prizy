@@ -10,6 +10,7 @@ import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { primarySlaMetric, slaMetricPresentation } from './sla';
 import { accentTag, paneHeader, paneSub, paneTitle, statusTag } from './supportStyles';
 import type { TicketListItem, TicketPriority } from '../../lib/types';
+import { issueRef } from '../issues/issueMeta';
 
 const SORTS = [
     { key: 'updated_at', label: 'Recently updated' },
@@ -80,7 +81,7 @@ export function TicketList({ tickets, selectedId, onSelect, sort, onSortChange, 
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>#{t.id.slice(0, 8)}</span>
                                         <span style={statusTag(st.color)}>{st.label}</span>
-                                        {linked && <span style={accentTag}>↩ {linked.identifier ?? linked.id.slice(0, 6)}</span>}
+                                        {linked && <span style={accentTag}>↩ {issueRef(linked)}</span>}
                                         {(() => {
                                             const primary = primarySlaMetric(t.sla_metrics);
                                             const pres = primary ? slaMetricPresentation(primary) : null;

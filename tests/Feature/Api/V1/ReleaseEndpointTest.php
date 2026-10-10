@@ -143,7 +143,7 @@ it('computes the rollup excluding cancelled and nulls pct when empty', function 
     expect(collect($res->json('data.by_status'))->pluck('key')->all())
         ->toBe(['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled']);
     expect(collect($res->json('data.issues'))->pluck('title'))->toHaveCount(3);
-    expect($res->json('data.issues.0.ref'))->toBeString()->toHaveLength(6);
+    expect($res->json('data.issues.0.ref'))->toBeString()->toHaveLength(10)->toStartWith('PRZ-');
 
     $emptyRes = $this->withToken($token)->getJson("/v1/releases/{$empty->id}")->assertOk();
     expect($emptyRes->json('data.rollup.pct'))->toBeNull();

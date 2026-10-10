@@ -8,7 +8,8 @@ import { paramsToFilters } from '../views/filters';
 import { IssuesHeader } from './IssuesHeader';
 import { useIssueDrawers } from './useIssueDrawers';
 import { useDragClickGuard } from './useDragClickGuard';
-import { STATUS_LABELS } from './issueMeta';
+import { STATUS_LABELS, issueRef } from './issueMeta';
+import { StarToggle } from './StarToggle';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
@@ -39,12 +40,14 @@ function Card({ issue, onCardClick, projects }: CardProps) {
         flexDirection: 'column',
         gap: 10,
         cursor: 'grab',
-        ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10 } : {}),
     };
 
     const project = issue.project_id ? projects.find((p) => p.id === issue.project_id) : undefined;
 
     return (
+        // The star sits beside the card's own control, not inside it: the card is role="button", whose children are
+        // presentational — a nested button would be hidden from assistive tech. The wrapper moves with a dragged card.
+        <div style={{ position: 'relative', ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10 } : {}) }}>
         <div
             ref={setNodeRef}
             style={style}
@@ -66,7 +69,7 @@ function Card({ issue, onCardClick, projects }: CardProps) {
             {/* Top row: identifier + priority */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>
-                    {issue.identifier ?? issue.id.slice(0, 6).toUpperCase()}
+                    {issueRef(issue)}
                 </span>
                 <span style={{ marginLeft: 'auto' }}>
                     <PriorityIcon priority={issue.priority} />
@@ -90,6 +93,9 @@ function Card({ issue, onCardClick, projects }: CardProps) {
                         : <Avatar size={20} />}
                 </span>
             </div>
+        </div>
+        {/* Over the card's top row, left of the priority icon. */}
+        <StarToggle issue={issue} style={{ position: 'absolute', top: 10, right: 38 }} />
         </div>
     );
 }

@@ -103,6 +103,12 @@ class Issue extends TenantAwareEntity
         return $this->archived_at === null;
     }
 
+    /** An issue's reference (PRD §3.2.1): `PRZ-` and the first 6 characters of its id, in capitals — `PRZ-3F9A1C`. */
+    public static function referenceFor(string $id): string
+    {
+        return 'PRZ-'.strtoupper(substr($id, 0, 6));
+    }
+
     /**
      * @return array<string, string>
      */

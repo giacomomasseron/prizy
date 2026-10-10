@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Models\Issue;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,7 +23,7 @@ final class NotificationResource extends JsonResource
             'subject' => $this->whenLoaded('subject', fn () => [
                 'type' => 'issue',
                 'id' => $this->subject_id,
-                'ref' => $this->subject->identifier ?? strtoupper(substr((string) $this->subject_id, 0, 6)),
+                'ref' => Issue::referenceFor((string) $this->subject_id),
                 'title' => $this->subject->title,
                 'path' => "/issues/{$this->subject_id}",
             ]),

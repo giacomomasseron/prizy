@@ -18,7 +18,8 @@ import { useMembers } from '../members/hooks';
 import { useMe } from '../../auth/useAuth';
 import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
-import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
+import { PRIORITY_LABELS, STATUS_LABELS, issueRef } from './issueMeta';
+import { StarButton } from './StarToggle';
 import { sectionTitle } from './issueStyles';
 
 const sectionHead: React.CSSProperties = { ...sectionTitle(16), marginBottom: 10 };
@@ -192,14 +193,15 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                 {data && (
                     <>
                         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>
-                            {data.identifier ?? data.id.slice(0, 6).toUpperCase()}
+                            {issueRef(data)}
                         </span>
+                        <StarButton issue={data} style={{ marginLeft: 'auto' }} />
                         <Link
                             to={`/issues/${data.id}`}
                             onClick={onClose}
                             title="Open full page"
                             className="border-border text-fg2 hover:border-fg hover:text-fg"
-                            style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 'var(--radius-pill)', borderWidth: 'var(--line)', borderStyle: 'solid', fontSize: 12.5, fontWeight: 600, textDecoration: 'none' }}
                         >
                             Open full page ↗
                         </Link>

@@ -23,10 +23,12 @@ export interface IssueFilters {
     cycle_id?: string;
     assignee_id?: string;
     label_id?: string;
+    /** `'true'`: the caller's starred issues only (PRD §3.2.9) — the list's Starred group; never a URL filter. */
+    starred?: string;
     sort?: string;
 }
 
-const FILTER_PARAM_KEYS = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id'] as const;
+const FILTER_PARAM_KEYS = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id', 'starred'] as const;
 
 function issuesPath(filters: IssueFilters): string {
     const params = new URLSearchParams();
@@ -76,6 +78,18 @@ export function groupByStatus(issues: Issue[]): Record<IssueStatus, Issue[]> {
     return buckets;
 }
 
+/**
+ * The list's Starred group (PRD §3.2.9): the issues the starred-filter request returned plus any the list holds that
+ * were just starred (optimistic), each once, without those just unstarred; the newest star first.
+ */
+export function starredGroup(starredItems: Issue[], listItems: Issue[]): Issue[] {
+    const byId = new Map<string, Issue>();
+    for (const issue of [...starredItems, ...listItems]) {
+        if (issue.starred === true && !byId.has(issue.id)) byId.set(issue.id, issue);
+    }
+    return [...byId.values()].sort((a, b) => (b.starred_at ?? '').localeCompare(a.starred_at ?? ''));
+}
+
 type IssuePage = { items: Issue[]; next: string | null };
 
 export function applyStatusOptimistic(page: IssuePage | undefined, id: string, status: IssueStatus): IssuePage {
@@ -93,7 +107,8 @@ export function useTransitionStatus() {
             // Optimistic update for the list/board
             const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
             for (const [key, page] of snapshots) {
-                qc.setQueryData(key, applyStatusOptimistic(page, vars.id, vars.status));
+                // A list still loading has nothing to move; writing a page into it would show it empty.
+                if (page) qc.setQueryData(key, applyStatusOptimistic(page, vars.id, vars.status));
             }
             // Optimistic update for the detail page (IssueDetailPage uses ['issue', id])
             const prevDetail = qc.getQueryData<Issue>(['issue', vars.id]);
@@ -123,6 +138,58 @@ export function useTransitionStatus() {
             // Invalidate only the activities sub-query so the feed refreshes after a
             // status change without triggering a full detail re-fetch / loading flash.
             qc.invalidateQueries({ queryKey: ['issue', vars.id, 'activities'] });
+        },
+    });
+}
+
+/** The server's answer to a star or unstar (PUT / DELETE /v1/issues/{id}/star). */
+export interface StarState {
+    issue_id: string;
+    starred: boolean;
+    starred_at: string | null;
+}
+
+export function applyStarOptimistic(page: IssuePage | undefined, id: string, starred: boolean, starredAt: string | null): IssuePage {
+    if (!page) return { items: [], next: null };
+    return { ...page, items: page.items.map((i) => (i.id === id ? { ...i, starred, starred_at: starredAt } : i)) };
+}
+
+/**
+ * Star or unstar an issue for the caller (PRD §3.2.9). Optimistic: every cached list page and the issue's own entry
+ * flip at once and roll back on error; the lists refetch afterwards (the Starred group gains or loses the issue).
+ */
+export function useToggleStar() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: async (vars: { id: string; starred: boolean }): Promise<StarState> => {
+            if (vars.starred) return api.put<StarState>(`/issues/${vars.id}/star`, {});
+            await api.del(`/issues/${vars.id}/star`);
+            return { issue_id: vars.id, starred: false, starred_at: null };
+        },
+        onMutate: async (vars) => {
+            await qc.cancelQueries({ queryKey: ['issues'] });
+            const starredAt = vars.starred ? new Date().toISOString() : null;
+            const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
+            for (const [key, page] of snapshots) {
+                // A list still loading has nothing to flip; writing a page into it would show it empty.
+                if (page) qc.setQueryData(key, applyStarOptimistic(page, vars.id, vars.starred, starredAt));
+            }
+            const prevDetail = qc.getQueryData<Issue>(['issue', vars.id]);
+            if (prevDetail) {
+                qc.setQueryData<Issue>(['issue', vars.id], { ...prevDetail, starred: vars.starred, starred_at: starredAt });
+            }
+            return { snapshots, prevDetail };
+        },
+        onError: (_err, vars, ctx) => {
+            ctx?.snapshots.forEach(([key, page]) => qc.setQueryData(key, page));
+            if (ctx?.prevDetail) qc.setQueryData<Issue>(['issue', vars.id], ctx.prevDetail);
+        },
+        onSuccess: (data) => {
+            const detail = qc.getQueryData<Issue>(['issue', data.issue_id]);
+            if (detail) qc.setQueryData<Issue>(['issue', data.issue_id], { ...detail, starred: data.starred, starred_at: data.starred_at });
+        },
+        onSettled: () => {
+            qc.invalidateQueries({ queryKey: ['issues'] });
         },
     });
 }

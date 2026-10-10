@@ -84,3 +84,18 @@ describe('useAssignIssue', () => {
         expect(vi.mocked(api.put)).toHaveBeenCalledWith('/issues/issue-1/assignee', { assignee_id: null });
     });
 });
+
+describe('useTransitionStatus: a list still loading', () => {
+    it('is left alone by the optimistic update', async () => {
+        vi.mocked(api.put).mockReturnValue(new Promise(() => {}) as never);
+        const { wrapper, qc } = makeWrapper();
+        qc.setQueryData(['issues', {}], { items: [{ id: 'issue-1', status: 'todo' }], next: null });
+        void qc.prefetchQuery({ queryKey: ['issues', { starred: 'true' }], queryFn: () => new Promise(() => {}) });
+        const { result } = renderHook(() => useTransitionStatus(), { wrapper });
+
+        act(() => { result.current.mutate({ id: 'issue-1', status: 'in_progress' }); });
+
+        await waitFor(() => expect(qc.getQueryData<{ items: { status: string }[] }>(['issues', {}])?.items[0].status).toBe('in_progress'));
+        expect(qc.getQueryData(['issues', { starred: 'true' }])).toBeUndefined();
+    });
+});

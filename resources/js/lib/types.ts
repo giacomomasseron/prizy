@@ -21,6 +21,9 @@ export interface Issue {
     created_at: string;
     updated_at: string;
     identifier?: string;
+    /** The caller's own star (PRD §3.2.9) and when they starred it. */
+    starred?: boolean;
+    starred_at?: string | null;
     labels?: { id: string; name: string; color: string }[];
     assignee?: { id: string; name: string } | null;
     project?: { id: string; name: string; color: string } | null;

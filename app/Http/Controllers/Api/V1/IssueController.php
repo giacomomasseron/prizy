@@ -36,7 +36,7 @@ final class IssueController extends Controller
 
     public function index(ListIssuesRequest $request): JsonResponse
     {
-        $page = $this->listIssues->handle($request->filters(), $request->sorts(), $request->limit());
+        $page = $this->listIssues->handle($request->filters(), $request->sorts(), $request->limit(), $request->user()?->id);
 
         return IssueResource::collection($page)->response();
     }

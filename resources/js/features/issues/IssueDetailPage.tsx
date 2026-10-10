@@ -27,7 +27,8 @@ import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { ApiError } from '../../lib/apiClient';
 import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
-import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
+import { PRIORITY_LABELS, STATUS_LABELS, issueRef } from './issueMeta';
+import { StarButton } from './StarToggle';
 import { sectionTitle } from './issueStyles';
 
 // Status / priority pills above the title (display only — editing lives in the Properties card).
@@ -75,7 +76,7 @@ export default function IssueDetailPage() {
     }
 
     const data       = issue.data;
-    const identifier = data.identifier ?? data.id.slice(0, 6).toUpperCase();
+    const identifier = issueRef(data);
 
     async function handleTitleBlur() {
         const el = titleRef.current;
@@ -149,6 +150,7 @@ export default function IssueDetailPage() {
                 </Link>
                 <span aria-hidden="true" style={{ color: 'var(--border2)', fontSize: 14 }}>/</span>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--fg)' }}>{identifier}</span>
+                <StarButton issue={data} style={{ marginLeft: 'auto' }} />
             </div>
 
             {error && <p style={{ color: 'var(--red-ink)', fontSize: 13, margin: '0 34px 12px' }}>{error}</p>}

@@ -19,6 +19,7 @@ import { Input } from '../../components/ui/Input';
 import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, onRowLinkClick, rowPrimary } from '../../components/ui/rowPrimary';
 import { NAV_ROW_HOVER, navRow, sectionLabel } from '../../components/sidebarStyles';
 import { TOOL_PILL_CLASSES, sectionTitle, toolPillStyle } from '../issues/issueStyles';
+import { issueRef } from '../issues/issueMeta';
 
 const SORTS: { value: string; label: string }[] = [
     { value: 'updated', label: 'Last updated' },
@@ -248,8 +249,8 @@ export default function SearchPage() {
                                 >
                                     <PriorityIcon priority={it.priority} />
                                     <StatusIcon status={it.status} size={14} />
-                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 56, flexShrink: 0 }}>
-                                        {it.identifier ?? it.id.slice(0, 6).toUpperCase()}
+                                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)', width: 76, flexShrink: 0 }}>
+                                        {issueRef(it)}
                                     </span>
                                     {/* The row's primary control (V2-G3b): a link, so it opens in a new tab too. */}
                                     <Link to={`/issues/${it.id}`} onClick={onRowLinkClick} className={ROW_PRIMARY_CLASSES} style={{ ...rowPrimary, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 14 }}>
