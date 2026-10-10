@@ -1,11 +1,14 @@
 import { useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import type { Announcements, DragEndEvent, UniqueIdentifier } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { QueryState } from '../../components/ui/QueryState';
 import type { IssueLookupItem, Todo } from '../../lib/types';
 import { useMembers } from '../members/hooks';
 import { useMentionPicker } from '../mentions/useMentionPicker';
 import { TodoText } from './TodoText';
-import { splitTodos, useAddTodo, useClearDoneTodos, useDeleteTodo, useTodos, useUpdateTodo } from './todoHooks';
+import { positionForMove, splitTodos, useAddTodo, useClearDoneTodos, useDeleteTodo, useTodos, useUpdateTodo } from './todoHooks';
 
 const MAX_TEXT = 500;
 /** The loading and failure states sit on the yellow note in both themes: give them its ink. */
@@ -14,6 +17,61 @@ const FAILED = 'That change didn’t save. Try again.';
 
 /** A to-do that exists only in the cache until the server answers: nothing can act on it yet. */
 const isPending = (todo: Todo) => todo.id.startsWith('pending-');
+
+const REORDER_HELP = 'To reorder a to-do, press Space on its Reorder button, move it with the arrow keys, then press Space to drop it or Escape to cancel.';
+
+/** One open to-do: a drag handle (pointer or keyboard, via dnd-kit), the checkbox, the text, and ✕. */
+function OpenTodoRow({ todo, names, onDone, onDelete }: { todo: Todo; names: string[]; onDone: () => void; onDelete: () => void }) {
+    const pending = isPending(todo);
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: todo.id, disabled: pending });
+    return (
+        <li
+            ref={setNodeRef}
+            data-testid="todo-row"
+            className="hover:bg-sticky-hover"
+            style={{
+                display: 'flex', alignItems: 'flex-start', gap: 10, padding: 8, borderRadius: 12, position: 'relative',
+                transform: transform ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` : undefined,
+                transition, zIndex: isDragging ? 1 : undefined, background: isDragging ? 'var(--hi)' : undefined,
+            }}
+        >
+            <button
+                type="button"
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                aria-label="Reorder"
+                title="Drag to reorder"
+                className="opacity-60 hover:opacity-100"
+                style={{ border: 'none', background: 'none', color: 'var(--on-hi)', cursor: 'grab', fontSize: 13, letterSpacing: '-2px', width: 16, height: 22, padding: 0, flexShrink: 0, touchAction: 'none', fontFamily: 'inherit' }}
+            >
+                ⋮⋮
+            </button>
+            <input
+                type="checkbox"
+                className="todo-check"
+                checked={false}
+                disabled={pending}
+                aria-labelledby={`todo-${todo.id}`}
+                onChange={onDone}
+            />
+            <div id={`todo-${todo.id}`} style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
+                <TodoText todo={todo} names={names} />
+            </div>
+            <button
+                type="button"
+                aria-label="Delete to-do"
+                title="Delete"
+                disabled={pending}
+                onClick={onDelete}
+                className="opacity-60 hover:opacity-100"
+                style={{ border: 'none', background: 'none', color: 'var(--on-hi)', cursor: 'pointer', fontSize: 12, width: 22, height: 22, borderRadius: '50%', flexShrink: 0, padding: 0, fontFamily: 'inherit' }}
+            >
+                ✕
+            </button>
+        </li>
+    );
+}
 
 /**
  * My to-dos (PRD §3.2.10, the Today v2 design): a private checklist on a yellow sticky note. Add on top with Enter
@@ -64,6 +122,29 @@ export function TodoCard() {
         update.mutate({ id: todo.id, done: value }, { onError });
     };
 
+    // Reorder: pointer drag, or the keyboard on a row's Reorder button; the move sends the new position.
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+    function onDragEnd({ active, over }: DragEndEvent) {
+        if (!over || active.id === over.id) return;
+        const from = open.findIndex((t) => t.id === active.id);
+        const to = open.findIndex((t) => t.id === over.id);
+        if (from < 0 || to < 0) return;
+        setError('');
+        update.mutate({ id: String(active.id), position: positionForMove(open, from, to) }, { onError });
+    }
+    // dnd-kit's own announcements name the item by its id; these name the to-do by its text.
+    const textOf = (id: UniqueIdentifier) => open.find((t) => t.id === id)?.text ?? '';
+    const placeOf = (id: UniqueIdentifier) => open.findIndex((t) => t.id === id) + 1;
+    const announcements: Announcements = {
+        onDragStart: ({ active }) => `Picked up “${textOf(active.id)}”, at position ${placeOf(active.id)} of ${open.length}.`,
+        onDragOver: ({ active, over }) => (over ? `“${textOf(active.id)}” is at position ${placeOf(over.id)} of ${open.length}.` : undefined),
+        onDragEnd: ({ active, over }) => (over ? `Dropped “${textOf(active.id)}” at position ${placeOf(over.id)} of ${open.length}.` : `Dropped “${textOf(active.id)}”.`),
+        onDragCancel: ({ active }) => `Cancelled. “${textOf(active.id)}” is back where it was.`,
+    };
+
     return (
         <section aria-labelledby={headingId} style={{ position: 'relative', maxWidth: 400 }}>
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, borderRadius: 22, background: 'var(--hi)', boxShadow: 'var(--sticky-shadow)', transform: 'rotate(-.6deg)' }} />
@@ -99,34 +180,21 @@ export function TodoCard() {
                     {open.length === 0 ? (
                         <p style={{ margin: 0, padding: 16, textAlign: 'center', fontSize: 14, opacity: 0.75 }}>All clear. Enjoy it.</p>
                     ) : (
-                        <ul aria-label="Open to-dos" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
-                            {open.map((todo) => (
-                                <li key={todo.id} data-testid="todo-row" className="hover:bg-sticky-hover" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: 8, borderRadius: 12 }}>
-                                    <input
-                                        type="checkbox"
-                                        className="todo-check"
-                                        checked={false}
-                                        disabled={isPending(todo)}
-                                        aria-labelledby={`todo-${todo.id}`}
-                                        onChange={() => setDone(todo, true)}
-                                    />
-                                    <div id={`todo-${todo.id}`} style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                                        <TodoText todo={todo} names={names} />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        aria-label="Delete to-do"
-                                        title="Delete"
-                                        disabled={isPending(todo)}
-                                        onClick={() => { setError(''); remove.mutate(todo.id, { onError }); }}
-                                        className="opacity-60 hover:opacity-100"
-                                        style={{ border: 'none', background: 'none', color: 'var(--on-hi)', cursor: 'pointer', fontSize: 12, width: 22, height: 22, borderRadius: '50%', flexShrink: 0, padding: 0, fontFamily: 'inherit' }}
-                                    >
-                                        ✕
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements, screenReaderInstructions: { draggable: REORDER_HELP } }}>
+                            <SortableContext items={open.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                                <ul aria-label="Open to-dos" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column' }}>
+                                    {open.map((todo) => (
+                                        <OpenTodoRow
+                                            key={todo.id}
+                                            todo={todo}
+                                            names={names}
+                                            onDone={() => setDone(todo, true)}
+                                            onDelete={() => { setError(''); remove.mutate(todo.id, { onError }); }}
+                                        />
+                                    ))}
+                                </ul>
+                            </SortableContext>
+                        </DndContext>
                     )}
 
                     {done.length > 0 && (

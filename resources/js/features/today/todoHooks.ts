@@ -25,6 +25,20 @@ export function topPosition(todos: Todo[]): number {
 }
 
 /**
+ * The position that moves an open to-do from `from` to `to` (indexes in `open`, the open to-dos in their order): the
+ * midpoint between its new neighbours, or a neighbour ± 1 at either end. The server renumbers when two crowd together.
+ */
+export function positionForMove(open: Todo[], from: number, to: number): number {
+    const rest = open.filter((_, i) => i !== from);
+    const before = rest[to - 1];
+    const after = rest[to];
+    if (before && after) return (before.position + after.position) / 2;
+    if (before) return before.position + 1;
+    if (after) return after.position - 1;
+    return open[from]?.position ?? 0;
+}
+
+/**
  * Every to-do change shows at once: the list is updated before the request, rolled back if it fails, and refetched
  * when it settles.
  */

@@ -6,7 +6,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { Todo } from '../../lib/types';
 import { TodoCard } from './TodoCard';
-import { splitTodos, topPosition } from './todoHooks';
+import { positionForMove, splitTodos, topPosition } from './todoHooks';
 
 // P7-B: My to-dos (PRD §3.2.10, the Today v2 design).
 function todo(id: string, text: string, position: number, extra: Partial<Todo> = {}): Todo {
@@ -272,5 +272,57 @@ describe('P7-B: the card, review fixes', () => {
         const heading = await screen.findByRole('heading', { level: 2, name: 'My to-dos' });
         expect(heading.closest('.sticky-note')).not.toBeNull();
         expect(screen.getByRole('combobox', { name: 'Add a to-do' }).closest('.sticky-note')).not.toBeNull();
+    });
+});
+
+describe('P7-B: reordering the open to-dos', () => {
+    const four = [todo('a', 'A', 1), todo('b', 'B', 2), todo('c', 'C', 3), todo('d', 'D', 4)];
+
+    it('places a moved to-do at the midpoint of its new neighbours, or one past the end it lands on', () => {
+        expect(positionForMove(four, 0, 2)).toBe(3.5); // A between C and D
+        expect(positionForMove(four, 2, 1)).toBe(1.5); // C between A and B
+        expect(positionForMove(four, 3, 0)).toBe(0);   // D above A
+        expect(positionForMove(four, 0, 3)).toBe(5);   // A below D
+    });
+
+    it('gives every open to-do a Reorder handle that dnd-kit drives from the keyboard', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        const handle = within(openRows()[0]).getByRole('button', { name: 'Reorder' });
+
+        expect(handle).toHaveAttribute('aria-roledescription', 'sortable');
+        const help = document.getElementById(handle.getAttribute('aria-describedby') ?? '');
+        expect(help?.textContent).toContain('press Space on its Reorder button');
+    });
+
+    it('moves a to-do down with the keyboard (Space, ↓, Space), at once, and sends the midpoint', async () => {
+        // jsdom has no layout: give each row a box by its place in the list, so dnd-kit can measure and move.
+        const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+            const rows = Array.from(document.querySelectorAll('[data-testid="todo-row"]'));
+            const i = rows.indexOf(this.closest('[data-testid="todo-row"]') as Element);
+            const top = Math.max(i, 0) * 40;
+            return { x: 0, y: top, top, left: 0, bottom: top + 40, right: 300, width: 300, height: 40, toJSON: () => ({}) } as DOMRect;
+        });
+        try {
+            server = [todo('t1', 'A', 1), todo('t2', 'B', 2), todo('t3', 'C', 3)];
+            renderCard();
+            await screen.findByText('A');
+            holdWrites = true;
+            const tick = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+
+            const handle = within(openRows()[0]).getByRole('button', { name: 'Reorder' });
+            handle.focus();
+            fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+            await tick();
+            fireEvent.keyDown(handle, { key: 'ArrowDown', code: 'ArrowDown' });
+            await tick();
+            fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+
+            await waitFor(() => expect(calls('PATCH', '/me/todos/t1')).toHaveLength(1));
+            expect(JSON.parse(String(calls('PATCH', '/me/todos/t1')[0][1].body))).toEqual({ position: 2.5 });
+            await waitFor(() => expect(openRows().map((r) => r.querySelector('[id^="todo-"]')?.textContent)).toEqual(['B', 'A', 'C']));
+        } finally {
+            rect.mockRestore();
+        }
     });
 });
