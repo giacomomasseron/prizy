@@ -7,6 +7,7 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
+html { scroll-padding-top: 96px; }
 body {
   min-height: 100vh; display: flex; flex-direction: column;
   background: var(--bg); color: var(--fg);
@@ -34,7 +35,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .hc-wrap--solo { max-width: 440px; }
 @media (max-width: 640px) { .hc-wrap { padding: 0 16px; } }
 .hc-main { flex: 1; }
-.hc-page { padding: 40px 0 72px; }
+.hc-page { padding-top: 40px; padding-bottom: 72px; }
 
 /* ── Header ── */
 .hc-header { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: var(--line) solid var(--border); }
@@ -56,7 +57,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .hc-account { display: flex; align-items: center; gap: 12px; font-size: 13px; }
 .hc-account form { margin: 0; }
 @media (max-width: 640px) {
-  .hc-nav { order: 3; width: 100%; margin-left: 0; overflow-x: auto; }
+  .hc-nav { order: 3; width: 100%; margin-left: 0; overflow-x: auto; padding: 4px; margin-left: -4px; margin-right: -4px; }
   .hc-account__who { display: none; }
 }
 
@@ -76,6 +77,12 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .hc-switcher__name { flex: 1; }
 .hc-switcher__has { color: var(--sup-ink); font-size: 12px; }
 .hc-switcher__only { color: var(--fg3); font-size: 11.5px; }
+/* The sticky header (positioned) becomes the menu's containing block, so the menu spans it under the bar. */
+@media (max-width: 640px) {
+  .hc-switcher { position: static; }
+  .hc-switcher__menu { top: 100%; left: 16px; right: 16px; width: auto; }
+  html { scroll-padding-top: 168px; }
+}
 .hc-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--fg); }
 .hc-dot--none { background: transparent; }
 
@@ -111,8 +118,8 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 
 /* ── Cards ── */
 .hc-card { background: var(--panel); border: var(--line) solid var(--border); border-radius: var(--radius-card); }
-a.hc-card { display: block; color: var(--fg); transition: border-color .12s; }
-a.hc-card:hover { border-color: var(--fg); text-decoration: none; }
+:where(a).hc-card { display: block; color: var(--fg); transition: border-color .12s; }
+:where(a).hc-card:hover { border-color: var(--fg); text-decoration: none; }
 .hc-card__title { font-size: 17px; margin: 0 0 14px; }
 
 /* ── Fields ── */
@@ -158,7 +165,7 @@ textarea.hc-field { resize: vertical; line-height: 1.55; }
   .hc-hero { padding: 48px 0 32px; }
   .hc-hero__title { font-size: 34px; }
 }
-.hc-section { padding: 40px 0 0; }
+.hc-section { padding-top: 40px; }
 .hc-section--last { padding-bottom: 64px; }
 .hc-recent { padding: 22px; }
 .hc-recent__row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; color: var(--fg); font-size: 14px; }
@@ -191,9 +198,12 @@ textarea.hc-field { resize: vertical; line-height: 1.55; }
 
 /* The article body (server-rendered Markdown). The class stays `kb` — a test pins `<article class="kb" lang="…">`.
    The app's editor preview (.kb-preview in app.css) mirrors these rules. */
-article.kb { color: var(--fg); font-size: 16px; line-height: 1.7; }
+article.kb { color: var(--fg); font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+article.kb h1 { margin: 36px 0 12px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -.035em; line-height: 1.15; }
 article.kb h2 { margin: 32px 0 10px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
 article.kb h3 { margin: 24px 0 8px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
+article.kb h4 { margin: 20px 0 6px; font-size: 16px; font-weight: 700; }
+article.kb hr { margin: 28px 0; border: 0; border-top: 1px solid var(--border); }
 article.kb p { margin: 12px 0; }
 article.kb ul { list-style: disc; padding-left: 22px; }
 article.kb ol { list-style: decimal; padding-left: 22px; }
@@ -218,7 +228,7 @@ article.kb th { background: var(--bg2); }
 .hc-result__snippet b { color: var(--fg); font-weight: 700; }
 
 /* ── Sign-in and short forms ── */
-.hc-solo-page { padding: 64px 0; }
+.hc-solo-page { padding-top: 64px; padding-bottom: 64px; }
 .hc-form { display: flex; flex-direction: column; gap: 16px; padding: 22px; }
 .hc-form > h1, .hc-form > p { margin: 0; }
 .hc-form__actions { display: flex; align-items: center; gap: 14px; }
@@ -242,6 +252,7 @@ article.kb th { background: var(--bg2); }
 .hc-ticket__when { flex-shrink: 0; font-size: 12.5px; color: var(--fg3); }
 @media (max-width: 640px) {
   .hc-ticket { flex-wrap: wrap; }
+  .hc-ticket__main { order: -1; flex-basis: 100%; }
   .hc-inline-form { width: 100%; }
   .hc-inline-form .hc-field { flex: 1; width: auto; }
 }
@@ -256,7 +267,7 @@ article.kb th { background: var(--bg2); }
 .hc-event__icon { width: 22px; height: 22px; flex-shrink: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--hover); font-size: 11px; }
 .hc-message { padding: 14px 16px; }
 .hc-message__head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; font-size: 13px; }
-.hc-message__body { white-space: pre-wrap; line-height: 1.6; }
+.hc-message__body { white-space: pre-wrap; line-height: 1.6; overflow-wrap: anywhere; }
 .hc-rate { margin-top: 16px; padding: 18px; }
 .hc-rate__q { margin-bottom: 4px; font-weight: 700; }
 .hc-rate__hint { margin-bottom: 12px; font-size: 13px; color: var(--fg3); }

@@ -47,7 +47,7 @@ describe('Help Center v2: help.css', () => {
     it('defines the components the pages use', () => {
         for (const sel of ['.hc-skip:focus', '.hc-header', '.hc-nav a[aria-current="page"]', '.hc-switcher__menu', '.hc-btn',
             '.hc-btn:hover', '.hc-btn--primary', '.hc-btn--primary:hover', '.hc-pill[aria-current]', '.hc-chip--accent', '.hc-status',
-            '.hc-status--blue', '.hc-status--red', '.hc-status--amber', '.hc-status--green', '.hc-card', 'a.hc-card:hover',
+            '.hc-status--blue', '.hc-status--red', '.hc-status--amber', '.hc-status--green', '.hc-card', ':where(a).hc-card:hover',
             '.hc-field', '.hc-field:focus', '.hc-error', '.hc-notice', '.hc-hero__title', '.hc-tile', 'article.kb', '.hc-request',
             '.hc-solo__card', '.sr-only']) {
             expect(rules(help, sel), sel).not.toEqual([]);

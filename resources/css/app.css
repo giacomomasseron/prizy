@@ -56,9 +56,12 @@ html, body { background: var(--bg); color: var(--fg); }
 /* KB article editor preview ("As customers see it") — mirrors the public Help Center's article body
    (`article.kb` in resources/css/help.css) rule for rule, so the preview honours its promise;
    test/help-center-styles.test.ts holds the two in step. Typography and spacing only. */
-.kb-preview { color: var(--fg); font-size: 16px; line-height: 1.7; }
+.kb-preview { color: var(--fg); font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.kb-preview h1 { margin: 36px 0 12px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -.035em; line-height: 1.15; }
 .kb-preview h2 { margin: 32px 0 10px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
 .kb-preview h3 { margin: 24px 0 8px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
+.kb-preview h4 { margin: 20px 0 6px; font-size: 16px; font-weight: 700; }
+.kb-preview hr { margin: 28px 0; border: 0; border-top: 1px solid var(--border); }
 .kb-preview p { margin: 12px 0; }
 .kb-preview ul { list-style: disc; padding-left: 22px; }
 .kb-preview ol { list-style: decimal; padding-left: 22px; }
