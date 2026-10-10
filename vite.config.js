@@ -7,7 +7,7 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/main.tsx'],
+            input: ['resources/css/app.css', 'resources/js/main.tsx', 'resources/css/help.css'],
             refresh: true,
             fonts: [
                 bunny('Figtree', { weights: [400, 500, 600, 700] }),

@@ -3,10 +3,10 @@ import { resolve } from 'path';
 import { describe, expect, it } from 'vitest';
 
 /*
- * WCAG contrast of the palette, computed from app.css in both themes (V2-G3a). Text needs 4.5:1; the boundary of a
+ * WCAG contrast of the palette, computed from shared.css (the tokens app.css and help.css import) in both themes (V2-G3a). Text needs 4.5:1; the boundary of a
  * field and the marker of a selected segment need 3:1. A later colour change that breaks a pairing fails here.
  */
-const css = readFileSync(resolve(__dirname, '../../../resources/css/app.css'), 'utf8');
+const css = readFileSync(resolve(__dirname, '../../../resources/css/shared.css'), 'utf8');
 
 type RGB = [number, number, number];
 type Token = { rgb: RGB; alpha: number };
@@ -90,5 +90,12 @@ describe.each(Object.entries(THEMES))('contrast in the %s theme', (_name, p) => 
     it('G3c: the danger hover fill keeps 4.5:1 for its text and is a visible step from --red', () => {
         expect(ratio(rgb('--on-accent'), rgb('--red-hover'))).toBeGreaterThanOrEqual(4.5);
         expect(ratio(rgb('--red'), rgb('--red-hover'))).toBeGreaterThanOrEqual(1.3);
+    });
+
+    it('Help Center: the ink button\'s text and the fallback notice reach 4.5:1', () => {
+        expect(ratio(rgb('--bg'), rgb('--fg')), '--bg on --fg').toBeGreaterThanOrEqual(4.5);
+        for (const g of ['--panel', '--bg']) {
+            expect(ratio(rgb('--note-ink'), over(p['--note2'], rgb(g))), `--note-ink on --note2 over ${g}`).toBeGreaterThanOrEqual(4.5);
+        }
     });
 });

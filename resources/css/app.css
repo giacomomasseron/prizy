@@ -1,43 +1,8 @@
 @import 'tailwindcss';
+@import './shared.css';
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
-
-/* ── Theme palette (Prizy v2 "warm"). Light is the default; dark via :root[data-theme="dark"].
-      Every palette token MUST be declared in BOTH blocks — test/design-tokens.test.ts enforces parity. ── */
-:root {
-  --bg:#fbf6ea; --bg2:#f4ecd8; --panel:#ffffff; --border:#e6dcc4; --border2:#d3c6a6;
-  --fg:#1d1a14; --fg2:#4f493d; --fg3:#6e6656; --hover:rgba(29,26,20,.05);
-  --accent:#5b57e0; --accent2:rgba(91,87,224,.12); --on-accent:#ffffff; --hi:#ffe46b; --on-hi:#1d1a14;
-  --red:#d93a3f; --amber:#a8691c; --green:#3a8f4d; --blue:#3f74d6; --teal:#2f8f88;
-  --sup:#3a8f4d; --sup2:rgba(58,143,77,.14); --on-sup:#ffffff;
-  --note:#a8691c; --note2:rgba(168,105,28,.12);
-  --backdrop:rgba(29,26,20,.32);
-  /* Text-only ("ink") partners of the status colours: 4.5:1 on panel, bg, bg2 and on a 15% tint of their partner.
-     Fills, dots, bars and tints keep the base colours. The field colour is the input border, 3:1 (WCAG 1.4.11). */
-  --red-ink:#af2226; --red-hover:#af2226; --amber-ink:#835216; --green-ink:#2b6938; --blue-ink:#2759b6; --teal-ink:#226762;
-  --accent-ink:#4844dc; --sup-ink:#2b6938; --note-ink:#835216;
-  --field:#918773;
-  color-scheme: light;
-}
-:root[data-theme="dark"] {
-  --bg:#16140f; --bg2:#1e1b15; --panel:#25221b; --border:#332e25; --border2:#4a4335;
-  --fg:#f6f0e2; --fg2:#cbc2ae; --fg3:#a69d89; --hover:rgba(255,248,230,.06);
-  --accent:#8f8cf6; --accent2:rgba(143,140,246,.16); --on-accent:#16140f; --hi:#f5d84f; --on-hi:#1d1a14;
-  --red:#ef6b6b; --amber:#e5aa4c; --green:#5fbf7a; --blue:#7ea6f2; --teal:#4fb8af;
-  --sup:#5fbf7a; --sup2:rgba(95,191,122,.16); --on-sup:#16140f;
-  --note:#e5aa4c; --note2:rgba(229,170,76,.14);
-  --backdrop:rgba(0,0,0,.5);
-  --red-ink:#f07777; --red-hover:#f99a9a; --amber-ink:#e5aa4c; --green-ink:#5fbf7a; --blue-ink:#7ea6f2; --teal-ink:#4fb8af;
-  --accent-ink:#9693f7; --sup-ink:#5fbf7a; --note-ink:#e5aa4c;
-  --field:#746b58;
-  color-scheme: dark;
-}
-/* Shape tokens — theme-independent. */
-:root {
-  --radius-pill:999px; --radius-row:12px; --radius-pop:16px; --radius-card:18px; --radius-modal:20px;
-  --line:1.5px; --pop-shadow:4px 4px 0 var(--fg);
-}
 
 @theme inline {
   --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
@@ -71,13 +36,6 @@
     outline: 2px solid var(--fg);
     outline-offset: 2px;
   }
-}
-
-/* Highlighter behind display titles (v2). */
-.hl {
-  background: linear-gradient(transparent 55%, var(--hi) 55%, var(--hi) 92%, transparent 92%);
-  padding: 0 4px; margin: 0 -4px;
-  -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
 
 html, body { background: var(--bg); color: var(--fg); }
