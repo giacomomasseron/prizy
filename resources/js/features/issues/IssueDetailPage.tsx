@@ -13,7 +13,7 @@ import { CycleEditor } from './CycleEditor';
 import { LabelsEditor } from './LabelsEditor';
 import { useGithubLinks, useAddGithubLink, useRemoveGithubLink } from './githubLinks';
 import { useMe } from '../../auth/useAuth';
-import { canDevelop as canDevelopFor } from '../../auth/capabilities';
+import { canDevelop as canDevelopFor, canUseTracker } from '../../auth/capabilities';
 import { useMembers } from '../members/hooks';
 import { avatarFor } from '../../lib/avatarFor';
 import { timeAgo } from '../../lib/timeAgo';
@@ -29,6 +29,7 @@ import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
 import { PRIORITY_LABELS, STATUS_LABELS, issueRef } from './issueMeta';
 import { StarButton } from './StarToggle';
+import { useMentionPicker } from '../mentions/useMentionPicker';
 import { sectionTitle } from './issueStyles';
 
 // Status / priority pills above the title (display only — editing lives in the Properties card).
@@ -65,6 +66,11 @@ export default function IssueDetailPage() {
     const [error, setError]     = useState('');
     const titleRef = useRef<HTMLSpanElement>(null);
     const posting = useRef(false);
+    const commentRef = useRef<HTMLTextAreaElement>(null);
+    // P7-B: @ mentions people (the server already notifies @Full Name) and, for tracker users, issues.
+    const mention = useMentionPicker({
+        value: comment, onValueChange: setComment, fieldRef: commentRef, field: 'textarea', canSearchIssues: canUseTracker(me.data),
+    });
 
     const canDevelop = canDevelopFor(me.data);
 
@@ -122,8 +128,9 @@ export default function IssueDetailPage() {
         void postComment();
     }
 
-    // ⌘+Enter / Ctrl+Enter posts; a plain Enter inserts a newline.
+    // ⌘+Enter / Ctrl+Enter posts; a plain Enter inserts a newline. While the mention picker is open, its keys come first.
     function onCommentKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+        if (mention.handleKeyDown(e)) return;
         if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
             e.preventDefault();
             void postComment();
@@ -320,12 +327,13 @@ export default function IssueDetailPage() {
                             style={{
                                 flex: 1, minWidth: 0, borderWidth: 'var(--line)', borderStyle: 'solid',
                                 borderRadius: 'var(--radius-card)', background: 'var(--panel)', padding: '12px 14px 10px',
-                                transition: 'border-color .12s',
+                                transition: 'border-color .12s', position: 'relative',
                             }}
                         >
                             <textarea
+                                ref={commentRef}
                                 value={comment}
-                                onChange={(e) => setComment(e.target.value)}
+                                {...mention.fieldProps}
                                 onKeyDown={onCommentKeyDown}
                                 placeholder="Leave a comment…"
                                 aria-label="Leave a comment"
@@ -348,6 +356,7 @@ export default function IssueDetailPage() {
                                     Comment
                                 </Button>
                             </div>
+                            {mention.menu}
                         </div>
                     </form>
                 </div>
