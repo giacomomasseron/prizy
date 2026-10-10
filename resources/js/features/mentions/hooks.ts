@@ -27,6 +27,7 @@ export function useIssueLookup(q: string, enabled: boolean): { issues: IssueLook
         staleTime: 30_000,
     });
 
-    if (!enabled || q === '') return { issues: [], pending: false };
+    // Past the lookup's limit there is nothing to ask, and nothing stale to show.
+    if (!enabled || q === '' || q.length > MAX_QUERY) return { issues: [], pending: false };
     return { issues: lookup.data ?? [], pending: debounced !== q || lookup.isFetching };
 }

@@ -201,3 +201,69 @@ describe('P7-B: the @ mention picker', () => {
         expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/issues/lookup'))).toBe(false);
     });
 });
+
+describe('P7-B: the picker, review fixes', () => {
+    it('puts the caret after a pick made in the middle of the text', async () => {
+        const field = renderPicker({ canSearchIssues: false });
+        fireEvent.change(field, { target: { value: '@ma later', selectionStart: 3, selectionEnd: 3 } });
+        await screen.findByRole('option', { name: /Maya Chen/ });
+
+        fireEvent.keyDown(field, { key: 'Enter' });
+
+        expect(field.value).toBe('@Maya Chen later');
+        expect(field.selectionStart).toBe(11);
+    });
+
+    it('keeps the active row in view as the arrows move it', async () => {
+        const original = Element.prototype.scrollIntoView;
+        const seen: Element[] = [];
+        Element.prototype.scrollIntoView = function (this: Element) { seen.push(this); }; // jsdom has none
+        try {
+            const field = renderPicker({ canSearchIssues: false });
+            type(field, '@');
+            const options = within(await screen.findByRole('listbox')).getAllByRole('option');
+
+            fireEvent.keyDown(field, { key: 'ArrowDown' });
+
+            expect(seen.at(-1)).toBe(options[1]);
+        } finally {
+            Element.prototype.scrollIntoView = original;
+        }
+    });
+
+    it('offers no issues for a query past the lookup\'s 100 characters', async () => {
+        const field = renderPicker();
+        type(field, '@fix');
+        await screen.findByRole('group', { name: 'Issues' });
+
+        type(field, '@' + 'x'.repeat(101));
+        await act(async () => { await new Promise((r) => setTimeout(r, 250)); });
+
+        expect(screen.queryByRole('group', { name: 'Issues' })).toBeNull();
+    });
+
+    it('does not pick while an input method is composing', async () => {
+        const field = renderPicker({ canSearchIssues: false });
+        type(field, '@ma');
+        await screen.findByRole('option', { name: /Maya Chen/ });
+
+        fireEvent.keyDown(field, { key: 'Enter', isComposing: true });
+
+        expect(field.value).toBe('@ma');
+    });
+
+    it('lets Esc through to a surrounding drawer while nothing is shown yet', () => {
+        const outer = vi.fn();
+        document.addEventListener('keydown', outer);
+        try {
+            const field = renderPicker();
+            type(field, '@zzz'); // nothing listed yet: the people and the lookup are still on their way
+
+            fireEvent.keyDown(field, { key: 'Escape' });
+
+            expect(outer).toHaveBeenCalled();
+        } finally {
+            document.removeEventListener('keydown', outer);
+        }
+    });
+});

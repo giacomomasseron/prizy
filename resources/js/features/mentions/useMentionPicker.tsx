@@ -101,7 +101,8 @@ export function useMentionPicker({ value, onValueChange, fieldRef, field, canSea
     }
 
     function handleKeyDown(e: KeyboardEvent<Field>): boolean {
-        if (mention === null) return false;
+        // Nothing shown (closed, or still waiting for its first answer), or an input method composing: keys behave as before.
+        if (!isOpen || e.nativeEvent.isComposing) return false;
         if (e.key === 'Escape') {
             // Close only the picker, not a drawer or dialog around the field.
             e.preventDefault();

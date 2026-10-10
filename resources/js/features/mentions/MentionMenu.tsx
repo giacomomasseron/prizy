@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import type { CSSProperties } from 'react';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
@@ -32,6 +33,11 @@ const BADGE: CSSProperties = {
  * from the field (aria-activedescendant), so focus never leaves the text; mousedown is prevented for the same reason.
  */
 export function MentionMenu({ listId, optionId, options, active, onHover, onPick, emptyText, placement }: MentionMenuProps) {
+    // aria-activedescendant moves the active row without scrolling: keep it in view (jsdom has no scrollIntoView).
+    useEffect(() => {
+        document.getElementById(optionId(active))?.scrollIntoView?.({ block: 'nearest' });
+    }, [active, optionId]);
+
     const people = options.map((o, i) => [o, i] as const).filter(([o]) => o.kind === 'person');
     const issues = options.map((o, i) => [o, i] as const).filter(([o]) => o.kind === 'issue');
 

@@ -58,3 +58,9 @@ describe('mentionHandle', () => {
         expect(mentionHandle('Maya Chen')).toBe('@maya');
     });
 });
+
+describe('applyPick before a line break', () => {
+    it('keeps the line break that follows the mention', () => {
+        expect(applyPick('@ab\nnext', { start: 0, end: 3, q: 'ab' }, 'PRZ-ABC123')).toEqual({ text: 'PRZ-ABC123 \nnext', caret: 11 });
+    });
+});

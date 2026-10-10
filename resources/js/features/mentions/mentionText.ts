@@ -24,11 +24,11 @@ export function detectMention(text: string, caret: number): MentionQuery | null 
 }
 
 /**
- * Replace the mention with `insert` and one space, dropping one space that already followed it; the caret goes
- * after the inserted space.
+ * Replace the mention with `insert` and one space, dropping one space (never a line break) that already followed
+ * it; the caret goes after the inserted space.
  */
 export function applyPick(text: string, mention: MentionQuery, insert: string): { text: string; caret: number } {
-    const after = text.slice(mention.end).replace(/^\s/, '');
+    const after = text.slice(mention.end).replace(/^ /, '');
     return { text: text.slice(0, mention.start) + insert + ' ' + after, caret: mention.start + insert.length + 1 };
 }
 
