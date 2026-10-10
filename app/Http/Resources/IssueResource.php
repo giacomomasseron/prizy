@@ -7,6 +7,8 @@ namespace App\Http\Resources;
 use App\Http\Resources\Concerns\SparseFieldset;
 use App\Models\Ticket;
 use App\Services\HelpdeskAccess;
+use App\Services\StarredIssues;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,9 +16,14 @@ final class IssueResource extends JsonResource
 {
     use SparseFieldset;
 
+    /** The request attribute holding the caller's stars (issue_id => starred at), loaded once per request. */
+    private const STARS = 'issue_resource.stars';
+
     /** @return array<string, mixed> */
     public function toArray(Request $request): array
     {
+        $starredAt = $this->starredAt($request);
+
         return $this->sparse($request, 'issues', [
             'id' => $this->id,
             'title' => $this->title,
@@ -36,6 +43,9 @@ final class IssueResource extends JsonResource
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'identifier' => $this->identifier ?? null,
+            // The caller's own star (PRD §3.2.9) — private: another user sees their own state.
+            'starred' => $starredAt !== null,
+            'starred_at' => $starredAt?->toISOString(),
             'labels' => $this->whenLoaded('labels', fn () => $this->labels->map(fn ($l) => ['id' => $l->id, 'name' => $l->name, 'color' => $l->color])
             ),
             'assignee' => $this->whenLoaded('assignee', fn () => $this->assignee ? ['id' => $this->assignee->id, 'name' => $this->assignee->name] : null
@@ -67,5 +77,25 @@ final class IssueResource extends JsonResource
                 ];
             }),
         ]);
+    }
+
+    /**
+     * The caller's star on this issue. The caller's stars are read once per request (StarredIssues) and kept on
+     * the request, so a page of issues costs one query, whichever endpoint returns them.
+     */
+    private function starredAt(Request $request): ?CarbonInterface
+    {
+        $userId = $request->user()?->id;
+        if ($userId === null) {
+            return null;
+        }
+
+        $stars = $request->attributes->get(self::STARS);
+        if (! is_array($stars)) {
+            $stars = app(StarredIssues::class)->mapFor($userId);
+            $request->attributes->set(self::STARS, $stars);
+        }
+
+        return $stars[$this->id] ?? null;
     }
 }

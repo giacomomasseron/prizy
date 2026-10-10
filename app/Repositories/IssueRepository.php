@@ -56,10 +56,11 @@ final class IssueRepository
     }
 
     /**
-     * @param  array<string, string>  $filters  field => CSV value (special key: archived = true|all)
+     * @param  array<string, string>  $filters  field => CSV value (special keys: archived = true|all, starred = true)
      * @param  list<array{column:string,dir:string}>  $sorts
+     * @param  string|null  $starredBy  whose stars `starred=true` keeps (the caller)
      */
-    public function paginate(array $filters, array $sorts, int $limit): CursorPaginator
+    public function paginate(array $filters, array $sorts, int $limit, ?string $starredBy = null): CursorPaginator
     {
         $query = Issue::query();
 
@@ -70,6 +71,18 @@ final class IssueRepository
             $query->whereNotNull('archived_at');
         } elseif ($archived !== 'all') {
             $query->whereNull('archived_at');
+        }
+
+        // starred=true: only the caller's starred issues (PRD §3.2.9). Without a caller, nothing.
+        if (isset($filters['starred'])) {
+            unset($filters['starred']);
+            if ($starredBy === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('id', function ($sub) use ($starredBy): void {
+                    $sub->select('issue_id')->from('issue_stars')->where('user_id', $starredBy);
+                });
+            }
         }
 
         // label_id: issues having ANY of the given labels (junction subquery).

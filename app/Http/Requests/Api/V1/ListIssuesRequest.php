@@ -10,7 +10,7 @@ use Illuminate\Validation\Validator;
 
 final class ListIssuesRequest extends FormRequest
 {
-    private const FILTERS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id'];
+    private const FILTERS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id', 'starred'];
 
     private const SORTS = ['created_at', 'updated_at', 'priority', 'due_date', 'sort_order', 'status', 'title'];
 
@@ -24,6 +24,8 @@ final class ListIssuesRequest extends FormRequest
     {
         return [
             'filter' => ['sometimes', Rule::array(self::FILTERS)],
+            // The caller's starred issues only (PRD §3.2.9); the one accepted value is `true`.
+            'filter.starred' => ['sometimes', 'in:true'],
             'sort'   => ['sometimes', 'string'],
             'limit'  => ['sometimes', 'integer', 'min:1', 'max:100'],
             'fields' => ['sometimes', 'array'],
