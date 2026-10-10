@@ -60,6 +60,8 @@ html, body { background: var(--bg); color: var(--fg); }
 .todo-check:checked::after { content: '✓'; color: var(--hi); font-size: 11px; font-weight: 700; line-height: 1; }
 /* The note is yellow in both themes: its focus rings take its ink, not --fg (cream in dark theme). */
 .sticky-note :focus-visible { outline-color: var(--on-hi); }
+/* The global ring leaves inputs to the browser; the note's checkbox draws its own, in the note's ink. */
+.todo-check:focus-visible { outline: 2px solid var(--on-hi); outline-offset: 2px; }
 
 /* ── Auth pages (login + signup, v2). Inline styles set only the field border's width and style, so the
       colour and the offset focus shadow below can change on :focus. ── */

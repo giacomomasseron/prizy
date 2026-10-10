@@ -42,7 +42,7 @@ export function positionForMove(open: Todo[], from: number, to: number): number 
  * Every to-do change shows at once: the list is updated before the request, rolled back if it fails, and refetched
  * when it settles.
  */
-function useTodoMutation<V>(request: (vars: V) => Promise<unknown>, apply: (todos: Todo[], vars: V) => Todo[]) {
+function useTodoMutation<V>(request: (vars: V) => Promise<unknown>, apply: (todos: Todo[], vars: V) => Todo[], onFailed?: (vars: V) => void) {
     const qc = useQueryClient();
     return useMutation({
         mutationKey: KEY,
@@ -53,8 +53,11 @@ function useTodoMutation<V>(request: (vars: V) => Promise<unknown>, apply: (todo
             if (previous) qc.setQueryData<Todo[]>(KEY, apply(previous, vars));
             return { previous };
         },
-        onError: (_err, _vars, ctx) => {
+        // The failure is reported here, not by mutate's own callbacks: TanStack drops those when a newer write on the
+        // same hook supersedes the call, which would leave a failed write silent.
+        onError: (_err, vars, ctx) => {
             if (ctx?.previous) qc.setQueryData<Todo[]>(KEY, ctx.previous);
+            onFailed?.(vars);
         },
         // Refetch only once no other to-do write is pending: an earlier refetch would repaint a later write's
         // optimistic change with the server's older state.
@@ -65,7 +68,7 @@ function useTodoMutation<V>(request: (vars: V) => Promise<unknown>, apply: (todo
 }
 
 /** Add a to-do on top, linked to `issue` when one is given. */
-export function useAddTodo() {
+export function useAddTodo(onFailed?: (vars: { text: string; issue: IssueLookupItem | null }) => void) {
     return useTodoMutation(
         (vars: { text: string; issue: IssueLookupItem | null }) => api.post<Todo>('/me/todos', { text: vars.text, issue_id: vars.issue?.id ?? null }),
         (todos, vars) => [
@@ -75,11 +78,12 @@ export function useAddTodo() {
             },
             ...todos,
         ],
+        onFailed,
     );
 }
 
 /** Tick, untick or move a to-do. */
-export function useUpdateTodo() {
+export function useUpdateTodo(onFailed?: () => void) {
     return useTodoMutation(
         (vars: { id: string; done?: boolean; position?: number }) => {
             const { id, ...changes } = vars;
@@ -95,21 +99,24 @@ export function useUpdateTodo() {
             if (vars.position !== undefined) next.position = vars.position;
             return next;
         }),
+        onFailed,
     );
 }
 
 /** Delete one to-do straight away. */
-export function useDeleteTodo() {
+export function useDeleteTodo(onFailed?: () => void) {
     return useTodoMutation(
         (id: string) => api.del(`/me/todos/${id}`),
         (todos, id) => todos.filter((t) => t.id !== id),
+        onFailed,
     );
 }
 
 /** Clear: delete every done to-do. */
-export function useClearDoneTodos() {
+export function useClearDoneTodos(onFailed?: () => void) {
     return useTodoMutation(
         (_: void) => api.del('/me/todos/done'),
         (todos) => todos.filter((t) => !t.done),
+        onFailed,
     );
 }

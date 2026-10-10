@@ -244,3 +244,21 @@ it('enforces RLS on user_todos', function (): void {
     // RLS bites even a raw query under the other tenant's GUC.
     expect(DB::table('user_todos')->count())->toBe(0);
 });
+
+it('rejects an infinite position, blank text and a non-boolean done (422), and changes nothing', function (): void {
+    ['token' => $token, 'user' => $user] = todoWorld();
+    $todo = todoRow($user, 'Keep me', 1);
+    $url = "/v1/me/todos/{$todo->id}";
+
+    // JSON's 1e999 decodes to INF: stored, it would break every later list answer (json_encode refuses INF).
+    $this->withToken($token)
+        ->call('PATCH', $url, [], [], [], $this->transformHeadersToServerVars(['Content-Type' => 'application/json', 'Accept' => 'application/json']), '{"position":1e999}')
+        ->assertStatus(422);
+    $this->withToken($token)->patchJson($url, ['text' => '   '])->assertStatus(422);
+    $this->withToken($token)->patchJson($url, ['done' => 'yes'])->assertStatus(422);
+
+    $this->withToken($token)->getJson('/v1/me/todos')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.text', 'Keep me')
+        ->assertJsonPath('data.0.position', 1);
+});

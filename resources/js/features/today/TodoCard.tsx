@@ -81,13 +81,19 @@ function OpenTodoRow({ todo, names, onDone, onDelete }: { todo: Todo; names: str
 export function TodoCard() {
     const todos = useTodos();
     const members = useMembers();
-    const add = useAddTodo();
-    const update = useUpdateTodo();
-    const remove = useDeleteTodo();
-    const clear = useClearDoneTodos();
     const [draft, setDraft] = useState('');
     const [picked, setPicked] = useState<IssueLookupItem | null>(null);
     const [error, setError] = useState('');
+    const fail = () => setError(FAILED);
+    const add = useAddTodo((vars) => {
+        fail();
+        // Put the text (and its picked issue) back, unless the box already holds something new.
+        setDraft((d) => (d === '' ? vars.text : d));
+        setPicked((p) => p ?? vars.issue);
+    });
+    const update = useUpdateTodo(fail);
+    const remove = useDeleteTodo(fail);
+    const clear = useClearDoneTodos(fail);
     const fieldRef = useRef<HTMLInputElement>(null);
     const headingId = useId();
     const picker = useMentionPicker({
@@ -96,7 +102,6 @@ export function TodoCard() {
 
     const { open, done } = splitTodos(todos.data ?? []);
     const names = (members.data ?? []).map((m) => m.name);
-    const onError = () => setError(FAILED);
 
     function addDraft() {
         const text = draft.trim();
@@ -104,14 +109,15 @@ export function TodoCard() {
         // The last picked issue is linked only if its reference is still in the text (one issue at most).
         const issue = picked && text.includes(picked.identifier) ? picked : null;
         setError('');
-        add.mutate({ text, issue }, { onError });
+        add.mutate({ text, issue });
         setDraft('');
         setPicked(null);
     }
 
     function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {
         if (picker.handleKeyDown(e)) return;
-        if (e.key === 'Enter') {
+        // Not while an input method is composing: that Enter commits the conversion, not the to-do.
+        if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
             e.preventDefault();
             addDraft();
         }
@@ -119,7 +125,7 @@ export function TodoCard() {
 
     const setDone = (todo: Todo, value: boolean) => {
         setError('');
-        update.mutate({ id: todo.id, done: value }, { onError });
+        update.mutate({ id: todo.id, done: value });
     };
 
     // Reorder: pointer drag, or the keyboard on a row's Reorder button; the move sends the new position.
@@ -133,7 +139,7 @@ export function TodoCard() {
         const to = open.findIndex((t) => t.id === over.id);
         if (from < 0 || to < 0) return;
         setError('');
-        update.mutate({ id: String(active.id), position: positionForMove(open, from, to) }, { onError });
+        update.mutate({ id: String(active.id), position: positionForMove(open, from, to) });
     }
     // dnd-kit's own announcements name the item by its id; these name the to-do by its text.
     const textOf = (id: UniqueIdentifier) => open.find((t) => t.id === id)?.text ?? '';
@@ -189,7 +195,7 @@ export function TodoCard() {
                                             todo={todo}
                                             names={names}
                                             onDone={() => setDone(todo, true)}
-                                            onDelete={() => { setError(''); remove.mutate(todo.id, { onError }); }}
+                                            onDelete={() => { setError(''); remove.mutate(todo.id); }}
                                         />
                                     ))}
                                 </ul>
@@ -203,7 +209,7 @@ export function TodoCard() {
                                 <h3 style={{ margin: 0, fontSize: 13, fontWeight: 700, opacity: 0.7 }}>Done · {done.length}</h3>
                                 <button
                                     type="button"
-                                    onClick={() => { setError(''); clear.mutate(undefined, { onError }); }}
+                                    onClick={() => { setError(''); clear.mutate(); }}
                                     className="opacity-70 hover:opacity-100"
                                     style={{ marginLeft: 'auto', border: 'none', background: 'none', color: 'var(--on-hi)', fontSize: 13, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline', fontFamily: 'inherit', padding: 0 }}
                                 >

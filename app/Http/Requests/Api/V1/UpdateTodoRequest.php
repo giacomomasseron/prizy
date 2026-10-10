@@ -20,7 +20,12 @@ final class UpdateTodoRequest extends FormRequest
         return [
             'text' => ['sometimes', 'required', 'string', 'max:500'],
             'done' => ['sometimes', 'boolean'],
-            'position' => ['sometimes', 'numeric'],
+            // A finite number: JSON's 1e999 decodes to INF, which Postgres stores but json_encode cannot answer.
+            'position' => ['sometimes', 'numeric', static function (string $attribute, mixed $value, \Closure $fail): void {
+                if (is_numeric($value) && ! is_finite((float) $value)) {
+                    $fail('The position must be a finite number.');
+                }
+            }],
         ];
     }
 

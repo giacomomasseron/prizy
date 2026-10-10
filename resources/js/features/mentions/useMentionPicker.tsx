@@ -73,6 +73,10 @@ export function useMentionPicker({ value, onValueChange, fieldRef, field, canSea
 
     // A new query starts from the first row; a shorter list never leaves the active row past its end.
     useEffect(() => setActive(0), [q]);
+    // The field was changed from outside (an add or a post emptied it): a mention it no longer holds is gone.
+    useEffect(() => {
+        setMention((m) => (m && value.slice(m.start, m.end) === `@${m.q}` ? m : null));
+    }, [value]);
     const current = options.length === 0 ? 0 : Math.min(active, options.length - 1);
 
     // The value is controlled: put the caret after a pick once the new text has rendered.
@@ -117,7 +121,8 @@ export function useMentionPicker({ value, onValueChange, fieldRef, field, canSea
             setActive((current + step + options.length) % options.length);
             return true;
         }
-        if (e.key === 'Enter' || e.key === 'Tab') {
+        // Shift+Tab moves focus back (and the blur closes the picker); it never picks.
+        if (e.key === 'Enter' || (e.key === 'Tab' && !e.shiftKey)) {
             e.preventDefault();
             pick(current);
             return true;
@@ -139,7 +144,7 @@ export function useMentionPicker({ value, onValueChange, fieldRef, field, canSea
             },
             onClick: (e) => detect(e.currentTarget),
             onKeyUp: (e) => {
-                if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) detect(e.currentTarget);
+                if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key)) detect(e.currentTarget);
             },
             onBlur: () => setMention(null),
             ...(field === 'input' ? { role: 'combobox' as const, 'aria-expanded': listed } : {}),

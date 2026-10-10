@@ -26,6 +26,8 @@ let holdWrites = false;
 let holdReads = false;
 /** PATCHes for these to-do ids never answer. */
 let heldIds = new Set<string>();
+/** POSTs of these texts answer 500. */
+let failTexts = new Set<string>();
 let fetchMock: ReturnType<typeof vi.fn>;
 
 /** A small in-memory /v1/me/todos, plus /me, /members and the issue lookup. */
@@ -42,6 +44,7 @@ function stubApi() {
         if (method !== 'GET' && holdWrites) return new Promise<Response>(() => {});
         if (method === 'GET' && holdReads) return new Promise<Response>(() => {});
         if (method === 'PATCH' && heldIds.has(u.split('/').pop() ?? '')) return new Promise<Response>(() => {});
+        if (method === 'POST' && failTexts.has(body.text)) return j({ title: 'Error', detail: 'Server error' }, 500);
         if (method === 'GET') return j({ data: server });
         if (method === 'POST') {
             const created = todo(`t${server.length + 10}`, body.text, Math.min(0, ...server.map((t) => t.position)) - 1, { issue: body.issue_id ? ISSUE : null });
@@ -73,6 +76,7 @@ beforeEach(() => {
     holdWrites = false;
     holdReads = false;
     heldIds = new Set();
+    failTexts = new Set();
     server = [
         todo('t1', 'Book 1:1 with Priya', 1),
         todo('t2', 'Read the on-call notes', 2),
@@ -324,5 +328,69 @@ describe('P7-B: reordering the open to-dos', () => {
         } finally {
             rect.mockRestore();
         }
+    });
+});
+
+describe('P7-B: the card, final review fixes', () => {
+    it('puts the text back when an add fails, and says so', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        failWrites = true;
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+
+        fireEvent.change(box, { target: { value: 'Reply to Maya' } });
+        fireEvent.keyDown(box, { key: 'Enter' });
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('That change didn’t save. Try again.');
+        await waitFor(() => expect(box).toHaveValue('Reply to Maya'));
+    });
+
+    it('still says so when a newer add supersedes the failed one', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        failTexts = new Set(['Slow fail']);
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+
+        fireEvent.change(box, { target: { value: 'Slow fail' } });
+        fireEvent.keyDown(box, { key: 'Enter' });
+        fireEvent.change(box, { target: { value: 'Second' } });
+        fireEvent.keyDown(box, { key: 'Enter' });
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('That change didn’t save. Try again.');
+        await waitFor(() => expect(box).toHaveValue('Slow fail'));
+    });
+
+    it('drops a pending mention once an add empties the box: a late lookup never reopens the list', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+
+        fireEvent.change(box, { target: { value: 'Review @fix' } });
+        fireEvent.keyDown(box, { key: 'Enter' }); // nothing listed yet (the lookup is on its way): Enter adds
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        // Let the debounce, the lookup and the renders run: React renders between act turns, not inside one long one.
+        for (let i = 0; i < 6; i++) await act(async () => { await new Promise((r) => setTimeout(r, 60)); });
+
+        expect(box).toHaveValue('');
+        expect(screen.queryByRole('listbox')).toBeNull();
+        expect(screen.queryByText(/No people or issues match/)).toBeNull(); // (dnd-kit keeps its own role=status live region)
+    });
+
+    it('does not add while an input method is composing', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+
+        fireEvent.change(box, { target: { value: 'Half typed' } });
+        fireEvent.keyDown(box, { key: 'Enter', isComposing: true });
+        await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+
+        expect(calls('POST', '/me/todos')).toHaveLength(0);
+        expect(box).toHaveValue('Half typed');
+    });
+
+    it('draws the checkbox\'s own focus ring in the note\'s ink', () => {
+        const css = readFileSync(resolve(__dirname, '../../../css/app.css'), 'utf8');
+        expect(css).toMatch(/\.todo-check:focus-visible \{ outline: 2px solid var\(--on-hi\); outline-offset: 2px; \}/);
     });
 });

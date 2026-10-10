@@ -267,3 +267,26 @@ describe('P7-B: the picker, review fixes', () => {
         }
     });
 });
+
+describe('P7-B: the picker, final review fixes', () => {
+    it('lets Shift+Tab move focus back instead of picking', async () => {
+        const field = renderPicker({ canSearchIssues: false });
+        type(field, '@ma');
+        await screen.findByRole('option', { name: /Maya Chen/ });
+
+        fireEvent.keyDown(field, { key: 'Tab', shiftKey: true });
+
+        expect(field.value).toBe('@ma');
+    });
+
+    it('closes when an up or down arrow moves the caret out of the mention (a textarea)', async () => {
+        const field = renderPicker({ field: 'textarea', canSearchIssues: false });
+        fireEvent.change(field, { target: { value: '@ma\nnext', selectionStart: 3, selectionEnd: 3 } });
+        await screen.findByRole('listbox');
+
+        field.setSelectionRange(8, 8);
+        fireEvent.keyUp(field, { key: 'ArrowDown' });
+
+        expect(screen.queryByRole('listbox')).toBeNull();
+    });
+});
