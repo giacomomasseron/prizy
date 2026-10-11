@@ -4,7 +4,7 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     test.setTimeout(60_000);
 
     // Start on issues list (pre-authenticated via storageState)
-    await page.goto('/');
+    await page.goto('/issues');
 
     // 2. The Inbox nav link is always present in the sidebar regardless of unread count
     await expect(page.getByRole('link', { name: 'Inbox', exact: true })).toBeVisible();
@@ -54,6 +54,6 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     // bridge) under Playwright's default fuzzy name matching — anchor on the
     // leading "Issues" text so this targets the Workspace link unambiguously.
     await page.getByRole('link', { name: /^Issues/ }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    await expect(page).toHaveURL('http://smoke.localhost:8001/issues');
     await expect(page.getByTestId('inbox-badge')).not.toBeVisible();
 });

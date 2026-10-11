@@ -54,3 +54,13 @@ it('serves the SPA shell for /today, the tracker user\'s home (P7-B)', function 
 
     Workspace::forgetCurrent();
 });
+
+it('serves the SPA shell for /issues, the issue list (/ redirects to Today)', function (): void {
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $dev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
+
+    $this->actingAs($dev)->get('/issues')->assertStatus(200)->assertSee('id="app"', false);
+
+    Workspace::forgetCurrent();
+});

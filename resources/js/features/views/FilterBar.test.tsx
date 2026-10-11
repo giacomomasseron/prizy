@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter, useSearchParams } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation, useSearchParams } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FilterBar } from './FilterBar';
 
@@ -142,5 +142,47 @@ describe('FilterBar v2 styling', () => {
         } finally {
             vi.unstubAllGlobals();
         }
+    });
+});
+
+describe('FilterBar saved views across list and board', () => {
+    function Where() {
+        const { pathname, search } = useLocation();
+        return <p>at {pathname + search}</p>;
+    }
+
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            const j = (b: unknown, s = 200) =>
+                new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return j({ data: devUser });
+            if (url.includes('/v1/saved-views')) {
+                return j({
+                    data: [{ id: 'v1', name: 'My todo list', created_by: 'u1', definition: { filter: { status: 'todo' }, sort: '', view_type: 'list' }, created_at: '', updated_at: '' }],
+                    links: { next: null },
+                });
+            }
+            return j({ data: [], links: { next: null } });
+        }));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('opens a list view picked on the board at /issues, with its filters (/ is Today)', async () => {
+        const qc = new QueryClient();
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/board']}>
+                    <Routes>
+                        <Route path="/board" element={<FilterBar viewType="board" />} />
+                        <Route path="/issues" element={<Where />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        await userEvent.click(screen.getByRole('button', { name: 'Views' }));
+        await userEvent.click(await screen.findByRole('menuitem', { name: 'My todo list' }));
+
+        expect(await screen.findByText('at /issues?status=todo')).toBeInTheDocument();
     });
 });

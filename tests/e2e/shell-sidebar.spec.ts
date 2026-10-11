@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('shell sidebar redesign', () => {
     test('sections, collapse persistence, and team-scoped nav', async ({ page }) => {
-        await page.goto('/');
+        await page.goto('/issues');
 
         // Redesigned sections present.
         // Note: getByRole name-matching is a case-insensitive SUBSTRING match by

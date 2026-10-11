@@ -102,9 +102,9 @@ describe('NotificationSidebar', () => {
         expect(onOpenSettings).toHaveBeenCalled();
     });
 
-    it('renders a "Back to Issues" link to "/"', () => {
+    it('renders a "Back to Issues" link to "/issues"', () => {
         wrap();
-        expect(screen.getByRole('link', { name: /Back to Issues/ })).toHaveAttribute('href', '/');
+        expect(screen.getByRole('link', { name: /Back to Issues/ })).toHaveAttribute('href', '/issues');
     });
 
     it('v2: display-font title with the yellow unread badge in the body font', () => {

@@ -11,8 +11,8 @@ test('login, create an issue, and move its card across the board', async ({ page
     await page.getByLabel(/password/i).fill('password123');
     await page.getByRole('button', { name: /sign in/i }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/today');
-    // P7-B: Today is the home; the issue list, where the new issue shows up, is at /.
-    await page.goto('/');
+    // Today is the home (and "/" redirects to it); the issue list, where the new issue shows up, is at /issues.
+    await page.goto('/issues');
 
     // 2. Create an issue via the drawer (C hotkey opens it).
     const title = `Smoke ${Date.now()}`;

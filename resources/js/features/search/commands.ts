@@ -6,7 +6,7 @@ export interface Command {
 }
 
 export const COMMANDS: Command[] = [
-    { id: 'create-issue', label: 'Create issue', keywords: 'new add issue', run: (nav) => nav('/') },
+    { id: 'create-issue', label: 'Create issue', keywords: 'new add issue', run: (nav) => nav('/issues') },
     { id: 'goto-board', label: 'Go to Board', keywords: 'board kanban', run: (nav) => nav('/board') },
     { id: 'goto-roadmap', label: 'Go to Roadmap', keywords: 'roadmap timeline', run: (nav) => nav('/roadmap') },
     { id: 'goto-notifications', label: 'Go to Notifications', keywords: 'notifications inbox', run: (nav) => nav('/notifications') },

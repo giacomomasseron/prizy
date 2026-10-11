@@ -100,7 +100,7 @@ export function NotificationSidebar({
                 <button type="button" aria-pressed={settingsActive} onClick={onOpenSettings} style={sideRow(settingsActive)} className={settingsActive ? '' : NAV_ROW_HOVER}>
                     Notification settings
                 </button>
-                <Link to="/" style={sideRow(false)} className={NAV_ROW_HOVER}>
+                <Link to="/issues" style={sideRow(false)} className={NAV_ROW_HOVER}>
                     ← Back to Issues
                 </Link>
             </div>

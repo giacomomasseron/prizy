@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('theme defaults to light, toggles to dark, and persists across reloads', async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto('/');
+    await page.goto('/issues');
 
     // Light is the default (nothing stored in the storageState).
     await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');

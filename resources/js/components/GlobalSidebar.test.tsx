@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalSidebar } from './GlobalSidebar';
 
 function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
-function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true) {
+function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true, path = '/') {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/members')) return j({ data: [] });
         if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off', workspace: { helpdesk_enabled: helpdeskEnabled } } });
@@ -16,7 +16,7 @@ function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = 
         return j({ data: {} });
     }));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(<QueryClientProvider client={qc}><MemoryRouter><GlobalSidebar onCollapse={() => {}} /></MemoryRouter></QueryClientProvider>);
+    return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><GlobalSidebar onCollapse={() => {}} /></MemoryRouter></QueryClientProvider>);
 }
 
 describe('GlobalSidebar', () => {
@@ -46,9 +46,14 @@ describe('GlobalSidebar', () => {
     });
     it('My Issues links to the issue list filtered to me', async () => {
         renderSidebar();
-        // The link is present immediately (falls back to "/" until `me` resolves), so wait for the
+        // The link is present immediately (falls back to "/issues" until `me` resolves), so wait for the
         // href itself rather than just the element to avoid asserting on the pre-fetch fallback.
-        await waitFor(() => expect(screen.getByRole('link', { name: /My Issues/ })).toHaveAttribute('href', '/?assignee_id=u1'));
+        await waitFor(() => expect(screen.getByRole('link', { name: /My Issues/ })).toHaveAttribute('href', '/issues?assignee_id=u1'));
+    });
+    it('Issues opens the issue list at /issues (/ is Today)', async () => {
+        renderSidebar();
+        const workspaceNav = within(await screen.findByRole('navigation'));
+        expect(workspaceNav.getByRole('link', { name: /^Issues/ })).toHaveAttribute('href', '/issues');
     });
     it('renders the disabled Escalations stub', async () => {
         renderSidebar();
@@ -157,9 +162,9 @@ describe('GlobalSidebar', () => {
         expect(label.style.fontSize).toBe('12.5px');
     });
     it('inactive nav rows have no inline background so the hover class fires; the active row is a panel card', async () => {
-        renderSidebar();
+        renderSidebar('owner', false, true, '/issues');
         const nav = within(await screen.findByRole('navigation'));
-        const issues = nav.getByRole('link', { name: /^Issues/ }) as HTMLElement; // MemoryRouter is at "/" → active
+        const issues = nav.getByRole('link', { name: /^Issues/ }) as HTMLElement; // MemoryRouter is at "/issues" → active
         expect(issues.style.background).toBe('var(--panel)');
         expect(issues.style.fontWeight).toBe('700');
         const projects = nav.getByRole('link', { name: /Projects/ }) as HTMLElement;

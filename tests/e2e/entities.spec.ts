@@ -10,7 +10,7 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     const LABEL_NAME = `E2E Label ${ts}`;
 
     // Start on issues list (pre-authenticated via storageState)
-    await page.goto('/');
+    await page.goto('/issues');
 
     // 2. Teams — create a new team via the repointed Settings › Teams flow
     // (R-E-2 removed the old inline /teams create form; "New team" now routes to Settings).
@@ -27,7 +27,8 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     await expect(page.getByTestId(`team-row-${TEAM_IDENT}`)).toBeVisible();
     // Return to the main app (Settings has its own sub-nav without Projects/Labels links).
     await page.getByRole('button', { name: /Back to app/i }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // "/" is the tracker's front door: it redirects to Today.
+    await expect(page).toHaveURL('http://smoke.localhost:8001/today');
 
     // 3. Projects — create a project via the /create screen (inline form was removed)
     await page.getByRole('link', { name: 'Projects' }).click();
@@ -54,7 +55,7 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // bridge) under Playwright's default fuzzy name matching — anchor on the
     // leading "Issues" text so this targets the Workspace link unambiguously.
     await page.getByRole('link', { name: /^Issues/ }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    await expect(page).toHaveURL('http://smoke.localhost:8001/issues');
     // R-C redesign: issue rows are <div data-testid="issue-row">. Click to open peek, then follow "Open full page →".
     await page.locator('[data-testid="issue-row"]').filter({ hasText: 'Starter issue' }).click();
     await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
