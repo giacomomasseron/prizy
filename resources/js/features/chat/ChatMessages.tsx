@@ -61,6 +61,8 @@ function EditField({ projectId, message, onDone }: { projectId: string; message:
     const [error, setError] = useState('');
     const fieldRef = useRef<HTMLInputElement>(null);
     const edit = useEditMessage(projectId);
+    // Set before the request goes out: a second Enter before the answer must not send a second edit.
+    const saving = useRef(false);
     const picker = useMentionPicker({
         value: text, onValueChange: setText, fieldRef, field: 'input', canSearchIssues: true,
         onPickIssue: (issue) => setPicked((p) => [...p, issue]),
@@ -70,7 +72,7 @@ function EditField({ projectId, message, onDone }: { projectId: string; message:
 
     function save() {
         const body = text.trim();
-        if (body === '') return;
+        if (body === '' || saving.current) return;
         const issues = linkedIssues(body, picked);
         // Nothing changed: no request, so the message is not marked (edited).
         if (body === message.body && sameIssues(issues, message.issues)) {
@@ -78,7 +80,12 @@ function EditField({ projectId, message, onDone }: { projectId: string; message:
             return;
         }
         setError('');
-        edit.mutate({ id: message.id, body, issues }, { onSuccess: onDone, onError: () => setError("Couldn't save your edit. Try again.") });
+        saving.current = true;
+        edit.mutate({ id: message.id, body, issues }, {
+            onSuccess: onDone,
+            onError: () => setError("Couldn't save your edit. Try again."),
+            onSettled: () => { saving.current = false; },
+        });
     }
 
     function onKeyDown(e: KeyboardEvent<HTMLInputElement>) {

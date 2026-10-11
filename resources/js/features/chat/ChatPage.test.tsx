@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import type { ProjectMessage } from '../../lib/types';
@@ -9,6 +9,7 @@ const presence = vi.hoisted(() => ({ members: null as { id: string; name: string
 vi.mock('./useProjectChannel', () => ({ useProjectChannel: vi.fn(), useProjectPresence: () => presence.members }));
 
 import ChatPage from './ChatPage';
+import { receiveMessage } from './chatHooks';
 
 /** Rows are 40px tall and the panel shows 400px: enough for the scroll arithmetic jsdom does not do. */
 const ROW = 40;
@@ -20,11 +21,14 @@ function msg(id: string, minute: number): ProjectMessage {
 
 /** The latest page (newest first) and the one before it. */
 const LATEST = Array.from({ length: 50 }, (_, i) => msg(`m${50 - i}`, 50 - i + 2));
-const OLDER = [msg('o2', 1), msg('o1', 0)];
+// A deep link only follows a UUID; the bodies keep their short names.
+const O1 = '0b8f6d2a-3c41-4e0a-9d57-1a2b3c4d5e61';
+const OLDER = [{ ...msg('o2', 1), id: '0b8f6d2a-3c41-4e0a-9d57-1a2b3c4d5e62' }, { ...msg('o1', 0), id: O1 }];
 
 let latest: ProjectMessage[];
 let fetchMock: ReturnType<typeof vi.fn>;
 let posted = 0;
+let olderFails = false;
 
 function j(body: unknown, status = 200) {
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
@@ -39,6 +43,7 @@ function stubApi() {
             posted += 1;
             return j({ data: { ...msg(`new${posted}`, 59), user_id: 'me', body: JSON.parse(String(init.body)).body } }, 201);
         }
+        if (u.includes('/messages?cursor=older') && olderFails) return j({ message: 'Server error' }, 500);
         if (u.includes('/messages?cursor=older')) return j({ data: OLDER, links: { next: null, prev: null } });
         if (u.includes('/messages')) {
             return j({ data: latest, links: { next: latest.length === 50 ? 'http://localhost/v1/projects/p1/messages?cursor=older' : null, prev: null } });
@@ -62,6 +67,7 @@ function renderChat(path = '/projects/p1/chat') {
             </MemoryRouter>
         </QueryClientProvider>,
     );
+    return qc;
 }
 
 const scroller = () => screen.getByTestId('chat-scroll');
@@ -80,6 +86,7 @@ const saved = {
 beforeEach(() => {
     latest = LATEST;
     posted = 0;
+    olderFails = false;
     presence.members = null;
     stubApi();
     Object.defineProperty(HTMLElement.prototype, 'scrollHeight', {
@@ -153,7 +160,7 @@ describe('ChatPage', () => {
     });
 
     it('follows a new message while you are at the bottom, and leaves you be when you have scrolled up', async () => {
-        renderChat();
+        const qc = renderChat();
         await screen.findByText('Message m50');
         const box = screen.getByRole('combobox', { name: 'Message the Unified Inbox team' });
         await waitFor(() => expect(box).toBeEnabled());
@@ -163,19 +170,53 @@ describe('ChatPage', () => {
         await screen.findByText('Morning all');
         expect(scroller().scrollTop).toBe(51 * ROW);
 
+        // Someone else's message arrives while you have scrolled up: you are left where you are.
         scrollTo(500);
+        act(() => receiveMessage(qc, 'p1', msg('theirs', 58)));
+        await screen.findByText('Message theirs');
+        expect(scroller().scrollTop).toBe(500);
+
+        // Your own message is followed, wherever you were.
         fireEvent.change(box, { target: { value: 'Standup in 5' } });
         fireEvent.keyDown(box, { key: 'Enter' });
         await screen.findByText('Standup in 5');
-        expect(scroller().scrollTop).toBe(500);
+        expect(scroller().scrollTop).toBe(53 * ROW);
     });
 
     it('follows a link to a message: loads older pages until it is there, scrolls to it and highlights it', async () => {
-        renderChat('/projects/p1/chat?message=o1');
+        renderChat(`/projects/p1/chat?message=${O1}`);
 
         await screen.findByText('Message o1');
         await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled());
-        expect((Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.contexts[0]).toBe(row('o1'));
-        expect((row('o1').lastElementChild as HTMLElement).style.background).toBe('var(--accent2)');
+        expect((Element.prototype.scrollIntoView as ReturnType<typeof vi.fn>).mock.contexts[0]).toBe(row(O1));
+        expect((row(O1).lastElementChild as HTMLElement).style.background).toBe('var(--accent2)');
+    });
+
+    it('ignores a deep link that is not a UUID: it loads the latest page and pages through nothing', async () => {
+        renderChat('/projects/p1/chat?message=not-a-uuid');
+        await screen.findByText('Message m50');
+        await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+
+        expect(olderFetches()).toHaveLength(0);
+        expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+        expect(document.querySelector('[data-message-id] > [style*="var(--accent2)"]')).toBeNull();
+    });
+
+    it('says when older messages fail to load, stops retrying on every scroll, and retries from the button', async () => {
+        olderFails = true;
+        renderChat();
+        await screen.findByText('Message m50');
+
+        scrollTo(10);
+        expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load older messages.");
+        expect(olderFetches()).toHaveLength(1);
+
+        scrollTo(500);
+        scrollTo(10);
+        await act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+        expect(olderFetches()).toHaveLength(1);
+
+        fireEvent.click(screen.getByRole('button', { name: 'Load older messages' }));
+        await waitFor(() => expect(olderFetches()).toHaveLength(2));
     });
 });

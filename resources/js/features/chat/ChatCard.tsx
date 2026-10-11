@@ -31,7 +31,7 @@ export function ChatCard({ projectId, projectName }: { projectId: string; projec
     }, [last]);
 
     return (
-        <section aria-labelledby={headingId} style={{ ...cardStyle, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <section aria-labelledby={headingId} style={{ ...cardStyle, display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '16px 18px 10px' }}>
                 <h2 id={headingId} style={sectionTitle(20)}>Chat</h2>
                 {online && (

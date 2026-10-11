@@ -178,4 +178,19 @@ describe('ChatMessages', () => {
         expect((row('m2').lastElementChild as HTMLElement).style.background).toBe('var(--accent2)');
         expect((row('m1').lastElementChild as HTMLElement).style.background).toBe('transparent');
     });
+
+    it('sends one PATCH for two quick Enters while the first is still unanswered', async () => {
+        renderMessages({ editable: true });
+        const base = fetchMock.getMockImplementation() as (url: string, init?: RequestInit) => Promise<Response>;
+        fetchMock.mockImplementation((url: string, init?: RequestInit) => (init?.method === 'PATCH' ? new Promise<Response>(() => {}) : base(url, init)));
+        fireEvent.click(await within(row('m2')).findByRole('button', { name: 'Edit' }));
+        const field = within(row('m2')).getByRole('combobox', { name: 'Edit message' });
+
+        fireEvent.change(field, { target: { value: 'Presence lands in PRZ-ABC123 today.' } });
+        fireEvent.keyDown(field, { key: 'Enter' });
+        fireEvent.keyDown(field, { key: 'Enter' });
+        await settle();
+
+        expect(calls('PATCH', '/projects/p1/messages/m2')).toHaveLength(1);
+    });
 });

@@ -16,9 +16,11 @@ import { useProjectChannel, useProjectPresence } from './useProjectChannel';
 /** Within this many pixels of an edge counts as at it. */
 const EDGE = 80;
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * The project's Chat tab (PRD §3.2.11, the Project v2 design). It opens at the newest message and follows new ones
- * while you are at the bottom; older pages load when the top comes into view (or from the button), keeping the
+ * while you are at the bottom (and your own always); older pages load when the top comes into view (or from the button), keeping the
  * scroll position. `?message=<id>` scrolls to that message and highlights it, loading older pages until it is found.
  */
 export default function ChatPage() {
@@ -29,7 +31,9 @@ export default function ChatPage() {
     const online = useProjectPresence(id);
     useProjectChannel(id);
     const [params] = useSearchParams();
-    const target = params.get('message');
+    // Only a UUID can name a message: anything else would page through the whole history looking for it.
+    const rawTarget = params.get('message');
+    const target = rawTarget !== null && UUID.test(rawTarget) ? rawTarget : null;
     const [highlight, setHighlight] = useState<string | null>(null);
 
     const scroller = useRef<HTMLDivElement>(null);
@@ -41,10 +45,16 @@ export default function ChatPage() {
     const list = useMemo(() => chronological(messages.data), [messages.data]);
     const first = list[0]?.id;
     const last = list[list.length - 1]?.id;
-    const { hasNextPage, isFetchingNextPage, fetchNextPage } = messages;
+    const { hasNextPage, isFetchingNextPage, isFetchNextPageError, fetchNextPage } = messages;
+    const lastIsMine = list[list.length - 1]?.user_id === me.data?.id;
 
     function loadOlder() {
         if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+    }
+
+    // After a failed page the top no longer retries on every scroll: the button is the retry.
+    function onTop() {
+        if (!isFetchNextPageError) loadOlder();
     }
 
     function onScroll() {
@@ -52,11 +62,11 @@ export default function ChatPage() {
         if (!el) return;
         fromBottom.current = el.scrollHeight - el.scrollTop;
         atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < EDGE;
-        if (el.scrollTop < EDGE) loadOlder();
+        if (el.scrollTop < EDGE) onTop();
     }
 
     // Place the view when the messages change: the first load opens at the bottom, older messages keep what you were
-    // reading where it was, and a new message is followed while you are at the bottom.
+    // reading where it was, and a new message is followed while you are at the bottom, or when it is yours.
     useLayoutEffect(() => {
         const el = scroller.current;
         const prev = edges.current;
@@ -64,7 +74,7 @@ export default function ChatPage() {
         if (!el || !last) return;
         if (prev.last === undefined) el.scrollTop = el.scrollHeight;
         else if (prev.first !== first) el.scrollTop = el.scrollHeight - fromBottom.current;
-        else if (prev.last !== last && atBottom.current) el.scrollTop = el.scrollHeight;
+        else if (prev.last !== last && (atBottom.current || lastIsMine)) el.scrollTop = el.scrollHeight;
         fromBottom.current = el.scrollHeight - el.scrollTop;
     }, [first, last]);
 
@@ -111,6 +121,9 @@ export default function ChatPage() {
                                     {isFetchingNextPage ? 'Loading…' : 'Load older messages'}
                                 </Button>
                             </div>
+                        )}
+                        {isFetchNextPageError && (
+                            <p role="alert" style={{ margin: 0, textAlign: 'center', fontSize: 12.5, fontWeight: 600, color: 'var(--red-ink)' }}>Couldn't load older messages.</p>
                         )}
                         {list.length === 0 ? (
                             <p style={{ margin: 0, padding: '40px 0', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>No messages yet. Say hello to the team.</p>

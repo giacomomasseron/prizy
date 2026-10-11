@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { ProjectMessage } from '../../lib/types';
@@ -24,7 +24,7 @@ function renderCard() {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         const u = String(url);
         if (u.endsWith('/me')) return j({ data: { id: 'me', name: 'Alex Rivera', is_developer: true, admin_level: 'member', is_agent: false } });
-        if (u.includes('/members')) return j({ data: [{ id: 'me', name: 'Alex Rivera', is_agent: false }] });
+        if (u.includes('/members')) return j({ data: [{ id: 'me', name: 'Alex Rivera', is_agent: false }, { id: 'u1', name: 'Maya Chen', is_agent: false }] });
         if (u.includes('/messages')) return j({ data: latest, links: { next: null, prev: null } });
         return j({ data: [] });
     }));
@@ -72,5 +72,20 @@ describe('ChatCard', () => {
         latest = [];
         renderCard();
         expect(await screen.findByText('No messages yet. Say hello to the team.')).toBeInTheDocument();
+    });
+
+    it('does not clip the mention picker, which opens upward from the composer at the card\'s bottom', async () => {
+        renderCard();
+        const card = screen.getByRole('region', { name: 'Chat' });
+        const box = await within(card).findByRole('combobox', { name: 'Message the Unified Inbox team' });
+        await waitFor(() => expect(box).toBeEnabled());
+
+        fireEvent.change(box, { target: { value: '@Maya' } });
+        const option = await within(card).findAllByRole('option');
+
+        // The popover overflows the card on a quiet project, so no ancestor up to the card may clip it.
+        for (let el: HTMLElement | null = option[0].parentElement; el && el !== card.parentElement; el = el.parentElement) {
+            expect(el.style.overflow).not.toBe('hidden');
+        }
     });
 });
