@@ -21,4 +21,12 @@ use Illuminate\Database\Eloquent\Model;
 #[Fillable(['message_id', 'issue_id'])]
 final class ProjectMessageIssue extends Model
 {
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'message_id' => 'string',
+            'issue_id' => 'string',
+        ];
+    }
 }
