@@ -46,3 +46,28 @@ export function matchMembers(members: MentionMember[], q: string, selfId: string
 export function mentionHandle(name: string): string {
     return '@' + (name.trim().split(/\s+/)[0] ?? '').toLowerCase();
 }
+
+/** A piece of text as a message or to-do shows it: plain, a linked issue's reference, or a member's `@Full Name`. */
+export type TextPart = { kind: 'text' | 'ref' | 'name'; text: string };
+
+function escapeRegExp(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Split text into plain text, the linked issues' references, and `@Full Name` mentions of members (longest name
+ * first). Any other `PRZ-` text stays plain: only issues picked with the picker are links (PRD §3.2.1).
+ */
+export function textParts(text: string, identifiers: string[], names: string[]): TextPart[] {
+    const tokens = [
+        ...identifiers,
+        ...[...names].filter((n) => n.trim() !== '').sort((a, b) => b.length - a.length).map((n) => `@${n}`),
+    ];
+    if (tokens.length === 0) return [{ kind: 'text', text }];
+    const re = new RegExp(`(${tokens.map(escapeRegExp).join('|')})`);
+    return text.split(re).filter((p) => p !== '').map((p): TextPart => {
+        if (identifiers.includes(p)) return { kind: 'ref', text: p };
+        if (p.startsWith('@') && names.includes(p.slice(1))) return { kind: 'name', text: p };
+        return { kind: 'text', text: p };
+    });
+}
