@@ -23,7 +23,8 @@ test('agent-only user is kept out of the tracker and lands on the support desk',
 
 test('a developer still gets the issue tracker', async ({ page }) => {
     await login(page, 'member@example.com');
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // P7-B: a developer's home is Today.
+    await expect(page).toHaveURL('http://smoke.localhost:8001/today');
     await expect(page.getByRole('button', { name: 'Workspace', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /New issue/ })).toBeVisible();
 });

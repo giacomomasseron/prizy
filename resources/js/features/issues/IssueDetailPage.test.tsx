@@ -601,3 +601,53 @@ describe('P7-A: the full page\'s Star button', () => {
         }
     });
 });
+
+describe('P7-B: @ mentions in the comment box', () => {
+    function stubLookup() {
+        const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({
+            data: String(url).includes('/issues/lookup') ? [{ id: 'i9', identifier: 'PRZ-ABC999', title: 'Alpha task', status: 'todo' }] : [],
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        vi.stubGlobal('fetch', fetchMock);
+        return fetchMock;
+    }
+
+    it('offers people and, for a tracker user, issues; Enter picks @Full Name instead of posting', async () => {
+        stubLookup();
+        const spy = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: spy, isPending: false } as any);
+        try {
+            render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+            const box = screen.getByLabelText(/Leave a comment/i) as HTMLTextAreaElement;
+            fireEvent.change(box, { target: { value: 'thanks @al' } });
+
+            expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument();
+            expect(await screen.findByRole('option', { name: /Alpha task/ })).toBeInTheDocument();
+            expect(box).not.toHaveAttribute('role');
+            expect(box).toHaveAttribute('aria-activedescendant');
+
+            fireEvent.keyDown(box, { key: 'Enter', ctrlKey: true });
+            expect(box).toHaveValue('thanks @Alice ');
+            expect(spy).not.toHaveBeenCalled();
+        } finally {
+            vi.unstubAllGlobals();
+            vi.mocked(hooks.useAddComment).mockReturnValue({ mutateAsync: vi.fn() } as any);
+        }
+    });
+
+    it('offers only people to someone who cannot use the tracker (a support agent on the bridge)', async () => {
+        const fetchMock = stubLookup();
+        vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: false, is_agent: true, admin_level: 'member' } } as any);
+        try {
+            render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
+            fireEvent.change(screen.getByLabelText(/Leave a comment/i), { target: { value: '@al' } });
+
+            expect(await screen.findByRole('option', { name: /Alice/ })).toBeInTheDocument();
+            await new Promise((r) => setTimeout(r, 250));
+            expect(screen.queryByRole('group', { name: 'Issues' })).toBeNull();
+            expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/issues/lookup'))).toBe(false);
+        } finally {
+            vi.unstubAllGlobals();
+            vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
+        }
+    });
+});

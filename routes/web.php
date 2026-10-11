@@ -19,6 +19,7 @@ use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
 Route::view('/', 'app');
+Route::view('/today', 'app');
 // Login must stay reachable even with a stale/mismatched session (that's exactly
 // when you need it) — exempt it from EnsureValidTenantSession (keep NeedsTenant so
 // the workspace still resolves; the login handler regenerates the session anyway).

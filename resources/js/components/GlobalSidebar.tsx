@@ -67,6 +67,15 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
             )}
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                {/* Today (P7-B): the tracker user's home, first in the sidebar. No badge until the day plan exists. */}
+                {showTracker && (
+                    <div style={{ padding: '0 8px 10px' }}>
+                        <NavLink to="/today" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
+                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>☀</span>
+                            <span style={{ flex: 1 }}>Today</span>
+                        </NavLink>
+                    </div>
+                )}
                 {/* Support bridge — mirrors Prizy.dc.html: My Issues · Escalations · Inbox · Support inbox */}
                 <div style={{ ...sectionLabel, padding: '6px 18px 6px' }}>Support bridge</div>
                 <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>

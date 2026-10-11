@@ -36,6 +36,11 @@
   --radius-pill:999px; --radius-row:12px; --radius-pop:16px; --radius-card:18px; --radius-modal:20px;
   --line:1.5px; --pop-shadow:4px 4px 0 var(--fg);
 }
+/* The My to-dos sticky note (P7-B) is yellow in both themes, so its tokens are theme-independent. */
+:root {
+  --sticky-field:rgba(255,255,255,.75); --sticky-hover:rgba(255,255,255,.45); --sticky-rule:rgba(29,26,20,.25);
+  --sticky-shadow:0 10px 24px -14px rgba(60,45,10,.45);
+}
 
 /* Highlighter behind display titles (v2). */
 .hl {

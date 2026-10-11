@@ -31,7 +31,8 @@ export default async function globalSetup() {
     await page.getByLabel(/email/i).fill('smoke@example.com');
     await page.getByLabel(/password/i).fill('password123');
     await page.getByRole('button', { name: /sign in/i }).click();
-    await page.waitForURL('http://smoke.localhost:8001/');
+    // P7-B: Today is the tracker user's home.
+    await page.waitForURL('http://smoke.localhost:8001/today');
 
     await context.storageState({ path: path.join(authDir, 'smoke.json') });
     await browser.close();

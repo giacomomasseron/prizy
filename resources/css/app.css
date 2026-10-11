@@ -26,6 +26,7 @@
   --color-teal-ink: var(--teal-ink);   --color-accent-ink: var(--accent-ink);
   --color-sup-ink: var(--sup-ink);     --color-note-ink: var(--note-ink);
   --color-field: var(--field);
+  --color-sticky-field: var(--sticky-field); --color-sticky-hover: var(--sticky-hover);
 }
 
 /* One keyboard focus ring app-wide (v2 ink). It lives in the base layer (after Tailwind's preflight), so a
@@ -43,6 +44,24 @@ html, body { background: var(--bg); color: var(--fg); }
 @keyframes prizy-fade  { from { opacity: 0 }                              to { opacity: 1 } }
 @keyframes prizy-slide { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
 @keyframes prizy-pop   { from { transform: scale(.97) translateY(6px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+/* The @ mention picker's popover (P7-B): pops in, unless the user asked for less motion. */
+.mention-pop { animation: prizy-pop .12s ease; }
+@media (prefers-reduced-motion: reduce) { .mention-pop { animation: none; } }
+
+/* The My to-dos checkbox (P7-B): a native checkbox drawn as the design's rounded ink square on the yellow note. */
+.todo-check {
+  appearance: none; width: 20px; height: 20px; margin: 1px 0 0; flex-shrink: 0; box-sizing: border-box;
+  border: 2px solid var(--on-hi); border-radius: 6px; background: transparent; cursor: pointer;
+  display: inline-grid; place-content: center;
+}
+.todo-check:hover { background: var(--sticky-field); }
+.todo-check:checked { background: var(--on-hi); }
+.todo-check:checked::after { content: '✓'; color: var(--hi); font-size: 11px; font-weight: 700; line-height: 1; }
+/* The note is yellow in both themes: its focus rings take its ink, not --fg (cream in dark theme). */
+.sticky-note :focus-visible { outline-color: var(--on-hi); }
+/* The global ring leaves inputs to the browser; the note's checkbox draws its own, in the note's ink. */
+.todo-check:focus-visible { outline: 2px solid var(--on-hi); outline-offset: 2px; }
 
 /* ── Auth pages (login + signup, v2). Inline styles set only the field border's width and style, so the
       colour and the offset focus shadow below can change on :focus. ── */

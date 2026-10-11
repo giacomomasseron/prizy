@@ -7,6 +7,7 @@ import SignupPage from './auth/SignupPage';
 import IssueListPage from './features/issues/IssueListPage';
 import BoardPage from './features/issues/BoardPage';
 import IssueDetailPage from './features/issues/IssueDetailPage';
+import TodayPage from './features/today/TodayPage';
 import TeamsPage from './features/teams/TeamsPage';
 import TeamDetailPage from './features/teams/TeamDetailPage';
 import CyclesPage from './features/cycles/CyclesPage';
@@ -63,6 +64,8 @@ export default function AppRouter() {
             <Route path="/signup" element={<SignupPage />} />
             <Route element={<AuthedLayout />}>
                 <Route path="/" element={<RequireDeveloper><IssueListPage /></RequireDeveloper>} />
+                {/* P7-B: the tracker user's home (homePathFor) */}
+                <Route path="/today" element={<RequireDeveloper><TodayPage /></RequireDeveloper>} />
                 <Route path="/board" element={<RequireDeveloper><BoardPage /></RequireDeveloper>} />
                 {/* NOT wrapped — ticket→issue bridge */}
                 <Route path="/issues/:id" element={<IssueDetailPage />} />

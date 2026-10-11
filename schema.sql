@@ -475,6 +475,30 @@ CREATE TABLE issue_stars (
 );
 
 -- ---------------------------------------------------------------------------
+-- user_todos
+-- A user's personal to-dos (PRD §3.2.10). Private to user_id (every query
+-- filters by it); RLS on workspace_id is the backstop. Never broadcast, never
+-- exported. A linked issue is optional; deleting it drops the link only.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE user_todos (
+    id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id        UUID            NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id             UUID            NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    body                TEXT            NOT NULL,
+    issue_id            UUID            REFERENCES issues(id) ON DELETE SET NULL,
+    position            DOUBLE PRECISION NOT NULL,
+    completed_at        TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+ALTER TABLE user_todos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_todos FORCE ROW LEVEL SECURITY;
+CREATE POLICY user_todos_workspace_isolation ON user_todos USING (
+    NULLIF(current_setting('app.current_workspace_id', true), '') IS NULL
+    OR workspace_id::text = current_setting('app.current_workspace_id', true));
+
+-- ---------------------------------------------------------------------------
 -- issue_comments
 -- Comments and internal notes on an issue.
 -- ---------------------------------------------------------------------------
@@ -1037,6 +1061,8 @@ CREATE INDEX idx_issues_status             ON issues(status);
 CREATE INDEX idx_issues_parent             ON issues(parent_issue_id);
 CREATE INDEX idx_issue_blockers_blocked    ON issue_blockers(blocked_issue_id);
 CREATE INDEX issue_stars_issue_idx        ON issue_stars(issue_id);
+CREATE INDEX user_todos_user_idx          ON user_todos(user_id, completed_at, position);
+CREATE INDEX user_todos_issue_idx         ON user_todos(issue_id);
 CREATE INDEX idx_issue_activities_issue    ON issue_activities(issue_id);
 CREATE INDEX idx_issue_comments_issue      ON issue_comments(issue_id);
 

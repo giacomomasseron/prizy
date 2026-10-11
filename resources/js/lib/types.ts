@@ -1,4 +1,23 @@
 export type IssueStatus = 'backlog' | 'todo' | 'in_progress' | 'in_review' | 'done' | 'cancelled';
+
+/** One issue picker row from GET /v1/issues/lookup (PRD §3.2.1): the reference, the title and the status. */
+export interface IssueLookupItem {
+    id: string;
+    identifier: string;
+    title: string;
+    status: IssueStatus;
+}
+
+/** A personal to-do (PRD §3.2.10) from /v1/me/todos. `issue` is the linked issue, or null. */
+export interface Todo {
+    id: string;
+    text: string;
+    done: boolean;
+    completed_at: string | null;
+    position: number;
+    issue: IssueLookupItem | null;
+    created_at: string;
+}
 export type IssuePriority = 'no_priority' | 'urgent' | 'high' | 'medium' | 'low';
 
 export interface Issue {

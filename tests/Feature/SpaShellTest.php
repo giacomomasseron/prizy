@@ -44,3 +44,13 @@ it('serves the SPA shell on the landlord host for /signup (no tenant)', function
     // without a tenant being resolved (NeedsTenant bypassed).
     $this->get('/signup')->assertStatus(200)->assertSee('id="app"', false);
 });
+
+it('serves the SPA shell for /today, the tracker user\'s home (P7-B)', function (): void {
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $dev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
+
+    $this->actingAs($dev)->get('/today')->assertStatus(200)->assertSee('id="app"', false);
+
+    Workspace::forgetCurrent();
+});

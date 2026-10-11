@@ -43,6 +43,7 @@ use App\Http\Controllers\Api\V1\TeamController;
 use App\Http\Controllers\Api\V1\TeamMemberController;
 use App\Http\Controllers\Api\V1\TicketController;
 use App\Http\Controllers\Api\V1\TicketMessageController;
+use App\Http\Controllers\Api\V1\TodoController;
 use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\Api\V1\WorkspaceMemberController;
 use App\Http\Controllers\GithubWebhookController;
@@ -110,6 +111,16 @@ Route::prefix('v1')->group(function (): void {
         'throttle:v1',
     ])->group(function (): void {
         Route::get('/me', MeController::class);
+
+        // The caller's own to-dos (PRD §3.2.10): tracker users only; another user's to-do answers 404.
+        Route::middleware('can:viewAny,App\\Models\\Issue')->group(function (): void {
+            Route::get('/me/todos', [TodoController::class, 'index']);
+            Route::post('/me/todos', [TodoController::class, 'store'])->middleware('verified');
+            // Before /me/todos/{todo}, or "done" would be read as a to-do id.
+            Route::delete('/me/todos/done', [TodoController::class, 'clearDone'])->middleware('verified');
+            Route::patch('/me/todos/{todo}', [TodoController::class, 'update'])->middleware('verified')->whereUuid('todo');
+            Route::delete('/me/todos/{todo}', [TodoController::class, 'destroy'])->middleware('verified')->whereUuid('todo');
+        });
 
         Route::get('/members', [MemberController::class, 'index']);
         // Workspace configuration (owner/admin, enforced in the use case).

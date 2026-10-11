@@ -28,7 +28,8 @@ export default function LoginPage() {
         setMessage(null);
         try {
             await login.mutateAsync({ email, password });
-            navigate('/');
+            // Home: Today for tracker users; the route's guard sends everyone else to theirs (homePathFor).
+            navigate('/today');
         } catch (err) {
             if (err instanceof ApiError) {
                 setErrors(err.errors ?? {});
