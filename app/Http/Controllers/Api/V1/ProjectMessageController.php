@@ -46,7 +46,7 @@ final class ProjectMessageController extends Controller
         $model = $this->findProject->handle($project);
         Gate::authorize('chat', $model);
 
-        $message = $this->postMessage->handle($request->user(), $model, (string) $request->validated('body'), $request->issueIds());
+        $message = $this->postMessage->handle($request->user(), $model, (string) $request->validated('body'), $request->issueIds() ?? []);
 
         return ProjectMessageResource::make($message)->response()->setStatusCode(201);
     }

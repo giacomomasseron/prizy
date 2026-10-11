@@ -28,8 +28,8 @@ final class EditProjectMessage
         private readonly NotifyChatMentions $mentions,
     ) {}
 
-    /** @param list<string> $issueIds */
-    public function handle(User $actor, Project $project, string $messageId, string $body, array $issueIds): ProjectMessage
+    /** @param list<string>|null $issueIds the new links; null keeps the current ones */
+    public function handle(User $actor, Project $project, string $messageId, string $body, ?array $issueIds): ProjectMessage
     {
         $message = $this->messages->findInProject($messageId, $project->id);
         if ($message === null) {
@@ -38,7 +38,7 @@ final class EditProjectMessage
         if ($message->user_id !== $actor->id) {
             throw new AuthorizationException('You can only edit your own messages.');
         }
-        if (count($this->issues->findManyByIds($issueIds)) !== count($issueIds)) {
+        if ($issueIds !== null && count($this->issues->findManyByIds($issueIds)) !== count($issueIds)) {
             throw ValidationException::withMessages(['issue_ids' => ['The selected issues are invalid.']]);
         }
 

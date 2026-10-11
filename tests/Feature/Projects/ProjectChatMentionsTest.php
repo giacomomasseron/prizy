@@ -127,3 +127,18 @@ it('drops the link once the message is deleted', function (): void {
         ->assertJsonPath('data.0.type', 'project_mentioned')
         ->assertJsonPath('data.0.subject', null);
 });
+
+it('never lets a first name reach a developer when the full name of someone without tracker access claims it', function (): void {
+    ['author' => $author, 'sam' => $samAgent, 'project' => $project, 'token' => $token] = mentionWorld();
+    $samLee = User::factory()->for($author->workspace, 'workspace')
+        ->create(['name' => 'Sam Lee', 'email_verified_at' => now(), 'is_developer' => true]);
+    $alex = $token($author);
+
+    // "@Sam Agent" claims its text, so "@Sam" cannot match Sam Lee; Sam Agent has no tracker access.
+    $this->withToken($alex)->postJson("/v1/projects/{$project->id}/messages", ['body' => '@Sam Agent can you check the logs?'])->assertStatus(201);
+    expect(mentionedUserIds())->toBe([]);
+
+    $this->withToken($alex)->postJson("/v1/projects/{$project->id}/messages", ['body' => '@Sam Lee and @Sam Agent'])->assertStatus(201);
+    expect(mentionedUserIds())->toBe([$samLee->id]);
+    expect(Notification::query()->where('user_id', $samAgent->id)->count())->toBe(0);
+});

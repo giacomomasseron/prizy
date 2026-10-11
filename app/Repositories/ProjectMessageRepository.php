@@ -54,13 +54,15 @@ final class ProjectMessageRepository
         return $message->load('issues');
     }
 
-    /** @param list<string> $issueIds the message's links after the edit (they replace the old ones) */
-    public function edit(ProjectMessage $message, string $body, array $issueIds): ProjectMessage
+    /** @param list<string>|null $issueIds the message's links after the edit (they replace the old ones); null keeps them */
+    public function edit(ProjectMessage $message, string $body, ?array $issueIds): ProjectMessage
     {
         $message->body = $body;
         $message->edited_at = now();
         $message->save();
-        $message->issues()->sync($issueIds);
+        if ($issueIds !== null) {
+            $message->issues()->sync($issueIds);
+        }
 
         return $message->load('issues');
     }

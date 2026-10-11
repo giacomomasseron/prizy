@@ -186,3 +186,47 @@ it('enforces RLS on project_messages', function (): void {
     // RLS bites even a raw query under the other tenant's GUC.
     expect(DB::table('project_messages')->count())->toBe(0);
 });
+
+it('keeps same-second messages in the order they were posted, newest first', function (): void {
+    $this->freezeTime();
+    ['token' => $token, 'project' => $project] = chatWorld();
+
+    foreach (['First', 'Second', 'Third', 'Fourth', 'Fifth'] as $body) {
+        $this->withToken($token)->postJson("/v1/projects/{$project->id}/messages", ['body' => $body])->assertStatus(201);
+    }
+
+    $list = $this->withToken($token)->getJson("/v1/projects/{$project->id}/messages")->assertStatus(200);
+    expect(collect($list->json('data'))->pluck('body')->all())->toBe(['Fifth', 'Fourth', 'Third', 'Second', 'First']);
+});
+
+it('keeps the links when an edit omits issue_ids, and clears them for an explicit empty list', function (): void {
+    ['token' => $token, 'user' => $user, 'project' => $project, 'issue' => $makeIssue] = chatWorld();
+    $issue = $makeIssue(['title' => 'Linked']);
+    $message = chatRow($project, $user, 'Teh typo');
+    $message->issues()->sync([$issue->id]);
+    $url = "/v1/projects/{$project->id}/messages/{$message->id}";
+
+    $this->withToken($token)->patchJson($url, ['body' => 'Fixed a typo'])
+        ->assertStatus(200)
+        ->assertJsonCount(1, 'data.issues')
+        ->assertJsonPath('data.issues.0.id', $issue->id);
+
+    $this->withToken($token)->patchJson($url, ['body' => 'Fixed a typo', 'issue_ids' => []])
+        ->assertStatus(200)
+        ->assertJsonCount(0, 'data.issues');
+    expect($message->issues()->count())->toBe(0);
+});
+
+it('answers 404 for another project\'s message, edited or deleted through this project', function (): void {
+    ['token' => $token, 'user' => $user, 'workspace' => $ws, 'project' => $projectA] = chatWorld();
+    $projectB = Project::factory()->for($ws, 'workspace')->create(['created_by' => $user->id, 'name' => 'Other']);
+    $message = chatRow($projectA, $user, 'In A');
+    $url = "/v1/projects/{$projectB->id}/messages/{$message->id}";
+
+    $this->withToken($token)->patchJson($url, ['body' => 'Hijacked'])->assertStatus(404);
+    $this->withToken($token)->deleteJson($url)->assertStatus(404);
+
+    $fresh = ProjectMessage::query()->find($message->id);
+    expect($fresh?->body)->toBe('In A');
+    expect($fresh?->edited_at)->toBeNull();
+});

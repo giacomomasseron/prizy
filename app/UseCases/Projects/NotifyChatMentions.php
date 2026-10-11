@@ -29,18 +29,22 @@ final class NotifyChatMentions
     /** @return list<NotificationCreated> */
     public function handle(User $actor, Project $project, ProjectMessage $message): array
     {
-        // Only tracker users can open a project chat: developers and the owner.
+        // Match against every member, so "@Sam Agent" claims its text before "@Sam" can match a developer; but only
+        // tracker users (developers and the owner) can open a project chat, so only they are notified.
         $members = User::where('workspace_id', $actor->workspace_id)
-            ->where(fn ($q) => $q->where('is_developer', true)->orWhere('admin_level', 'owner'))
-            ->select(['id', 'name', 'email'])
+            ->select(['id', 'name', 'email', 'is_developer', 'admin_level'])
             ->withoutTrashed()
             ->get();
+        $trackerIds = $members
+            ->filter(static fn (User $u): bool => $u->is_developer || $u->admin_level === 'owner')
+            ->map(static fn (User $u): string => (string) $u->id)
+            ->all();
         $already = $this->notifications->recipientsOf('project_mentioned', 'project_message', $message->id);
         $excerpt = $this->excerpt($message->body);
 
         $events = [];
         foreach ($this->recipients->mentioned($message->body, $members, $actor->id) as $userId) {
-            if (in_array($userId, $already, true)) {
+            if (! in_array($userId, $trackerIds, true) || in_array($userId, $already, true)) {
                 continue;
             }
             $notification = $this->dispatcher->dispatch($userId, 'project_mentioned', 'project_message', $message->id, $actor->id, $excerpt, $project->team_id, $project->id);

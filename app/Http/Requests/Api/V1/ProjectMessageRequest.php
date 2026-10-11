@@ -25,9 +25,13 @@ final class ProjectMessageRequest extends FormRequest
         ];
     }
 
-    /** @return list<string> */
-    public function issueIds(): array
+    /** @return list<string>|null null when the request has no `issue_ids` (an edit then keeps the links); `[]` clears them */
+    public function issueIds(): ?array
     {
+        if (! $this->has('issue_ids')) {
+            return null;
+        }
+
         return array_values(array_map('strval', (array) $this->validated('issue_ids', [])));
     }
 }

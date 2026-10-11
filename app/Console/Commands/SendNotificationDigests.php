@@ -91,8 +91,8 @@ final class SendNotificationDigests extends Command
             return "{$base}/issues/{$n->subject_id}";
         }
         if ($n->subject_type === 'project_message') {
-            // A mention in a project chat opens the chat at that message (it may have been deleted since).
-            $projectId = ProjectMessage::withTrashed()->find($n->subject_id)?->project_id;
+            // A mention in a project chat opens the chat at that message (a since-deleted message falls back to the inbox).
+            $projectId = ProjectMessage::find($n->subject_id)?->project_id;
             if ($projectId !== null) {
                 return "{$base}/projects/{$projectId}/chat?message={$n->subject_id}";
             }

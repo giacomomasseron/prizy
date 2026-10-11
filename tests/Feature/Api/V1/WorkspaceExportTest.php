@@ -253,3 +253,28 @@ it('exports the project chat: live messages and their issue links, never a delet
     expect($links)->toBe([['message_id' => $live->id, 'issue_id' => $issue->id]]);
 });
 
+
+it('exports no chat of a deleted project and no link to a deleted issue', function (): void {
+    [$token, $ws, $owner] = exportWorld();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $project = Project::factory()->for($ws, 'workspace')->create(['created_by' => $owner->id]);
+    $gone = Project::factory()->for($ws, 'workspace')->create(['created_by' => $owner->id]);
+    $makeIssue = fn (string $title): Issue => Issue::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+        'created_by' => $owner->id, 'title' => $title, 'status' => 'todo', 'priority' => 'medium',
+    ]);
+    $kept = $makeIssue('Kept');
+    $deleted = $makeIssue('Deleted');
+    $live = ProjectMessage::forceCreate(['project_id' => $project->id, 'user_id' => $owner->id, 'body' => 'Live']);
+    $live->issues()->sync([$kept->id, $deleted->id]);
+    ProjectMessage::forceCreate(['project_id' => $gone->id, 'user_id' => $owner->id, 'body' => 'In a deleted project']);
+    $gone->delete();
+    $deleted->delete();
+
+    $zip = exportOpenZip(exportZipBytes($token));
+
+    $messages = json_decode((string) $zip->getFromName('project_messages.json'), true);
+    expect(array_column($messages, 'body'))->toBe(['Live']);
+    $links = json_decode((string) $zip->getFromName('project_message_issues.json'), true);
+    expect($links)->toBe([['message_id' => $live->id, 'issue_id' => $kept->id]]);
+});

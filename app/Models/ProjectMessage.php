@@ -40,7 +40,8 @@ final class ProjectMessage extends TenantAwareEntity
     {
         static::creating(function (self $message): void {
             if (empty($message->id)) {
-                $message->id = (string) Str::uuid();
+                // orderedUuid(), not uuid(): same-second messages tie on created_at, and the list's id tie-break only keeps their order if ids are chronological.
+                $message->id = (string) Str::orderedUuid();
             }
         });
     }
