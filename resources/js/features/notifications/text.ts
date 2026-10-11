@@ -6,6 +6,8 @@ export function notificationText(type: string): string {
             return "An issue you're assigned was unblocked";
         case 'issue_mentioned':
             return 'mentioned you';
+        case 'project_mentioned':
+            return 'mentioned you in the project chat';
         case 'issue_commented':
             return 'commented';
         case 'issue_status_changed':
@@ -20,6 +22,7 @@ export type NotificationCategory = 'mention' | 'assign' | 'comment' | 'status' |
 export function notificationMeta(type: string): { icon: string; category: NotificationCategory } {
     switch (type) {
         case 'issue_mentioned':
+        case 'project_mentioned':
             return { icon: '@', category: 'mention' };
         case 'issue_assigned':
             return { icon: '→', category: 'assign' };
@@ -44,6 +47,8 @@ export function reasonFor(type: string): string {
             return "You're the assignee.";
         case 'issue_mentioned':
             return 'You were mentioned.';
+        case 'project_mentioned':
+            return 'You were mentioned in the project chat.';
         case 'issue_commented':
             return "You're a participant on this issue.";
         case 'issue_status_changed':

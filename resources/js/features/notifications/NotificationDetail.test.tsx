@@ -109,4 +109,22 @@ describe('NotificationDetail', () => {
         expect(kind.style.color).toBe('var(--accent-ink)');
         expect(kind.style.background).toBe('var(--accent2)');
     });
+
+    it('P7-C: a chat mention names the actor, links to the message in the chat, and says why', () => {
+        wrap(makeItem({
+            type: 'project_mentioned',
+            subject_type: 'project_message',
+            subject_id: 'm1',
+            actor: { id: 'u1', name: 'Alex Rivera' },
+            subject: { type: 'project_message', id: 'm1', ref: 'Unified Inbox chat', title: 'Can you look at PRZ-ABC123?', path: '/projects/p1/chat?message=m1' },
+        }));
+
+        expect(screen.getByRole('heading', { name: 'Alex Rivera mentioned you in the project chat' })).toBeInTheDocument();
+        expect(screen.getAllByText('Mention')[0].style.borderRadius).toBe('var(--radius-pill)'); // the kind tag (the details list repeats it)
+        // The subject card and the Open button both go to the message in the chat.
+        const links = screen.getAllByRole('link', { name: /Unified Inbox chat/ });
+        expect(links).toHaveLength(2);
+        links.forEach((link) => expect(link).toHaveAttribute('href', '/projects/p1/chat?message=m1'));
+        expect(screen.getByText('You were mentioned in the project chat.')).toBeInTheDocument();
+    });
 });

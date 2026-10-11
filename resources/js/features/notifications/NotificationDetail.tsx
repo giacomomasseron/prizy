@@ -12,6 +12,7 @@ import type { AppNotification } from '../../lib/types';
 
 const KIND_LABEL: Record<string, string> = {
     issue_mentioned: 'Mention',
+    project_mentioned: 'Mention',
     issue_assigned: 'Assigned to you',
     issue_commented: 'New comment',
     issue_status_changed: 'Status change',
