@@ -1,0 +1,53 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Repositories;
+
+use App\Models\ProjectMessage;
+use Illuminate\Pagination\CursorPaginator;
+
+/** Project chat messages (PRD §3.2.11). Soft-deleted messages never come back from here. */
+final class ProjectMessageRepository
+{
+    /** Newest first (the chat loads the latest page, then older ones); the client shows them oldest at the top. */
+    public function paginateForProject(string $projectId, int $limit): CursorPaginator
+    {
+        return ProjectMessage::query()->with('issues')
+            ->where('project_id', $projectId)
+            ->orderByDesc('created_at')->orderByDesc('id')
+            ->cursorPaginate(perPage: $limit, cursorName: 'after')
+            ->withQueryString();
+    }
+
+    /** Null for a deleted message or one from another project. */
+    public function findInProject(string $id, string $projectId): ?ProjectMessage
+    {
+        return ProjectMessage::query()->with('issues')->where('project_id', $projectId)->find($id);
+    }
+
+    /** @param list<string> $issueIds */
+    public function create(string $projectId, string $userId, string $body, array $issueIds): ProjectMessage
+    {
+        $message = ProjectMessage::query()->create(['project_id' => $projectId, 'user_id' => $userId, 'body' => $body]);
+        $message->issues()->sync($issueIds);
+
+        return $message->load('issues');
+    }
+
+    /** @param list<string> $issueIds the message's links after the edit (they replace the old ones) */
+    public function edit(ProjectMessage $message, string $body, array $issueIds): ProjectMessage
+    {
+        $message->body = $body;
+        $message->edited_at = now();
+        $message->save();
+        $message->issues()->sync($issueIds);
+
+        return $message->load('issues');
+    }
+
+    public function delete(ProjectMessage $message): void
+    {
+        $message->delete();
+    }
+}

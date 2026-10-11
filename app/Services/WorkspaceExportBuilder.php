@@ -25,6 +25,8 @@ use App\Models\Label;
 use App\Models\Milestone;
 use App\Models\Project;
 use App\Models\ProjectMember;
+use App\Models\ProjectMessage;
+use App\Models\ProjectMessageIssue;
 use App\Models\Release;
 use App\Models\SavedView;
 use App\Models\SlaBreach;
@@ -249,6 +251,12 @@ final class WorkspaceExportBuilder
                 ->whereIn('project_id', Project::query()->select('id'))
                 ->orderBy('project_id')->orderBy('user_id')
                 ->lazy(500)->map($pick(['project_id', 'user_id', 'created_at'])),
+            // The project chat (PRD §3.2.11: shared workspace data). Deleted messages stay out (SoftDeletes).
+            'project_messages' => fn (): iterable => ProjectMessage::query()->lazyById(500)->map($pick(['id', 'project_id', 'user_id', 'body', 'edited_at', 'created_at', 'updated_at'])),
+            'project_message_issues' => fn (): iterable => ProjectMessageIssue::query()
+                ->whereIn('message_id', ProjectMessage::query()->select('id'))
+                ->orderBy('message_id')->orderBy('issue_id')
+                ->lazy(500)->map($pick(['message_id', 'issue_id'])),
             // NOTE: milestones has target_date only — no due_date/completed_at/sort_order columns.
             'milestones' => fn (): iterable => Milestone::query()
                 ->whereIn('project_id', Project::query()->select('id'))

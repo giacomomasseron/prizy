@@ -8,6 +8,7 @@ use App\Models\IssueComment;
 use App\Models\IssueStar;
 use App\Models\Label;
 use App\Models\Project;
+use App\Models\ProjectMessage;
 use App\Models\Release;
 use App\Models\Team;
 use App\Models\Ticket;
@@ -229,3 +230,26 @@ it('exports an empty workspace as a valid zip with zero counts', function (): vo
     $zip->close();
     Workspace::forgetCurrent();
 });
+
+it('exports the project chat: live messages and their issue links, never a deleted message', function (): void {
+    [$token, $ws, $owner] = exportWorld();
+    $team = Team::factory()->for($ws, 'workspace')->create();
+    $project = Project::factory()->for($ws, 'workspace')->create(['created_by' => $owner->id]);
+    $issue = Issue::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id,
+        'created_by' => $owner->id, 'title' => 'Linked issue', 'status' => 'todo', 'priority' => 'medium',
+    ]);
+    $live = ProjectMessage::forceCreate(['project_id' => $project->id, 'user_id' => $owner->id, 'body' => 'Shipping today']);
+    $live->issues()->sync([$issue->id]);
+    ProjectMessage::forceCreate(['project_id' => $project->id, 'user_id' => $owner->id, 'body' => 'Deleted', 'deleted_at' => now()]);
+
+    $zip = exportOpenZip(exportZipBytes($token));
+
+    $messages = json_decode((string) $zip->getFromName('project_messages.json'), true);
+    expect($messages)->toHaveCount(1);
+    expect($messages[0]['body'])->toBe('Shipping today');
+    expect($messages[0])->toHaveKeys(['id', 'project_id', 'user_id', 'edited_at', 'created_at']);
+    $links = json_decode((string) $zip->getFromName('project_message_issues.json'), true);
+    expect($links)->toBe([['message_id' => $live->id, 'issue_id' => $issue->id]]);
+});
+

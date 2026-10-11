@@ -499,6 +499,36 @@ CREATE POLICY user_todos_workspace_isolation ON user_todos USING (
     OR workspace_id::text = current_setting('app.current_workspace_id', true));
 
 -- ---------------------------------------------------------------------------
+-- project_messages, project_message_issues
+-- The project chat (PRD §3.2.11): one chat per project, kept forever. A
+-- message is soft-deleted by its author. Its linked issues live in
+-- project_message_issues, scoped through the message (no RLS of its own).
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE project_messages (
+    id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id        UUID            NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    project_id          UUID            NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    user_id             UUID            NOT NULL REFERENCES users(id),
+    body                TEXT            NOT NULL,
+    edited_at           TIMESTAMPTZ,
+    deleted_at          TIMESTAMPTZ,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
+);
+ALTER TABLE project_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_messages FORCE ROW LEVEL SECURITY;
+CREATE POLICY project_messages_workspace_isolation ON project_messages USING (
+    NULLIF(current_setting('app.current_workspace_id', true), '') IS NULL
+    OR workspace_id::text = current_setting('app.current_workspace_id', true));
+
+CREATE TABLE project_message_issues (
+    message_id          UUID            NOT NULL REFERENCES project_messages(id) ON DELETE CASCADE,
+    issue_id            UUID            NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    PRIMARY KEY (message_id, issue_id)
+);
+
+-- ---------------------------------------------------------------------------
 -- issue_comments
 -- Comments and internal notes on an issue.
 -- ---------------------------------------------------------------------------
@@ -1063,6 +1093,8 @@ CREATE INDEX idx_issue_blockers_blocked    ON issue_blockers(blocked_issue_id);
 CREATE INDEX issue_stars_issue_idx        ON issue_stars(issue_id);
 CREATE INDEX user_todos_user_idx          ON user_todos(user_id, completed_at, position);
 CREATE INDEX user_todos_issue_idx         ON user_todos(issue_id);
+CREATE INDEX project_messages_project_idx ON project_messages(project_id, created_at, id);
+CREATE INDEX project_message_issues_issue_idx ON project_message_issues(issue_id);
 CREATE INDEX idx_issue_activities_issue    ON issue_activities(issue_id);
 CREATE INDEX idx_issue_comments_issue      ON issue_comments(issue_id);
 
