@@ -11,7 +11,7 @@ function renderWorkspace(path: string, found = true) {
         return j({ data: {} });
     }));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><Routes><Route path="/projects/:id" element={<ProjectWorkspace />}><Route path="issues" element={<div>ISSUES VIEW</div>} /></Route></Routes></MemoryRouter></QueryClientProvider>);
+    return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><Routes><Route path="/projects/:id" element={<ProjectWorkspace />}><Route path="issues" element={<div>ISSUES VIEW</div>} /><Route path="chat" element={<div>CHAT VIEW</div>} /></Route></Routes></MemoryRouter></QueryClientProvider>);
 }
 
 describe('ProjectWorkspace', () => {
@@ -22,6 +22,11 @@ describe('ProjectWorkspace', () => {
         expect(screen.getByText('Escalation Engine')).toBeInTheDocument();
         // breadcrumb view label
         expect(screen.getByText('Issues')).toBeInTheDocument();
+    });
+    it('P7-C: names the Chat view in the breadcrumb', async () => {
+        renderWorkspace('/projects/p1/chat');
+        expect(await screen.findByText('CHAT VIEW')).toBeInTheDocument();
+        expect(screen.getByText('Chat')).toBeInTheDocument();
     });
     it('shows a not-found message for a missing project', async () => {
         renderWorkspace('/projects/p1', false);
