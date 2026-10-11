@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Projects;
 
+use App\Events\ProjectMessageEdited;
 use App\Models\Project;
 use App\Models\ProjectMessage;
 use App\Models\User;
@@ -49,6 +50,7 @@ final class EditProjectMessage
             return $edited;
         });
 
+        event(new ProjectMessageEdited($edited));
         foreach ($events as $event) {
             event($event);
         }

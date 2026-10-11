@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Projects;
 
+use App\Events\ProjectMessagePosted;
 use App\Models\Project;
 use App\Models\ProjectMessage;
 use App\Models\User;
@@ -14,8 +15,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Post a message in a project's chat (PRD §3.2.11), linking the issues picked while writing it. Every linked issue
- * must be a live issue of the workspace (another workspace's or a deleted one → 422). The people it mentions are
- * notified once the message is saved.
+ * must be a live issue of the workspace (another workspace's or a deleted one → 422). Once the message is saved it
+ * goes out on the project's channel, and the people it mentions are notified.
  */
 final class PostProjectMessage
 {
@@ -40,6 +41,7 @@ final class PostProjectMessage
             return $message;
         });
 
+        event(new ProjectMessagePosted($message));
         foreach ($events as $event) {
             event($event);
         }

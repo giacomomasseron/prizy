@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\UseCases\Projects;
 
+use App\Events\ProjectMessageDeleted;
 use App\Models\Project;
 use App\Models\ProjectMessage;
 use App\Models\User;
@@ -30,6 +31,7 @@ final class DeleteProjectMessage
         }
 
         $this->messages->delete($message);
+        event(new ProjectMessageDeleted($project->id, $message->id));
 
         return $message;
     }
