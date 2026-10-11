@@ -22,7 +22,10 @@ const ME = { id: 'u1', workspace_id: 'w1', name: 'Alice', email: 'a@e.com', admi
 
 function stubFetch(opts: { issues?: Issue[]; milestones?: Milestone[]; me?: object; project?: Project } = {}) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        // /v1/members before /v1/me: the one path starts with the other.
+        if (url.includes('/v1/members')) return j({ data: [{ id: 'u1', name: 'Alice', is_agent: false }] });
         if (url.includes('/v1/me')) return j({ data: opts.me ?? ME });
+        if (url.includes('/messages')) return j({ data: [], links: { next: null, prev: null } });
         if (url.includes('/milestones')) return j({ data: opts.milestones ?? MILESTONES, links: { next: null, prev: null } });
         if (url.includes('/issues')) return j({ data: opts.issues ?? ISSUES, links: { next: null, prev: null } });
         if (url.includes('/projects/')) return j({ data: opts.project ?? PROJECT });
@@ -118,7 +121,9 @@ describe('ProjectOverview', () => {
 
     it("G3c: a failed milestones load shows a retryable alert, not the empty state", async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/v1/members')) return j({ data: [] });
             if (url.includes('/v1/me')) return j({ data: ME });
+            if (url.includes('/messages')) return j({ data: [], links: { next: null, prev: null } });
             if (url.includes('/milestones')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
             if (url.includes('/issues')) return j({ data: ISSUES, links: { next: null, prev: null } });
             if (url.includes('/projects/')) return j({ data: PROJECT });
@@ -128,5 +133,13 @@ describe('ProjectOverview', () => {
         render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/projects/p1']}><Routes><Route path="/projects/:id" element={<ProjectOverview />} /></Routes></MemoryRouter></QueryClientProvider>);
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load milestones.");
         expect(screen.queryByText('No milestones yet.')).toBeNull();
+    });
+
+    it('P7-C: shows the chat card after Progress and Milestones, with Open → to the Chat tab', async () => {
+        renderView();
+        const chat = await screen.findByRole('region', { name: 'Chat' });
+        expect(within(chat).getByRole('link', { name: 'Open the chat' })).toHaveAttribute('href', '/projects/p1/chat');
+        expect(await within(chat).findByText('No messages yet. Say hello to the team.')).toBeInTheDocument();
+        expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Progress', 'Milestones', 'Chat']);
     });
 });
