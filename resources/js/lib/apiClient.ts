@@ -58,6 +58,13 @@ async function request<T>(method: Method, path: string, body?: unknown): Promise
     return json as T;
 }
 
+/** A page's `next` link (an absolute URL) as the /v1/... path the client fetches as-is. */
+export function nextPath(next: string | null): string | null {
+    if (!next) return null;
+    const u = new URL(next, window.location.origin);
+    return u.pathname + u.search;
+}
+
 interface Envelope<T> { data: T }
 interface PageEnvelope<T> { data: T[]; links?: { next: string | null; prev: string | null } }
 

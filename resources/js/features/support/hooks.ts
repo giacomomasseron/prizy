@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../../lib/apiClient';
+import { api, nextPath } from '../../lib/apiClient';
 import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput, TicketCounts, HelpdeskSavedView } from '../../lib/types';
 
 function ticketsPath(filters: Record<string, string>, sort: string): string {
@@ -10,18 +10,12 @@ function ticketsPath(filters: Record<string, string>, sort: string): string {
     return `/tickets${qs ? `?${qs}` : ''}`;
 }
 
-function relNext(next: string | null): string | null {
-    if (!next) return null;
-    const u = new URL(next, window.location.origin);
-    return u.pathname + u.search; // a /v1/... path the api client uses as-is
-}
-
 export function useTickets(filters: Record<string, string> = {}, sort: string = 'updated_at') {
     return useInfiniteQuery({
         queryKey: ['tickets', filters, sort],
         queryFn: ({ pageParam }) => api.page<TicketListItem>((pageParam as string | null) ?? ticketsPath(filters, sort)),
         initialPageParam: null as string | null,
-        getNextPageParam: (last) => relNext(last.next),
+        getNextPageParam: (last) => nextPath(last.next),
     });
 }
 
