@@ -14,13 +14,15 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * Post a message in a project's chat (PRD §3.2.11), linking the issues picked while writing it. Every linked issue
- * must be a live issue of the workspace (another workspace's or a deleted one → 422).
+ * must be a live issue of the workspace (another workspace's or a deleted one → 422). The people it mentions are
+ * notified once the message is saved.
  */
 final class PostProjectMessage
 {
     public function __construct(
         private readonly ProjectMessageRepository $messages,
         private readonly IssueRepository $issues,
+        private readonly NotifyChatMentions $mentions,
     ) {}
 
     /** @param list<string> $issueIds */
@@ -30,6 +32,18 @@ final class PostProjectMessage
             throw ValidationException::withMessages(['issue_ids' => ['The selected issues are invalid.']]);
         }
 
-        return DB::transaction(fn (): ProjectMessage => $this->messages->create($project->id, $actor->id, $body, $issueIds));
+        $events = [];
+        $message = DB::transaction(function () use ($actor, $project, $body, $issueIds, &$events): ProjectMessage {
+            $message = $this->messages->create($project->id, $actor->id, $body, $issueIds);
+            $events = $this->mentions->handle($actor, $project, $message);
+
+            return $message;
+        });
+
+        foreach ($events as $event) {
+            event($event);
+        }
+
+        return $message;
     }
 }

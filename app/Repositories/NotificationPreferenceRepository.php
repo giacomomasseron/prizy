@@ -14,6 +14,7 @@ final class NotificationPreferenceRepository
 
     public const TYPE_TO_EVENT = [
         'issue_mentioned' => 'mention',
+        'project_mentioned' => 'mention',
         'issue_assigned' => 'assign',
         'issue_commented' => 'comment',
         'issue_status_changed' => 'status',

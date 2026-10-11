@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Notification;
+use App\Models\ProjectMessage;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\NotificationDigest;
@@ -86,8 +87,17 @@ final class SendNotificationDigests extends Command
         $scheme = str_starts_with((string) config('app.url'), 'https') ? 'https' : 'http';
         $base = "{$scheme}://{$workspace->slug}.".config('app.base_domain');
 
-        return $n->subject_type === 'issue'
-            ? "{$base}/issues/{$n->subject_id}"
-            : "{$base}/notifications";
+        if ($n->subject_type === 'issue') {
+            return "{$base}/issues/{$n->subject_id}";
+        }
+        if ($n->subject_type === 'project_message') {
+            // A mention in a project chat opens the chat at that message (it may have been deleted since).
+            $projectId = ProjectMessage::withTrashed()->find($n->subject_id)?->project_id;
+            if ($projectId !== null) {
+                return "{$base}/projects/{$projectId}/chat?message={$n->subject_id}";
+            }
+        }
+
+        return "{$base}/notifications";
     }
 }

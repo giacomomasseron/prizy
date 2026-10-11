@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\ProjectMessage;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
 
 /** Project chat messages (PRD §3.2.11). Soft-deleted messages never come back from here. */
@@ -18,6 +19,24 @@ final class ProjectMessageRepository
             ->orderByDesc('created_at')->orderByDesc('id')
             ->cursorPaginate(perPage: $limit, cursorName: 'after')
             ->withQueryString();
+    }
+
+    /**
+     * Live messages by id with their project's name, for notification subjects — one query. A deleted message, or one
+     * whose project was deleted, is left out.
+     *
+     * @param  list<string>  $ids
+     * @return Collection<string, ProjectMessage> keyed by id
+     */
+    public function findManyWithProject(array $ids): Collection
+    {
+        if ($ids === []) {
+            return new Collection;
+        }
+
+        return ProjectMessage::query()->with('project:id,name')->whereIn('id', $ids)->get()
+            ->filter(fn (ProjectMessage $message): bool => $message->project !== null)
+            ->keyBy('id');
     }
 
     /** Null for a deleted message or one from another project. */

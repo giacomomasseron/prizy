@@ -15,15 +15,16 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Edit one of the actor's own chat messages (PRD §3.2.11): new text and links, stamped edited_at. Someone else's
- * message → 403, admins and the owner included (a rule of its own: the owner's Gate::before bypass does not reach
- * it). A deleted message, or one from another project → 404.
+ * Edit one of the actor's own chat messages (PRD §3.2.11): new text and links, stamped edited_at; only the people
+ * newly mentioned are notified. Someone else's message → 403, admins and the owner included (a rule of its own: the
+ * owner's Gate::before bypass does not reach it). A deleted message, or one from another project → 404.
  */
 final class EditProjectMessage
 {
     public function __construct(
         private readonly ProjectMessageRepository $messages,
         private readonly IssueRepository $issues,
+        private readonly NotifyChatMentions $mentions,
     ) {}
 
     /** @param list<string> $issueIds */
@@ -40,6 +41,18 @@ final class EditProjectMessage
             throw ValidationException::withMessages(['issue_ids' => ['The selected issues are invalid.']]);
         }
 
-        return DB::transaction(fn (): ProjectMessage => $this->messages->edit($message, $body, $issueIds));
+        $events = [];
+        $edited = DB::transaction(function () use ($actor, $project, $message, $body, $issueIds, &$events): ProjectMessage {
+            $edited = $this->messages->edit($message, $body, $issueIds);
+            $events = $this->mentions->handle($actor, $project, $edited);
+
+            return $edited;
+        });
+
+        foreach ($events as $event) {
+            event($event);
+        }
+
+        return $edited;
     }
 }

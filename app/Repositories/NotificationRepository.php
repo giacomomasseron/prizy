@@ -15,6 +15,9 @@ final class NotificationRepository
     /** No support-channel notification types exist yet; kept empty and forward-compatible. */
     private const SUPPORT_TYPES = [];
 
+    /** Every type that is a mention: the Mentions inbox filter and the "mentions only" subscription level use them. */
+    public const MENTION_TYPES = ['issue_mentioned', 'project_mentioned'];
+
     /** workspace_id is auto-filled from the active tenant by BelongsToWorkspace. */
     public function create(
         string $userId,
@@ -35,6 +38,18 @@ final class NotificationRepository
         ]);
     }
 
+    /**
+     * The users already holding a notification of this type for this subject (archived ones included).
+     *
+     * @return list<string>
+     */
+    public function recipientsOf(string $type, string $subjectType, string $subjectId): array
+    {
+        return Notification::query()
+            ->where('type', $type)->where('subject_type', $subjectType)->where('subject_id', $subjectId)
+            ->pluck('user_id')->map(fn (mixed $id): string => (string) $id)->unique()->values()->all();
+    }
+
     public function paginateForUser(string $userId, bool $unreadOnly, int $limit, string $category = 'all'): CursorPaginator
     {
         $query = Notification::query()->where('user_id', $userId)->with('actor')->orderBy('created_at', 'desc')->orderBy('id');
@@ -50,7 +65,7 @@ final class NotificationRepository
     private function applyCategory(Builder $query, string $category): void
     {
         match ($category) {
-            'mention' => $this->applyVisible($query)->where('type', 'issue_mentioned'),
+            'mention' => $this->applyVisible($query)->whereIn('type', self::MENTION_TYPES),
             'assign' => $this->applyVisible($query)->where('type', 'issue_assigned'),
             'support' => $this->applyVisible($query)->whereIn('type', self::SUPPORT_TYPES),
             'snoozed' => $query->whereNull('archived_at')->where('snoozed_until', '>', now()),
