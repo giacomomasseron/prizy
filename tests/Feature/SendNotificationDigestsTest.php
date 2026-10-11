@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Models\Notification as NotificationRow;
+use App\Models\Project;
+use App\Models\ProjectMessage;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\NotificationDigest;
@@ -135,3 +137,46 @@ it('excludes notifications whose event has email disabled, but still includes on
     expect($commentNotif->refresh()->read_at)->toBeNull();
     Workspace::forgetCurrent();
 });
+
+it('labels a project chat mention and links it to the chat at that message', function (): void {
+    Notification::fake();
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $daily = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now(), 'is_developer' => true]);
+    $project = Project::factory()->for($ws, 'workspace')->create(['created_by' => $daily->id]);
+    $message = ProjectMessage::forceCreate(['project_id' => $project->id, 'user_id' => $daily->id, 'body' => 'Hi']);
+    seedNotif($ws, $daily, ['type' => 'project_mentioned', 'subject_type' => 'project_message', 'subject_id' => $message->id]);
+    $slug = $ws->slug;
+    Workspace::forgetCurrent();
+
+    $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
+
+    Notification::assertSentTo($daily, NotificationDigest::class, function (NotificationDigest $n) use ($daily, $slug, $project, $message): bool {
+        $body = implode(' ', $n->toMail($daily)->introLines);
+
+        return str_contains($body, 'Mentioned you in project chat')
+            && str_contains($body, $slug)
+            && str_contains($body, "/projects/{$project->id}/chat?message={$message->id}");
+    });
+});
+
+it('links a chat mention whose message was deleted to the inbox, not to a chat link that cannot be found', function (): void {
+    Notification::fake();
+    $ws = Workspace::factory()->create();
+    $ws->makeCurrent();
+    $daily = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now(), 'is_developer' => true]);
+    $project = Project::factory()->for($ws, 'workspace')->create(['created_by' => $daily->id]);
+    $message = ProjectMessage::forceCreate(['project_id' => $project->id, 'user_id' => $daily->id, 'body' => 'Hi']);
+    seedNotif($ws, $daily, ['type' => 'project_mentioned', 'subject_type' => 'project_message', 'subject_id' => $message->id]);
+    $message->delete();
+    Workspace::forgetCurrent();
+
+    $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
+
+    Notification::assertSentTo($daily, NotificationDigest::class, function (NotificationDigest $n) use ($daily, $project): bool {
+        $body = implode(' ', $n->toMail($daily)->introLines);
+
+        return str_contains($body, '/notifications') && ! str_contains($body, "/projects/{$project->id}/chat");
+    });
+});
+

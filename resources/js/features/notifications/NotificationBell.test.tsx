@@ -26,6 +26,7 @@ function wrap() {
             <Routes>
                 <Route path="/" element={<NotificationBell />} />
                 <Route path="/issues/:id" element={<div>issue page</div>} />
+                <Route path="/projects/:id/chat" element={<div>chat page</div>} />
                 <Route path="/notifications" element={<div>inbox page</div>} />
             </Routes>
         </MemoryRouter>,
@@ -79,6 +80,19 @@ describe('NotificationBell', () => {
         fireEvent.click(screen.getByText('You were assigned an issue'));
         expect(markRead).toHaveBeenCalledWith('n1');
         await waitFor(() => expect(screen.getByText('issue page')).toBeInTheDocument());
+    });
+
+    it('P7-C: a chat mention opens the message in the project chat', async () => {
+        listItems = [{
+            id: 'n3', type: 'project_mentioned', subject_type: 'project_message', subject_id: 'm1', read_at: null, created_at: new Date().toISOString(),
+            actor: { id: 'u1', name: 'Alex Rivera' },
+            subject: { type: 'project_message', id: 'm1', ref: 'Unified Inbox chat', title: 'Can you look?', path: '/projects/p1/chat?message=m1' },
+        }];
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        fireEvent.click(screen.getByText('mentioned you in the project chat'));
+        expect(markRead).toHaveBeenCalledWith('n3');
+        await waitFor(() => expect(screen.getByText('chat page')).toBeInTheDocument());
     });
 
     it('shows an empty state when there are no notifications', () => {

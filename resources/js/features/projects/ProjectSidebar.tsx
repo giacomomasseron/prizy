@@ -39,6 +39,9 @@ export function ProjectSidebar({ projectId }: { projectId: string }) {
                 <NavLink end to={`/projects/${projectId}`} style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span><span style={{ flex: 1 }}>Overview</span>
                 </NavLink>
+                <NavLink to={`/projects/${projectId}/chat`} style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
+                    <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 10, borderRadius: '4px 4px 4px 1px', border: '1.6px solid currentColor', boxSizing: 'border-box' }} /></span><span style={{ flex: 1 }}>Chat</span>{p?.messages_count !== undefined && <span style={countStyle}>{p.messages_count}</span>}
+                </NavLink>
                 <NavLink to={`/projects/${projectId}/issues`} style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.6px solid currentColor' }} /></span><span style={{ flex: 1 }}>Issues</span><span style={countStyle}>{issueCount}</span>
                 </NavLink>

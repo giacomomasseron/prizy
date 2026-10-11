@@ -14,9 +14,10 @@ final class NotificationSubscriptionRepository
     public const LEVELS = ['all', 'mentions', 'off'];
 
     /**
-     * A project-scoped row overrides a team-scoped row; absent rows default to 'all'.
+     * A project-scoped row overrides a team-scoped row; absent rows default to 'all'. Without a team (a project chat
+     * in a project with no team) only the project row counts.
      */
-    public function levelFor(string $userId, string $teamId, ?string $projectId): string
+    public function levelFor(string $userId, ?string $teamId, ?string $projectId): string
     {
         if ($projectId !== null) {
             $projectRow = NotificationSubscription::query()
@@ -28,6 +29,10 @@ final class NotificationSubscriptionRepository
             if ($projectRow !== null) {
                 return $projectRow->level;
             }
+        }
+
+        if ($teamId === null) {
+            return 'all';
         }
 
         $teamRow = NotificationSubscription::query()

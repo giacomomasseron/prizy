@@ -17,6 +17,7 @@ import ProjectOverview from './features/projects/ProjectOverview';
 import ProjectIssues from './features/projects/ProjectIssues';
 import ProjectCycles from './features/projects/ProjectCycles';
 import ProjectRoadmap from './features/projects/ProjectRoadmap';
+import ChatPage from './features/chat/ChatPage';
 import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
 import BusinessHoursSettingsPage from './features/business-hours/BusinessHoursSettingsPage';
 import SlaPoliciesSettingsPage from './features/sla-policies/SlaPoliciesSettingsPage';
@@ -75,6 +76,7 @@ export default function AppRouter() {
                 <Route path="/projects" element={<RequireDeveloper><ProjectsPage /></RequireDeveloper>} />
                 <Route path="/projects/:id" element={<RequireDeveloper><ProjectWorkspace /></RequireDeveloper>}>
                     <Route index element={<ProjectOverview />} />
+                    <Route path="chat" element={<ChatPage />} />
                     <Route path="issues" element={<ProjectIssues />} />
                     <Route path="cycles" element={<ProjectCycles />} />
                     <Route path="roadmap" element={<ProjectRoadmap />} />

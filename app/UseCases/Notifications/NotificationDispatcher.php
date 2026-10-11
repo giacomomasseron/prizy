@@ -13,7 +13,7 @@ use App\Repositories\NotificationSubscriptionRepository;
  * Single chokepoint for creating a notification: gates creation first on the
  * recipient's team/project subscription level for issue-scoped subjects (via
  * NotificationSubscriptionRepository::levelFor — 'off' always skips, 'mentions'
- * skips everything except issue_mentioned), then on the recipient's `in_app`
+ * skips everything except the mention types), then on the recipient's `in_app`
  * preference for the event category $type maps to (via
  * NotificationPreferenceRepository::TYPE_TO_EVENT), then persists it. Types
  * with no known event-category mapping default to creating (never silently
@@ -43,14 +43,16 @@ final class NotificationDispatcher
         ?string $teamId = null,
         ?string $projectId = null,
     ): ?Notification {
-        if ($subjectType === 'issue' && $teamId !== null) {
+        // The scope's subscription level: an issue's team (and project), or a project chat's project. "Mentions only"
+        // lets every mention type through.
+        if (($subjectType === 'issue' && $teamId !== null) || $type === 'project_mentioned') {
             $level = $this->subscriptions->levelFor($recipientId, $teamId, $projectId);
 
             if ($level === 'off') {
                 return null;
             }
 
-            if ($level === 'mentions' && $type !== 'issue_mentioned') {
+            if ($level === 'mentions' && ! in_array($type, NotificationRepository::MENTION_TYPES, true)) {
                 return null;
             }
         }

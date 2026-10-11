@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPick, detectMention, matchMembers, mentionHandle } from './mentionText';
+import { applyPick, detectMention, matchMembers, mentionHandle, textParts } from './mentionText';
 
 // P7-B: the @ mention picker's text rules (the Project v2 design).
 describe('detectMention', () => {
@@ -62,5 +62,23 @@ describe('mentionHandle', () => {
 describe('applyPick before a line break', () => {
     it('keeps the line break that follows the mention', () => {
         expect(applyPick('@ab\nnext', { start: 0, end: 3, q: 'ab' }, 'PRZ-ABC123')).toEqual({ text: 'PRZ-ABC123 \nnext', caret: 11 });
+    });
+});
+
+describe('textParts', () => {
+    it('picks out the linked issues\' references and @Full Name mentions, longest name first', () => {
+        expect(textParts('Ask @Maya Chen about PRZ-ABC123 and PRZ-DEF456', ['PRZ-ABC123', 'PRZ-DEF456'], ['Maya', 'Maya Chen'])).toEqual([
+            { kind: 'text', text: 'Ask ' },
+            { kind: 'name', text: '@Maya Chen' },
+            { kind: 'text', text: ' about ' },
+            { kind: 'ref', text: 'PRZ-ABC123' },
+            { kind: 'text', text: ' and ' },
+            { kind: 'ref', text: 'PRZ-DEF456' },
+        ]);
+    });
+
+    it('leaves any other PRZ- text plain: only the picked issues link', () => {
+        expect(textParts('See PRZ-FFF000', ['PRZ-ABC123'], [])).toEqual([{ kind: 'text', text: 'See PRZ-FFF000' }]);
+        expect(textParts('See PRZ-FFF000', [], [])).toEqual([{ kind: 'text', text: 'See PRZ-FFF000' }]);
     });
 });

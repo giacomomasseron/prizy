@@ -1,30 +1,7 @@
 import { Fragment } from 'react';
 import { Link } from 'react-router-dom';
 import type { Todo } from '../../lib/types';
-
-export type TodoPart = { kind: 'text' | 'ref' | 'name'; text: string };
-
-function escapeRegExp(s: string): string {
-    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
-/**
- * Split a to-do's text into plain text, the linked issue's reference, and `@Full Name` mentions of members (longest
- * name first). Any other `PRZ-` text stays plain: only the issue picked with the picker is a link (PRD §3.2.1).
- */
-export function todoParts(text: string, identifier: string | null, names: string[]): TodoPart[] {
-    const tokens = [
-        ...(identifier ? [identifier] : []),
-        ...[...names].filter((n) => n.trim() !== '').sort((a, b) => b.length - a.length).map((n) => `@${n}`),
-    ];
-    if (tokens.length === 0) return [{ kind: 'text', text }];
-    const re = new RegExp(`(${tokens.map(escapeRegExp).join('|')})`);
-    return text.split(re).filter((p) => p !== '').map((p): TodoPart => {
-        if (identifier && p === identifier) return { kind: 'ref', text: p };
-        if (p.startsWith('@') && names.includes(p.slice(1))) return { kind: 'name', text: p };
-        return { kind: 'text', text: p };
-    });
-}
+import { textParts } from '../mentions/mentionText';
 
 const PILL = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--on-hi)', background: 'var(--sticky-field)', borderRadius: 'var(--radius-pill)', padding: '1px 8px', textDecoration: 'none' } as const;
 
@@ -34,7 +11,7 @@ const PILL = { fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--on-hi
  */
 export function TodoText({ todo, names }: { todo: Todo; names: string[] }) {
     const issue = todo.issue;
-    const parts = todoParts(todo.text, issue?.identifier ?? null, names);
+    const parts = textParts(todo.text, issue ? [issue.identifier] : [], names);
     const pill = (key: string) => issue && (
         <Link key={key} to={`/issues/${issue.id}`} title={issue.title} className="hover:underline" style={PILL}>{issue.identifier}</Link>
     );

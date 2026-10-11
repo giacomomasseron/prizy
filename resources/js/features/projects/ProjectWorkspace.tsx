@@ -4,6 +4,7 @@ import { QueryState } from '../../components/ui/QueryState';
 import { useProject } from './hooks';
 
 function viewLabel(pathname: string): string {
+    if (pathname.endsWith('/chat')) return 'Chat';
     if (pathname.endsWith('/issues')) return 'Issues';
     if (pathname.endsWith('/cycles')) return 'Cycles';
     if (pathname.endsWith('/roadmap')) return 'Roadmap';

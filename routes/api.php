@@ -32,6 +32,7 @@ use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\MilestoneController;
 use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProjectController;
+use App\Http\Controllers\Api\V1\ProjectMessageController;
 use App\Http\Controllers\Api\V1\ReleaseController;
 use App\Http\Controllers\Api\V1\ReportingController;
 use App\Http\Controllers\Api\V1\RoadmapController;
@@ -247,6 +248,14 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/projects', [ProjectController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Project']);
         Route::patch('/projects/{project}', [ProjectController::class, 'update'])->middleware('verified');
         Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->middleware('verified');
+
+        // The project chat (PRD §3.2.11): tracker users read it; everyone but viewers posts; only authors edit or delete.
+        Route::middleware('can:viewAny,App\\Models\\Project')->group(function (): void {
+            Route::get('/projects/{project}/messages', [ProjectMessageController::class, 'index']);
+            Route::post('/projects/{project}/messages', [ProjectMessageController::class, 'store'])->middleware('verified');
+            Route::patch('/projects/{project}/messages/{message}', [ProjectMessageController::class, 'update'])->middleware('verified')->whereUuid('message');
+            Route::delete('/projects/{project}/messages/{message}', [ProjectMessageController::class, 'destroy'])->middleware('verified')->whereUuid('message');
+        });
 
         Route::get('/releases', [ReleaseController::class, 'index'])->middleware('can:viewAny,App\\Models\\Release');
         Route::get('/releases/{release}', [ReleaseController::class, 'show']);

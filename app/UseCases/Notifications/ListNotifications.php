@@ -8,6 +8,7 @@ use App\Models\Notification;
 use App\Models\User;
 use App\Repositories\IssueRepository;
 use App\Repositories\NotificationRepository;
+use App\Repositories\ProjectMessageRepository;
 use Illuminate\Pagination\CursorPaginator;
 
 final class ListNotifications
@@ -15,6 +16,7 @@ final class ListNotifications
     public function __construct(
         private readonly NotificationRepository $notifications,
         private readonly IssueRepository $issues,
+        private readonly ProjectMessageRepository $messages,
     ) {}
 
     public function handle(User $actor, bool $unreadOnly, int $limit, string $category = 'all'): CursorPaginator
@@ -32,11 +34,21 @@ final class ListNotifications
 
         $issuesById = $this->issues->findManyByIds($issueIds);
 
-        $paginator->getCollection()->each(function (Notification $notification) use ($issuesById): void {
-            $notification->setRelation(
-                'subject',
-                $notification->subject_type === 'issue' ? $issuesById->get($notification->subject_id) : null,
-            );
+        // Project chat mentions: the message and its project, in one more query.
+        $messageIds = $paginator->getCollection()
+            ->where('subject_type', 'project_message')
+            ->pluck('subject_id')
+            ->unique()
+            ->values()
+            ->all();
+        $messagesById = $this->messages->findManyWithProject($messageIds);
+
+        $paginator->getCollection()->each(function (Notification $notification) use ($issuesById, $messagesById): void {
+            $notification->setRelation('subject', match ($notification->subject_type) {
+                'issue' => $issuesById->get($notification->subject_id),
+                'project_message' => $messagesById->get($notification->subject_id),
+                default => null,
+            });
         });
 
         return $paginator;

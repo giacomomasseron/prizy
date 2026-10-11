@@ -22,6 +22,7 @@ import { Button } from '../../components/ui/Button';
 import { QueryState } from '../../components/ui/QueryState';
 import { avatarFor } from '../../lib/avatarFor';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { ChatCard } from '../chat/ChatCard';
 
 const mono: React.CSSProperties = { fontFamily: 'var(--font-mono)', fontSize: 12.5 };
 
@@ -95,7 +96,7 @@ export default function ProjectOverview() {
                 )}
             </div>
 
-            {/* Progress + Milestones */}
+            {/* Progress, Milestones and Chat */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, marginTop: 24 }}>
                 <section style={{ ...cardStyle, padding: '22px 24px' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
@@ -162,6 +163,8 @@ export default function ProjectOverview() {
                         </div>
                     </QueryState>
                 </section>
+
+                <ChatCard projectId={id} projectName={p.name} />
             </div>
         </>
     );

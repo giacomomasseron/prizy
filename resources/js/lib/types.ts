@@ -121,6 +121,19 @@ export interface Project {
     lead?: { id: string; name: string } | null;
     issue_count?: number;
     progress?: number;
+    /** The chat's live messages: only on GET /v1/projects/{id}. */
+    messages_count?: number;
+}
+
+/** A message in a project's chat (PRD §3.2.11). `issues` are its live linked issues; the rest of its PRZ- text is plain. */
+export interface ProjectMessage {
+    id: string;
+    project_id: string;
+    user_id: string;
+    body: string;
+    edited_at: string | null;
+    created_at: string;
+    issues: IssueLookupItem[];
 }
 
 export interface Cycle {

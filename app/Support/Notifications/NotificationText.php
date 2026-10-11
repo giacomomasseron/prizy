@@ -15,6 +15,7 @@ final class NotificationText
         return match ($type) {
             'issue_assigned'  => 'You were assigned an issue',
             'issue_unblocked' => "An issue you're assigned was unblocked",
+            'project_mentioned' => 'Mentioned you in project chat',
             default           => 'New notification',
         };
     }

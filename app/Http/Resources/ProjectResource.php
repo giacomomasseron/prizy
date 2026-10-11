@@ -32,6 +32,8 @@ final class ProjectResource extends JsonResource
             'lead'        => $this->leadData(),
             'issue_count' => $this->issueCount(),
             'progress'    => $this->progressPercent(),
+            // The chat's live messages (PRD §3.2.11) — counted on the project detail only.
+            'messages_count' => $this->whenCounted('messages'),
             'created_by'  => $this->created_by,
             'created_at'  => $this->created_at,
             'updated_at'  => $this->updated_at,

@@ -93,6 +93,16 @@ class Project extends TenantAwareEntity
     }
 
     /**
+     * The project chat's live messages (PRD §3.2.11); soft-deleted ones are hidden.
+     *
+     * @return HasMany<ProjectMessage, $this>
+     */
+    public function messages(): HasMany
+    {
+        return $this->hasMany(ProjectMessage::class, 'project_id', 'id');
+    }
+
+    /**
      * @return HasMany<Milestone, $this>
      */
     public function milestones(): HasMany
