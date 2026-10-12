@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import type { KeyboardEvent } from 'react';
+import type { KeyboardEvent, RefObject } from 'react';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop } from '../../auth/capabilities';
 import { Avatar } from '../../components/ui/Avatar';
@@ -19,15 +19,17 @@ export const CHAT_HINT = '@ to mention people or link issues · Enter to send';
 /**
  * The chat composer (the Project v2 design): your avatar, a pill field with the @ picker opening above it, and Send.
  * Enter sends unless the picker is open or an input method is composing; blank text is ignored. The message links the
- * picked issues whose reference is still in the text. Viewers read the chat but cannot post.
+ * picked issues whose reference is still in the text. Viewers read the chat but cannot post. `fieldRef` lets the page
+ * put focus in the field.
  */
-export function ChatComposer({ projectId, projectName }: { projectId: string; projectName: string }) {
+export function ChatComposer({ projectId, projectName, fieldRef: pageRef }: { projectId: string; projectName: string; fieldRef?: RefObject<HTMLInputElement | null> }) {
     const me = useMe();
     const canPost = canDevelop(me.data);
     const [draft, setDraft] = useState('');
     const [picked, setPicked] = useState<IssueLookupItem[]>([]);
     const [error, setError] = useState('');
-    const fieldRef = useRef<HTMLInputElement>(null);
+    const ownRef = useRef<HTMLInputElement>(null);
+    const fieldRef = pageRef ?? ownRef;
     const post = usePostMessage(projectId, (failed) => {
         setError(FAILED);
         // Put the text and its links back, unless the field already holds something new.

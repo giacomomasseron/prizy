@@ -37,6 +37,7 @@ export default function ChatPage() {
     const [highlight, setHighlight] = useState<string | null>(null);
 
     const scroller = useRef<HTMLDivElement>(null);
+    const composerField = useRef<HTMLInputElement>(null);
     const fromBottom = useRef(0);
     const atBottom = useRef(true);
     const edges = useRef<{ first?: string; last?: string }>({});
@@ -128,11 +129,12 @@ export default function ChatPage() {
                         {list.length === 0 ? (
                             <p style={{ margin: 0, padding: '40px 0', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>No messages yet. Say hello to the team.</p>
                         ) : (
-                            <ChatMessages projectId={id} messages={list} editable highlightId={highlight} />
+                            <ChatMessages projectId={id} messages={list} editable highlightId={highlight} onMessageDeleted={() => composerField.current?.focus()} />
                         )}
                     </QueryState>
                 </div>
-                <ChatComposer projectId={id} projectName={p.name} />
+                {/* After you delete a message, focus comes here: its row and Delete button are gone. */}
+                <ChatComposer projectId={id} projectName={p.name} fieldRef={composerField} />
             </div>
             {canDevelop(me.data) && <p style={{ margin: '8px 0 0', paddingLeft: 6, fontSize: 12.5, color: 'var(--fg3)' }}>{CHAT_HINT}</p>}
         </div>

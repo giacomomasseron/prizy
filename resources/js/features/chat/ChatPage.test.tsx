@@ -219,4 +219,18 @@ describe('ChatPage', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Load older messages' }));
         await waitFor(() => expect(olderFetches()).toHaveLength(2));
     });
+
+    it('moves focus to the composer after you delete one of your messages', async () => {
+        latest = [{ ...msg('00000000-0000-4000-8000-000000000001', 1), user_id: 'me', body: 'Mine to delete' }];
+        vi.spyOn(window, 'confirm').mockReturnValue(true);
+        renderChat();
+        const box = await screen.findByRole('combobox', { name: 'Message the Unified Inbox team' });
+        await waitFor(() => expect(box).toBeEnabled());
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
+        await waitFor(() => expect(screen.queryByText('Mine to delete')).toBeNull());
+
+        await waitFor(() => expect(box).toHaveFocus());
+        vi.restoreAllMocks();
+    });
 });

@@ -129,9 +129,10 @@ interface MessageRowProps {
     names: string[];
     own: boolean;
     highlighted: boolean;
+    onDeleted?: () => void;
 }
 
-function MessageRow({ projectId, message, head, author, names, own, highlighted }: MessageRowProps) {
+function MessageRow({ projectId, message, head, author, names, own, highlighted, onDeleted }: MessageRowProps) {
     const [editing, setEditing] = useState(false);
     const [error, setError] = useState('');
     const remove = useDeleteMessage(projectId);
@@ -149,7 +150,7 @@ function MessageRow({ projectId, message, head, author, names, own, highlighted 
         const ok = await confirm({ title: 'Delete this message?', message: 'It is removed from the chat for everyone.', confirmLabel: 'Delete', danger: true });
         if (!ok) return;
         setError('');
-        remove.mutate(message.id, { onError: () => setError("Couldn't delete the message. Try again.") });
+        remove.mutate(message.id, { onSuccess: () => onDeleted?.(), onError: () => setError("Couldn't delete the message. Try again.") });
     }
 
     const person = avatarFor({ id: message.user_id, name: author });
@@ -199,13 +200,15 @@ export interface ChatMessagesProps {
     editable?: boolean;
     /** The message a deep link points at, highlighted. */
     highlightId?: string | null;
+    /** Called once one of your messages is deleted: its row (and the Delete button that had focus) is gone. */
+    onMessageDeleted?: () => void;
 }
 
 /**
  * A project's messages (PRD §3.2.11, the Project v2 design): a dashed separator per day, and one avatar, name and time
  * per author run.
  */
-export function ChatMessages({ projectId, messages, editable = false, highlightId = null }: ChatMessagesProps) {
+export function ChatMessages({ projectId, messages, editable = false, highlightId = null, onMessageDeleted }: ChatMessagesProps) {
     const me = useMe();
     const members = useMembers();
     const names = useMemo(() => (members.data ?? []).map((m) => m.name), [members.data]);
@@ -225,6 +228,7 @@ export function ChatMessages({ projectId, messages, editable = false, highlightI
                         names={names}
                         own={editable && canPost && message.user_id === me.data?.id}
                         highlighted={message.id === highlightId}
+                        onDeleted={onMessageDeleted}
                     />
                 </li>
             ))}
