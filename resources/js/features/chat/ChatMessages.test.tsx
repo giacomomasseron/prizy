@@ -20,6 +20,7 @@ const MESSAGES = [
 ];
 
 let adminLevel = 'member';
+let failDeletes = false;
 let fetchMock: ReturnType<typeof vi.fn>;
 
 function j(body: unknown, status = 200) {
@@ -33,7 +34,7 @@ function stubApi() {
         if (u.endsWith('/me')) return j({ data: { id: 'me', name: 'Alex Rivera', is_developer: true, admin_level: adminLevel, is_agent: false } });
         if (u.includes('/members')) return j({ data: [{ id: 'me', name: 'Alex Rivera', is_agent: false }, { id: 'u1', name: 'Maya Chen', is_agent: false }] });
         if (u.includes('/issues/lookup')) return j({ data: [ISSUE] });
-        if (method === 'DELETE') return j(null, 204);
+        if (method === 'DELETE') return failDeletes ? j({ title: 'Error', detail: 'Server error' }, 500) : j(null, 204);
         if (method === 'PATCH') {
             const body = JSON.parse(String(init?.body));
             return j({ data: { ...MESSAGES.find((m) => u.endsWith(m.id)), body: body.body, edited_at: at(11, 11, 0) } });
@@ -47,7 +48,7 @@ function calls(method: string, path: string) {
     return fetchMock.mock.calls.filter(([url, init]) => String(url).includes(path) && (init?.method ?? 'GET') === method);
 }
 
-function renderMessages(props: { editable?: boolean; highlightId?: string | null } = {}) {
+function renderMessages(props: { editable?: boolean; highlightId?: string | null; onMessageDeleted?: () => void } = {}) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
     return render(
         <QueryClientProvider client={qc}>
@@ -65,6 +66,7 @@ const row = (id: string) => document.querySelector(`[data-message-id="${id}"]`) 
 
 beforeEach(() => {
     adminLevel = 'member';
+    failDeletes = false;
     stubApi();
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date(2026, 9, 11, 12, 0));
@@ -192,5 +194,25 @@ describe('ChatMessages', () => {
         await settle();
 
         expect(calls('PATCH', '/projects/p1/messages/m2')).toHaveLength(1);
+    });
+
+    it('hands focus on once your message is deleted (its row is gone), but not after a cancel or a failure', async () => {
+        const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValue(true);
+        const onMessageDeleted = vi.fn();
+        renderMessages({ editable: true, onMessageDeleted });
+        const del = await within(row('m3')).findByRole('button', { name: 'Delete' });
+
+        fireEvent.click(del);
+        await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1));
+        expect(onMessageDeleted).not.toHaveBeenCalled();
+
+        failDeletes = true;
+        fireEvent.click(del);
+        expect(await within(row('m3')).findByRole('alert')).toHaveTextContent("Couldn't delete the message. Try again.");
+        expect(onMessageDeleted).not.toHaveBeenCalled();
+
+        failDeletes = false;
+        fireEvent.click(del);
+        await waitFor(() => expect(onMessageDeleted).toHaveBeenCalledTimes(1));
     });
 });
