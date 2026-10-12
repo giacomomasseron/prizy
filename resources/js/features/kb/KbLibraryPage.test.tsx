@@ -142,6 +142,9 @@ describe('KbLibraryPage', () => {
         const actions = screen.getByTestId('tree-actions-c1');
         expect(actions.className).toContain('group-focus-within:opacity-100');
         expect(actions.className).toContain('group-focus-within:pointer-events-auto');
+        // A touch screen cannot hover: the actions stay visible and tappable there.
+        expect(actions.className).toContain('[@media(hover:none)]:opacity-100');
+        expect(actions.className).toContain('[@media(hover:none)]:pointer-events-auto');
         expect(actions.style.position).toBe('absolute');
         const addCat = screen.getByRole('button', { name: '＋ Category' });
         expect(addCat.style.borderStyle).toBe('dashed');

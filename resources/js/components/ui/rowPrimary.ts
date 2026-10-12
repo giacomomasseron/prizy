@@ -22,6 +22,12 @@ export const ROW_PRIMARY_CLASSES = 'row-primary focus-visible:outline-none';
 export const ROW_FOCUS_CLASSES = 'has-[.row-primary:focus-visible]:outline-2 has-[.row-primary:focus-visible]:outline-fg has-[.row-primary:focus-visible]:-outline-offset-2';
 
 /**
+ * A row's secondary actions (a `group` row's Edit, Delete, Snooze…): hidden until the row is hovered or something in
+ * it has keyboard focus — and always shown on a screen that cannot hover (touch), where neither would happen.
+ */
+export const ROW_ACTIONS_CLASSES = 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100';
+
+/**
  * A navigation row's primary control is a <Link> (Tab, Enter, open in a new tab). A plain click — or Enter — is
  * handed to the row's own onClick, so the row navigates once, the same as a click anywhere else in it; a modified
  * click (new tab or window) is left to the browser and kept from the row.

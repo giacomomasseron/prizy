@@ -37,7 +37,8 @@ const nameStyle: CSSProperties = { flex: 1, minWidth: 0, overflow: 'hidden', tex
 const countStyle: CSSProperties = { fontSize: 11, color: 'var(--fg3)', fontFamily: 'var(--font-mono)' };
 const caretBtn: CSSProperties = { width: 18, height: 24, minWidth: 24, minHeight: 24, flexShrink: 0, border: 'none', background: 'none', color: 'var(--fg3)', cursor: 'pointer', fontSize: 8, display: 'flex', alignItems: 'center', justifyContent: 'center' };
 const rowWrap: CSSProperties = { position: 'relative', display: 'flex', alignItems: 'center' };
-// Overlays the row's right end on hover or keyboard focus (opacity + pointer-events live in ACTION_PILL_CLASSES).
+// Overlays the row's right end on hover or keyboard focus, and always on a touch screen, which cannot hover (opacity +
+// pointer-events live in ACTION_PILL_CLASSES).
 // No transform: a transform makes a stacking context that would trap the Menu popover's z-index under the rows below.
 const actionPill: CSSProperties = {
     position: 'absolute', right: 4, top: 2, display: 'flex', alignItems: 'center', gap: 1,
@@ -45,7 +46,7 @@ const actionPill: CSSProperties = {
 };
 // The row holding focus (its menu is open, or the keyboard is on it) is raised above the rows that follow it.
 const ROW_WRAP_CLASSES = 'group focus-within:z-10';
-const ACTION_PILL_CLASSES = 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto';
+const ACTION_PILL_CLASSES = 'opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto [@media(hover:none)]:opacity-100 [@media(hover:none)]:pointer-events-auto';
 const arrowBtn: CSSProperties = { width: 24, height: 24, fontSize: 9 };
 const moreBtn: CSSProperties = { width: 24, height: 24, fontSize: 13 };
 

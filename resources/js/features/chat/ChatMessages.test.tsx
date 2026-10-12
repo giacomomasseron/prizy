@@ -215,4 +215,10 @@ describe('ChatMessages', () => {
         fireEvent.click(del);
         await waitFor(() => expect(onMessageDeleted).toHaveBeenCalledTimes(1));
     });
+
+    it('keeps Edit and Delete visible on a touch screen (no hover there)', async () => {
+        renderMessages({ editable: true });
+        const edit = await within(row('m3')).findByRole('button', { name: 'Edit' });
+        expect((edit.parentElement as HTMLElement).className).toContain('[@media(hover:none)]:opacity-100');
+    });
 });
