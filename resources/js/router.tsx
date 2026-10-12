@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { useMe } from './auth/useAuth';
 import AppLayout from './components/AppLayout';
+import { RootRedirect } from './components/RootRedirect';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import IssueListPage from './features/issues/IssueListPage';
@@ -64,9 +65,10 @@ export default function AppRouter() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route element={<AuthedLayout />}>
-                <Route path="/" element={<RequireDeveloper><IssueListPage /></RequireDeveloper>} />
-                {/* P7-B: the tracker user's home (homePathFor) */}
+                <Route path="/" element={<RootRedirect />} />
+                {/* P7-B: the tracker user's home (homePathFor); `/` leads here */}
                 <Route path="/today" element={<RequireDeveloper><TodayPage /></RequireDeveloper>} />
+                <Route path="/issues" element={<RequireDeveloper><IssueListPage /></RequireDeveloper>} />
                 <Route path="/board" element={<RequireDeveloper><BoardPage /></RequireDeveloper>} />
                 {/* NOT wrapped — ticket→issue bridge */}
                 <Route path="/issues/:id" element={<IssueDetailPage />} />

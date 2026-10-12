@@ -4,7 +4,7 @@ test('overlay a11y: drawer traps focus + Escape closes; menu keyboard-activates'
     test.setTimeout(60_000);
 
     // Drawer: open the create-issue drawer (the "New issue" affordance), Tab a few times, assert focus stays inside the dialog, Escape closes.
-    await page.goto('/');
+    await page.goto('/issues');
     await page.getByRole('button', { name: /New issue/i }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();

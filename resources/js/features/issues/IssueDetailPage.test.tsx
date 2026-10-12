@@ -373,10 +373,10 @@ describe('IssueDetailPage v2 layout', () => {
     const dev = () => vi.mocked(authModule.useMe).mockReturnValue({ data: { id: 'me', is_developer: true, admin_level: 'admin' } } as any);
     const renderPage = () => render(<IssueDetailPage />, { wrapper: ({ children }) => wrapper(children) });
 
-    it('breadcrumb: an "Issues" link to / and the identifier — never the raw team id', () => {
+    it('breadcrumb: an "Issues" link to /issues and the identifier — never the raw team id', () => {
         dev();
         renderPage();
-        expect(screen.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/');
+        expect(screen.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/issues');
         expect(screen.getByText('PRZ-1')).toBeInTheDocument();
         expect(screen.queryByText(/team1/)).toBeNull();
     });

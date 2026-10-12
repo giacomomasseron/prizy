@@ -31,7 +31,7 @@ test('settings: email digest frequency persists after reload', async ({ page }) 
 test('settings members: navigate, toggle capability, change level, invite, remove invited', async ({ page }) => {
     test.setTimeout(90_000);
 
-    await page.goto('/');
+    await page.goto('/issues');
 
     // Navigate to Members via user-menu → Settings
     await page.getByTestId('user-menu-trigger').click();

@@ -152,7 +152,7 @@ export default function IssueDetailPage() {
 
             {/* Top bar: breadcrumb. The left padding clears the collapsed-sidebar button (--nav-inset). */}
             <div style={{ height: 64, display: 'flex', alignItems: 'center', gap: 8, padding: '0 34px 0 calc(34px + var(--nav-inset, 0px))' }}>
-                <Link to="/" className="text-fg3 hover:text-fg" style={{ fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
+                <Link to="/issues" className="text-fg3 hover:text-fg" style={{ fontSize: 14, fontWeight: 600, textDecoration: 'none' }}>
                     Issues
                 </Link>
                 <span aria-hidden="true" style={{ color: 'var(--border2)', fontSize: 14 }}>/</span>

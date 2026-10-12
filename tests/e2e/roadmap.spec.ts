@@ -4,7 +4,7 @@ test('roadmap: navigate via nav link and assert heading visible', async ({ page 
     test.setTimeout(60_000);
 
     // Start on issues list (pre-authenticated via storageState)
-    await page.goto('/');
+    await page.goto('/issues');
 
     // 2. Click the Roadmap nav link
     await page.getByRole('link', { name: 'Roadmap' }).click();

@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('integrations: configure Slack and persist', async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto('/');
+    await page.goto('/issues');
     await page.getByTestId('user-menu-trigger').click();
     await page.getByRole('menuitem', { name: 'Integrations' }).click();
     await expect(page).toHaveURL(/\/settings\/integrations/);

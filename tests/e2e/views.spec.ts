@@ -6,8 +6,8 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
     const VIEW_NAME = `E2E view ${Date.now()}`;
 
     // Start on issues list (pre-authenticated via storageState)
-    await page.goto('/');
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    await page.goto('/issues');
+    await expect(page).toHaveURL('http://smoke.localhost:8001/issues');
 
     // 2. Open Views → My Issues; assert assignee_id appears in URL
     await page.getByRole('button', { name: 'Views' }).click();
@@ -51,10 +51,10 @@ test('filter bar: built-in view + custom filter + save/restore/delete saved view
     const savedViewsGetPromise = page.waitForResponse(
         (response) => response.url().includes('/saved-views') && response.request().method() === 'GET',
     );
-    await page.goto('/');
+    await page.goto('/issues');
     await page.waitForLoadState('networkidle');
-    // After navigating to root, no filters should be active
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    // After navigating to the issue list, no filters should be active
+    await expect(page).toHaveURL('http://smoke.localhost:8001/issues');
 
     // Wait for the saved-views query to load on fresh page render
     await savedViewsGetPromise;

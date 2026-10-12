@@ -10,7 +10,7 @@ test('advanced search: palette footer → filter → save view', async ({ page }
     // name "Search"), not a link. exact:true disambiguates it from the Issues
     // list page's own "⌕ Search ⌘K" button (IssuesHeader), whose accessible name
     // also contains "Search" as a substring.
-    await page.goto('/');
+    await page.goto('/issues');
     await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeVisible({ timeout: 15_000 });
 
     // Open the command palette and navigate to Advanced search.

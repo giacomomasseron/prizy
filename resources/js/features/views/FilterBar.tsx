@@ -72,7 +72,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
         setViewsOpen(false);
         const search = filtersToParams(next).toString();
         if (view.definition.view_type !== viewType) {
-            navigate({ pathname: view.definition.view_type === 'board' ? '/board' : '/', search });
+            navigate({ pathname: view.definition.view_type === 'board' ? '/board' : '/issues', search });
         } else {
             setSearchParams(filtersToParams(next), { replace: true });
         }

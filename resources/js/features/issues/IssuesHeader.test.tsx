@@ -99,7 +99,7 @@ describe('IssuesHeader', () => {
         mockNavigate.mockClear();
 
         fireEvent.click(screen.getByRole('button', { name: 'List' }));
-        expect(mockNavigate).toHaveBeenCalledWith('/', { replace: true });
+        expect(mockNavigate).toHaveBeenCalledWith('/issues', { replace: true });
     });
 
     // ── Text-size control (A−/⟲/A+) ──

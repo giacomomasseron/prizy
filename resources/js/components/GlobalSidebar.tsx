@@ -80,7 +80,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                 <div style={{ ...sectionLabel, padding: '6px 18px 6px' }}>Support bridge</div>
                 <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {showTracker && (
-                        <NavLink to={me.data?.id ? `/?assignee_id=${me.data.id}` : '/'} style={() => navRow(false)} className={NAV_ROW_HOVER}>
+                        <NavLink to={me.data?.id ? `/issues?assignee_id=${me.data.id}` : '/issues'} style={() => navRow(false)} className={NAV_ROW_HOVER}>
                             <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
                             <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
                         </NavLink>
@@ -125,7 +125,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         </div>
                         {workspaceOpen && (
                             <nav aria-label="Workspace" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <NavLink to="/" end style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
+                                <NavLink to="/issues" end style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
                                     <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
                                 </NavLink>

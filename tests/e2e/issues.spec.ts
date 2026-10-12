@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('peek drawer: open from list → follow "Open full page ↗" to /issues/:id', async ({ page }) => {
     test.setTimeout(60_000);
     // Pre-authenticated via storageState
-    await page.goto('/');
+    await page.goto('/issues');
     await page.waitForLoadState('networkidle');
 
     // Wait for at least one issue row to be visible
@@ -30,7 +30,7 @@ test('peek drawer: open from list → follow "Open full page ↗" to /issues/:id
 test('create issue via drawer: appears in the list', async ({ page }) => {
     test.setTimeout(60_000);
     // Pre-authenticated via storageState
-    await page.goto('/');
+    await page.goto('/issues');
     await page.waitForLoadState('networkidle');
 
     const title = `E2E Drawer ${Date.now()}`;
@@ -73,8 +73,8 @@ test('create issue via drawer: appears in the list', async ({ page }) => {
 test('list ↔ board toggle via SegmentedControl', async ({ page }) => {
     test.setTimeout(60_000);
     // Pre-authenticated via storageState
-    await page.goto('/');
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    await page.goto('/issues');
+    await expect(page).toHaveURL('http://smoke.localhost:8001/issues');
 
     // Switch to Board
     await page.getByRole('button', { name: 'Board' }).click();
@@ -84,7 +84,7 @@ test('list ↔ board toggle via SegmentedControl', async ({ page }) => {
 
     // Switch back to List
     await page.getByRole('button', { name: 'List' }).click();
-    await expect(page).toHaveURL('http://smoke.localhost:8001/');
+    await expect(page).toHaveURL('http://smoke.localhost:8001/issues');
     // Issue rows visible
     await expect(page.locator('[data-testid="issue-row"]').first()).toBeVisible({ timeout: 8_000 });
 });
@@ -142,7 +142,7 @@ test('board drag: moves the card and does NOT open peek drawer', async ({ page }
 test('issue detail: change status via dropdown, set assignee, add comment', async ({ page }) => {
     test.setTimeout(90_000);
 
-    await page.goto('/');
+    await page.goto('/issues');
     await page.waitForLoadState('networkidle');
 
     // Create a fresh issue for this test (same drawer flow as the "create issue via
@@ -269,7 +269,7 @@ test('issue detail: change status via dropdown, set assignee, add comment', asyn
 
 // ── Issue peek drawer: full-detail pane (Comments section, "Open full page ↗" link, comment input) ──
 test('issue peek drawer shows full detail', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/issues');
     // Open the peek for the first issue row (clicking a row opens the drawer, per useIssueDrawers).
     await page.locator('[data-testid="issue-row"]').first().click();
     const dialog = page.getByRole('dialog');
@@ -284,7 +284,7 @@ test('issue peek drawer shows full detail', async ({ page }) => {
 
 // ── Toolbar: text-size control (A−/⟲/A+) zooms the main content, persisted ──
 test('toolbar: text-size controls render and Increase enables Reset', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/issues');
     await expect(page.getByRole('button', { name: 'Decrease text size' })).toBeVisible();
     const increase = page.getByRole('button', { name: 'Increase text size' });
     await expect(increase).toBeVisible();
@@ -296,7 +296,7 @@ test('toolbar: text-size controls render and Increase enables Reset', async ({ p
 
 // ── Toolbar right side: theme toggle + user avatar menu ──
 test('toolbar: theme toggle and user avatar menu are present', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/issues');
     await expect(page.getByRole('button', { name: 'Toggle theme' })).toBeVisible();
     const avatar = page.getByTestId('toolbar-user-menu-trigger');
     await expect(avatar).toBeVisible();

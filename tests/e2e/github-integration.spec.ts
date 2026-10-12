@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test('github: configure integration + link a PR', async ({ page }) => {
     test.setTimeout(60_000);
-    await page.goto('/');
+    await page.goto('/issues');
     await page.getByTestId('user-menu-trigger').click();
     await page.getByRole('menuitem', { name: 'Integrations' }).click();
     await expect(page).toHaveURL(/\/settings\/integrations/);
@@ -21,7 +21,7 @@ test('github: configure integration + link a PR', async ({ page }) => {
     await expect(page.getByLabel('GitHub webhook URL')).toHaveValue(/\/integrations\/github\/webhook\//);
 
     // Link a PR on the first issue (unchanged — independent of the integrations move)
-    await page.goto('/');
+    await page.goto('/issues');
     await page.locator('[data-testid="issue-row"]').first().click();
     await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
     await page.getByRole('link', { name: /Open full page/i }).click();

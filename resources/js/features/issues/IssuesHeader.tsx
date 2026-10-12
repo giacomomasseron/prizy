@@ -52,7 +52,7 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
     const { theme, toggle: toggleTheme } = useTheme();
 
     function handleNav(value: 'list' | 'board') {
-        if (value === 'list') navigate('/', { replace: true });
+        if (value === 'list') navigate('/issues', { replace: true });
         else navigate('/board', { replace: true });
     }
 
