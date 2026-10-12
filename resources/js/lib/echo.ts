@@ -1,4 +1,5 @@
 import Echo from 'laravel-echo';
+import type { ConnectionStatus } from 'laravel-echo';
 import Pusher from 'pusher-js';
 import type { ChannelAuthorizationCallback } from 'pusher-js';
 
@@ -65,4 +66,29 @@ export function disconnectEcho(): void {
         echo.disconnect();
     }
     echo = undefined;
+}
+
+/** What onReconnect reads from Echo's connector (`getEcho()?.connector`). */
+export interface Connection {
+    connectionStatus(): ConnectionStatus;
+    onConnectionChange(callback: (status: ConnectionStatus) => void): () => void;
+}
+
+/**
+ * Call `callback` each time the socket comes back after dropping — not on the first connect — so a live view can
+ * reload what it missed while it was down. Pusher reports one connect more than once (`state_change` and
+ * `connected`), so a callback needs a drop in between. Returns the unsubscribe.
+ */
+export function onReconnect(connection: Connection, callback: () => void): () => void {
+    let connected = connection.connectionStatus() === 'connected';
+    let dropped = false;
+    return connection.onConnectionChange((status) => {
+        if (status === 'connected') {
+            if (dropped) callback();
+            connected = true;
+            dropped = false;
+        } else if (connected) {
+            dropped = true;
+        }
+    });
 }

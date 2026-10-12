@@ -14,11 +14,22 @@ const echo = vi.hoisted(() => {
         joining: vi.fn((cb: (payload: never) => void) => { handlers.joining = cb; return channel; }),
         leaving: vi.fn((cb: (payload: never) => void) => { handlers.leaving = cb; return channel; }),
     };
-    const fake = { private: vi.fn(() => channel), join: vi.fn(() => channel), leaveChannel: vi.fn() };
-    return { handlers, fake, available: true };
+    const stopWatching = vi.fn();
+    // The socket's connection: `handlers.connection` reports a status the way Echo's connector does.
+    const connector = {
+        connectionStatus: () => 'connected',
+        onConnectionChange: vi.fn((cb: (status: never) => void) => { handlers.connection = cb; return stopWatching; }),
+    };
+    const fake = { private: vi.fn(() => channel), join: vi.fn(() => channel), leaveChannel: vi.fn(), connector };
+    return { handlers, fake, stopWatching, available: true };
 });
 
-vi.mock('../../lib/echo', () => ({ getEcho: () => (echo.available ? echo.fake : null), disconnectEcho: vi.fn() }));
+// The real onReconnect, driven by the fake connector.
+vi.mock('../../lib/echo', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../../lib/echo')>()),
+    getEcho: () => (echo.available ? echo.fake : null),
+    disconnectEcho: vi.fn(),
+}));
 
 import { useProjectChannel, useProjectPresence } from './useProjectChannel';
 
@@ -77,6 +88,21 @@ describe('useProjectChannel', () => {
         send('.ProjectMessagePosted', { id: 'm3', project_id: 'p1' });
         expect(spy).toHaveBeenCalledWith({ queryKey: ['project', 'p1'] });
         expect(bodies(qc)).toEqual(['Hello']);
+    });
+
+    it('reloads the project and its chat when the socket comes back, and stops watching on unmount', () => {
+        const qc = seeded();
+        const spy = vi.spyOn(qc, 'invalidateQueries');
+        const { unmount } = renderHook(() => useProjectChannel('p1'), { wrapper: wrapper(qc) });
+
+        send('connection', 'disconnected');
+        expect(spy).not.toHaveBeenCalled();
+        send('connection', 'connected');
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledWith({ queryKey: ['project', 'p1'] });
+
+        unmount();
+        expect(echo.stopWatching).toHaveBeenCalled();
     });
 
     it('does nothing without realtime', () => {
