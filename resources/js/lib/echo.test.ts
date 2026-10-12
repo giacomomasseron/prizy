@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { getEcho, requestChannelAuth } from './echo';
+import type { ConnectionStatus } from 'laravel-echo';
+import { getEcho, onReconnect, requestChannelAuth } from './echo';
 
 describe('getEcho', () => {
     afterEach(() => vi.unstubAllEnvs());
@@ -39,5 +40,54 @@ describe('requestChannelAuth', () => {
         );
 
         await expect(requestChannelAuth('1.2', 'private-users.u1')).rejects.toThrow(/403|authorization/i);
+    });
+});
+
+describe('onReconnect', () => {
+    /** A fake Echo connector: `emit` reports a status the way Pusher does. */
+    function fakeConnection(initial: ConnectionStatus) {
+        let listener: ((status: ConnectionStatus) => void) | null = null;
+        const unsubscribe = vi.fn(() => { listener = null; });
+        return {
+            connection: {
+                connectionStatus: () => initial,
+                onConnectionChange: (cb: (status: ConnectionStatus) => void) => { listener = cb; return unsubscribe; },
+            },
+            emit: (status: ConnectionStatus) => listener?.(status),
+            unsubscribe,
+        };
+    }
+
+    it('stays quiet on the first connect, even when Pusher reports it twice', () => {
+        const { connection, emit } = fakeConnection('connecting');
+        const callback = vi.fn();
+        onReconnect(connection, callback);
+
+        emit('connecting');
+        emit('connected');
+        emit('connected');
+        expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('calls back once each time the socket comes back after dropping', () => {
+        const { connection, emit } = fakeConnection('connected');
+        const callback = vi.fn();
+        onReconnect(connection, callback);
+
+        emit('disconnected');
+        emit('connecting');
+        emit('connected');
+        emit('connected');
+        expect(callback).toHaveBeenCalledTimes(1);
+
+        emit('failed');
+        emit('connected');
+        expect(callback).toHaveBeenCalledTimes(2);
+    });
+
+    it('returns the unsubscribe', () => {
+        const { connection, unsubscribe } = fakeConnection('connected');
+        onReconnect(connection, vi.fn())();
+        expect(unsubscribe).toHaveBeenCalledOnce();
     });
 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getEcho } from '../../lib/echo';
+import { getEcho, onReconnect } from '../../lib/echo';
 import type { ProjectMessage } from '../../lib/types';
 import { receiveDeletion, receiveEdit, receiveMessage } from './chatHooks';
 
@@ -12,7 +12,8 @@ function isWhole(event: MessageEvent): event is ProjectMessage {
 }
 
 /**
- * Keep a project's chat live (PRD §3.2.11): posts, edits and deletions on the project channel join the cache by id.
+ * Keep a project's chat live (PRD §3.2.11): posts, edits and deletions on the project channel join the cache by id,
+ * and when the socket comes back after dropping, the project and its chat reload what was missed meanwhile.
  * One subscriber per page: leaving the channel stops it for every listener on it. Without Reverb it does nothing.
  */
 export function useProjectChannel(projectId: string): void {
@@ -28,8 +29,12 @@ export function useProjectChannel(projectId: string): void {
             .listen('.ProjectMessagePosted', (e: MessageEvent) => (isWhole(e) ? receiveMessage(qc, projectId, e) : refetch()))
             .listen('.ProjectMessageEdited', (e: MessageEvent) => (isWhole(e) ? receiveEdit(qc, projectId, e) : refetch()))
             .listen('.ProjectMessageDeleted', (e: { id: string }) => receiveDeletion(qc, projectId, e.id));
+        const stopWatching = onReconnect(echo.connector, refetch);
 
-        return () => echo.leaveChannel(`private-${name}`);
+        return () => {
+            stopWatching();
+            echo.leaveChannel(`private-${name}`);
+        };
     }, [projectId, qc]);
 }
 
