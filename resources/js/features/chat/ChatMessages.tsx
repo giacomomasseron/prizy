@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop } from '../../auth/capabilities';
 import { Avatar } from '../../components/ui/Avatar';
+import { ROW_ACTIONS_CLASSES } from '../../components/ui/rowPrimary';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { avatarFor } from '../../lib/avatarFor';
 import type { IssueLookupItem, ProjectMessage } from '../../lib/types';
@@ -183,7 +184,7 @@ function MessageRow({ projectId, message, head, author, names, own, highlighted,
                 {error && <p role="alert" style={{ margin: '4px 0 0', fontSize: 12.5, fontWeight: 600, color: 'var(--red-ink)' }}>{error}</p>}
             </div>
             {own && !editing && (
-                <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" style={{ display: 'flex', gap: 10, alignSelf: 'flex-start', paddingTop: head ? 2 : 0 }}>
+                <div className={ROW_ACTIONS_CLASSES} style={{ display: 'flex', gap: 10, alignSelf: 'flex-start', paddingTop: head ? 2 : 0 }}>
                     <button ref={editButton} type="button" className={ACTION} style={ACTION_STYLE} onClick={() => setEditing(true)}>Edit</button>
                     <button type="button" className={ACTION} style={ACTION_STYLE} onClick={onDelete}>Delete</button>
                 </div>

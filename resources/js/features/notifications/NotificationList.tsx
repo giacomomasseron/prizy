@@ -5,7 +5,7 @@ import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { QueryState, type QueryLike } from '../../components/ui/QueryState';
 import { Avatar } from '../../components/ui/Avatar';
-import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
+import { ROW_ACTIONS_CLASSES, ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../components/ui/rowPrimary';
 import type { AppNotification } from '../../lib/types';
 import { HI_PILL_CLASSES, TOOL_PILL_CLASSES, toolPillStyle } from '../issues/issueStyles';
 import { sectionLabel } from '../../components/sidebarStyles';
@@ -205,8 +205,8 @@ export function NotificationList({
                                                 </div>
                                             </div>
 
-                                            {/* Shown on row hover, and while one of them has keyboard focus. */}
-                                            <div className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100" style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                                            {/* Shown on row hover, while one of them has keyboard focus, and always on a touch screen. */}
+                                            <div className={ROW_ACTIONS_CLASSES} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                                                 {unread ? (
                                                     <button
                                                         type="button"

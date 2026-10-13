@@ -298,4 +298,10 @@ describe('NotificationList', () => {
         expect(nested.classList.contains('row-primary')).toBe(false);
         expect(within(row).getAllByRole('button')[0].classList.contains('row-primary')).toBe(true);
     });
+
+    it('keeps the row actions visible on a touch screen (no hover there)', () => {
+        wrap();
+        const snooze = screen.getByRole('button', { name: 'Snooze' });
+        expect((snooze.parentElement as HTMLElement).className).toContain('[@media(hover:none)]:opacity-100');
+    });
 });

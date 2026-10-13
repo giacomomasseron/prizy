@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, onRowLinkClick, rowPrimary } from './rowPrimary';
+import { ROW_ACTIONS_CLASSES, ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, onRowLinkClick, rowPrimary } from './rowPrimary';
 
 describe('rowPrimary (V2-G3b)', () => {
     it('the primary control looks like the text it replaces', () => {
@@ -27,5 +27,9 @@ describe('rowPrimary (V2-G3b)', () => {
         expect(ROW_PRIMARY_CLASSES.split(' ')).toContain('row-primary');
         expect(ROW_FOCUS_CLASSES.split(' ')).toEqual(['has-[.row-primary:focus-visible]:outline-2', 'has-[.row-primary:focus-visible]:outline-fg', 'has-[.row-primary:focus-visible]:-outline-offset-2']);
         expect(ROW_FOCUS_CLASSES).not.toContain('has-[:focus-visible]');
+    });
+
+    it('row actions show on hover or focus, and always on a screen that cannot hover (touch)', () => {
+        expect(ROW_ACTIONS_CLASSES).toBe('opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100');
     });
 });
