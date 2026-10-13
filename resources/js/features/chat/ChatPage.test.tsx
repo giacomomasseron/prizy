@@ -233,4 +233,53 @@ describe('ChatPage', () => {
         await waitFor(() => expect(box).toHaveFocus());
         vi.restoreAllMocks();
     });
+
+    it('counts the messages that arrive below while you are scrolled up, and takes you to them on click', async () => {
+        const qc = renderChat();
+        await screen.findByText('Message m50');
+        const box = screen.getByRole('combobox', { name: 'Message the Unified Inbox team' });
+        await waitFor(() => expect(box).toBeEnabled());
+
+        scrollTo(500);
+        act(() => receiveMessage(qc, 'p1', msg('new1', 58)));
+        expect(await screen.findByRole('button', { name: '1 new message' })).toBeInTheDocument();
+        act(() => receiveMessage(qc, 'p1', msg('new2', 59)));
+        const cue = await screen.findByRole('button', { name: '2 new messages' });
+        expect(scroller().scrollTop).toBe(500);
+
+        fireEvent.click(cue);
+        expect(scroller().scrollTop).toBe(52 * ROW);
+        expect(screen.queryByRole('button', { name: /new message/ })).toBeNull();
+        expect(box).toHaveFocus(); // the cue is gone; focus goes where you were heading
+    });
+
+    it('shows no cue at the bottom, and hides it once you scroll down to the newest message', async () => {
+        const qc = renderChat();
+        await screen.findByText('Message m50');
+
+        act(() => receiveMessage(qc, 'p1', msg('seen', 58)));
+        await screen.findByText('Message seen');
+        expect(screen.queryByRole('button', { name: /new message/ })).toBeNull();
+
+        scrollTo(500);
+        act(() => receiveMessage(qc, 'p1', msg('below', 59)));
+        await screen.findByRole('button', { name: '1 new message' });
+
+        scrollTo(52 * ROW - VIEW);
+        await waitFor(() => expect(screen.queryByRole('button', { name: /new message/ })).toBeNull());
+    });
+
+    it('counts every message of a batch that lands at once (a reload after a reconnect)', async () => {
+        const qc = renderChat();
+        await screen.findByText('Message m50');
+
+        scrollTo(500);
+        act(() => {
+            receiveMessage(qc, 'p1', msg('a', 57));
+            receiveMessage(qc, 'p1', msg('b', 58));
+            receiveMessage(qc, 'p1', msg('c', 59));
+        });
+
+        expect(await screen.findByRole('button', { name: '3 new messages' })).toBeInTheDocument();
+    });
 });
