@@ -21,7 +21,9 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /**
  * The project's Chat tab (PRD §3.2.11, the Project v2 design). It opens at the newest message and follows new ones
  * while you are at the bottom (and your own always); older pages load when the top comes into view (or from the button), keeping the
- * scroll position. `?message=<id>` scrolls to that message and highlights it, loading older pages until it is found.
+ * scroll position. Messages from others that arrive while you are reading further up are counted on a "↓ N new messages"
+ * cue that takes you down to them. `?message=<id>` scrolls to that message and highlights it, loading older pages until
+ * it is found.
  */
 export default function ChatPage() {
     const { id = '' } = useParams();
@@ -35,6 +37,7 @@ export default function ChatPage() {
     const rawTarget = params.get('message');
     const target = rawTarget !== null && UUID.test(rawTarget) ? rawTarget : null;
     const [highlight, setHighlight] = useState<string | null>(null);
+    const [unseen, setUnseen] = useState(0);
 
     const scroller = useRef<HTMLDivElement>(null);
     const composerField = useRef<HTMLInputElement>(null);
@@ -63,7 +66,17 @@ export default function ChatPage() {
         if (!el) return;
         fromBottom.current = el.scrollHeight - el.scrollTop;
         atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < EDGE;
+        if (atBottom.current) setUnseen(0);
         if (el.scrollTop < EDGE) onTop();
+    }
+
+    // The cue: down to the newest message, and on to the composer (the cue itself is gone).
+    function showNewest() {
+        const el = scroller.current;
+        if (el) el.scrollTop = el.scrollHeight;
+        atBottom.current = true;
+        setUnseen(0);
+        composerField.current?.focus();
     }
 
     // Place the view when the messages change: the first load opens at the bottom, older messages keep what you were
@@ -75,7 +88,14 @@ export default function ChatPage() {
         if (!el || !last) return;
         if (prev.last === undefined) el.scrollTop = el.scrollHeight;
         else if (prev.first !== first) el.scrollTop = el.scrollHeight - fromBottom.current;
-        else if (prev.last !== last && (atBottom.current || lastIsMine)) el.scrollTop = el.scrollHeight;
+        else if (prev.last !== last && (atBottom.current || lastIsMine)) {
+            el.scrollTop = el.scrollHeight;
+            setUnseen(0);
+        } else if (prev.last !== last) {
+            // Someone else's messages arrived below while you were reading further up: the cue counts them.
+            const at = list.findIndex((m) => m.id === prev.last);
+            setUnseen((n) => n + (at === -1 ? 1 : list.length - 1 - at));
+        }
         fromBottom.current = el.scrollHeight - el.scrollTop;
     }, [first, last]);
 
@@ -114,24 +134,31 @@ export default function ChatPage() {
                 )}
             </div>
             <div style={{ flex: 1, minHeight: 0, border: '1.5px solid var(--border)', borderRadius: 20, background: 'var(--panel)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                <div ref={scroller} data-testid="chat-scroll" onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '6px 26px 18px' }}>
-                    <QueryState query={messages} what="the chat" frame={{ padding: '14px 0' }}>
-                        {hasNextPage && (
-                            <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
-                                <Button variant="secondary" size="sm" disabled={isFetchingNextPage} onClick={loadOlder}>
-                                    {isFetchingNextPage ? 'Loading…' : 'Load older messages'}
-                                </Button>
-                            </div>
-                        )}
-                        {isFetchNextPageError && (
-                            <p role="alert" style={{ margin: 0, textAlign: 'center', fontSize: 12.5, fontWeight: 600, color: 'var(--red-ink)' }}>Couldn't load older messages.</p>
-                        )}
-                        {list.length === 0 ? (
-                            <p style={{ margin: 0, padding: '40px 0', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>No messages yet. Say hello to the team.</p>
-                        ) : (
-                            <ChatMessages projectId={id} messages={list} editable highlightId={highlight} onMessageDeleted={() => composerField.current?.focus()} />
-                        )}
-                    </QueryState>
+                <div style={{ position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                    <div ref={scroller} data-testid="chat-scroll" onScroll={onScroll} style={{ flex: 1, minHeight: 0, overflow: 'auto', padding: '6px 26px 18px' }}>
+                        <QueryState query={messages} what="the chat" frame={{ padding: '14px 0' }}>
+                            {hasNextPage && (
+                                <div style={{ display: 'flex', justifyContent: 'center', padding: '10px 0 2px' }}>
+                                    <Button variant="secondary" size="sm" disabled={isFetchingNextPage} onClick={loadOlder}>
+                                        {isFetchingNextPage ? 'Loading…' : 'Load older messages'}
+                                    </Button>
+                                </div>
+                            )}
+                            {isFetchNextPageError && (
+                                <p role="alert" style={{ margin: 0, textAlign: 'center', fontSize: 12.5, fontWeight: 600, color: 'var(--red-ink)' }}>Couldn't load older messages.</p>
+                            )}
+                            {list.length === 0 ? (
+                                <p style={{ margin: 0, padding: '40px 0', textAlign: 'center', fontSize: 14, color: 'var(--fg3)' }}>No messages yet. Say hello to the team.</p>
+                            ) : (
+                                <ChatMessages projectId={id} messages={list} editable highlightId={highlight} onMessageDeleted={() => composerField.current?.focus()} />
+                            )}
+                        </QueryState>
+                    </div>
+                    {unseen > 0 && (
+                        <Button size="sm" onClick={showNewest} style={{ position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)' }}>
+                            <span aria-hidden="true">↓</span> {unseen === 1 ? '1 new message' : `${unseen} new messages`}
+                        </Button>
+                    )}
                 </div>
                 {/* After you delete a message, focus comes here: its row and Delete button are gone. */}
                 <ChatComposer projectId={id} projectName={p.name} fieldRef={composerField} />
