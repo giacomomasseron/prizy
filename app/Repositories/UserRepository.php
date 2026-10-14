@@ -37,4 +37,13 @@ final class UserRepository
     {
         return User::where('email', $email)->first();
     }
+
+    /** The user's daily focus capacity on Today, in minutes. */
+    public function setDailyFocusMinutes(User $user, int $minutes): User
+    {
+        $user->daily_focus_minutes = $minutes;
+        $user->save();
+
+        return $user;
+    }
 }

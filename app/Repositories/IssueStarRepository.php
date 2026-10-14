@@ -28,6 +28,22 @@ final class IssueStarRepository
             ->created_at;
     }
 
+    /**
+     * The ids among `$issueIds` that the user starred.
+     *
+     * @param  list<string>  $issueIds
+     * @return list<string>
+     */
+    public function starredAmong(string $userId, array $issueIds): array
+    {
+        if ($issueIds === []) {
+            return [];
+        }
+
+        return IssueStar::query()->where('user_id', $userId)->whereIn('issue_id', $issueIds)
+            ->pluck('issue_id')->map(fn (mixed $id): string => (string) $id)->values()->all();
+    }
+
     /** Unstar an issue for a user. Idempotent: unstarring an unstarred issue changes nothing. */
     public function unstar(string $userId, string $issueId): void
     {

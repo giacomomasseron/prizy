@@ -31,6 +31,7 @@ use App\Http\Controllers\Api\V1\LabelController;
 use App\Http\Controllers\Api\V1\MemberController;
 use App\Http\Controllers\Api\V1\MilestoneController;
 use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\PlanController;
 use App\Http\Controllers\Api\V1\ProjectController;
 use App\Http\Controllers\Api\V1\ProjectMessageController;
 use App\Http\Controllers\Api\V1\ReleaseController;
@@ -121,6 +122,16 @@ Route::prefix('v1')->group(function (): void {
             Route::delete('/me/todos/done', [TodoController::class, 'clearDone'])->middleware('verified');
             Route::patch('/me/todos/{todo}', [TodoController::class, 'update'])->middleware('verified')->whereUuid('todo');
             Route::delete('/me/todos/{todo}', [TodoController::class, 'destroy'])->middleware('verified')->whereUuid('todo');
+
+            // The caller's own day plan (the Today v2 design); an issue that is not on the plan answers 404.
+            Route::get('/me/plan', [PlanController::class, 'index']);
+            Route::get('/me/plan/suggestions', [PlanController::class, 'suggestions']);
+            Route::post('/me/plan', [PlanController::class, 'store'])->middleware('verified');
+            Route::put('/me/plan/capacity', [PlanController::class, 'capacity'])->middleware('verified');
+            Route::patch('/me/plan/{issue}', [PlanController::class, 'update'])->middleware('verified')->whereUuid('issue');
+            Route::delete('/me/plan/{issue}', [PlanController::class, 'destroy'])->middleware('verified')->whereUuid('issue');
+            Route::post('/me/plan/{issue}/done', [PlanController::class, 'done'])->middleware('verified')->whereUuid('issue');
+            Route::delete('/me/plan/{issue}/done', [PlanController::class, 'undo'])->middleware('verified')->whereUuid('issue');
         });
 
         Route::get('/members', [MemberController::class, 'index']);
