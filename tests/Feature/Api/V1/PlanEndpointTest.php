@@ -115,6 +115,10 @@ it('reads the day in the caller\'s own time zone, and asks for a day that has st
     $this->withToken($token)->getJson(planApiUrl('2026-10-13T00:00:00-05:00'))
         ->assertStatus(200)->assertJsonPath('data.items.0.tag.label', 'Due tomorrow');
 
+    // 22:00 UTC on the 13th is local midnight of the 14th in UTC+2: due today (the UTC date would say tomorrow).
+    $this->withToken($token)->getJson(planApiUrl('2026-10-14T00:00:00+02:00'))
+        ->assertStatus(200)->assertJsonPath('data.items.0.tag.label', 'Due today');
+
     $this->withToken($token)->getJson('/v1/me/plan')->assertStatus(422)->assertJsonValidationErrors('day_start');
     $this->withToken($token)->getJson(planApiUrl(now()->addHour()->toIso8601String()))->assertStatus(422);
     $this->withToken($token)->getJson(planApiUrl(now()->subHours(37)->toIso8601String()))->assertStatus(422);
@@ -394,4 +398,46 @@ it('times the SLA of a linked open ticket, read from the database', function ():
         ->assertStatus(200)
         ->assertJsonPath('data.0.tag', ['label' => 'SLA 2h', 'tone' => 'red'])
         ->assertJsonPath('data.0.reason', "Its linked ticket {$ref} breaches SLA in 2h.");
+});
+
+it('keeps Undo when the same status is completed a second time', function (): void {
+    ['token' => $token, 'user' => $user, 'issue' => $make] = planApiWorld();
+    $issue = $make(['title' => 'Twice', 'status' => 'in_review']);
+    planApiItem($user, $issue, 1);
+    $done = "/v1/me/plan/{$issue->id}/done";
+    $this->withToken($token)->postJson($done)->assertStatus(200);
+
+    // Someone moves it back to the very status it had, and a minute later it is done again.
+    Issue::query()->whereKey($issue->id)->update(['status' => 'in_review', 'completed_at' => null]);
+    $this->travel(1)->minutes();
+    $this->withToken($token)->postJson($done)->assertStatus(200)->assertJsonPath('data.can_undo', true);
+
+    $this->withToken($token)->deleteJson($done)->assertStatus(200);
+    expect(Issue::query()->find($issue->id)?->status)->toBe('in_review');
+});
+
+it('allows a few minutes of clock skew on the start of the day, not an hour', function (): void {
+    ['token' => $token] = planApiWorld();
+
+    $this->withToken($token)->getJson(planApiUrl(now()->addMinutes(5)->toIso8601String()))->assertStatus(200);
+});
+
+it('does not let a viewer undo a completion (403)', function (): void {
+    ['token' => $token, 'user' => $viewer, 'issue' => $make] = planApiWorld(['is_developer' => true, 'admin_level' => 'viewer']);
+    $issue = $make(['title' => 'Done already', 'status' => 'done', 'completed_at' => now()]);
+    planApiItem($viewer, $issue, 1, ['previous_status' => 'in_progress']);
+
+    $this->withToken($token)->deleteJson("/v1/me/plan/{$issue->id}/done")->assertStatus(403);
+    expect(Issue::query()->find($issue->id)?->status)->toBe('done');
+});
+
+it('lists only the caller\'s own completions in done today', function (): void {
+    ['token' => $token, 'user' => $user, 'workspace' => $ws, 'issue' => $make] = planApiWorld();
+    $other = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
+    planApiItem($user, $make(['title' => 'My win', 'status' => 'done', 'completed_at' => now()]), 1);
+    planApiItem($other, $make(['title' => 'Their win', 'status' => 'done', 'completed_at' => now()]), 1);
+
+    $res = $this->withToken($token)->getJson(planApiUrl())->assertStatus(200);
+
+    expect(planApiTitles($res, 'done_today'))->toBe(['My win']);
 });

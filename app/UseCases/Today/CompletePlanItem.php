@@ -38,6 +38,8 @@ final class CompletePlanItem
         // kept only after the issue is really done.
         $this->transition->handle($actor, ['issue_id' => $issueId, 'status' => 'done']);
         $item->previous_status = $from;
+        // Undo compares the completion with this stamp, so it must move on every Done (an unchanged status leaves the row clean).
+        $item->updated_at = $item->freshTimestamp();
 
         return $this->items->save($item);
     }
