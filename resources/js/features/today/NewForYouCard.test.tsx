@@ -22,11 +22,13 @@ function j(body: unknown, status = 200) {
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function renderCard(unread: AppNotification[], count = unread.length) {
+function renderCard(initial: AppNotification[], count = initial.length) {
+    let unread = initial;
     fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
         const u = String(url);
-        if ((init?.method ?? 'GET') === 'POST') return j({ data: {} });
-        if (u.includes('/notifications/unread-count')) return j({ data: { count } });
+        // Reading empties the inbox, so the refetch shows the rows leave.
+        if ((init?.method ?? 'GET') === 'POST') { unread = []; return j({ data: {} }); }
+        if (u.includes('/notifications/unread-count')) return j({ data: { count: unread.length > 0 ? count : 0 } });
         return j({ data: unread, links: { next: null } });
     });
     vi.stubGlobal('fetch', fetchMock);
@@ -92,5 +94,26 @@ describe('Today v2: New for you', () => {
         await new Promise((r) => setTimeout(r, 0));
 
         expect(screen.queryByRole('heading', { name: 'New for you' })).toBeNull();
+    });
+
+    it('stays once you have read the last one here, says you are all caught up, and keeps the focus on its heading', async () => {
+        renderCard([note('a1', 'issue_mentioned', 12)]);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Mark read: Maya Chen mentioned you' }));
+
+        expect(await screen.findByText("You’re all caught up.")).toBeInTheDocument();
+        expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'New for you' }));
+        expect(screen.queryByRole('button', { name: 'Mark all read' })).toBeNull();
+        expect(screen.queryByTestId('new-for-you-count')).toBeNull();
+    });
+
+    it('stays after Mark all read, says you are all caught up, and keeps the focus on its heading', async () => {
+        renderCard([note('a1', 'issue_mentioned', 12), note('b2', 'issue_assigned', 34)]);
+
+        fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }));
+
+        expect(await screen.findByText("You’re all caught up.")).toBeInTheDocument();
+        expect(document.activeElement).toBe(screen.getByRole('heading', { name: 'New for you' }));
+        expect(screen.queryAllByTestId('new-for-you-row')).toHaveLength(0);
     });
 });
