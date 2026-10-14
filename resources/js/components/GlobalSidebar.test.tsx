@@ -9,6 +9,8 @@ function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { statu
 function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true, path = '/') {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/members')) return j({ data: [] });
+        // The Today count reads /me/plan, which also contains '/me'.
+        if (url.includes('/me/plan')) return j({ data: { capacity_minutes: 360, items: [], done_today: [] } });
         if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off', workspace: { helpdesk_enabled: helpdeskEnabled } } });
         if (url.includes('/unread-count')) return j({ data: { count: 0 } });
         if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', member_count: 3, created_at: '', updated_at: '' }], links: { next: null } });
@@ -209,5 +211,50 @@ describe('P7-B: the Today entry', () => {
 
         expect(await screen.findByRole('link', { name: /Support inbox/ })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: /Today/ })).toBeNull();
+    });
+});
+
+describe('Today v2: the Today count', () => {
+    beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
+    afterEach(() => vi.unstubAllGlobals());
+
+    function renderWithPlan(open: number, isDeveloper = true) {
+        const fetchMock = vi.fn(async (url: string) => {
+            if (url.includes('/me/plan')) {
+                const items = Array.from({ length: open }, (_, i) => ({ issue: { id: `i${i}`, identifier: `PRZ-I${i}`, title: `Issue ${i}`, status: 'todo', priority: 'medium', estimate: null, project: null }, minutes: 60, position: i, tag: null, reason: null, can_undo: false }));
+                return j({ data: { capacity_minutes: 360, items, done_today: [] } });
+            }
+            if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: 'member', is_developer: isDeveloper, is_agent: !isDeveloper, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true } } });
+            if (url.includes('/unread-count')) return j({ data: { count: 0 } });
+            return j({ data: [], links: { next: null } });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><GlobalSidebar onCollapse={() => {}} /></MemoryRouter></QueryClientProvider>);
+        return fetchMock;
+    }
+
+    it('shows the open plan count on the Today row', async () => {
+        renderWithPlan(3);
+
+        expect(await screen.findByTestId('today-badge')).toHaveTextContent('3');
+        expect(screen.getByRole('link', { name: /Today/ })).toContainElement(screen.getByTestId('today-badge'));
+        expect(screen.getByTestId('today-badge')).toHaveAccessibleName('3 planned');
+    });
+
+    it('hides the count when nothing is planned', async () => {
+        const fetchMock = renderWithPlan(0);
+
+        await screen.findByRole('link', { name: /Today/ });
+        await waitFor(() => expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me/plan'))).toBe(true));
+        await new Promise((r) => setTimeout(r, 0));
+        expect(screen.queryByTestId('today-badge')).toBeNull();
+    });
+
+    it('never asks for a plan for a user without the tracker', async () => {
+        const fetchMock = renderWithPlan(2, false);
+
+        await screen.findByRole('link', { name: /Support inbox/ });
+        expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me/plan'))).toBe(false);
     });
 });

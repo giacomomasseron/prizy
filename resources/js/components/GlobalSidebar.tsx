@@ -6,6 +6,7 @@ import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
 import { useUnreadCount } from '../features/notifications/hooks';
 import { useTeams } from '../features/teams/hooks';
+import { usePlan } from '../features/today/planHooks';
 import { SidebarFooter } from './SidebarFooter';
 import { BrandMark } from './ui/BrandMark';
 import { Kbd } from './ui/Kbd';
@@ -29,6 +30,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues({}, { enabled: showTracker });
     const unread = useUnreadCount();
+    const plan = usePlan(showTracker);
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const teams = useTeams({ mine: true });
 
@@ -43,6 +45,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const activeCount = issues.filter((i) => i.status !== 'done' && i.status !== 'cancelled').length;
     const myCount = me.data?.id ? issues.filter((i) => i.assignee_id === me.data!.id).length : 0;
     const unreadCount = unread.data?.count ?? 0;
+    const planCount = plan.data?.items.length ?? 0;
     const myTeams = teams.data?.items ?? [];
 
     function openSearch() { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })); }
@@ -67,12 +70,13 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
             )}
 
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {/* Today (P7-B): the tracker user's home, first in the sidebar. No badge until the day plan exists. */}
+                {/* Today (P7-B): the tracker user's home, first in the sidebar, with the open plan count (Today v2). */}
                 {showTracker && (
                     <div style={{ padding: '0 8px 10px' }}>
                         <NavLink to="/today" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                             <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>☀</span>
                             <span style={{ flex: 1 }}>Today</span>
+                            {planCount > 0 && <span data-testid="today-badge" aria-label={`${planCount} planned`} style={hiBadge}>{planCount}</span>}
                         </NavLink>
                     </div>
                 )}
