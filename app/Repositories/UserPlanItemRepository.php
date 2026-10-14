@@ -45,6 +45,10 @@ final class UserPlanItemRepository
     /** @return Collection<int, UserPlanItem> the user's items whose issue was completed since `$since`, newest first */
     public function doneSince(string $userId, CarbonInterface $since): Collection
     {
+        // Laravel binds a date without its offset, so compare in UTC (the database's zone): `$since` is the caller's
+        // local midnight, with whatever offset the caller has.
+        $since = $since->copy()->utc();
+
         return UserPlanItem::query()->where('user_id', $userId)
             ->whereHas('issue', fn (Builder $q) => $q->where('status', 'done')->where('completed_at', '>=', $since))
             ->with('issue.project:id,name,color')

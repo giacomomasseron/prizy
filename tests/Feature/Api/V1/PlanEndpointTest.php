@@ -240,3 +240,18 @@ it('enforces RLS on user_plan_items', function (): void {
     // RLS bites even a raw query under the other tenant's GUC.
     expect(DB::table('user_plan_items')->count())->toBe(0);
 });
+
+it('starts done today at the caller\'s own midnight, whatever its offset', function (): void {
+    ['token' => $token, 'user' => $user, 'issue' => $make] = planApiWorld();
+    planApiItem($user, $make(['title' => 'Late on the 13th, UTC', 'status' => 'done', 'completed_at' => '2026-10-13 23:00:00']), 1);
+    planApiItem($user, $make(['title' => 'Earlier on the 13th, UTC', 'status' => 'done', 'completed_at' => '2026-10-13 21:00:00']), 2);
+    planApiItem($user, $make(['title' => 'Early on the 14th, UTC', 'status' => 'done', 'completed_at' => '2026-10-14 03:00:00']), 3);
+
+    // Midnight in UTC+2 is 22:00 UTC on the 13th: the 23:00 and 03:00 completions are today there, the 21:00 one is not.
+    $east = $this->withToken($token)->getJson(planApiUrl('2026-10-14T00:00:00+02:00'))->assertStatus(200);
+    expect(planApiTitles($east, 'done_today'))->toBe(['Early on the 14th, UTC', 'Late on the 13th, UTC']);
+
+    // Midnight in UTC-5 is 05:00 UTC on the 14th: all three came the day before there.
+    $west = $this->withToken($token)->getJson(planApiUrl('2026-10-14T00:00:00-05:00'))->assertStatus(200);
+    expect(planApiTitles($west, 'done_today'))->toBe([]);
+});
