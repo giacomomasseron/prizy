@@ -129,6 +129,8 @@ Route::prefix('v1')->group(function (): void {
             Route::put('/me/plan/capacity', [PlanController::class, 'capacity'])->middleware('verified');
             Route::patch('/me/plan/{issue}', [PlanController::class, 'update'])->middleware('verified')->whereUuid('issue');
             Route::delete('/me/plan/{issue}', [PlanController::class, 'destroy'])->middleware('verified')->whereUuid('issue');
+            Route::post('/me/plan/{issue}/done', [PlanController::class, 'done'])->middleware('verified')->whereUuid('issue');
+            Route::delete('/me/plan/{issue}/done', [PlanController::class, 'undo'])->middleware('verified')->whereUuid('issue');
         });
 
         Route::get('/members', [MemberController::class, 'index']);

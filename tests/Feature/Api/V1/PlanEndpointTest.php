@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\Issue;
+use App\Models\IssueActivity;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\UserPlanItem;
@@ -254,4 +255,63 @@ it('starts done today at the caller\'s own midnight, whatever its offset', funct
     // Midnight in UTC-5 is 05:00 UTC on the 14th: all three came the day before there.
     $west = $this->withToken($token)->getJson(planApiUrl('2026-10-14T00:00:00-05:00'))->assertStatus(200);
     expect(planApiTitles($west, 'done_today'))->toBe([]);
+});
+
+it('completes an issue from the plan: Done like anywhere else, keeping the status it had for Undo', function (): void {
+    ['token' => $token, 'user' => $user, 'issue' => $make] = planApiWorld();
+    $issue = $make(['title' => 'Ship it', 'status' => 'in_review']);
+    planApiItem($user, $issue, 1);
+
+    $this->withToken($token)->postJson("/v1/me/plan/{$issue->id}/done")
+        ->assertStatus(200)
+        ->assertJsonPath('data.issue.status', 'done')
+        ->assertJsonPath('data.can_undo', true);
+
+    $fresh = Issue::query()->find($issue->id);
+    expect($fresh?->status)->toBe('done');
+    expect($fresh?->completed_at)->not->toBeNull();
+    expect(UserPlanItem::query()->where('issue_id', $issue->id)->first()?->previous_status)->toBe('in_review');
+    expect(IssueActivity::query()->where('issue_id', $issue->id)->where('type', 'status_changed')
+        ->where('from_value', 'in_review')->where('to_value', 'done')->exists())->toBeTrue();
+
+    $res = $this->withToken($token)->getJson(planApiUrl())->assertStatus(200);
+    expect(planApiTitles($res))->toBe([]);
+    expect(planApiTitles($res, 'done_today'))->toBe(['Ship it']);
+    $res->assertJsonPath('data.done_today.0.can_undo', true);
+});
+
+it('undoes it: back to the exact status it had, once; after someone reopened it there is nothing to undo (422)', function (): void {
+    ['token' => $token, 'user' => $user, 'issue' => $make] = planApiWorld();
+    $issue = $make(['title' => 'Oops', 'status' => 'in_progress']);
+    planApiItem($user, $issue, 1);
+    $done = "/v1/me/plan/{$issue->id}/done";
+
+    $this->withToken($token)->postJson($done)->assertStatus(200);
+    $this->withToken($token)->deleteJson($done)
+        ->assertStatus(200)
+        ->assertJsonPath('data.issue.status', 'in_progress')
+        ->assertJsonPath('data.can_undo', false);
+    expect(Issue::query()->find($issue->id)?->completed_at)->toBeNull();
+    $this->withToken($token)->deleteJson($done)->assertStatus(422);
+
+    $this->withToken($token)->postJson($done)->assertStatus(200);
+    Issue::query()->whereKey($issue->id)->update(['status' => 'todo', 'completed_at' => null]);
+    $this->withToken($token)->deleteJson($done)->assertStatus(422);
+});
+
+it('lets only people who may change the issue complete it: a viewer gets 403; already done → 422; not on the plan → 404', function (): void {
+    ['token' => $viewerToken, 'user' => $viewer, 'workspace' => $ws, 'issue' => $make] = planApiWorld(['is_developer' => true, 'admin_level' => 'viewer']);
+    $issue = $make(['title' => 'Not for viewers']);
+    planApiItem($viewer, $issue, 1);
+
+    $this->withToken($viewerToken)->postJson("/v1/me/plan/{$issue->id}/done")->assertStatus(403);
+    expect(Issue::query()->find($issue->id)?->status)->toBe('todo');
+
+    $dev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
+    $devToken = app(CreatePersonalAccessToken::class)->handle($dev, 't', null)['token'];
+    $finished = $make(['title' => 'Finished', 'status' => 'done', 'completed_at' => now()]);
+    planApiItem($dev, $finished, 1);
+
+    $this->withToken($devToken)->postJson("/v1/me/plan/{$finished->id}/done")->assertStatus(422);
+    $this->withToken($devToken)->postJson("/v1/me/plan/{$issue->id}/done")->assertStatus(404);
 });

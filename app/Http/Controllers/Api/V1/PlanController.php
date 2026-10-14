@@ -10,14 +10,18 @@ use App\Http\Requests\Api\V1\PlanDayRequest;
 use App\Http\Requests\Api\V1\SetFocusCapacityRequest;
 use App\Http\Requests\Api\V1\UpdatePlanItemRequest;
 use App\Http\Resources\PlanItemResource;
+use App\UseCases\Issues\FindIssue;
 use App\UseCases\Today\AddToPlan;
+use App\UseCases\Today\CompletePlanItem;
 use App\UseCases\Today\RemoveFromPlan;
 use App\UseCases\Today\SetFocusCapacity;
 use App\UseCases\Today\ShowPlan;
+use App\UseCases\Today\UndoPlanItem;
 use App\UseCases\Today\UpdatePlanItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Gate;
 
 /** /v1/me/plan — the caller's own day plan (the Today v2 design). Tracker users only (the route gate). */
 final class PlanController extends Controller
@@ -28,6 +32,9 @@ final class PlanController extends Controller
         private readonly UpdatePlanItem $updatePlanItem,
         private readonly RemoveFromPlan $removeFromPlan,
         private readonly SetFocusCapacity $setFocusCapacity,
+        private readonly FindIssue $findIssue,
+        private readonly CompletePlanItem $completePlanItem,
+        private readonly UndoPlanItem $undoPlanItem,
     ) {}
 
     public function index(PlanDayRequest $request): JsonResponse
@@ -60,6 +67,21 @@ final class PlanController extends Controller
         $this->removeFromPlan->handle($request->user(), $issue);
 
         return response()->noContent();
+    }
+
+    /** Done completes the issue itself, so it needs the right to change it (viewers → 403). */
+    public function done(Request $request, string $issue): JsonResponse
+    {
+        Gate::authorize('update', $this->findIssue->handle($issue));
+
+        return PlanItemResource::make(['item' => $this->completePlanItem->handle($request->user(), $issue), 'signals' => null])->response();
+    }
+
+    public function undo(Request $request, string $issue): JsonResponse
+    {
+        Gate::authorize('update', $this->findIssue->handle($issue));
+
+        return PlanItemResource::make(['item' => $this->undoPlanItem->handle($request->user(), $issue), 'signals' => null])->response();
     }
 
     public function capacity(SetFocusCapacityRequest $request): JsonResponse
