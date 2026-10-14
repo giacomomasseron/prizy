@@ -158,6 +158,24 @@ describe('the day plan\'s data', () => {
         expect(planIn(qc).items.map((i) => i.minutes)).toEqual([30, 45]);
     });
 
+    it('sends plan writes one at a time, in order, while showing each change at once', async () => {
+        let answerFirst: (r: Response) => void = () => {};
+        const fetchMock = vi.fn((url: string, init?: RequestInit) => (init?.method === 'PATCH' && url.endsWith('/me/plan/a1')
+            ? new Promise<Response>((resolve) => { answerFirst = resolve; })
+            : Promise.resolve(json({ data: {} }))));
+        vi.stubGlobal('fetch', fetchMock);
+        const qc = seeded();
+        const { result } = renderHook(() => useUpdatePlanItem(), { wrapper: wrapper(qc) });
+
+        act(() => result.current.mutate({ issueId: 'a1', minutes: 30 }));
+        act(() => result.current.mutate({ issueId: 'b2', minutes: 45 }));
+        await waitFor(() => expect(planIn(qc).items.map((i) => i.minutes)).toEqual([30, 45]));
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+
+        await act(async () => { answerFirst(json({ data: {} })); });
+        await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    });
+
     it('sets the daily capacity at once', async () => {
         hold();
         const qc = seeded();

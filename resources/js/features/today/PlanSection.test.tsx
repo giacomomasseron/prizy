@@ -253,6 +253,15 @@ describe('Today v2: today\'s plan', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
         expect(await screen.findByText('Customer data not populating on escalation')).toBeInTheDocument();
     });
+
+    it('shows no empty Why first? when the focus item has no reason', async () => {
+        items = [item('a1', 'Just put back', 1, { reason: null })];
+        renderSection();
+        await screen.findByText('Just put back');
+
+        expect(within(rows()[0]).getByRole('link', { name: 'Start working →' })).toBeInTheDocument();
+        expect(screen.queryByText('Why first?')).toBeNull();
+    });
 });
 
 describe('Today v2: reordering the plan', () => {

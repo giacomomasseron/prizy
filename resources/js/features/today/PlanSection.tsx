@@ -146,9 +146,11 @@ function PlanRow({ item, focus, canDone, onDone, onTime, onRemove }: RowProps) {
             <PlanMeta issue={issue} indent={focus || !canDone ? 28 : 62} />
             {focus && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', margin: '14px 0 0 28px' }}>
-                    <p style={{ flex: '1 1 260px', minWidth: 0, margin: 0, fontSize: 15, color: 'var(--fg2)' }}>
-                        <strong style={{ color: 'var(--fg)' }}>Why first?</strong> {item.reason}
-                    </p>
+                    {item.reason ? (
+                        <p style={{ flex: '1 1 260px', minWidth: 0, margin: 0, fontSize: 15, color: 'var(--fg2)' }}>
+                            <strong style={{ color: 'var(--fg)' }}>Why first?</strong> {item.reason}
+                        </p>
+                    ) : <span style={{ flex: '1 1 260px' }} />}
                     <div style={{ display: 'flex', gap: 8 }}>
                         <Link to={`/issues/${issue.id}`} className="bg-fg text-bg hover:bg-accent" style={{ padding: '10px 18px', borderRadius: 'var(--radius-pill)', fontSize: 14, fontWeight: 700 }}>
                             Start working →

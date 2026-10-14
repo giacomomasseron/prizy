@@ -9,14 +9,16 @@ export const SUGGESTIONS_KEY = ['plan', 'suggestions'] as const;
 
 const today = () => encodeURIComponent(localDayStart());
 
+// Both plan reads refetch when the tab is back (the app default is off): a tab left open past midnight, or a board
+// change elsewhere, must not leave yesterday's Done today and the sidebar's count stale.
 /** The caller's day plan (the Today v2 design): GET /v1/me/plan for their local day. */
 export function usePlan(enabled = true) {
-    return useQuery({ queryKey: PLAN_KEY, queryFn: () => api.get<DayPlan>(`/me/plan?day_start=${today()}`), enabled });
+    return useQuery({ queryKey: PLAN_KEY, queryFn: () => api.get<DayPlan>(`/me/plan?day_start=${today()}`), enabled, refetchOnWindowFocus: true });
 }
 
 /** What could also fit today: GET /v1/me/plan/suggestions. */
 export function usePlanSuggestions() {
-    return useQuery({ queryKey: SUGGESTIONS_KEY, queryFn: () => api.get<PlanSuggestion[]>(`/me/plan/suggestions?day_start=${today()}`) });
+    return useQuery({ queryKey: SUGGESTIONS_KEY, queryFn: () => api.get<PlanSuggestion[]>(`/me/plan/suggestions?day_start=${today()}`), refetchOnWindowFocus: true });
 }
 
 type Caches = { plan?: DayPlan; suggestions?: PlanSuggestion[] };
@@ -34,6 +36,8 @@ function usePlanMutation<V>(
     const qc = useQueryClient();
     return useMutation({
         mutationKey: PLAN_KEY,
+        // One scope: the writes reach the server one at a time, in the order made (onMutate still runs at once).
+        scope: { id: 'plan' },
         mutationFn: request,
         onMutate: async (vars: V) => {
             await qc.cancelQueries({ queryKey: PLAN_KEY });
