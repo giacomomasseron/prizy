@@ -36,6 +36,7 @@ use Illuminate\Notifications\Notifiable;
  * @property string|null $avatar_url
  * @property string $timezone
  * @property string $locale
+ * @property int $daily_focus_minutes
  * @property Carbon|null $last_seen_at
  * @property Carbon $created_at
  * @property Carbon $updated_at
@@ -94,7 +95,7 @@ use Illuminate\Notifications\Notifiable;
     timestamps: true,
 )]
 #[Connection('pgsql')]
-#[Fillable(['id', 'name', 'email', 'email_verified_at', 'password_hash', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at', 'email_digest_frequency', 'last_digest_sent_at'])]
+#[Fillable(['id', 'name', 'email', 'email_verified_at', 'password_hash', 'admin_level', 'is_developer', 'is_agent', 'avatar_url', 'timezone', 'locale', 'last_seen_at', 'email_digest_frequency', 'last_digest_sent_at', 'daily_focus_minutes'])]
 class User extends Authenticatable implements MustVerifyEmailContract
 {
     use BelongsToWorkspace;
@@ -110,6 +111,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
     /** @var array<string, mixed> */
     protected $attributes = [
         'email_digest_frequency' => 'off',
+        'daily_focus_minutes' => 360,
     ];
 
     public function getAuthPassword(): string
@@ -146,6 +148,7 @@ class User extends Authenticatable implements MustVerifyEmailContract
             'locale' => 'string',
             'last_seen_at' => 'datetime',
             'last_digest_sent_at' => 'datetime',
+            'daily_focus_minutes' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
             'deleted_at' => 'datetime',

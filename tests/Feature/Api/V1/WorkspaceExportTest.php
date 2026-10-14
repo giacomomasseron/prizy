@@ -14,6 +14,7 @@ use App\Models\Team;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
 use App\Models\User;
+use App\Models\UserPlanItem;
 use App\Models\UserTodo;
 use App\Models\Workspace;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
@@ -55,6 +56,8 @@ function exportFixtures(Workspace $ws, User $owner): array
     IssueStar::query()->insert(['user_id' => $owner->id, 'issue_id' => $issue->id, 'created_at' => now()]);
     // A personal to-do (PRD §3.2.10): it must NOT reach the export either.
     UserTodo::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'user_id' => $owner->id, 'body' => 'Private to-do', 'position' => 1]);
+    // A day plan item (Today v2): personal as well, never exported.
+    UserPlanItem::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'user_id' => $owner->id, 'issue_id' => $issue->id, 'position' => 1, 'minutes' => 60]);
     Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'export-label', 'color' => '#ff0000']);
     Project::factory()->for($ws, 'workspace')->create();
     Release::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Export v1']);
@@ -135,8 +138,8 @@ it('exports a valid zip for the owner with manifest, content, and no secrets', f
         expect($m)->toHaveKeys(['id', 'name', 'email', 'admin_level', 'is_developer', 'is_agent', 'verified']);
     }
 
-    // issue_stars and user_todos are personal (PRD §3.2.9, §3.2.10) — never exported.
-    foreach (['notifications.json', 'personal_access_tokens.json', 'github_integrations.json', 'invitations.json', 'oauth_identities.json', 'issue_stars.json', 'user_todos.json'] as $absent) {
+    // issue_stars, user_todos and user_plan_items are personal (PRD §3.2.9, §3.2.10, Today v2) — never exported.
+    foreach (['notifications.json', 'personal_access_tokens.json', 'github_integrations.json', 'invitations.json', 'oauth_identities.json', 'issue_stars.json', 'user_todos.json', 'user_plan_items.json'] as $absent) {
         expect($zip->getFromName($absent))->toBeFalse();
     }
 

@@ -165,6 +165,7 @@ CREATE TABLE users (
     last_seen_at        TIMESTAMPTZ,
     email_digest_frequency  VARCHAR(16)     NOT NULL DEFAULT 'off',
     last_digest_sent_at     TIMESTAMPTZ,
+    daily_focus_minutes SMALLINT        NOT NULL DEFAULT 360,  -- Today's focus capacity (3–9h)
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     deleted_at          TIMESTAMPTZ,
@@ -495,6 +496,34 @@ CREATE TABLE user_todos (
 ALTER TABLE user_todos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_todos FORCE ROW LEVEL SECURITY;
 CREATE POLICY user_todos_workspace_isolation ON user_todos USING (
+    NULLIF(current_setting('app.current_workspace_id', true), '') IS NULL
+    OR workspace_id::text = current_setting('app.current_workspace_id', true));
+
+-- ---------------------------------------------------------------------------
+-- user_plan_items
+-- A user's day plan (the Today v2 design): the issues they mean to work on
+-- today, in their order, each with their own time estimate. Private to
+-- user_id; RLS on workspace_id is the backstop. Never broadcast, never
+-- exported. previous_status is the status the issue had when it was completed
+-- from the plan, so Undo can restore it.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE user_plan_items (
+    id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+    workspace_id        UUID            NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    user_id             UUID            NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    issue_id            UUID            NOT NULL REFERENCES issues(id) ON DELETE CASCADE,
+    position            DOUBLE PRECISION NOT NULL,
+    minutes             SMALLINT        NOT NULL,
+    previous_status     issue_status,
+    created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
+    CONSTRAINT user_plan_items_user_issue_unique UNIQUE (user_id, issue_id),
+    CONSTRAINT user_plan_items_minutes_check CHECK (minutes BETWEEN 15 AND 720)
+);
+ALTER TABLE user_plan_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_plan_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY user_plan_items_workspace_isolation ON user_plan_items USING (
     NULLIF(current_setting('app.current_workspace_id', true), '') IS NULL
     OR workspace_id::text = current_setting('app.current_workspace_id', true));
 
@@ -1093,6 +1122,8 @@ CREATE INDEX idx_issue_blockers_blocked    ON issue_blockers(blocked_issue_id);
 CREATE INDEX issue_stars_issue_idx        ON issue_stars(issue_id);
 CREATE INDEX user_todos_user_idx          ON user_todos(user_id, completed_at, position);
 CREATE INDEX user_todos_issue_idx         ON user_todos(issue_id);
+CREATE INDEX user_plan_items_user_idx     ON user_plan_items(user_id, position);
+CREATE INDEX user_plan_items_issue_idx    ON user_plan_items(issue_id);
 CREATE INDEX project_messages_project_idx ON project_messages(project_id, created_at, id);
 CREATE INDEX project_message_issues_issue_idx ON project_message_issues(issue_id);
 CREATE INDEX idx_issue_activities_issue    ON issue_activities(issue_id);
