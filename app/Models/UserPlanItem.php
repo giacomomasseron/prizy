@@ -62,4 +62,17 @@ final class UserPlanItem extends TenantAwareEntity
     {
         return $this->belongsTo(Issue::class, 'issue_id');
     }
+
+    /**
+     * Whether Undo can put the issue back: it is done, and that completion is the one the plan made — no later than
+     * this item was last saved (Done saves it right after the status change). Someone who reopened the issue and
+     * completed it again since owns that completion, so the kept status no longer applies.
+     */
+    public function canUndo(): bool
+    {
+        $completedAt = $this->issue?->completed_at;
+
+        return $this->previous_status !== null && $this->issue?->status === 'done'
+            && $completedAt !== null && $completedAt->lte($this->updated_at);
+    }
 }

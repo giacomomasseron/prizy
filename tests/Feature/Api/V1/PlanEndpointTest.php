@@ -315,3 +315,20 @@ it('lets only people who may change the issue complete it: a viewer gets 403; al
     $this->withToken($devToken)->postJson("/v1/me/plan/{$finished->id}/done")->assertStatus(422);
     $this->withToken($devToken)->postJson("/v1/me/plan/{$issue->id}/done")->assertStatus(404);
 });
+
+it('offers no Undo once someone else has reopened and completed the issue again (422)', function (): void {
+    ['token' => $token, 'user' => $user, 'issue' => $make] = planApiWorld();
+    $issue = $make(['title' => 'Back and forth', 'status' => 'in_review']);
+    planApiItem($user, $issue, 1);
+    $done = "/v1/me/plan/{$issue->id}/done";
+    $this->withToken($token)->postJson($done)->assertStatus(200);
+
+    // Someone reopens it and, five minutes later, completes it again.
+    $this->travel(5)->minutes();
+    Issue::query()->whereKey($issue->id)->update(['status' => 'done', 'completed_at' => now()]);
+
+    $this->withToken($token)->getJson(planApiUrl())->assertStatus(200)
+        ->assertJsonPath('data.done_today.0.can_undo', false);
+    $this->withToken($token)->deleteJson($done)->assertStatus(422);
+    expect(Issue::query()->find($issue->id)?->status)->toBe('done');
+});

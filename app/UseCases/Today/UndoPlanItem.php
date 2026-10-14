@@ -30,7 +30,7 @@ final class UndoPlanItem
             throw (new ModelNotFoundException())->setModel(UserPlanItem::class, [$issueId]);
         }
         $to = $item->previous_status;
-        if ($to === null || $item->issue?->status !== 'done') {
+        if ($to === null || ! $item->canUndo()) {
             throw ValidationException::withMessages(['status' => ['There is nothing to undo.']]);
         }
 

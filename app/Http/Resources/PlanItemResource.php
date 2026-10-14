@@ -27,7 +27,7 @@ final class PlanItemResource extends JsonResource
             'position' => $item->position,
             'tag' => $signals['tag'] ?? null,
             'reason' => $signals['reason'] ?? null,
-            'can_undo' => $item->previous_status !== null && $item->issue?->status === 'done',
+            'can_undo' => $item->canUndo(),
         ];
     }
 }
