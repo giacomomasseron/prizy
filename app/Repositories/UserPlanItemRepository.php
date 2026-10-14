@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Repositories;
 
+use App\Models\Issue;
 use App\Models\UserPlanItem;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Collection;
 
 /**
@@ -116,6 +118,28 @@ final class UserPlanItemRepository
         foreach ($ids as $i => $id) {
             UserPlanItem::query()->whereKey($id)->update(['position' => $i + 1]);
         }
+    }
+
+    /**
+     * What could also fit today: the open, unarchived issues assigned to or starred by the user that are not on their
+     * plan, loaded for the signals.
+     *
+     * @return Collection<int, Issue>
+     */
+    public function suggestionPool(string $userId): Collection
+    {
+        return Issue::query()
+            ->whereNotIn('status', ['done', 'cancelled'])->whereNull('archived_at')
+            ->where(fn (Builder $q) => $q->where('assignee_id', $userId)->orWhereExists(
+                fn (QueryBuilder $stars) => $stars->selectRaw('1')->from('issue_stars')
+                    ->whereColumn('issue_stars.issue_id', 'issues.id')->where('issue_stars.user_id', $userId),
+            ))
+            ->whereNotExists(
+                fn (QueryBuilder $plan) => $plan->selectRaw('1')->from('user_plan_items')
+                    ->whereColumn('user_plan_items.issue_id', 'issues.id')->where('user_plan_items.user_id', $userId),
+            )
+            ->with(self::SIGNAL_RELATIONS)
+            ->get();
     }
 
     /** @return Builder<UserPlanItem> */

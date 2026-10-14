@@ -10,12 +10,14 @@ use App\Http\Requests\Api\V1\PlanDayRequest;
 use App\Http\Requests\Api\V1\SetFocusCapacityRequest;
 use App\Http\Requests\Api\V1\UpdatePlanItemRequest;
 use App\Http\Resources\PlanItemResource;
+use App\Http\Resources\PlanSuggestionResource;
 use App\UseCases\Issues\FindIssue;
 use App\UseCases\Today\AddToPlan;
 use App\UseCases\Today\CompletePlanItem;
 use App\UseCases\Today\RemoveFromPlan;
 use App\UseCases\Today\SetFocusCapacity;
 use App\UseCases\Today\ShowPlan;
+use App\UseCases\Today\SuggestForPlan;
 use App\UseCases\Today\UndoPlanItem;
 use App\UseCases\Today\UpdatePlanItem;
 use Illuminate\Http\JsonResponse;
@@ -35,6 +37,7 @@ final class PlanController extends Controller
         private readonly FindIssue $findIssue,
         private readonly CompletePlanItem $completePlanItem,
         private readonly UndoPlanItem $undoPlanItem,
+        private readonly SuggestForPlan $suggestForPlan,
     ) {}
 
     public function index(PlanDayRequest $request): JsonResponse
@@ -46,6 +49,11 @@ final class PlanController extends Controller
             'items' => PlanItemResource::collection($plan['items'])->resolve($request),
             'done_today' => PlanItemResource::collection($plan['done_today'])->resolve($request),
         ]]);
+    }
+
+    public function suggestions(PlanDayRequest $request): JsonResponse
+    {
+        return PlanSuggestionResource::collection($this->suggestForPlan->handle($request->user(), $request->dayStart()))->response();
     }
 
     public function store(AddToPlanRequest $request): JsonResponse

@@ -125,6 +125,7 @@ Route::prefix('v1')->group(function (): void {
 
             // The caller's own day plan (the Today v2 design); an issue that is not on the plan answers 404.
             Route::get('/me/plan', [PlanController::class, 'index']);
+            Route::get('/me/plan/suggestions', [PlanController::class, 'suggestions']);
             Route::post('/me/plan', [PlanController::class, 'store'])->middleware('verified');
             Route::put('/me/plan/capacity', [PlanController::class, 'capacity'])->middleware('verified');
             Route::patch('/me/plan/{issue}', [PlanController::class, 'update'])->middleware('verified')->whereUuid('issue');

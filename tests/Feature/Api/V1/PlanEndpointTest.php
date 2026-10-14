@@ -2,9 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Models\Contact;
 use App\Models\Issue;
 use App\Models\IssueActivity;
+use App\Models\IssueStar;
+use App\Models\SlaPolicy;
 use App\Models\Team;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Models\UserPlanItem;
 use App\Models\Workspace;
@@ -12,6 +16,7 @@ use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
 uses(RefreshDatabase::class);
@@ -331,4 +336,62 @@ it('offers no Undo once someone else has reopened and completed the issue again 
         ->assertJsonPath('data.done_today.0.can_undo', false);
     $this->withToken($token)->deleteJson($done)->assertStatus(422);
     expect(Issue::query()->find($issue->id)?->status)->toBe('done');
+});
+
+/** GET /v1/me/plan/suggestions for the frozen day. */
+function planApiSuggestionsUrl(): string
+{
+    return '/v1/me/plan/suggestions?day_start='.urlencode(now()->startOfDay()->toIso8601String());
+}
+
+it('suggests the caller\'s open issues not on the plan, ranked by their signals, each with the time it would start with', function (): void {
+    ['token' => $token, 'user' => $user, 'workspace' => $ws, 'issue' => $make] = planApiWorld();
+    $other = User::factory()->for($ws, 'workspace')->create(['is_developer' => true]);
+    $make(['title' => 'Plain', 'estimate' => 2, 'updated_at' => now()->subDays(2)]);
+    $starred = $make(['title' => 'Starred, not mine', 'assignee_id' => $other->id, 'updated_at' => now()->subDay()]);
+    IssueStar::query()->insert(['user_id' => $user->id, 'issue_id' => $starred->id, 'created_at' => now()]);
+    $make(['title' => 'Small', 'estimate' => 1]);
+    $make(['title' => 'In review', 'status' => 'in_review']);
+    $make(['title' => 'Overdue', 'due_date' => '2026-10-12']);
+    planApiItem($user, $make(['title' => 'Already planned']), 1);
+    $make(['title' => 'Not mine', 'assignee_id' => $other->id]);
+    $make(['title' => 'Closed', 'status' => 'done']);
+    $make(['title' => 'Archived', 'archived_at' => now()]);
+
+    $res = $this->withToken($token)->getJson(planApiSuggestionsUrl())->assertStatus(200);
+
+    expect(collect($res->json('data'))->pluck('issue.title')->all())->toBe(['Overdue', 'In review', 'Small', 'Plain', 'Starred, not mine']);
+    $res->assertJsonPath('data.0.tag', ['label' => 'Overdue 2d', 'tone' => 'red'])
+        ->assertJsonPath('data.0.minutes', 60)
+        ->assertJsonPath('data.3.minutes', 120)
+        ->assertJsonPath('data.3.reason', 'Assigned to you.')
+        ->assertJsonPath('data.4.reason', 'You starred it.');
+});
+
+it('suggests at most 8', function (): void {
+    ['token' => $token, 'issue' => $make] = planApiWorld();
+    for ($i = 1; $i <= 10; $i++) {
+        $make(['title' => "Issue {$i}"]);
+    }
+
+    $this->withToken($token)->getJson(planApiSuggestionsUrl())->assertStatus(200)->assertJsonCount(8, 'data');
+});
+
+it('times the SLA of a linked open ticket, read from the database', function (): void {
+    ['token' => $token, 'user' => $user, 'workspace' => $ws, 'issue' => $make] = planApiWorld();
+    $issue = $make(['title' => 'Escalated']);
+    $policy = SlaPolicy::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Standard', 'first_reply_minutes' => 180, 'resolution_minutes' => 1440]);
+    $contact = Contact::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Grace', 'email' => 'g'.Str::uuid().'@x.com']);
+    $ticket = Ticket::forceCreate([
+        'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'requester_id' => $contact->id, 'subject' => 'Broken export',
+        'status' => 'open', 'priority' => 'high', 'channel' => 'email', 'sla_policy_id' => $policy->id,
+        'created_at' => now()->subHour(), 'first_replied_at' => null,
+    ]);
+    DB::table('issue_ticket_links')->insert(['issue_id' => $issue->id, 'ticket_id' => $ticket->id, 'created_by' => $user->id]);
+    $ref = 'TKT-'.strtoupper(substr($ticket->id, 0, 6));
+
+    $this->withToken($token)->getJson(planApiSuggestionsUrl())
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.tag', ['label' => 'SLA 2h', 'tone' => 'red'])
+        ->assertJsonPath('data.0.reason', "Its linked ticket {$ref} breaches SLA in 2h.");
 });
