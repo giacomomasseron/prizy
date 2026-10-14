@@ -10,9 +10,12 @@ function j(body: unknown) {
 }
 
 function renderToday() {
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => (String(url).endsWith('/me')
-        ? j({ data: { id: 'me', name: 'Alex Rivera', is_developer: true, admin_level: 'member', is_agent: false } })
-        : j({ data: [] }))));
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        const u = String(url);
+        if (u.endsWith('/me')) return j({ data: { id: 'me', name: 'Alex Rivera', is_developer: true, admin_level: 'member', is_agent: false } });
+        if (u.includes('/me/plan?')) return j({ data: { capacity_minutes: 360, items: [], done_today: [] } });
+        return j({ data: [] });
+    }));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(<QueryClientProvider client={qc}><MemoryRouter><TodayPage /></MemoryRouter></QueryClientProvider>);
 }

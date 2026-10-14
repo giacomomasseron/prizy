@@ -1,13 +1,17 @@
+import { canDevelop } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { firstName, greetingFor, todayLabel } from './greeting';
+import { PlanSection } from './PlanSection';
+import { usePlan } from './planHooks';
 import { TodoCard } from './TodoCard';
 
 /**
- * Today (P7-B, the Today v2 design): the tracker user's home. The date, a greeting on the highlighter, and the
- * personal to-dos; the ranked day plan and the focus-time card are a later feature.
+ * Today (P7-B, the Today v2 design): the tracker user's home. The date, a greeting on the highlighter, the day plan
+ * and the personal to-dos.
  */
 export default function TodayPage() {
     const me = useMe();
+    const plan = usePlan();
     const now = new Date();
     const name = firstName(me.data?.name ?? '');
 
@@ -19,7 +23,10 @@ export default function TodayPage() {
                     {greetingFor(now.getHours())}{name ? `, ${name}` : ''}. Here’s <span className="hl">your day.</span>
                 </h1>
             </header>
-            <TodoCard />
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
+                <PlanSection query={plan} plan={plan.data} canDone={canDevelop(me.data)} />
+                <TodoCard />
+            </div>
         </div>
     );
 }
