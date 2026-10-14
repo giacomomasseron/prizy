@@ -8,6 +8,48 @@ export interface IssueLookupItem {
     status: IssueStatus;
 }
 
+/** An issue as Today shows it (the Today v2 design): reference, title, status, priority, points and project. */
+export interface PlanIssue {
+    id: string;
+    identifier: string;
+    title: string;
+    status: IssueStatus;
+    priority: IssuePriority;
+    estimate: number | null;
+    project: { id: string; name: string; color: string } | null;
+}
+
+/** Why an issue belongs on today's plan, in a word (the Today v2 design). */
+export interface PlanTag {
+    label: string;
+    tone: 'red' | 'amber' | 'blue' | 'neutral';
+}
+
+/** An issue on the caller's day plan. A write's answer carries no tag or reason (null); the plan's read has them. */
+export interface PlanItem {
+    issue: PlanIssue;
+    minutes: number;
+    position: number;
+    tag: PlanTag | null;
+    reason: string | null;
+    can_undo: boolean;
+}
+
+/** GET /v1/me/plan: the open items in order, what was completed today, and the daily focus capacity. */
+export interface DayPlan {
+    capacity_minutes: number;
+    items: PlanItem[];
+    done_today: PlanItem[];
+}
+
+/** An issue that could also fit today, with the time it would start with. */
+export interface PlanSuggestion {
+    issue: PlanIssue;
+    minutes: number;
+    tag: PlanTag | null;
+    reason: string;
+}
+
 /** A personal to-do (PRD §3.2.10) from /v1/me/todos. `issue` is the linked issue, or null. */
 export interface Todo {
     id: string;
