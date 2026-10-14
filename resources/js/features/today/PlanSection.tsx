@@ -1,14 +1,19 @@
 import { useId, useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import type { Announcements, DragEndEvent, UniqueIdentifier } from '@dnd-kit/core';
+import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { QueryState, type QueryLike } from '../../components/ui/QueryState';
 import { FIELD_CLASSES } from '../../components/ui/Input';
 import type { DayPlan, PlanIssue, PlanItem, PlanTag } from '../../lib/types';
 import { PRIORITY_LABELS } from '../issues/issueMeta';
 import { useCompletePlanItem, useRemoveFromPlan, useUndoPlanItem, useUpdatePlanItem } from './planHooks';
 import { TIME_OPTIONS, formatMinutes, projectSplit } from './planText';
+import { positionForMove } from './todoHooks';
 
 const FAILED = 'That change didn’t save. Try again.';
+const REORDER_HELP = 'To reorder an item, press Space on its Reorder button, move it with the arrow keys, then press Space to drop it or Escape to cancel.';
 
 /** A plan tag: red is a filled pill; the other tones are outlined in their ink. */
 export function tagStyle(tone: PlanTag['tone']): CSSProperties {
@@ -73,21 +78,43 @@ interface RowProps {
 
 /**
  * One item on the plan. The first is the focus card (★ Start here, a larger title, Why first?, Start working → and
- * Done); the others are rows with a done circle. Both carry the tag, the time select and ✕.
+ * Done); the others are rows with a done circle. Both carry a drag handle (pointer or keyboard, via dnd-kit), the tag,
+ * the time select and ✕.
  */
 function PlanRow({ item, focus, canDone, onDone, onTime, onRemove }: RowProps) {
     const { issue } = item;
+    const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: issue.id });
     const card: CSSProperties = focus
         ? { padding: '18px 20px 20px', borderRadius: 22, border: '2px solid var(--fg)', boxShadow: '6px 6px 0 var(--fg)', marginBottom: 6 }
         : { padding: '14px 20px', borderRadius: 16, border: 'var(--line) solid var(--border)' };
     return (
-        <li data-testid="plan-row" style={{ ...card, background: 'var(--panel)', listStyle: 'none' }}>
+        <li
+            ref={setNodeRef}
+            data-testid="plan-row"
+            style={{
+                ...card, background: 'var(--panel)', listStyle: 'none', position: 'relative',
+                transform: transform ? `translate3d(${Math.round(transform.x)}px, ${Math.round(transform.y)}px, 0)` : undefined,
+                transition, zIndex: isDragging ? 1 : undefined, opacity: isDragging ? 0.85 : undefined,
+            }}
+        >
             {focus && (
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 10, fontSize: 12.5, fontWeight: 700, background: 'var(--hi)', color: 'var(--on-hi)', borderRadius: 'var(--radius-pill)', padding: '2px 11px' }}>
                     <span aria-hidden="true">★</span> Start here
                 </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <button
+                    type="button"
+                    ref={setActivatorNodeRef}
+                    {...attributes}
+                    {...listeners}
+                    aria-label="Reorder"
+                    title="Drag to reorder"
+                    className="text-fg3 opacity-60 hover:opacity-100"
+                    style={{ border: 'none', background: 'none', cursor: 'grab', fontSize: 13, letterSpacing: '-2px', width: 16, height: 22, padding: 0, flexShrink: 0, touchAction: 'none', fontFamily: 'inherit' }}
+                >
+                    ⋮⋮
+                </button>
                 {!focus && canDone && (
                     <button
                         type="button"
@@ -116,9 +143,9 @@ function PlanRow({ item, focus, canDone, onDone, onTime, onRemove }: RowProps) {
                     ✕
                 </button>
             </div>
-            <PlanMeta issue={issue} indent={focus || !canDone ? 0 : 34} />
+            <PlanMeta issue={issue} indent={focus || !canDone ? 28 : 62} />
             {focus && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', marginTop: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', margin: '14px 0 0 28px' }}>
                     <p style={{ flex: '1 1 260px', minWidth: 0, margin: 0, fontSize: 15, color: 'var(--fg2)' }}>
                         <strong style={{ color: 'var(--fg)' }}>Why first?</strong> {item.reason}
                     </p>
@@ -185,8 +212,8 @@ function DoneToday({ items, canUndo, onUndo }: { items: PlanItem[]; canUndo: boo
 }
 
 /**
- * Today's plan (the Today v2 design): the open items in order, the first as the focus card, the projects they span,
- * and what was done today. Every change shows at once and is put back, with an alert, if it fails. Viewers can plan
+ * Today's plan (the Today v2 design): the open items in order (drag to reorder; the top one is the focus card), the
+ * projects they span, and what was done today. Every change shows at once and is put back, with an alert, if it fails. Viewers can plan
  * but not complete: they get no done controls.
  */
 export function PlanSection({ query, plan, canDone }: { query: QueryLike; plan: DayPlan | undefined; canDone: boolean }) {
@@ -200,6 +227,29 @@ export function PlanSection({ query, plan, canDone }: { query: QueryLike; plan: 
     const headingRef = useRef<HTMLHeadingElement>(null);
 
     const items = plan?.items ?? [];
+
+    // Reorder: pointer drag, or the keyboard on a row's Reorder button; the move sends the new position.
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+    function onDragEnd({ active, over }: DragEndEvent) {
+        if (!over || active.id === over.id) return;
+        const from = items.findIndex((i) => i.issue.id === active.id);
+        const to = items.findIndex((i) => i.issue.id === over.id);
+        if (from < 0 || to < 0) return;
+        setError('');
+        update.mutate({ issueId: String(active.id), position: positionForMove(items, from, to) });
+    }
+    // dnd-kit's own announcements name the item by its id; these name the issue by its title.
+    const titleOf = (id: UniqueIdentifier) => items.find((i) => i.issue.id === id)?.issue.title ?? '';
+    const placeOf = (id: UniqueIdentifier) => items.findIndex((i) => i.issue.id === id) + 1;
+    const announcements: Announcements = {
+        onDragStart: ({ active }) => `Picked up “${titleOf(active.id)}”, at position ${placeOf(active.id)} of ${items.length}.`,
+        onDragOver: ({ active, over }) => (over ? `“${titleOf(active.id)}” is at position ${placeOf(over.id)} of ${items.length}.` : undefined),
+        onDragEnd: ({ active, over }) => (over ? `Dropped “${titleOf(active.id)}” at position ${placeOf(over.id)} of ${items.length}.` : `Dropped “${titleOf(active.id)}”.`),
+        onDragCancel: ({ active }) => `Cancelled. “${titleOf(active.id)}” is back where it was.`,
+    };
     // The row (or its done entry) a change removes held the focus: hand it to the heading, not to the page.
     const change = (run: () => void, movesFocus = false) => {
         setError('');
@@ -212,6 +262,7 @@ export function PlanSection({ query, plan, canDone }: { query: QueryLike; plan: 
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
                 <h2 id={headingId} ref={headingRef} tabIndex={-1} style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 26, letterSpacing: '-.025em' }}>Today’s plan</h2>
                 <span data-testid="plan-count" style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg3)' }}>{items.length}</span>
+                <span style={{ marginLeft: 'auto', fontSize: 13.5, color: 'var(--fg3)' }}>Drag to reorder — the top one is your focus.</span>
             </div>
             {error && <p role="alert" style={{ margin: '0 0 10px', fontSize: 13, fontWeight: 600, color: 'var(--red-ink)' }}>{error}</p>}
             <QueryState query={query} what="your plan">
@@ -221,19 +272,23 @@ export function PlanSection({ query, plan, canDone }: { query: QueryLike; plan: 
                         Nothing planned yet. Pick something from the suggestions below.
                     </p>
                 ) : (
-                    <ul aria-label="Today’s plan" style={{ margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                        {items.map((item, i) => (
-                            <PlanRow
-                                key={item.issue.id}
-                                item={item}
-                                focus={i === 0}
-                                canDone={canDone}
-                                onDone={() => change(() => complete.mutate(item.issue.id), true)}
-                                onTime={(minutes) => change(() => update.mutate({ issueId: item.issue.id, minutes }))}
-                                onRemove={() => change(() => remove.mutate(item.issue.id), true)}
-                            />
-                        ))}
-                    </ul>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd} accessibility={{ announcements, screenReaderInstructions: { draggable: REORDER_HELP } }}>
+                        <SortableContext items={items.map((i) => i.issue.id)} strategy={verticalListSortingStrategy}>
+                            <ul aria-label="Today’s plan" style={{ margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                {items.map((item, i) => (
+                                    <PlanRow
+                                        key={item.issue.id}
+                                        item={item}
+                                        focus={i === 0}
+                                        canDone={canDone}
+                                        onDone={() => change(() => complete.mutate(item.issue.id), true)}
+                                        onTime={(minutes) => change(() => update.mutate({ issueId: item.issue.id, minutes }))}
+                                        onRemove={() => change(() => remove.mutate(item.issue.id), true)}
+                                    />
+                                ))}
+                            </ul>
+                        </SortableContext>
+                    </DndContext>
                 )}
                 <DoneToday items={plan?.done_today ?? []} canUndo={canDone} onUndo={(id) => change(() => undo.mutate(id), true)} />
             </QueryState>

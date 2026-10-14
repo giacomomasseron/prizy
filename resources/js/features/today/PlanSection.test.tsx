@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { PlanItem } from '../../lib/types';
@@ -252,5 +252,52 @@ describe('Today v2: today\'s plan', () => {
         failLoad = false;
         fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
         expect(await screen.findByText('Customer data not populating on escalation')).toBeInTheDocument();
+    });
+});
+
+describe('Today v2: reordering the plan', () => {
+    it('gives every item a Reorder handle that dnd-kit drives from the keyboard, with the hint', async () => {
+        renderSection();
+        await screen.findByText('Customer data not populating on escalation');
+
+        expect(screen.getByText('Drag to reorder — the top one is your focus.')).toBeInTheDocument();
+        expect(rows().map((r) => within(r).getAllByRole('button', { name: 'Reorder' }).length)).toEqual([1, 1, 1]);
+        const handle = within(rows()[0]).getByRole('button', { name: 'Reorder' });
+        expect(handle).toHaveAttribute('aria-roledescription', 'sortable');
+        const help = document.getElementById(handle.getAttribute('aria-describedby') ?? '');
+        expect(help?.textContent).toContain('press Space on its Reorder button');
+    });
+
+    it('moves the focus item down with the keyboard (Space, ↓, Space), at once, sends the midpoint and names it by its title', async () => {
+        // jsdom has no layout: give each row a box by its place in the list, so dnd-kit can measure and move.
+        const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+            const all = Array.from(document.querySelectorAll('[data-testid="plan-row"]'));
+            const i = all.indexOf(this.closest('[data-testid="plan-row"]') as Element);
+            const top = Math.max(i, 0) * 60;
+            return { x: 0, y: top, top, left: 0, bottom: top + 60, right: 600, width: 600, height: 60, toJSON: () => ({}) } as DOMRect;
+        });
+        try {
+            holdReads = true;
+            renderSection();
+            await screen.findByText('Customer data not populating on escalation');
+            const tick = () => act(async () => { await new Promise((r) => setTimeout(r, 0)); });
+
+            const handle = within(rows()[0]).getByRole('button', { name: 'Reorder' });
+            handle.focus();
+            fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+            await tick();
+            fireEvent.keyDown(handle, { key: 'ArrowDown', code: 'ArrowDown' });
+            await tick();
+            fireEvent.keyDown(handle, { key: ' ', code: 'Space' });
+
+            await waitFor(() => expect(calls('PATCH', '/me/plan/a1')).toHaveLength(1));
+            const live = Array.from(document.querySelectorAll('[aria-live]')).map((n) => n.textContent).join(' ');
+            expect(live).toContain('Dropped “Customer data not populating on escalation” at position 2 of 3.');
+            expect(JSON.parse(String(calls('PATCH', '/me/plan/a1')[0][1].body))).toEqual({ position: 2.5 });
+            await waitFor(() => expect(rowTitles()).toEqual(['Review: SLA breach warning banner', 'Customer data not populating on escalation', 'Merge ticket and issue timelines']));
+            expect(within(rows()[0]).getByText('Start here')).toBeInTheDocument();
+        } finally {
+            rect.mockRestore();
+        }
     });
 });
