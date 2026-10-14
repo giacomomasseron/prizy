@@ -75,3 +75,12 @@ describe('Today v2: the headline', () => {
         await waitFor(() => expect(screen.getByTestId('today-headline')).toHaveTextContent('Your plan is clear. Nothing else is assigned to you.'));
     });
 });
+
+describe('Today v2: the layout', () => {
+    it('puts the plan and the suggestions first, then the to-dos: the order the columns stack in at phone width', async () => {
+        renderToday();
+        await screen.findByRole('heading', { name: 'Focus time planned' });
+
+        expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Focus time planned', 'Today’s plan', 'Could also fit today', 'My to-dos']);
+    });
+});

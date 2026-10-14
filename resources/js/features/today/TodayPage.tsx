@@ -2,14 +2,16 @@ import { canDevelop } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { FocusTimeCard } from './FocusTimeCard';
 import { firstName, greetingFor, todayLabel } from './greeting';
+import { NewForYouCard } from './NewForYouCard';
 import { PlanSection } from './PlanSection';
 import { usePlan, usePlanSuggestions } from './planHooks';
 import { headline } from './planText';
+import { SuggestionsSection } from './SuggestionsSection';
 import { TodoCard } from './TodoCard';
 
 /**
- * Today (P7-B, the Today v2 design): the tracker user's home. The date, a greeting on the highlighter, the day plan
- * and the personal to-dos.
+ * Today (P7-B, the Today v2 design): the tracker user's home. The date, a greeting on the highlighter, the headline
+ * and the focus-time card; then the day plan and what could also fit, beside New for you and the personal to-dos.
  */
 export default function TodayPage() {
     const me = useMe();
@@ -35,9 +37,16 @@ export default function TodayPage() {
                 </div>
                 {plan.data && <FocusTimeCard plan={plan.data} />}
             </header>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-                <PlanSection query={plan} plan={plan.data} canDone={canDevelop(me.data)} />
-                <TodoCard />
+            {/* Two columns; at phone width they stack: plan, suggestions, New for you, to-dos. */}
+            <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                <div style={{ flex: '1 1 560px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 40 }}>
+                    <PlanSection query={plan} plan={plan.data} canDone={canDevelop(me.data)} />
+                    <SuggestionsSection query={suggestions} suggestions={suggestions.data} />
+                </div>
+                <div style={{ flex: '1 1 300px', maxWidth: 400, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 26 }}>
+                    <NewForYouCard />
+                    <TodoCard />
+                </div>
             </div>
         </div>
     );
