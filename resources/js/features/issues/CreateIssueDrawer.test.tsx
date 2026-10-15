@@ -281,11 +281,14 @@ describe('CreateIssueDrawer: Assign to me (Prizy v2)', () => {
         expect(assigned()).toBeInTheDocument();
     });
 
-    it('is not offered before you are known, and I does nothing then', () => {
+    it('is not offered before you are known, and I does nothing then', async () => {
         me = undefined;
         mount({});
         expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
         fireEvent.keyDown(screen.getByRole('button', { name: 'Status In Progress' }), { key: 'i' });
         expect(screen.getByRole('button', { name: 'Issue assignee' })).toHaveTextContent('Unassigned');
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Nobody yet' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: null })));
     });
 });
