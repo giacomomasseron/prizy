@@ -270,3 +270,69 @@ describe('AppLayout project sidebar swap', () => {
         expect(screen.getAllByRole('main')).toHaveLength(1);
     });
 });
+
+describe('Today v2: the left bar in the layout', () => {
+    beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('shows Today\'s own left bar on /today', async () => {
+        renderLayout('member', '/today');
+        expect(await screen.findByRole('navigation', { name: 'Your work' })).toBeInTheDocument();
+        expect(screen.queryByText('Support bridge')).toBeNull();
+        expect(screen.getByRole('complementary', { name: 'Sidebar' }).style.padding).toBe('18px 14px 14px');
+    });
+
+    it('keeps the global left bar off /today', async () => {
+        renderLayout('member', '/issues');
+        expect(await screen.findByText('Support bridge')).toBeInTheDocument();
+        expect(screen.queryByRole('navigation', { name: 'Your work' })).toBeNull();
+        expect(screen.getByRole('complementary', { name: 'Sidebar' }).style.padding).toBe('18px 8px 12px');
+    });
+
+    it('hides with « and comes back from the Menu » pill, and the choice is kept', async () => {
+        const user = userEvent.setup();
+        const { container } = renderLayout('member', '/today');
+        await user.click(await screen.findByRole('button', { name: 'Hide sidebar' }));
+
+        expect(screen.queryByRole('complementary', { name: 'Sidebar' })).toBeNull();
+        expect(localStorage.getItem('prizy-nav-hidden')).toBe('1');
+        expect((container.querySelector('main') as HTMLElement).style.getPropertyValue('--nav-inset')).toBe('48px');
+        const show = screen.getByRole('button', { name: 'Show sidebar' });
+        expect(show).toHaveAttribute('title', 'Show sidebar ( [ )');
+        expect(show).toHaveTextContent('PMenu »');
+        expect(screen.queryByRole('button', { name: 'Expand sidebar' })).toBeNull();
+
+        await user.click(show);
+        expect(screen.getByRole('navigation', { name: 'Your work' })).toBeInTheDocument();
+        expect(localStorage.getItem('prizy-nav-hidden')).toBe('0');
+    });
+
+    it('toggles with [ on Today, but not while typing', async () => {
+        renderLayout('member', '/today');
+        await screen.findByRole('navigation', { name: 'Your work' });
+        (document.activeElement as HTMLElement | null)?.blur();
+
+        fireEvent.keyDown(window, { key: '[' });
+        expect(screen.queryByRole('complementary', { name: 'Sidebar' })).toBeNull();
+        fireEvent.keyDown(window, { key: '[' });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+
+        const input = document.createElement('input');
+        document.body.appendChild(input);
+        input.focus();
+        fireEvent.keyDown(window, { key: '[' });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+        document.body.removeChild(input);
+
+        fireEvent.keyDown(window, { key: '[', metaKey: true });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+    });
+
+    it('leaves [ alone off Today', async () => {
+        renderLayout('member', '/issues');
+        await screen.findByText('Support bridge');
+        (document.activeElement as HTMLElement | null)?.blur();
+        fireEvent.keyDown(window, { key: '[' });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+    });
+});

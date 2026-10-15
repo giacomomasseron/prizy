@@ -29,17 +29,52 @@ test('adds a to-do that survives a reload, ticks it into Done, clears it, and de
     await expect(page.getByText(second)).toHaveCount(0);
 });
 
-test('@ in the add box offers people, and Enter inserts one', async ({ page }) => {
+test('# in the add box links an issue: its reference goes in, and the to-do opens it from a pill', async ({ page }) => {
+    const text = `E2E link ${Date.now()}`;
     await page.goto('/today');
     const box = page.getByRole('combobox', { name: 'Add a to-do' });
-    await box.fill('Ask @');
+    await expect(box).toHaveAttribute('placeholder', 'Add a to-do… type # to link an issue');
+    await box.fill(text);
 
-    const people = page.getByRole('listbox', { name: 'Mentions' }).getByRole('group', { name: 'People' });
-    await expect(people.getByRole('option').first()).toBeVisible();
+    // The # button adds the # and opens "Link an issue"; typing searches every issue.
+    await page.getByRole('button', { name: 'Link an issue' }).click();
+    await expect(box).toHaveValue(`${text} #`);
+    await box.pressSequentially('Starter');
+    const list = page.getByRole('listbox', { name: 'Link an issue' });
+    await expect(list.getByRole('option', { name: /Starter issue/ }).first()).toBeVisible();
+    await list.getByRole('option', { name: /Starter issue/ }).first().hover();
+    await box.press('Enter');
+    await expect(box).toHaveValue(new RegExp(`^${text} PRZ-[0-9A-F]{6} $`));
+    await expect(list).toHaveCount(0);
     await box.press('Enter');
 
-    await expect(box).toHaveValue(/^Ask @\S.* $/);
-    await expect(page.getByRole('listbox', { name: 'Mentions' })).toHaveCount(0);
+    const row = page.getByTestId('todo-row').filter({ hasText: text });
+    const pill = row.getByRole('link', { name: /^PRZ-[0-9A-F]{6}$/ });
+    await expect(pill).toHaveAttribute('title', /Starter issue/);
+    await pill.click();
+    await expect(page).toHaveURL(/\/issues\/[0-9a-f-]{36}$/);
+
+    await page.goto('/today');
+    await page.getByTestId('todo-row').filter({ hasText: text }).getByRole('button', { name: 'Delete to-do' }).click();
+    await expect(page.getByText(text)).toHaveCount(0);
+});
+
+test('Today has its own left bar: « or [ hides it, and Menu » brings it back', async ({ page }) => {
+    await page.goto('/today');
+    const bar = page.getByRole('complementary', { name: 'Sidebar' });
+    await expect(bar.getByRole('navigation', { name: 'Your work' }).getByRole('link', { name: /Today/ })).toHaveAttribute('aria-current', 'page');
+    await expect(bar.getByRole('navigation', { name: 'Workspace' }).getByRole('link', { name: 'Cycles' })).toBeVisible();
+    await expect(bar.getByText('Support bridge')).toHaveCount(0);
+
+    await bar.getByRole('button', { name: 'Hide sidebar' }).click();
+    await expect(bar).toHaveCount(0);
+    await page.getByRole('button', { name: 'Show sidebar' }).click();
+    await expect(bar).toBeVisible();
+
+    await page.keyboard.press('[');
+    await expect(bar).toHaveCount(0);
+    await page.keyboard.press('[');
+    await expect(bar).toBeVisible();
 });
 
 // Today v2: the day plan. The smoke owner has nothing assigned, so the test stars two new issues: starred issues are

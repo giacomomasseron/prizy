@@ -24,6 +24,17 @@ export function useProjects(filters?: { team_id?: string }, options?: { enabled?
     });
 }
 
+/**
+ * Today v2's left bar: your active projects, the ones you lead or that hold open work of yours
+ * (GET /v1/projects?filter[mine]=true, not completed or cancelled).
+ */
+export function useMyProjects() {
+    return useQuery({
+        queryKey: ['projects', { mine: true }],
+        queryFn: () => api.page<Project>('/projects?filter[mine]=true&filter[status]=planning,in_progress,paused&limit=50'),
+    });
+}
+
 export function useProject(id: string) {
     return useQuery({
         queryKey: ['project', id],
