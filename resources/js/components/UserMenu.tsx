@@ -69,9 +69,11 @@ export function UserMenu({ variant = 'full', subtitle = 'Prizy workspace' }: Use
         );
     }
 
+    // fullWidth: the account block takes the row's free width, so what follows it sits at the right edge.
     return (
         <Menu
             placement="top-start"
+            fullWidth
             trigger={
                 <button
                     type="button"

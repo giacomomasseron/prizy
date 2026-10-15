@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent, ReactNode, RefObject } from 'react';
 import type { IssueLookupItem } from '../../lib/types';
 import { useIssueLookup } from '../mentions/hooks';
@@ -49,7 +49,8 @@ export function useIssueLinkPicker({ value, onValueChange, fieldRef, starters, o
     const [active, setActive] = useState(0);
     const pendingCaret = useRef<number | null>(null);
     const listId = useId();
-    const optionId = (index: number) => `${listId}-option-${index}`;
+    // Stable, so the list's keep-in-view effect runs only when the active row moves.
+    const optionId = useCallback((index: number) => `${listId}-option-${index}`, [listId]);
 
     const q = link?.q ?? '';
     const lookup = useIssueLookup(q, link !== null);

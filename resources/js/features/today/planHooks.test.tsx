@@ -9,6 +9,7 @@ import {
     useUpdatePlanItem,
 } from './planHooks';
 import { localDayStart } from './planText';
+import { MY_PROJECTS_KEY } from '../projects/hooks';
 
 // Today v2: the plan's data — every write shows at once and is rolled back if it fails.
 function issue(id: string, title: string): PlanItem['issue'] {
@@ -184,5 +185,33 @@ describe('the day plan\'s data', () => {
         act(() => result.current.mutate(240));
 
         await waitFor(() => expect(planIn(qc).capacity_minutes).toBe(240));
+    });
+});
+
+describe('Today v2: the left bar\'s My projects follow the plan', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('refreshes your projects after an add, a remove, a Done and an Undo, but not after a move', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => json({ data: {} })));
+        const qc = seeded();
+        const spy = vi.spyOn(qc, 'invalidateQueries');
+        const refreshed = () => spy.mock.calls.filter(([f]) => JSON.stringify(f?.queryKey) === JSON.stringify(MY_PROJECTS_KEY)).length;
+
+        const move = renderHook(() => useUpdatePlanItem(), { wrapper: wrapper(qc) });
+        await act(async () => { await move.result.current.mutateAsync({ issueId: 'a1', position: 3 }); });
+        expect(refreshed()).toBe(0);
+
+        const add = renderHook(() => useAddToPlan(), { wrapper: wrapper(qc) });
+        await act(async () => { await add.result.current.mutateAsync(SUGGESTION); });
+        expect(refreshed()).toBe(1);
+        const remove = renderHook(() => useRemoveFromPlan(), { wrapper: wrapper(qc) });
+        await act(async () => { await remove.result.current.mutateAsync('s1'); });
+        expect(refreshed()).toBe(2);
+        const done = renderHook(() => useCompletePlanItem(), { wrapper: wrapper(qc) });
+        await act(async () => { await done.result.current.mutateAsync('a1'); });
+        expect(refreshed()).toBe(3);
+        const undo = renderHook(() => useUndoPlanItem(), { wrapper: wrapper(qc) });
+        await act(async () => { await undo.result.current.mutateAsync('a1'); });
+        expect(refreshed()).toBe(4);
     });
 });

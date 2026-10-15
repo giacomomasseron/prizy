@@ -297,14 +297,17 @@ describe('Today v2: the left bar in the layout', () => {
         expect(screen.queryByRole('complementary', { name: 'Sidebar' })).toBeNull();
         expect(localStorage.getItem('prizy-nav-hidden')).toBe('1');
         expect((container.querySelector('main') as HTMLElement).style.getPropertyValue('--nav-inset')).toBe('48px');
-        const show = screen.getByRole('button', { name: 'Show sidebar' });
+        // Its name holds its visible label (WCAG 2.5.3), and focus moves to it, then back to «.
+        const show = screen.getByRole('button', { name: 'Menu, show sidebar' });
         expect(show).toHaveAttribute('title', 'Show sidebar ( [ )');
         expect(show).toHaveTextContent('PMenu »');
+        expect(show).toHaveFocus();
         expect(screen.queryByRole('button', { name: 'Expand sidebar' })).toBeNull();
 
         await user.click(show);
         expect(screen.getByRole('navigation', { name: 'Your work' })).toBeInTheDocument();
         expect(localStorage.getItem('prizy-nav-hidden')).toBe('0');
+        expect(screen.getByRole('button', { name: 'Hide sidebar' })).toHaveFocus();
     });
 
     it('toggles with [ on Today, but not while typing', async () => {
@@ -325,6 +328,28 @@ describe('Today v2: the left bar in the layout', () => {
         document.body.removeChild(input);
 
         fireEvent.keyDown(window, { key: '[', metaKey: true });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+
+        // A held key repeats: only the first press toggles.
+        fireEvent.keyDown(window, { key: '[', repeat: true });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+
+        const editable = document.createElement('div');
+        editable.setAttribute('contenteditable', '');
+        editable.tabIndex = 0;
+        document.body.appendChild(editable);
+        editable.focus();
+        fireEvent.keyDown(window, { key: '[' });
+        expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
+        document.body.removeChild(editable);
+    });
+
+    it('leaves [ to an open drawer on Today', async () => {
+        renderLayout('member', '/today?create=1');
+        await screen.findByRole('navigation', { name: 'Your work' });
+        expect(await screen.findByLabelText(/Issue title/i)).toBeInTheDocument();
+        (document.activeElement as HTMLElement | null)?.blur();
+        fireEvent.keyDown(window, { key: '[' });
         expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();
     });
 

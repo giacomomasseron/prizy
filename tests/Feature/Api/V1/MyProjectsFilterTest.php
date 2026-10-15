@@ -74,23 +74,46 @@ it('lists the projects you lead or that hold an open issue assigned to you or on
     expect(myProjectsNames($res))->toBe(['Assigned', 'Led', 'Planned']);
 });
 
-it('combines with the status filter', function (): void {
-    ['token' => $token, 'user' => $user, 'project' => $project] = myProjectsWorld();
+it('combines with the status filter: neither can widen the other', function (): void {
+    ['token' => $token, 'user' => $user, 'other' => $other, 'project' => $project, 'issue' => $issue] = myProjectsWorld();
 
     $project('Active', ['lead_id' => $user->id, 'status' => 'in_progress']);
     $project('Finished', ['lead_id' => $user->id, 'status' => 'completed']);
+    // Yours only through an open issue: the status filter must still keep it out.
+    $issue($project('Finished with work', ['status' => 'completed']), ['assignee_id' => $user->id]);
+    // Active but not yours: mine must still keep it out.
+    $project('Active, theirs', ['lead_id' => $other->id, 'status' => 'in_progress']);
 
     $res = $this->withToken($token)->getJson('/v1/projects?filter[mine]=true&filter[status]=planning,in_progress,paused')->assertStatus(200);
 
     expect(myProjectsNames($res))->toBe(['Active']);
 });
 
-it('leaves the list whole without mine=true', function (): void {
+it('reads mine as a boolean, and leaves the list whole without it', function (): void {
     ['token' => $token, 'user' => $user, 'other' => $other, 'project' => $project] = myProjectsWorld();
 
     $project('Mine', ['lead_id' => $user->id]);
     $project('Theirs', ['lead_id' => $other->id]);
 
+    expect(myProjectsNames($this->withToken($token)->getJson('/v1/projects?filter[mine]=1')))->toBe(['Mine']);
     expect(myProjectsNames($this->withToken($token)->getJson('/v1/projects')))->toBe(['Mine', 'Theirs']);
     expect(myProjectsNames($this->withToken($token)->getJson('/v1/projects?filter[mine]=false')))->toBe(['Mine', 'Theirs']);
+});
+
+it('keeps the filters on the next page link', function (): void {
+    ['token' => $token, 'user' => $user, 'other' => $other, 'project' => $project] = myProjectsWorld();
+
+    // Theirs sits between yours: an unfiltered second page would start with it.
+    $project('First', ['lead_id' => $user->id, 'created_at' => now()->subMinutes(3)]);
+    $project('Theirs', ['lead_id' => $other->id, 'created_at' => now()->subMinutes(2)]);
+    $project('Second', ['lead_id' => $user->id, 'created_at' => now()->subMinute()]);
+
+    $first = $this->withToken($token)->getJson('/v1/projects?filter[mine]=true&limit=1')->assertStatus(200);
+    expect(myProjectsNames($first))->toBe(['First']);
+    $next = (string) $first->json('links.next');
+    parse_str((string) parse_url($next, PHP_URL_QUERY), $nextParams);
+    expect($nextParams['filter']['mine'] ?? null)->toBe('true');
+
+    $second = $this->withToken($token)->getJson(parse_url($next, PHP_URL_PATH).'?'.parse_url($next, PHP_URL_QUERY))->assertStatus(200);
+    expect(myProjectsNames($second))->toBe(['Second']);
 });

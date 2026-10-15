@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { canDevelop as canDevelopFor } from '../../auth/capabilities';
+import { canDevelop as canDevelopFor, canUseTracker } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { BrandMark } from '../../components/ui/BrandMark';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
@@ -20,18 +20,19 @@ const ROW_HOVER = 'text-fg2 hover:bg-hover hover:text-fg';
 const LABEL: CSSProperties = { padding: '20px 12px 6px', fontSize: 12.5, fontWeight: 700, color: 'var(--fg3)' };
 const RED_BADGE: CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--on-accent)', background: 'var(--red)', borderRadius: 'var(--radius-pill)', padding: '0 7px' };
 
+/** The « button's id: AppLayout puts the focus back on it when the Menu pill brings the bar back. */
+export const HIDE_ID = 'today-sidebar-hide';
+
 interface MyProject { id: string; name: string; color: string; today: number }
 
-/** Your projects and those on today's plan, by name, each with how many of today's issues are in it. */
+/**
+ * Your projects as the server lists them (active ones, plan included: plan writes refresh the list), by name, each with
+ * how many of today's issues are in it.
+ */
 function myProjects(projects: Project[], plan: PlanItem[]): MyProject[] {
-    const byId = new Map<string, MyProject>();
-    for (const p of projects) byId.set(p.id, { id: p.id, name: p.name, color: p.color, today: 0 });
-    for (const { issue } of plan) {
-        if (!issue.project) continue;
-        const row = byId.get(issue.project.id) ?? { ...issue.project, today: 0 };
-        byId.set(row.id, { ...row, today: row.today + 1 });
-    }
-    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+    return projects
+        .map((p) => ({ id: p.id, name: p.name, color: p.color, today: plan.filter(({ issue }) => issue.project?.id === p.id).length }))
+        .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
@@ -42,10 +43,12 @@ function myProjects(projects: Project[], plan: PlanItem[]): MyProject[] {
 export function TodaySidebar({ onHide }: { onHide: () => void }) {
     const me = useMe();
     const canDevelop = canDevelopFor(me.data);
+    // AppLayout mounts the bar before RequireDeveloper redirects a non-tracker user: ask for nothing tracker-only.
+    const tracker = canUseTracker(me.data);
     const { openCreate } = useIssueDrawers();
-    const plan = usePlan();
+    const plan = usePlan(tracker);
     const unread = useUnreadCount();
-    const projects = useMyProjects();
+    const projects = useMyProjects({ enabled: tracker });
     const teams = useTeams({ mine: true });
 
     const items = plan.data?.items ?? [];
@@ -60,6 +63,7 @@ export function TodaySidebar({ onHide }: { onHide: () => void }) {
                 <span style={{ fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 21, letterSpacing: '-.03em' }}>Prizy</span>
                 <button
                     type="button"
+                    id={HIDE_ID}
                     aria-label="Hide sidebar"
                     title="Hide sidebar ( [ )"
                     onClick={onHide}

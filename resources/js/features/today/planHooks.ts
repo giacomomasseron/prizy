@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { DayPlan, PlanItem, PlanSuggestion } from '../../lib/types';
+import { MY_PROJECTS_KEY } from '../projects/hooks';
 import { localDayStart } from './planText';
 
 /** The day plan's cache key; the suggestions sit under it, so invalidating the plan refreshes both. */
@@ -31,7 +32,7 @@ function usePlanMutation<V>(
     request: (vars: V) => Promise<unknown>,
     apply: (caches: Caches, vars: V) => Caches,
     onFailed?: (vars: V) => void,
-    invalidate: readonly (readonly string[])[] = [],
+    invalidate: readonly QueryKey[] = [],
 ) {
     const qc = useQueryClient();
     return useMutation({
@@ -84,6 +85,7 @@ export function useAddToPlan(onFailed?: (suggestion: PlanSuggestion) => void) {
             suggestions: suggestions?.filter((x) => x.issue.id !== s.issue.id),
         }),
         onFailed,
+        [MY_PROJECTS_KEY],
     );
 }
 
@@ -114,6 +116,7 @@ export function useRemoveFromPlan(onFailed?: () => void) {
         (issueId: string) => api.del(`/me/plan/${issueId}`),
         ({ plan }, issueId) => ({ plan: plan && { ...plan, items: plan.items.filter((i) => i.issue.id !== issueId) } }),
         onFailed,
+        [MY_PROJECTS_KEY],
     );
 }
 
@@ -133,7 +136,7 @@ export function useCompletePlanItem(onFailed?: () => void) {
             };
         },
         onFailed,
-        [['issues'], ['issue']],
+        [['issues'], ['issue'], MY_PROJECTS_KEY],
     );
 }
 
@@ -153,7 +156,7 @@ export function useUndoPlanItem(onFailed?: () => void) {
             };
         },
         onFailed,
-        [['issues'], ['issue']],
+        [['issues'], ['issue'], MY_PROJECTS_KEY],
     );
 }
 

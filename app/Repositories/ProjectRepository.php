@@ -52,18 +52,18 @@ final class ProjectRepository
 
         // mine=true (Today v2's left bar): the projects the caller leads, or that hold an open issue assigned to them
         // or on their day plan. Without a caller, nothing.
-        if (($filters['mine'] ?? null) === 'true') {
+        if (filter_var($filters['mine'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
             if ($mineFor === null) {
                 $query->whereRaw('1 = 0');
             } else {
                 $query->where(function (Builder $mine) use ($mineFor): void {
-                    $mine->where('lead_id', $mineFor)
+                    $mine->where('projects.lead_id', $mineFor)
                         ->orWhereHas('issues', fn (Builder $issue) => $issue
-                            ->whereNotIn('status', ['done', 'cancelled'])
-                            ->whereNull('archived_at')
+                            ->whereNotIn('issues.status', ['done', 'cancelled'])
+                            ->whereNull('issues.archived_at')
                             ->where(fn (Builder $who) => $who
-                                ->where('assignee_id', $mineFor)
-                                ->orWhereIn('id', function ($sub) use ($mineFor): void {
+                                ->where('issues.assignee_id', $mineFor)
+                                ->orWhereIn('issues.id', function ($sub) use ($mineFor): void {
                                     $sub->select('issue_id')->from('user_plan_items')->where('user_id', $mineFor);
                                 })));
                 });
@@ -74,7 +74,7 @@ final class ProjectRepository
             ->withCount(['issues as done_count' => fn ($q) => $q->where('status', 'done')])
             ->with('lead');
 
-        return $query->orderBy('created_at')->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after');
+        return $query->orderBy('created_at')->orderBy('id')->cursorPaginate(perPage: $limit, cursorName: 'after')->withQueryString();
     }
 
     /** @return Collection<int, Project> */

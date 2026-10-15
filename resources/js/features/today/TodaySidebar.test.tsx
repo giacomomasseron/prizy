@@ -81,10 +81,12 @@ describe('Today v2: the left bar', () => {
         expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
     });
 
-    it('offers + New issue only to those who can create issues', async () => {
+    it('offers + New issue only to those who can create issues, and asks a non-tracker user for no plan or projects', async () => {
         renderSidebar({ developer: false });
         await screen.findByText('Alex Rivera');
         expect(screen.queryByRole('button', { name: '+ New issue' })).toBeNull();
+        await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/teams'))).toBe(true));
+        expect(fetchMock.mock.calls.filter(([u]) => /\/me\/plan|\/projects/.test(String(u)))).toEqual([]);
     });
 
     it('lists Today (current, with the plan count), My issues, Inbox and a disabled Escalations', async () => {
@@ -136,26 +138,36 @@ describe('Today v2: the left bar', () => {
         expect(screen.getByRole('link', { name: 'Cycles' })).toHaveAttribute('href', '/teams');
     });
 
-    it('lists My projects by name with their initial, from your projects and today\'s plan, each with its count on today\'s plan', async () => {
+    it('lists My projects by name with their initial, each with its count on today\'s plan', async () => {
         const engine = { id: 'p2', name: 'Escalation Engine', color: '#b06ae0' };
         renderSidebar({
             projects: [project('p1', 'Unified Inbox'), project('p2', 'Escalation Engine', '#b06ae0')],
-            items: [planned('a', engine), planned('b', engine), planned('c', { id: 'p3', name: 'SLA & Metrics', color: '#3a9a68' }), planned('d', null)],
+            items: [planned('a', engine), planned('b', engine), planned('d', null)],
         });
 
         const nav = within(await screen.findByRole('navigation', { name: 'My projects' }));
-        await waitFor(() => expect(nav.getAllByRole('link')).toHaveLength(3));
+        await waitFor(() => expect(nav.getAllByRole('link')).toHaveLength(2));
+        await waitFor(() => expect(nav.getAllByRole('link')[0]).toHaveTextContent('Escalation Engine2 on today’s plan'));
         const links = nav.getAllByRole('link');
-        expect(links.map((l) => l.getAttribute('href'))).toEqual(['/projects/p2', '/projects/p3', '/projects/p1']);
-        expect(links[0]).toHaveTextContent('Escalation Engine2 on today’s plan');
-        expect(links[1]).toHaveTextContent('SLA & Metrics1 on today’s plan');
-        expect(links[2]).toHaveTextContent(/^UUnified Inbox$/);
+        expect(links.map((l) => l.getAttribute('href'))).toEqual(['/projects/p2', '/projects/p1']);
+        expect(links[1]).toHaveTextContent(/^UUnified Inbox$/);
         const badge = links[0].querySelector('[aria-hidden="true"]') as HTMLElement;
         expect(badge).toHaveTextContent('E');
         expect(badge.style.borderRadius).toBe('7px');
         expect(badge.style.background).toBe('rgb(176, 106, 224)');
         expect(within(links[0]).getByTitle('On today’s plan')).toHaveTextContent('2');
         expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/projects?filter[mine]=true&filter[status]=planning,in_progress,paused'))).toBe(true);
+    });
+
+    it('lists only the projects the server calls yours: a plan item\'s project it left out (a finished one) stays out', async () => {
+        renderSidebar({
+            projects: [project('p1', 'Unified Inbox')],
+            items: [planned('c', { id: 'p3', name: 'Shipped project', color: '#3a9a68' })],
+        });
+
+        const nav = within(await screen.findByRole('navigation', { name: 'My projects' }));
+        await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/me/plan'))).toBe(true));
+        expect(nav.getAllByRole('link').map((l) => l.textContent)).toEqual(['UUnified Inbox']);
     });
 
     it('leaves My projects out when you have none', async () => {
@@ -172,6 +184,8 @@ describe('Today v2: the left bar', () => {
         expect(await screen.findByText('Alex Rivera')).toBeInTheDocument();
         expect(await screen.findByText('Platform team')).toBeInTheDocument();
 
+        // The account block takes the free width, so the toggle sits at the right edge and a long name ellipsizes.
+        expect(screen.getByTestId('user-menu-trigger').parentElement).toHaveStyle({ display: 'block', minWidth: '0px' });
         await user.click(screen.getByTestId('user-menu-trigger'));
         expect(screen.getByRole('menuitem', { name: 'Settings' })).toBeInTheDocument();
         expect(screen.getByRole('menuitem', { name: 'Logout' })).toBeInTheDocument();
