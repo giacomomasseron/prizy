@@ -31,6 +31,11 @@ export interface MenuProps {
     popoverStyle?: React.CSSProperties;
     /** Merged over each item's type and spacing. */
     itemStyle?: React.CSSProperties;
+    /**
+     * Place the popover against the nearest positioned ancestor instead of the trigger's wrapper: for a row that holds
+     * more than the trigger (an Assign to me button beside it), so the popover spans the whole row.
+     */
+    anchorToParent?: boolean;
 }
 
 // Where the popover sits relative to the trigger. `*-end` right-aligns the
@@ -45,7 +50,7 @@ const ITEM_ROLE = { single: 'menuitemradio', multi: 'menuitemcheckbox' } as cons
 
 export function Menu({
     trigger, items, placement = 'bottom-start', searchable = false, searchPlaceholder = 'Search…', fullWidth = false,
-    selection, popoverStyle: popoverOverride, itemStyle,
+    selection, popoverStyle: popoverOverride, itemStyle, anchorToParent = false,
 }: MenuProps) {
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
@@ -156,7 +161,7 @@ export function Menu({
     }
 
     return (
-        <div ref={containerRef} style={fullWidth ? { position: 'relative', display: 'block', flex: 1, minWidth: 0 } : { position: 'relative', display: 'inline-block' }}>
+        <div ref={containerRef} style={{ position: anchorToParent ? 'static' : 'relative', ...(fullWidth ? { display: 'block', flex: 1, minWidth: 0 } : { display: 'inline-block' }) }}>
             {triggerWithClick}
             {open && (
                 <div ref={menuRef} role="menu" style={popoverStyle} onKeyDown={onMenuKeyDown}>

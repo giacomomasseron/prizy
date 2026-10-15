@@ -15,6 +15,10 @@ vi.mock('../members/hooks', () => ({
     useMembers: () => ({ data: [{ id: 'm1', name: 'Alice' }, { id: 'm2', name: 'Bob Jones' }] }),
 }));
 
+// Signed in as Bob Jones.
+let me: { id: string; name: string } | undefined = { id: 'm2', name: 'Bob Jones' };
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: me }) }));
+
 const baseIssue: Issue = {
     id: 'abc123',
     title: 'Test Issue',
@@ -46,6 +50,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
 describe('AssigneeEditor', () => {
     beforeEach(() => {
         vi.mocked(hooks.useAssignIssue).mockReturnValue({ mutateAsync: vi.fn() } as any);
+        me = { id: 'm2', name: 'Bob Jones' };
     });
 
     it('developer: shows Edit assignee button', () => {
@@ -106,5 +111,48 @@ describe('AssigneeEditor', () => {
     it('shows Unassigned when no assignee is set', () => {
         render(<AssigneeEditor issue={baseIssue} canDevelop={false} />, { wrapper });
         expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    });
+});
+
+describe('AssigneeEditor: Assign to me (Issue v2)', () => {
+    beforeEach(() => { me = { id: 'm2', name: 'Bob Jones' }; });
+
+    it('a button beside the assignee assigns you, and focus waits on the assignee', async () => {
+        const assignMock = vi.fn().mockResolvedValue({});
+        vi.mocked(hooks.useAssignIssue).mockReturnValue({ mutateAsync: assignMock } as any);
+        const user = userEvent.setup();
+        render(<div data-testid="row"><AssigneeEditor issue={{ ...baseIssue, assignee_id: 'm1', assignee: { id: 'm1', name: 'Alice' } }} canDevelop /></div>, { wrapper });
+
+        const trigger = screen.getByRole('button', { name: /Edit assignee/i });
+        const quick = screen.getByRole('button', { name: 'Assign to me' });
+        // Beside the editor in the property row, 6px from the panel's edge (the row pads 12px).
+        expect(trigger.contains(quick)).toBe(false);
+        expect(quick.parentElement).toBe(screen.getByTestId('row'));
+        expect(quick.style.marginRight).toBe('-6px');
+        expect(quick.className).toContain('hover:bg-hi');
+
+        await user.click(quick);
+        expect(assignMock.mock.calls).toEqual([['m2']]);
+        expect(trigger).toHaveFocus();
+    });
+
+    it('shows on an unassigned issue too', () => {
+        render(<AssigneeEditor issue={baseIssue} canDevelop />, { wrapper });
+        expect(screen.getByRole('button', { name: 'Assign to me' })).toBeInTheDocument();
+    });
+
+    it('is not offered when the issue is yours, to a viewer, or before you are known', () => {
+        const mine: Issue = { ...baseIssue, assignee_id: 'm2', assignee: { id: 'm2', name: 'Bob Jones' } };
+        const { unmount } = render(<AssigneeEditor issue={mine} canDevelop />, { wrapper });
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        unmount();
+
+        const viewer = render(<AssigneeEditor issue={baseIssue} canDevelop={false} />, { wrapper });
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        viewer.unmount();
+
+        me = undefined;
+        render(<AssigneeEditor issue={baseIssue} canDevelop />, { wrapper });
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
     });
 });

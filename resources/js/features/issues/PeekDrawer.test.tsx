@@ -296,8 +296,10 @@ describe('Prizy v2: the drawer\'s fields are editable', () => {
         const box = within(screen.getByRole('group', { name: 'Properties' }));
         // Named "label value" (the avatar's initials are hidden), in the mockup's order plus Release.
         const names = ['Status In Progress', 'Priority Urgent', 'Assignee Maya Chen', 'Project No project', 'Release No release', 'Labels Add labels', 'Cycle No cycle'];
-        expect(box.getAllByRole('button')).toEqual(names.map((name) => box.getByRole('button', { name })));
-        for (const row of box.getAllByRole('button')) expect(row.lastElementChild).toHaveTextContent('▾');
+        const rows = names.map((name) => box.getByRole('button', { name }));
+        // The issue is Maya's, so Assign to me sits beside the Assignee row.
+        expect(box.getAllByRole('button')).toEqual([...rows.slice(0, 3), box.getByRole('button', { name: 'Assign to me' }), ...rows.slice(3)]);
+        for (const row of rows) expect(row.lastElementChild).toHaveTextContent('▾');
         const status = screen.getByRole('button', { name: 'Status In Progress' });
         expect(status).toHaveAttribute('aria-haspopup', 'menu');
         expect(status.className).toContain('hover:bg-hover');
@@ -335,6 +337,51 @@ describe('Prizy v2: the drawer\'s fields are editable', () => {
         expect(screen.getByRole('menuitemradio', { name: 'Maya Chen' })).toHaveAttribute('aria-checked', 'true');
         await userEvent.click(screen.getByRole('menuitemradio', { name: 'Unassigned' }));
         expect(assignMutate.mock.calls[0][0]).toBeNull();
+    });
+
+    it('Assign to me: a button beside the Assignee row assigns you, and focus waits on the row', async () => {
+        open();
+        const row = screen.getByRole('button', { name: 'Assignee Maya Chen' });
+        const quick = screen.getByRole('button', { name: 'Assign to me' });
+        // Beside the row's menu button, not inside it; hover colours live in classes.
+        expect(row.contains(quick)).toBe(false);
+        expect(quick.parentElement).toBe(row.parentElement!.parentElement);
+        expect(quick).toHaveAttribute('title', 'Assign to me');
+        expect(quick.className.split(' ')).toEqual(expect.arrayContaining(['bg-panel', 'border-border2', 'text-fg2', 'hover:bg-hi', 'hover:border-fg', 'hover:text-on-hi']));
+        expect(quick.style.background).toBe('');
+        expect(quick.style.marginRight).toBe('6px');
+
+        await userEvent.click(quick);
+        expect(assignMutate.mock.calls).toEqual([['u1']]);
+        // The button goes once the issue is yours, so focus moves to the row rather than the page.
+        expect(row).toHaveFocus();
+    });
+
+    it('Assign to me shows on an unassigned issue, and not on yours', () => {
+        overrideIssue = { ...issue, assignee_id: null, assignee: null } as unknown as typeof issue;
+        const { unmount } = render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByRole('button', { name: 'Assign to me' })).toBeInTheDocument();
+        unmount();
+
+        overrideIssue = { ...issue, assignee_id: 'u1', assignee: { id: 'u1', name: 'Alex Rivera' } };
+        open();
+        expect(screen.getByRole('button', { name: 'Assignee Alex Rivera' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+    });
+
+    it('Assign to me closes an open Assignee menu, which still spans the row; a failure says so', async () => {
+        assignMutate.mockRejectedValue(new Error('boom'));
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Assignee Maya Chen' }));
+        // The menu lines up with the whole row, Assign to me included.
+        const menu = screen.getByRole('menu');
+        expect((menu.parentElement as HTMLElement).style.position).toBe('static');
+        expect((menu.parentElement!.parentElement as HTMLElement).style.position).toBe('relative');
+        expect(menu.style.right).toBe('6px');
+
+        await userEvent.click(screen.getByRole('button', { name: 'Assign to me' }));
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(await screen.findByRole('alert')).toHaveTextContent('Update failed.');
     });
 
     it('Project: the projects with their colour, then No project (checked when there is none)', async () => {
