@@ -126,7 +126,9 @@ export function useTransitionStatus() {
         onSuccess: (data, vars) => {
             // Update the detail cache with the authoritative server response so the
             // detail page never has to re-fetch (avoids a transient isLoading flash).
-            if (data) qc.setQueryData<Issue>(['issue', vars.id], data);
+            // The reply carries the issue's own columns but not its assignee, project,
+            // cycle, release or ticket: merge it over what the cache has, or those vanish.
+            if (data) qc.setQueryData<Issue>(['issue', vars.id], (prev) => (prev ? { ...prev, ...data } : data));
         },
         onSettled: (_data, _err, vars) => {
             // Invalidate list/board queries so they stay in sync.
@@ -243,9 +245,24 @@ export function useSetIssueLabels(issueId: string) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (labelIds: string[]) => api.put<Label[]>(`/issues/${issueId}/labels`, { label_ids: labelIds }),
-        onSuccess: () => {
+        // Show the new set at once: a menu that stays open builds its next pick on it.
+        onMutate: async (labelIds) => {
+            const key = ['issue', issueId, 'labels'];
+            await qc.cancelQueries({ queryKey: key });
+            const prev = qc.getQueryData<{ items: Label[]; next: string | null }>(key);
+            const known = new Map([...(qc.getQueryData<{ items: Label[] }>(['labels'])?.items ?? []), ...(prev?.items ?? [])].map((l) => [l.id, l]));
+            const items = labelIds.flatMap((id) => known.get(id) ?? []);
+            if (items.length === labelIds.length) qc.setQueryData(key, { next: null, ...prev, items });
+            return { prev };
+        },
+        onError: (_err, _ids, ctx) => {
+            if (ctx?.prev) qc.setQueryData(['issue', issueId, 'labels'], ctx.prev);
+        },
+        onSettled: () => {
             qc.invalidateQueries({ queryKey: ['issue', issueId, 'labels'] });
             qc.invalidateQueries({ queryKey: ['issue', issueId, 'activities'] });
+            // List rows and board cards show each issue's labels.
+            qc.invalidateQueries({ queryKey: ['issues'] });
         },
     });
 }
