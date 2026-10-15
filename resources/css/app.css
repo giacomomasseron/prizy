@@ -26,7 +26,7 @@
   --color-teal-ink: var(--teal-ink);   --color-accent-ink: var(--accent-ink);
   --color-sup-ink: var(--sup-ink);     --color-note-ink: var(--note-ink);
   --color-field: var(--field);
-  --color-sticky-field: var(--sticky-field); --color-sticky-hover: var(--sticky-hover);
+  --color-sticky-field: var(--sticky-field); --color-sticky-hover: var(--sticky-hover); --color-sticky-pop: var(--sticky-pop);
 }
 
 /* One keyboard focus ring app-wide (v2 ink). It lives in the base layer (after Tailwind's preflight), so a

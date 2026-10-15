@@ -1,4 +1,4 @@
-import type { PlanItem } from '../../lib/types';
+import type { IssueLookupItem, PlanItem, PlanSuggestion } from '../../lib/types';
 
 /**
  * The caller's local midnight with its offset (2026-10-14T00:00:00+02:00): the server reads the local day from it, so
@@ -60,4 +60,14 @@ export function projectSplit(items: PlanItem[]): { project: NonNullable<PlanItem
         split.set(project.id, entry);
     }
     return [...split.values()];
+}
+
+/** What the to-dos' # list offers before anything is typed: the plan in order, then the suggestions, each issue once. */
+export function linkStarters(plan: PlanItem[], suggestions: PlanSuggestion[]): IssueLookupItem[] {
+    const seen = new Set<string>();
+    return [...plan, ...suggestions].flatMap(({ issue }) => {
+        if (seen.has(issue.id)) return [];
+        seen.add(issue.id);
+        return [{ id: issue.id, identifier: issue.identifier, title: issue.title, status: issue.status }];
+    });
 }

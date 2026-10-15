@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { PlanItem, PlanSuggestion } from '../../lib/types';
@@ -82,5 +82,27 @@ describe('Today v2: the layout', () => {
         await screen.findByRole('heading', { name: 'Focus time planned' });
 
         expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Focus time planned', 'Today’s plan', 'Could also fit today', 'My to-dos']);
+    });
+});
+
+describe('Today v2: the page', () => {
+    it('offers today\'s plan, then the suggestions, when # opens the to-dos\' issue list', async () => {
+        const planned = { issue: issue('a1', 'Planned first'), minutes: 60, position: 1, tag: null, reason: null, can_undo: false };
+        renderToday([planned], [{ issue: issue('b2', 'Could fit'), minutes: 60, tag: null, reason: 'Assigned to you.' }]);
+        await screen.findByText('Planned first');
+        await screen.findByText('Could fit');
+
+        fireEvent.change(screen.getByRole('combobox', { name: 'Add a to-do' }), { target: { value: '#' } });
+
+        const options = within(screen.getByRole('listbox', { name: 'Link an issue' })).getAllByRole('option');
+        expect(options.map((o) => o.textContent)).toEqual(['PRZ-A1Planned first', 'PRZ-B2Could fit']);
+    });
+
+    it('fills the width, and its top clears the Menu button while the sidebar is hidden', async () => {
+        const { container } = renderToday();
+        await screen.findByRole('heading', { name: 'Focus time planned' });
+        const page = container.firstElementChild as HTMLElement;
+        expect(page.style.maxWidth).toBe('');
+        expect(page.style.paddingTop).toBe('calc(44px + var(--nav-inset, 0px))');
     });
 });

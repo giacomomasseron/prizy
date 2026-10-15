@@ -60,9 +60,9 @@ function stubApi() {
     vi.stubGlobal('fetch', fetchMock);
 }
 
-function renderCard() {
+function renderCard(starters: Parameters<typeof TodoCard>[0]['starters'] = []) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    return render(<QueryClientProvider client={qc}><MemoryRouter><TodoCard /></MemoryRouter></QueryClientProvider>);
+    return render(<QueryClientProvider client={qc}><MemoryRouter><TodoCard starters={starters} /></MemoryRouter></QueryClientProvider>);
 }
 
 function calls(method: string, path: string) {
@@ -144,14 +144,14 @@ describe('P7-B: the My to-dos card', () => {
         expect(JSON.parse(String(calls('POST', '/me/todos')[0][1].body))).toEqual({ text: 'Reply to Maya', issue_id: null });
     });
 
-    it('links an issue picked with @: its reference goes in the text and the to-do opens it from a pill', async () => {
+    it('links an issue picked with #: its reference goes in the text and the to-do opens it from a pill', async () => {
         renderCard();
         await screen.findByText('Book 1:1 with Priya');
         const box = screen.getByRole('combobox', { name: 'Add a to-do' });
 
-        fireEvent.change(box, { target: { value: 'Reply about @fix' } });
+        fireEvent.change(box, { target: { value: 'Reply about #fix' } });
         await screen.findByRole('option', { name: /Fix login/ });
-        fireEvent.keyDown(box, { key: 'Enter' }); // picks the issue (People has no "fix")
+        fireEvent.keyDown(box, { key: 'Enter' }); // picks the issue
         expect(box).toHaveValue('Reply about PRZ-ABC120 ');
         fireEvent.keyDown(box, { key: 'Enter' }); // adds the to-do
 
@@ -165,7 +165,7 @@ describe('P7-B: the My to-dos card', () => {
         await screen.findByText('Book 1:1 with Priya');
         const box = screen.getByRole('combobox', { name: 'Add a to-do' });
 
-        fireEvent.change(box, { target: { value: '@fix' } });
+        fireEvent.change(box, { target: { value: '#fix' } });
         await screen.findByRole('option', { name: /Fix login/ });
         fireEvent.keyDown(box, { key: 'Enter' });
         fireEvent.change(box, { target: { value: 'Never mind' } });
@@ -218,10 +218,13 @@ describe('P7-B: the My to-dos card', () => {
         await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Book 1:1 with Priya' })).not.toBeChecked());
     });
 
-    it('shows a member mention in bold', async () => {
-        server = [todo('t1', 'Ping @Maya Chen', 1)];
+    it('shows a to-do\'s text as typed, with its linked reference as a pill after it', async () => {
+        server = [todo('t1', 'Ping @Maya Chen on PRZ-ABC120', 1, { issue: ISSUE })];
         renderCard();
-        expect((await screen.findByText('@Maya Chen')).tagName).toBe('STRONG');
+        const row = (await screen.findAllByTestId('todo-row'))[0];
+        expect(row.querySelector('[id^="todo-"]')?.textContent).toBe('Ping @Maya Chen on PRZ-ABC120 PRZ-ABC120');
+        expect(within(row).getByRole('link', { name: 'PRZ-ABC120' })).toHaveAttribute('href', '/issues/i0');
+        expect(row.querySelector('strong')).toBeNull();
     });
 
     it('offers Retry when the list cannot load', async () => {
@@ -365,7 +368,7 @@ describe('P7-B: the card, final review fixes', () => {
         await screen.findByText('Book 1:1 with Priya');
         const box = screen.getByRole('combobox', { name: 'Add a to-do' });
 
-        fireEvent.change(box, { target: { value: 'Review @fix' } });
+        fireEvent.change(box, { target: { value: 'Review #fix' } });
         fireEvent.keyDown(box, { key: 'Enter' }); // nothing listed yet (the lookup is on its way): Enter adds
         await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
         // Let the debounce, the lookup and the renders run: React renders between act turns, not inside one long one.
@@ -373,7 +376,7 @@ describe('P7-B: the card, final review fixes', () => {
 
         expect(box).toHaveValue('');
         expect(screen.queryByRole('listbox')).toBeNull();
-        expect(screen.queryByText(/No people or issues match/)).toBeNull(); // (dnd-kit keeps its own role=status live region)
+        expect(screen.queryByText(/No issues match/)).toBeNull(); // (dnd-kit keeps its own role=status live region)
     });
 
     it('does not add while an input method is composing', async () => {
@@ -392,5 +395,53 @@ describe('P7-B: the card, final review fixes', () => {
     it('draws the checkbox\'s own focus ring in the note\'s ink', () => {
         const css = readFileSync(resolve(__dirname, '../../../css/app.css'), 'utf8');
         expect(css).toMatch(/\.todo-check:focus-visible \{ outline: 2px solid var\(--on-hi\); outline-offset: 2px; \}/);
+    });
+});
+
+describe('Today v2: linking an issue with #', () => {
+    const PLANNED = { id: 'p1', identifier: 'PRZ-PLAN01', title: 'Customer data on escalation', status: 'in_progress' as const };
+
+    it('says how in the placeholder, and @ opens nothing', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+        expect(box).toHaveAttribute('placeholder', 'Add a to-do… type # to link an issue');
+
+        fireEvent.change(box, { target: { value: 'Ask @' } });
+        await act(async () => { await new Promise((r) => setTimeout(r, 20)); });
+        expect(screen.queryByRole('listbox')).toBeNull();
+        expect(screen.queryByText('Link an issue')).toBeNull();
+    });
+
+    it('opens "Link an issue" with today\'s issues from the # button, and links the one picked', async () => {
+        renderCard([PLANNED]);
+        await screen.findByText('Book 1:1 with Priya');
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+        fireEvent.change(box, { target: { value: 'Check' } });
+
+        const hash = screen.getByRole('button', { name: 'Link an issue' });
+        expect(hash).toHaveTextContent('#');
+        fireEvent.mouseDown(hash);
+        fireEvent.click(hash);
+
+        expect(box).toHaveValue('Check #');
+        const option = within(screen.getByRole('listbox', { name: 'Link an issue' })).getByRole('option');
+        expect(option).toHaveTextContent('PRZ-PLAN01');
+        expect(option).toHaveTextContent('Customer data on escalation');
+        fireEvent.keyDown(box, { key: 'Enter' });
+        expect(box).toHaveValue('Check PRZ-PLAN01 ');
+        fireEvent.keyDown(box, { key: 'Enter' });
+
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        expect(JSON.parse(String(calls('POST', '/me/todos')[0][1].body))).toEqual({ text: 'Check PRZ-PLAN01', issue_id: 'p1' });
+    });
+
+    it('keeps the focus in the box when the # button is pressed', async () => {
+        renderCard([PLANNED]);
+        await screen.findByText('Book 1:1 with Priya');
+        const hash = screen.getByRole('button', { name: 'Link an issue' });
+        const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+        hash.dispatchEvent(down);
+        expect(down.defaultPrevented).toBe(true);
     });
 });

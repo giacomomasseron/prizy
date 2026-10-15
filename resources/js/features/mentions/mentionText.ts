@@ -24,6 +24,16 @@ export function detectMention(text: string, caret: number): MentionQuery | null 
 }
 
 /**
+ * The issue link the caret is in, if any (Today v2, My to-dos): a `#` at the start of the text or after whitespace,
+ * then letters, digits, `_` or `-` up to the caret. `C#` (a word) never opens the list.
+ */
+export function detectIssueLink(text: string, caret: number): MentionQuery | null {
+    const m = text.slice(0, caret).match(/(^|\s)#([\p{L}\p{N}_-]*)$/u);
+    if (!m) return null;
+    return { start: caret - m[2].length - 1, end: caret, q: m[2] };
+}
+
+/**
  * Replace the mention with `insert` and one space, dropping one space (never a line break) that already followed
  * it; the caret goes after the inserted space.
  */
