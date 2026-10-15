@@ -1,32 +1,34 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Drawer } from '../../components/ui/Drawer';
-import { StatusIcon } from '../../components/ui/StatusIcon';
-import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
-import { LabelChip } from '../../components/ui/LabelChip';
-import { ProjectPill } from '../../components/ui/ProjectPill';
 import { IconButton } from '../../components/ui/IconButton';
 import { Input } from '../../components/ui/Input';
 import { avatarFor } from '../../lib/avatarFor';
 import { timeAgo } from '../../lib/timeAgo';
-import { useIssue, useIssueLabels, useActivities, useComments, useAddComment } from './hooks';
-import { ReleaseEditor } from './ReleaseEditor';
-import { useProjects } from '../projects/hooks';
-import { useCycles } from '../teams/hooks';
+import { ApiError } from '../../lib/apiClient';
+import { useIssue, useActivities, useComments, useAddComment, useUpdateIssue } from './hooks';
 import { useMembers } from '../members/hooks';
 import { useMe } from '../../auth/useAuth';
+import { canDevelop } from '../../auth/capabilities';
 import { humanizeActivityType, activityDetail } from './activityMeta';
 import { commentBadge, badgeCss, badgeLabel } from './commentBadge';
-import { PRIORITY_LABELS, STATUS_LABELS, issueRef } from './issueMeta';
+import { issueRef } from './issueMeta';
 import { StarButton } from './StarToggle';
 import { sectionTitle } from './issueStyles';
+import { PeekProperties } from './PeekProperties';
+import { PeekTextField } from './PeekTextField';
 
 const sectionHead: React.CSSProperties = { ...sectionTitle(16), marginBottom: 10 };
-const propLabel: React.CSSProperties = { width: 96, flexShrink: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--fg3)' };
-const propRow: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '7px 8px' };
-const propVal: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--fg)' };
 const muted: React.CSSProperties = { fontSize: 13.5, color: 'var(--fg3)' };
+const titleType: React.CSSProperties = { fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, lineHeight: 1.1, letterSpacing: '-.03em', color: 'var(--fg)' };
+// The fields read as text until hovered or focused (Prizy v2); their border and ground colours are classes so hover
+// and focus can change them.
+const fieldEdge: React.CSSProperties = {
+    display: 'block', boxSizing: 'border-box', width: 'calc(100% + 16px)', margin: '0 0 0 -8px',
+    borderWidth: 'var(--line)', borderStyle: 'solid', borderRadius: 10,
+};
+const FIELD_CLASSES = 'border-transparent bg-transparent hover:border-border focus:border-fg focus:bg-bg';
 
 export interface PeekDrawerProps {
     issueId: string | null;
@@ -34,24 +36,39 @@ export interface PeekDrawerProps {
 }
 
 export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactElement | null {
-    const issue       = useIssue(issueId ?? '');
-    const issueLabels = useIssueLabels(issueId ?? '');
-    const activities  = useActivities(issueId ?? '');
-    const comments    = useComments(issueId ?? '');
-    const addComment  = useAddComment(issueId ?? '');
-    // Only fetch the project/cycle lists while the drawer is actually open (issueId set) —
-    // PeekDrawer is globally mounted, so an unconditional fetch would 403 for non-tracker
-    // users on every authed page and keep the shared ['projects'] query hot for everyone.
-    const projects    = useProjects(undefined, { enabled: !!issueId });
-    const cycles      = useCycles(issue.data?.team_id ?? '', { enabled: !!issueId });
+    // Everything inside belongs to one issue: a save still running when the drawer closes, or moves to another issue,
+    // refreshes the issue it was made on, and a failed save's message stays with it.
+    return issueId ? <PeekIssue key={issueId} issueId={issueId} onClose={onClose} /> : null;
+}
+
+function PeekIssue({ issueId, onClose }: { issueId: string; onClose(): void }): React.ReactElement {
+    const issue       = useIssue(issueId);
+    const activities  = useActivities(issueId);
+    const comments    = useComments(issueId);
+    const addComment  = useAddComment(issueId);
+    const update      = useUpdateIssue(issueId);
     const members     = useMembers();
     const me          = useMe();
     const [comment, setComment] = useState('');
-
-    if (!issueId) return null;
+    const [error, setError] = useState('');
 
     const memberById = new Map((members.data ?? []).map((m) => [m.id, m]));
     const data = issue.data;
+    // The same write access as the full page (developers and owners); everyone else reads.
+    const canEdit = canDevelop(me.data);
+
+    // Each save reports its own failure (a promise per save: `mutate`'s callbacks only reach the latest one).
+    function track(saving: Promise<unknown>, undo?: () => void) {
+        setError('');
+        saving.catch((e: unknown) => {
+            setError(e instanceof ApiError ? e.detail : 'Update failed.');
+            undo?.();
+        });
+    }
+
+    function save(fields: { title: string } | { description: string | null }, undo: () => void) {
+        track(update.mutateAsync(fields), undo);
+    }
 
     function submitComment(e: React.FormEvent) {
         e.preventDefault();
@@ -65,18 +82,25 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
         if (!data)           return <p style={{ ...muted, margin: 0 }}>Issue not found.</p>;
 
         const st = data.support_ticket;
-        const projectList = projects.data?.items ?? [];
-        const cycleList   = cycles.data?.items ?? [];
-        const labels      = issueLabels.data?.items ?? [];
-        const project = data.project_id ? projectList.find((p) => p.id === data.project_id) : undefined;
-        const cycle   = data.cycle_id   ? cycleList.find((c) => c.id === data.cycle_id)     : undefined;
 
         return (
             <>
                 {/* Title */}
-                <h1 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: 28, fontWeight: 800, lineHeight: 1.1, letterSpacing: '-.03em', textWrap: 'balance', color: 'var(--fg)' }}>
-                    {data.title}
-                </h1>
+                {canEdit ? (
+                    <PeekTextField
+                        key={`title:${data.id}`}
+                        value={data.title}
+                        onSave={(title, undo) => save({ title }, undo)}
+                        singleLine
+                        label="Issue title"
+                        placeholder="Issue title"
+                        className={FIELD_CLASSES}
+                        style={{ ...fieldEdge, ...titleType, padding: '4px 8px' }}
+                    />
+                ) : (
+                    <h1 style={{ ...titleType, margin: 0, textWrap: 'balance' }}>{data.title}</h1>
+                )}
+                {error && <p role="alert" style={{ margin: 0, fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
 
                 {/* Escalation banner */}
                 {st && (
@@ -98,27 +122,26 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
                     </div>
                 )}
 
-                {/* Properties card */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, border: 'var(--line) solid var(--border)', borderRadius: 16, padding: 6 }}>
-                    <div style={propRow}><span style={propLabel}>Status</span><span style={propVal}><StatusIcon status={data.status} size={14} decorative />{STATUS_LABELS[data.status] ?? data.status}</span></div>
-                    <div style={propRow}><span style={propLabel}>Priority</span><span style={propVal}><PriorityIcon priority={data.priority} decorative />{PRIORITY_LABELS[data.priority] ?? data.priority}</span></div>
-                    <div style={propRow}><span style={propLabel}>Assignee</span><span style={propVal}>{data.assignee ? <Avatar {...avatarFor(data.assignee)} size={20} /> : <Avatar size={20} />}{data.assignee?.name ?? 'Unassigned'}</span></div>
-                    <div style={propRow}><span style={propLabel}>Project</span>{project ? <ProjectPill name={project.name} color={project.color} /> : <span style={muted}>No project</span>}</div>
-                    {/* Peek is a read-only quick view (no *Editor components for any other property
-                        either) — ReleaseEditor with canDevelop=false reuses its read-only display
-                        branch (embedded issue.release, no list fetch) instead of duplicating the
-                        ⛴/✓ formatting inline. */}
-                    <div style={propRow}><span style={propLabel}>Release</span><ReleaseEditor issue={data} canDevelop={false} /></div>
-                    <div style={propRow}><span style={propLabel}>Labels</span>{labels.length > 0 ? <span style={{ display: 'inline-flex', flexWrap: 'wrap', gap: 4 }}>{labels.map((l) => <LabelChip key={l.id} name={l.name} color={l.color} />)}</span> : <span style={muted}>—</span>}</div>
-                    <div style={propRow}><span style={propLabel}>Cycle</span><span style={propVal}>{cycle?.name ?? '—'}</span></div>
-                </div>
+                <PeekProperties issue={data} canEdit={canEdit} track={track} />
 
                 {/* Description */}
                 <section>
                     <h2 style={sectionHead}>Description</h2>
-                    <div style={{ fontSize: 13.5, color: 'var(--fg2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-                        {data.description ? data.description : <span style={{ color: 'var(--fg3)', fontStyle: 'italic' }}>No description.</span>}
-                    </div>
+                    {canEdit ? (
+                        <PeekTextField
+                            key={`description:${data.id}`}
+                            value={data.description ?? ''}
+                            onSave={(description, undo) => save({ description: description || null }, undo)}
+                            label="Issue description"
+                            placeholder="Add a description…"
+                            className={`${FIELD_CLASSES} text-fg2 focus:text-fg`}
+                            style={{ ...fieldEdge, minHeight: 80, padding: 8, fontFamily: 'inherit', fontSize: 13.5, lineHeight: 1.6 }}
+                        />
+                    ) : (
+                        <div style={{ fontSize: 13.5, color: 'var(--fg2)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                            {data.description ? data.description : <span style={{ color: 'var(--fg3)', fontStyle: 'italic' }}>No description.</span>}
+                        </div>
+                    )}
                 </section>
 
                 {/* Activity */}
@@ -187,7 +210,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
     }
 
     return (
-        <Drawer open onClose={onClose} side="right" width={520}>
+        <Drawer open onClose={onClose} side="right" width={520} label={data ? `${issueRef(data)} ${data.title}` : 'Issue'}>
             {/* Header stays at the top while the panel scrolls; Close is always available. */}
             <div style={{ position: 'sticky', top: 0, zIndex: 1, flexShrink: 0, background: 'var(--panel)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
                 {data && (

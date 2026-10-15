@@ -282,6 +282,85 @@ test('issue peek drawer shows full detail', async ({ page }) => {
     await expect(dialog).not.toBeVisible();
 });
 
+// ── Prizy v2: the drawer's fields are editable (title, description, property rows) ──
+test('peek drawer edits the title, description and priority in place', async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.goto('/issues');
+    await page.waitForLoadState('networkidle');
+
+    // Its own issue, so the edits touch no seeded data.
+    const title = `E2E Peek ${Date.now()}`;
+    await page.keyboard.press('c');
+    await expect(page.getByLabel(/Issue title/i)).toBeVisible({ timeout: 6_000 });
+    try {
+        const teamPicker = page.getByRole('button', { name: /Issue team/i });
+        await teamPicker.waitFor({ state: 'visible', timeout: 3_000 });
+        await teamPicker.click();
+        await page.getByRole('menuitem', { name: 'Smoke Team' }).click();
+    } catch {
+        // Single-team workspace: auto-selection already fired.
+    }
+    await page.getByLabel(/Issue title/i).fill(title);
+    await expect(page.getByRole('button', { name: /Create issue/i })).not.toBeDisabled({ timeout: 5_000 });
+    const created = page.waitForResponse((r) => r.url().includes('/issues') && r.request().method() === 'POST');
+    await page.getByRole('button', { name: /Create issue/i }).click();
+    await created;
+    // The create drawer has its own "Issue title" field: wait for it to go.
+    await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 5_000 });
+
+    await page.locator('[data-testid="issue-row"]').filter({ hasText: title }).click();
+    const dialog = page.getByRole('dialog');
+    const titleField = dialog.getByRole('textbox', { name: 'Issue title' });
+    await expect(titleField).toHaveValue(title, { timeout: 8_000 });
+
+    // Title: Enter saves.
+    const renamed = `${title} renamed`;
+    const titlePatch = page.waitForResponse((r) => /\/issues\/[^/]+$/.test(new URL(r.url()).pathname) && r.request().method() === 'PATCH');
+    await titleField.fill(renamed);
+    await titleField.press('Enter');
+    expect((await titlePatch).status()).toBe(200);
+
+    // Description: leaving the field saves.
+    const descPatch = page.waitForResponse((r) => /\/issues\/[^/]+$/.test(new URL(r.url()).pathname) && r.request().method() === 'PATCH');
+    await dialog.getByRole('textbox', { name: 'Issue description' }).fill('Edited in the drawer');
+    await dialog.getByRole('textbox', { name: 'Issue title' }).focus();
+    expect((await descPatch).status()).toBe(200);
+
+    // Priority: the row opens its options; a pick saves and the row shows it.
+    await dialog.getByRole('button', { name: /^Priority / }).click();
+    const prioPatch = page.waitForResponse((r) => /\/issues\/[^/]+$/.test(new URL(r.url()).pathname) && r.request().method() === 'PATCH');
+    // dispatchEvent: see the Change status note above (the menu's outside-pointer listener).
+    await page.getByRole('menuitemradio', { name: 'High' }).dispatchEvent('click');
+    expect((await prioPatch).status()).toBe(200);
+    await expect(dialog.getByRole('button', { name: 'Priority High' })).toBeVisible({ timeout: 6_000 });
+
+    // Assignee, then Status: the status reply carries no assignee, and the row must keep it.
+    await dialog.getByRole('button', { name: /^Assignee / }).click();
+    const assigned = page.waitForResponse((r) => r.url().includes('/assignee') && r.request().method() === 'PUT');
+    await page.getByRole('menuitemradio', { name: /^Smoke Dev/ }).dispatchEvent('click');
+    expect((await assigned).status()).toBe(200);
+    await expect(dialog.getByRole('button', { name: 'Assignee Smoke Dev' })).toBeVisible({ timeout: 6_000 });
+
+    await dialog.getByRole('button', { name: /^Status / }).click();
+    const moved = page.waitForResponse((r) => r.url().includes('/status') && r.request().method() === 'PUT');
+    await page.getByRole('menuitemradio', { name: 'In Review' }).dispatchEvent('click');
+    expect((await moved).status()).toBe(200);
+    await expect(dialog.getByRole('button', { name: 'Status In Review' })).toBeVisible({ timeout: 6_000 });
+    await expect(dialog.getByRole('button', { name: 'Assignee Smoke Dev' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Priority High' })).toBeVisible();
+
+    // Escape in a menu closes only the menu.
+    await dialog.getByRole('button', { name: 'Priority High' }).click();
+    await page.keyboard.press('Escape');
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(dialog).toBeVisible();
+
+    // The edits are saved: the list shows the new title once the drawer closes.
+    await page.keyboard.press('Escape');
+    await expect(dialog).not.toBeVisible();
+    await expect(page.locator('[data-testid="issue-row"]').filter({ hasText: renamed })).toBeVisible({ timeout: 8_000 });
+});
+
 // ── Toolbar: text-size control (A−/⟲/A+) zooms the main content, persisted ──
 test('toolbar: text-size controls render and Increase enables Reset', async ({ page }) => {
     await page.goto('/issues');

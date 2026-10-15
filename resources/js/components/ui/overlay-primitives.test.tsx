@@ -387,3 +387,136 @@ describe('G3c: Drawer side and searchable Menu', () => {
         expect(box.style.zIndex).toBe('1');
     });
 });
+
+describe('Peek drawer menus: the current option, several at once, and Escape inside a drawer', () => {
+    const pick = (onA = vi.fn(), onB = vi.fn()) => [
+        { key: 'a', label: 'Alpha', onActivate: onA, checked: true },
+        { key: 'b', label: 'Beta', onActivate: onB, checked: false },
+    ];
+
+    it('a single-choice menu marks the current option with a ✓, says it is checked, and closes on a pick', async () => {
+        const onB = vi.fn();
+        render(<Menu selection="single" trigger={<button type="button">Pick</button>} items={pick(vi.fn(), onB)} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+
+        const alpha = screen.getByRole('menuitemradio', { name: 'Alpha' });
+        const beta = screen.getByRole('menuitemradio', { name: 'Beta' });
+        expect(alpha).toHaveAttribute('aria-checked', 'true');
+        expect(beta).toHaveAttribute('aria-checked', 'false');
+        expect(alpha).toHaveTextContent(/Alpha✓$/);
+        expect(beta).toHaveTextContent(/^Beta$/);
+        // The current option rests on the hover tint (a class, so hover still works on the others).
+        expect(alpha.className.split(' ')).toContain('bg-hover');
+        expect(beta.className.split(' ')).toContain('bg-transparent');
+        const check = alpha.querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(check).toHaveTextContent('✓');
+        expect(check.style.color).toBe('var(--accent-ink)');
+
+        await userEvent.click(beta);
+        expect(onB).toHaveBeenCalledOnce();
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('a several-at-once menu stays open after a pick, by click or by Enter', async () => {
+        const onA = vi.fn();
+        const onB = vi.fn();
+        render(<Menu selection="multi" trigger={<button type="button">Labels</button>} items={pick(onA, onB)} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Labels' }));
+
+        expect(screen.getByRole('menuitemcheckbox', { name: 'Alpha' })).toHaveAttribute('aria-checked', 'true');
+        await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Beta' }));
+        expect(onB).toHaveBeenCalledOnce();
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+
+        screen.getByRole('menuitemcheckbox', { name: 'Alpha' }).focus();
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Enter' });
+        expect(onA).toHaveBeenCalledOnce();
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    it('a plain menu keeps plain menu items with no checked state', async () => {
+        render(<Menu trigger={<button type="button">Open</button>} items={pick()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+        expect(screen.getByRole('menuitem', { name: 'Alpha' })).not.toHaveAttribute('aria-checked');
+        expect(screen.getByRole('menuitem', { name: 'Alpha' })).toHaveTextContent(/^Alpha$/);
+    });
+
+    it('Escape in a menu inside a drawer closes the menu and leaves the drawer open', async () => {
+        const onClose = vi.fn();
+        render(
+            <Drawer open onClose={onClose} label="Issue">
+                <Menu trigger={<button type="button">Status</button>} items={pick()} />
+            </Drawer>,
+        );
+        const trigger = screen.getByRole('button', { name: 'Status' });
+        await userEvent.click(trigger);
+        await userEvent.keyboard('{Escape}');
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(trigger);
+
+        await userEvent.keyboard('{Escape}');
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('Escape in a searchable menu\'s search box also stays inside the menu', async () => {
+        const onClose = vi.fn();
+        render(
+            <Drawer open onClose={onClose} label="Issue">
+                <Menu searchable trigger={<button type="button">Pick</button>} items={pick()} />
+            </Drawer>,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('takes the popover\'s position and the items\' type from the caller', async () => {
+        render(
+            <Menu
+                trigger={<button type="button">Pick</button>}
+                items={pick()}
+                popoverStyle={{ left: 106, right: 6, minWidth: 0, maxHeight: 300 }}
+                itemStyle={{ fontSize: 13, fontWeight: 400, padding: '7px 10px' }}
+            />,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        const menu = screen.getByRole('menu');
+        expect(menu.style.left).toBe('106px');
+        expect(menu.style.right).toBe('6px');
+        expect(menu.style.top).toBe('100%');
+        expect(menu.style.maxHeight).toBe('300px');
+        const item = screen.getByRole('menuitem', { name: 'Alpha' });
+        expect(item.style.fontSize).toBe('13px');
+        expect(item.style.fontWeight).toBe('400');
+        expect(item.style.padding).toBe('7px 10px');
+    });
+});
+
+describe('Menu: focus after a pick', () => {
+    const items = (onA: () => void = vi.fn()) => [{ key: 'a', label: 'Alpha', onActivate: onA }, { key: 'b', label: 'Beta', onActivate: vi.fn() }];
+
+    it('a pick by keyboard or click closes the menu and puts focus back on its trigger, not the page', async () => {
+        render(<Menu trigger={<button type="button">Open</button>} items={items()} />);
+        const trigger = screen.getByRole('button', { name: 'Open' });
+        await userEvent.click(trigger);
+        await userEvent.keyboard('{Enter}');
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+
+        await userEvent.click(trigger);
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Beta' }));
+        expect(document.activeElement).toBe(trigger);
+    });
+
+    it('focus moved by the pick itself (a field it opens) stays where the pick put it', async () => {
+        const field = document.createElement('input');
+        document.body.appendChild(field);
+        render(<Menu trigger={<button type="button">Open</button>} items={items(() => field.focus())} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+        await userEvent.keyboard('{Enter}');
+        expect(document.activeElement).toBe(field);
+        field.remove();
+    });
+});
