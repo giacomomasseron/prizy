@@ -1,5 +1,5 @@
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import { useAssignIssue, useSetIssueLabels, useTransitionStatus } from './hooks';
@@ -67,6 +67,27 @@ describe('useAssignIssue', () => {
         expect(vi.mocked(api.put)).toHaveBeenCalledWith('/issues/issue-1/assignee', { assignee_id: 'user-1' });
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['issue', 'issue-1'] });
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['issues'] });
+    });
+
+    it('stays pending until the issue has been fetched again, so Assign to me does not flash back in between', async () => {
+        const { wrapper } = makeWrapper();
+        let refetched: () => void = () => {};
+        const fetchIssue = vi.fn()
+            .mockResolvedValueOnce({ id: 'issue-1', assignee_id: null })
+            .mockImplementationOnce(() => new Promise((resolve) => { refetched = () => resolve({ id: 'issue-1', assignee_id: 'user-1' }); }));
+        const { result } = renderHook(() => {
+            const issue = useQuery({ queryKey: ['issue', 'issue-1'], queryFn: fetchIssue });
+            return { issue, assign: useAssignIssue('issue-1') };
+        }, { wrapper });
+        await waitFor(() => expect(result.current.issue.isSuccess).toBe(true));
+
+        await act(async () => { result.current.assign.mutate('user-1'); });
+        await waitFor(() => expect(fetchIssue).toHaveBeenCalledTimes(2));
+        expect(result.current.assign.isPending).toBe(true);
+
+        await act(async () => { refetched(); });
+        await waitFor(() => expect(result.current.assign.isSuccess).toBe(true));
+        expect(result.current.issue.data).toEqual({ id: 'issue-1', assignee_id: 'user-1' });
     });
 
     it('calls api.put with null to unassign', async () => {

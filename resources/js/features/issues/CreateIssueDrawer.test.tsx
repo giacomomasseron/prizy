@@ -16,9 +16,13 @@ vi.mock('../teams/hooks', () => ({
 vi.mock('../projects/hooks', () => ({
     useProjects: () => ({ data: { items: [{ id: 'p1', name: 'Apollo', description: null, icon: null, color: '#6d69f2', status: 'in_progress', team_id: 't1', start_date: null, target_date: null, created_by: 'u1', created_at: '', updated_at: '' }], next: null } }),
 }));
+let members: { id: string; name: string }[] | undefined = [{ id: 'u1', name: 'Bob Smith' }];
 vi.mock('../members/hooks', () => ({
-    useMembers: () => ({ data: [{ id: 'u1', name: 'Bob Smith' }] }),
+    useMembers: () => ({ data: members }),
 }));
+// Signed in as Bob Smith.
+let me: { id: string; name: string } | undefined = { id: 'u1', name: 'Bob Smith' };
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: me }) }));
 vi.mock('../labels/hooks', () => ({
     useLabels: () => ({ data: { items: [{ id: 'l1', name: 'Bug', color: '#eb5757', group: null }], next: null } }),
 }));
@@ -213,5 +217,96 @@ describe('CreateIssueDrawer', () => {
         expect(title.className).toContain('border-transparent');
         expect(title.className).toContain('focus:border-fg');
         expect(title.style.borderStyle).toBe('solid');
+    });
+});
+
+describe('CreateIssueDrawer: Assign to me (Prizy v2)', () => {
+    beforeEach(() => { mockMutateAsync.mockClear(); me = { id: 'u1', name: 'Bob Smith' }; members = [{ id: 'u1', name: 'Bob Smith' }]; });
+
+    it('sits beside the picker on one line and assigns you, then says so', async () => {
+        mount({});
+        const picker = screen.getByRole('button', { name: 'Issue assignee' });
+        const quick = screen.getByRole('button', { name: 'Assign to me' });
+        expect(quick).toHaveAttribute('title', 'Assign to me (I)');
+        expect(quick).toHaveAttribute('aria-keyshortcuts', 'I');
+        // The picker shrinks (up to 290px) so the two keep to one line.
+        const line = quick.parentElement as HTMLElement;
+        expect(line.contains(picker)).toBe(true);
+        expect(line.style.flexWrap).toBe('nowrap');
+        expect(line.style.gap).toBe('12px');
+        expect(picker.style.width).toBe('100%');
+        expect((picker.parentElement!.parentElement as HTMLElement).style.maxWidth).toBe('290px');
+        expect(quick.style.background).toBe('transparent');
+        expect(quick.style.borderColor).toBe('var(--border2)');
+        expect(quick.style.color).toBe('var(--fg2)');
+
+        fireEvent.click(quick);
+        expect(screen.getByRole('button', { name: 'Issue assignee' })).toHaveTextContent('Bob Smith');
+        const done = screen.getByRole('button', { name: 'Assigned to me' });
+        expect(done).toHaveTextContent('✓ Assigned to me');
+        expect(done.style.background).toBe('var(--hi)');
+        expect(done.style.borderColor).toBe('var(--fg)');
+        expect(done.style.color).toBe('var(--on-hi)');
+
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Mine' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: 'u1' })));
+    });
+
+    it('picking yourself from the list also reads Assigned to me, and Create more starts over', async () => {
+        mount({});
+        fireEvent.click(screen.getByRole('button', { name: 'Issue assignee' }));
+        fireEvent.click(screen.getByRole('menuitem', { name: 'Bob Smith' }));
+        expect(screen.getByRole('button', { name: 'Assigned to me' })).toBeInTheDocument();
+
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Next' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create more' }));
+        expect(await screen.findByRole('button', { name: 'Assign to me' })).toBeInTheDocument();
+    });
+
+    it('I assigns you from anywhere in the form but a text field or an open menu', () => {
+        mount({});
+        const assigned = () => screen.queryByRole('button', { name: 'Assigned to me' });
+        fireEvent.keyDown(screen.getByLabelText(/Issue title/i), { key: 'i' });
+        fireEvent.keyDown(screen.getByLabelText(/Issue description/i), { key: 'I' });
+        const chip = screen.getByRole('button', { name: 'Status In Progress' });
+        fireEvent.keyDown(chip, { key: 'i', ctrlKey: true });
+        fireEvent.keyDown(chip, { key: 'i', metaKey: true });
+        fireEvent.keyDown(chip, { key: 'i', altKey: true });
+        fireEvent.click(screen.getByRole('button', { name: 'Issue assignee' }));
+        fireEvent.keyDown(screen.getByRole('searchbox', { name: /search options/i }), { key: 'i' });
+        fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Bob Smith' }), { key: 'i' });
+        expect(assigned()).toBeNull();
+
+        fireEvent.keyDown(chip, { key: 'i' });
+        expect(assigned()).toBeInTheDocument();
+    });
+
+    it('I also works after a click on a blank part of the form, which focuses the form itself', () => {
+        mount({});
+        // Clicking what cannot take focus focuses the nearest focusable ancestor: the form, not the dialog around it.
+        const form = screen.getByRole('dialog').firstElementChild as HTMLElement;
+        expect(form).toHaveAttribute('tabindex', '-1');
+        expect(form.style.outline).toBe('none');
+        fireEvent.keyDown(form, { key: 'i' });
+        expect(screen.getByRole('button', { name: 'Assigned to me' })).toBeInTheDocument();
+    });
+
+    it('the picker shows you even before the member list has loaded', () => {
+        members = undefined;
+        mount({});
+        fireEvent.click(screen.getByRole('button', { name: 'Assign to me' }));
+        expect(screen.getByRole('button', { name: 'Issue assignee' })).toHaveTextContent('Bob Smith');
+    });
+
+    it('is not offered before you are known, and I does nothing then', async () => {
+        me = undefined;
+        mount({});
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        fireEvent.keyDown(screen.getByRole('button', { name: 'Status In Progress' }), { key: 'i' });
+        expect(screen.getByRole('button', { name: 'Issue assignee' })).toHaveTextContent('Unassigned');
+        fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Nobody yet' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: null })));
     });
 });

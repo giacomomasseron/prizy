@@ -14,6 +14,7 @@ import { useCycles } from '../teams/hooks';
 import { useReleases } from '../releases/hooks';
 import { useLabels } from '../labels/hooks';
 import { toggleExclusive } from '../labels/labelGroups';
+import { AssignToMeButton } from './AssignToMeButton';
 import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
 import type { Issue, IssuePriority } from '../../lib/types';
 
@@ -29,6 +30,8 @@ const labelStyle: CSSProperties = { width: 96, flexShrink: 0, fontSize: 12, colo
 const valueStyle: CSSProperties = { flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13 };
 const caretStyle: CSSProperties = { fontSize: 9, color: 'var(--fg3)' };
 const muted: CSSProperties = { color: 'var(--fg3)' };
+/** A name that ends in … rather than crowding the row (the mockup's assignee). */
+const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };
 /** The menu opens under the value column. */
 const POPOVER: CSSProperties = { left: 106, right: 6, minWidth: 0, maxHeight: 300, borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 2 };
 const OPTION: CSSProperties = { padding: '7px 10px', borderRadius: 9, fontSize: 13, fontWeight: 400 };
@@ -52,27 +55,34 @@ interface RowProps {
     /** Several at once (labels): the menu stays open after a pick. */
     multi?: boolean;
     canEdit: boolean;
+    /** A quick action beside the row (Assign to me). */
+    quick?: ReactNode;
 }
 
 /** One property: the whole row (label, value, caret) opens the options under the value. */
-function Row({ label, value, options, multi = false, canEdit }: RowProps) {
+function Row({ label, value, options, multi = false, canEdit, quick }: RowProps) {
     // The space between label and value is collapsed by the flex row but keeps the two words apart for screen readers.
     const content = <><span style={labelStyle}>{label}</span>{' '}<span style={valueStyle}>{value}</span></>;
     if (!canEdit) return <div style={{ ...rowStyle, cursor: 'default' }}>{content}</div>;
     return (
-        <Menu
-            fullWidth
-            selection={multi ? 'multi' : 'single'}
-            popoverStyle={POPOVER}
-            itemStyle={OPTION}
-            trigger={
-                <button type="button" className="bg-transparent hover:bg-hover" style={rowStyle}>
-                    {content}
-                    <span aria-hidden="true" style={caretStyle}>▾</span>
-                </button>
-            }
-            items={options.map((o) => ({ key: o.key, label: o.label, icon: o.icon, checked: o.checked, onActivate: o.onPick }))}
-        />
+        // The menu lines up with this row, so it also spans a quick action beside the row's button.
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+            <Menu
+                fullWidth
+                anchorToParent
+                selection={multi ? 'multi' : 'single'}
+                popoverStyle={POPOVER}
+                itemStyle={OPTION}
+                trigger={
+                    <button type="button" className="bg-transparent hover:bg-hover" style={rowStyle}>
+                        {content}
+                        <span aria-hidden="true" style={caretStyle}>▾</span>
+                    </button>
+                }
+                items={options.map((o) => ({ key: o.key, label: o.label, icon: o.icon, checked: o.checked, onActivate: o.onPick }))}
+            />
+            {quick}
+        </div>
     );
 }
 
@@ -102,6 +112,9 @@ export function PeekProperties({ issue, canEdit, track }: PeekPropertiesProps) {
     const labelIds = new Set(labels.map((l) => l.id));
     const labelList = allLabels.data?.items ?? [];
     const assignee = issue.assignee ?? null;
+    const meId = me.data?.id;
+    // Not while you are being saved: the button would only come back until the issue is fetched again.
+    const offerAssignToMe = !!meId && issue.assignee_id !== meId && !(assign.isPending && assign.variables === meId);
 
     return (
         <div role="group" aria-label="Properties" style={{ display: 'flex', flexDirection: 'column', gap: 2, border: 'var(--line) solid var(--border)', borderRadius: 16, padding: 6 }}>
@@ -126,7 +139,12 @@ export function PeekProperties({ issue, canEdit, track }: PeekPropertiesProps) {
             <Row
                 label="Assignee"
                 canEdit={canEdit}
-                value={<><span aria-hidden="true" style={{ display: 'inline-flex' }}>{assignee ? <Avatar {...avatarFor(assignee)} size={20} /> : <Avatar size={20} />}</span>{assignee?.name ?? 'Unassigned'}</>}
+                value={
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' }}>
+                        <span aria-hidden="true" style={{ display: 'inline-flex' }}>{assignee ? <Avatar {...avatarFor(assignee)} size={20} /> : <Avatar size={20} />}</span>
+                        <span style={ellipsis}>{assignee?.name ?? 'Unassigned'}</span>
+                    </span>
+                }
                 options={[
                     ...(members.data ?? []).map((m) => ({
                         key: m.id, label: m.id === me.data?.id ? `${m.name} (me)` : m.name, icon: <Avatar {...avatarFor(m)} size={20} />,
@@ -134,6 +152,7 @@ export function PeekProperties({ issue, canEdit, track }: PeekPropertiesProps) {
                     })),
                     { key: 'none', label: 'Unassigned', icon: <Avatar size={20} />, checked: !issue.assignee_id, onPick: () => track(assign.mutateAsync(null)) },
                 ]}
+                quick={offerAssignToMe && meId ? <AssignToMeButton onAssign={() => track(assign.mutateAsync(meId))} /> : null}
             />
             <Row
                 label="Project"

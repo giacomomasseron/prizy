@@ -492,6 +492,26 @@ describe('Peek drawer menus: the current option, several at once, and Escape ins
         expect(item.style.fontWeight).toBe('400');
         expect(item.style.padding).toBe('7px 10px');
     });
+
+    it('can line its popover up with the row around it, so it spans a button beside the trigger', async () => {
+        render(
+            <div style={{ position: 'relative', display: 'flex' }}>
+                <Menu fullWidth anchorToParent trigger={<button type="button">Pick</button>} items={pick()} />
+                <button type="button">Beside</button>
+            </div>,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        // An unpositioned wrapper hands the popover's position to the row.
+        const wrapper = screen.getByRole('menu').parentElement as HTMLElement;
+        expect(wrapper.style.position).toBe('static');
+        expect(wrapper.style.flexGrow).toBe('1');
+    });
+
+    it('positions its popover against its own trigger by default', async () => {
+        render(<Menu fullWidth trigger={<button type="button">Pick</button>} items={pick()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        expect((screen.getByRole('menu').parentElement as HTMLElement).style.position).toBe('relative');
+    });
 });
 
 describe('Menu: focus after a pick', () => {

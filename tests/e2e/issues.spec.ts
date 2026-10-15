@@ -283,7 +283,7 @@ test('issue peek drawer shows full detail', async ({ page }) => {
 });
 
 // ── Prizy v2: the drawer's fields are editable (title, description, property rows) ──
-test('peek drawer edits the title, description and priority in place', async ({ page }) => {
+test('peek drawer edits the title, description, priority and assignee in place', async ({ page }) => {
     test.setTimeout(60_000);
     await page.goto('/issues');
     await page.waitForLoadState('networkidle');
@@ -301,6 +301,10 @@ test('peek drawer edits the title, description and priority in place', async ({ 
         // Single-team workspace: auto-selection already fired.
     }
     await page.getByLabel(/Issue title/i).fill(title);
+    // Assign to me (Prizy v2): the new issue is yours (signed in as Smoke Dev).
+    await page.getByRole('button', { name: 'Assign to me' }).click();
+    await expect(page.getByRole('button', { name: 'Issue assignee' })).toContainText('Smoke Dev');
+    await expect(page.getByRole('button', { name: 'Assigned to me' })).toBeVisible();
     await expect(page.getByRole('button', { name: /Create issue/i })).not.toBeDisabled({ timeout: 5_000 });
     const created = page.waitForResponse((r) => r.url().includes('/issues') && r.request().method() === 'POST');
     await page.getByRole('button', { name: /Create issue/i }).click();
@@ -334,12 +338,21 @@ test('peek drawer edits the title, description and priority in place', async ({ 
     expect((await prioPatch).status()).toBe(200);
     await expect(dialog.getByRole('button', { name: 'Priority High' })).toBeVisible({ timeout: 6_000 });
 
-    // Assignee, then Status: the status reply carries no assignee, and the row must keep it.
+    // Assignee: yours from the create form, so no Assign to me; unassign it from the menu, then Assign to me
+    // puts it back. Then Status: the status reply carries no assignee, and the row must keep it.
+    await expect(dialog.getByRole('button', { name: 'Assignee Smoke Dev' })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: 'Assign to me' })).toHaveCount(0);
     await dialog.getByRole('button', { name: /^Assignee / }).click();
+    const unassigned = page.waitForResponse((r) => r.url().includes('/assignee') && r.request().method() === 'PUT');
+    await page.getByRole('menuitemradio', { name: 'Unassigned' }).dispatchEvent('click');
+    expect((await unassigned).status()).toBe(200);
+    await expect(dialog.getByRole('button', { name: 'Assignee Unassigned' })).toBeVisible({ timeout: 6_000 });
+
     const assigned = page.waitForResponse((r) => r.url().includes('/assignee') && r.request().method() === 'PUT');
-    await page.getByRole('menuitemradio', { name: /^Smoke Dev/ }).dispatchEvent('click');
+    await dialog.getByRole('button', { name: 'Assign to me' }).click();
     expect((await assigned).status()).toBe(200);
     await expect(dialog.getByRole('button', { name: 'Assignee Smoke Dev' })).toBeVisible({ timeout: 6_000 });
+    await expect(dialog.getByRole('button', { name: 'Assign to me' })).toHaveCount(0);
 
     await dialog.getByRole('button', { name: /^Status / }).click();
     const moved = page.waitForResponse((r) => r.url().includes('/status') && r.request().method() === 'PUT');

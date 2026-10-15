@@ -12,6 +12,7 @@ import { useProjects } from '../projects/hooks';
 import { useReleases } from '../releases/hooks';
 import { useMembers } from '../members/hooks';
 import { useLabels } from '../labels/hooks';
+import { useMe } from '../../auth/useAuth';
 import { useCreateIssue } from './hooks';
 import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
 import { chipClasses, chipStyle } from './issueStyles';
@@ -33,13 +34,18 @@ const PRIORITY_OPTIONS = NEW_ISSUE_PRIORITIES.map((value) => ({ value, label: PR
 
 const rowLabel: CSSProperties = { width: 74, flexShrink: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--fg3)', paddingTop: 6 };
 
-function Row({ label, children }: { label: string; children: ReactNode }) {
+function Row({ label, children, contentStyle }: { label: string; children: ReactNode; contentStyle?: CSSProperties }) {
     return (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
             <span style={rowLabel}>{label}</span>
-            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', minWidth: 0 }}>{children}</div>
+            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', minWidth: 0, ...contentStyle }}>{children}</div>
         </div>
     );
+}
+
+/** A key typed into a field, or into an open menu, is not a shortcut. */
+function typingTarget(target: EventTarget) {
+    return target instanceof Element && !!target.closest('input, textarea, select, [contenteditable="true"], [role="menu"]');
 }
 
 function labelDot(color: string) {
@@ -59,6 +65,8 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const members = useMembers();
     const labels = useLabels({ enabled: open });
     const createIssue = useCreateIssue();
+    const me = useMe().data;
+    const meId = me?.id;
 
     const [teamId, setTeamId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState<string | null>(null);
@@ -100,7 +108,9 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const projectList = projects.data?.items ?? [];
     const releaseList = releases.data ?? [];
     const memberList = members.data ?? [];
-    const selectedMember = memberList.find((m) => m.id === assigneeId);
+    const assignedToMe = !!meId && assigneeId === meId;
+    // You, even before the member list has loaded.
+    const selectedMember = memberList.find((m) => m.id === assigneeId) ?? (assignedToMe ? me : undefined);
     const labelList = labels.data?.items ?? [];
     const canSubmit = !!teamId && !!title.trim() && !createIssue.isPending;
 
@@ -133,7 +143,18 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
 
     return (
         <Drawer open={open} onClose={onClose} side="right" width={520}>
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Focusable by click (not by Tab): a click on a blank part of the form, or on a button in a browser that
+                does not focus buttons, lands here rather than on the dialog around it, so I still reaches the handler. */}
+            <div
+                tabIndex={-1}
+                style={{ display: 'flex', flexDirection: 'column', height: '100%', outline: 'none' }}
+                onKeyDown={(e) => {
+                    // I: Assign to me, as its tooltip says.
+                    if (!meId || e.key.toLowerCase() !== 'i' || e.ctrlKey || e.metaKey || e.altKey || typingTarget(e.target)) return;
+                    e.preventDefault();
+                    setAssigneeId(meId);
+                }}
+            >
 
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
@@ -211,35 +232,49 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                             ))}
                         </Row>
 
-                        {/* Assignee — single searchable picker */}
-                        <Row label="Assignee">
-                            <Menu
-                                searchable
-                                searchPlaceholder="Search people…"
-                                placement="bottom-start"
-                                trigger={
-                                    <button type="button" aria-label="Issue assignee" className="border-border hover:border-fg"
-                                        style={{
-                                            display: 'flex', alignItems: 'center', gap: 9, width: 290, maxWidth: '100%',
-                                            background: 'var(--bg2)', borderWidth: 'var(--line)', borderStyle: 'solid',
-                                            borderRadius: 'var(--radius-pill)', padding: '6px 12px', fontSize: 13.5, fontWeight: 600,
-                                            fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
-                                            color: selectedMember ? 'var(--fg)' : 'var(--fg3)',
-                                        }}>
-                                        {selectedMember ? <Avatar {...avatarFor(selectedMember)} size={20} /> : <Avatar size={20} />}
-                                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedMember?.name ?? 'Unassigned'}</span>
-                                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg3)' }}>Change</span>
-                                    </button>
-                                }
-                                items={[
-                                    { key: '__none__', label: 'Unassigned', icon: <Avatar size={16} />, onActivate: () => setAssigneeId(null) },
-                                    ...memberList.map((m) => ({
-                                        key: m.id, label: m.name,
-                                        icon: <Avatar {...avatarFor(m)} size={16} />,
-                                        onActivate: () => setAssigneeId(m.id),
-                                    })),
-                                ]}
-                            />
+                        {/* Assignee — single searchable picker, which shrinks to keep Assign to me on its line */}
+                        <Row label="Assignee" contentStyle={{ flex: 1, gap: 12, flexWrap: 'nowrap' }}>
+                            <div style={{ flex: 1, minWidth: 0, maxWidth: 290 }}>
+                                <Menu
+                                    fullWidth
+                                    searchable
+                                    searchPlaceholder="Search people…"
+                                    placement="bottom-start"
+                                    trigger={
+                                        <button type="button" aria-label="Issue assignee" className="border-border hover:border-fg"
+                                            style={{
+                                                display: 'flex', alignItems: 'center', gap: 9, width: '100%',
+                                                background: 'var(--bg2)', borderWidth: 'var(--line)', borderStyle: 'solid',
+                                                borderRadius: 'var(--radius-pill)', padding: '6px 12px', fontSize: 13.5, fontWeight: 600,
+                                                fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left',
+                                                color: selectedMember ? 'var(--fg)' : 'var(--fg3)',
+                                            }}>
+                                            {selectedMember ? <Avatar {...avatarFor(selectedMember)} size={20} /> : <Avatar size={20} />}
+                                            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedMember?.name ?? 'Unassigned'}</span>
+                                            <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--fg3)' }}>Change</span>
+                                        </button>
+                                    }
+                                    items={[
+                                        { key: '__none__', label: 'Unassigned', icon: <Avatar size={16} />, onActivate: () => setAssigneeId(null) },
+                                        ...memberList.map((m) => ({
+                                            key: m.id, label: m.name,
+                                            icon: <Avatar {...avatarFor(m)} size={16} />,
+                                            onActivate: () => setAssigneeId(m.id),
+                                        })),
+                                    ]}
+                                />
+                            </div>
+                            {meId && (
+                                <button type="button" title="Assign to me (I)" aria-keyshortcuts="I" onClick={() => setAssigneeId(meId)}
+                                    style={{
+                                        flexShrink: 0, whiteSpace: 'nowrap', padding: '6px 13px', borderRadius: 'var(--radius-pill)',
+                                        borderWidth: 'var(--line)', borderStyle: 'solid', borderColor: assignedToMe ? 'var(--fg)' : 'var(--border2)',
+                                        background: assignedToMe ? 'var(--hi)' : 'transparent', color: assignedToMe ? 'var(--on-hi)' : 'var(--fg2)',
+                                        fontSize: 12.5, fontWeight: 700, fontFamily: 'inherit', cursor: 'pointer',
+                                    }}>
+                                    {assignedToMe ? <><span aria-hidden="true">✓ </span>Assigned to me</> : 'Assign to me'}
+                                </button>
+                            )}
                         </Row>
 
                         {/* Project */}
