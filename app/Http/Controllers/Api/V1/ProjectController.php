@@ -32,9 +32,9 @@ final class ProjectController extends Controller
     {
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
         /** @var array<string, string> $filters */
-        $filters = array_intersect_key((array) $request->query('filter', []), array_flip(['status', 'team_id']));
+        $filters = array_intersect_key((array) $request->query('filter', []), array_flip(['status', 'team_id', 'mine']));
 
-        return ProjectResource::collection($this->listProjects->handle($filters, $limit))->response();
+        return ProjectResource::collection($this->listProjects->handle($filters, $limit, $request->user()?->id))->response();
     }
 
     public function show(Request $request, string $project): JsonResponse

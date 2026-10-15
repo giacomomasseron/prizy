@@ -17,6 +17,8 @@ function getInitials(name: string): string {
 export interface UserMenuProps {
     /** 'full' = sidebar-footer row (avatar + name); 'compact' = toolbar avatar only. */
     variant?: 'full' | 'compact';
+    /** The line under the name in the 'full' row (Today v2's left bar shows your team). */
+    subtitle?: string;
 }
 
 /**
@@ -25,7 +27,7 @@ export interface UserMenuProps {
  * trigger presentation, popover placement, and test id — the menu items are
  * identical. Extracted from SidebarFooter when the toolbar became a 2nd consumer.
  */
-export function UserMenu({ variant = 'full' }: UserMenuProps) {
+export function UserMenu({ variant = 'full', subtitle = 'Prizy workspace' }: UserMenuProps) {
     const me = useMe();
     const logout = useLogout();
     const navigate = useNavigate();
@@ -67,9 +69,11 @@ export function UserMenu({ variant = 'full' }: UserMenuProps) {
         );
     }
 
+    // fullWidth: the account block takes the row's free width, so what follows it sits at the right edge.
     return (
         <Menu
             placement="top-start"
+            fullWidth
             trigger={
                 <button
                     type="button"
@@ -84,7 +88,7 @@ export function UserMenu({ variant = 'full' }: UserMenuProps) {
                     {avatar}
                     <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName || 'Loading…'}</div>
-                        <div style={{ fontSize: 12.5, color: 'var(--fg3)' }}>Prizy workspace</div>
+                        <div style={{ fontSize: 12.5, color: 'var(--fg3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{subtitle}</div>
                     </div>
                 </button>
             }

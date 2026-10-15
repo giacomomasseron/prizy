@@ -5,9 +5,11 @@ import { firstName, greetingFor, todayLabel } from './greeting';
 import { NewForYouCard } from './NewForYouCard';
 import { PlanSection } from './PlanSection';
 import { usePlan, usePlanSuggestions } from './planHooks';
-import { headline } from './planText';
+import { headline, linkStarters } from './planText';
 import { SuggestionsSection } from './SuggestionsSection';
 import { TodoCard } from './TodoCard';
+
+const GUTTER = 'clamp(16px, 4vw, 44px)';
 
 /**
  * Today (P7-B, the Today v2 design): the tracker user's home. The date, a greeting on the highlighter, the headline
@@ -20,9 +22,11 @@ export default function TodayPage() {
     const now = new Date();
     const name = firstName(me.data?.name ?? '');
     const line = plan.data ? headline(plan.data.items, suggestions.data?.length ?? null) : null;
+    const starters = linkStarters(plan.data?.items ?? [], suggestions.data ?? []);
 
     return (
-        <div style={{ maxWidth: 1140, margin: '0 auto', padding: '40px clamp(16px, 4vw, 44px) 70px' }}>
+        // Full width, as the design; while the sidebar is hidden the top also clears its Menu button (--nav-inset).
+        <div style={{ paddingTop: 'calc(44px + var(--nav-inset, 0px))', paddingBottom: 70, paddingLeft: GUTTER, paddingRight: GUTTER }}>
             <header style={{ display: 'flex', alignItems: 'flex-end', gap: 32, flexWrap: 'wrap', marginBottom: 40 }}>
                 <div style={{ flex: '1 1 420px', minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg3)' }}>{todayLabel(now)}</div>
@@ -45,7 +49,7 @@ export default function TodayPage() {
                 </div>
                 <div style={{ flex: '1 1 300px', maxWidth: 400, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 26 }}>
                     <NewForYouCard />
-                    <TodoCard />
+                    <TodoCard starters={starters} />
                 </div>
             </div>
         </div>

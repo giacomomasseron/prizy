@@ -40,6 +40,9 @@
 :root {
   --sticky-field:rgba(255,255,255,.75); --sticky-hover:rgba(255,255,255,.45); --sticky-rule:rgba(29,26,20,.25);
   --sticky-shadow:0 10px 24px -14px rgba(60,45,10,.45);
+  /* The "Link an issue" list on the note (Today v2): white with ink, and an indigo reference that reads on it and on
+     the highlighter of either theme. */
+  --sticky-pop:#ffffff; --sticky-ref:#4d49cf;
 }
 
 /* Highlighter behind display titles (v2). */

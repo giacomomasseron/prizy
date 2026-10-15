@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyPick, detectMention, matchMembers, mentionHandle, textParts } from './mentionText';
+import { applyPick, detectIssueLink, detectMention, matchMembers, mentionHandle, textParts } from './mentionText';
 
 // P7-B: the @ mention picker's text rules (the Project v2 design).
 describe('detectMention', () => {
@@ -80,5 +80,23 @@ describe('textParts', () => {
     it('leaves any other PRZ- text plain: only the picked issues link', () => {
         expect(textParts('See PRZ-FFF000', ['PRZ-ABC123'], [])).toEqual([{ kind: 'text', text: 'See PRZ-FFF000' }]);
         expect(textParts('See PRZ-FFF000', [], [])).toEqual([{ kind: 'text', text: 'See PRZ-FFF000' }]);
+    });
+});
+
+describe('detectIssueLink (Today v2: # links an issue in My to-dos)', () => {
+    it('opens on # at the start or after a space, with the word typed after it', () => {
+        expect(detectIssueLink('#', 1)).toEqual({ start: 0, end: 1, q: '' });
+        expect(detectIssueLink('Reply on #PRZ-3f', 16)).toEqual({ start: 9, end: 16, q: 'PRZ-3f' });
+        expect(detectIssueLink('Fix #café', 9)).toEqual({ start: 4, end: 9, q: 'café' });
+    });
+
+    it('stays closed inside a word, after a space in the query, or on @', () => {
+        expect(detectIssueLink('C#', 2)).toBeNull();
+        expect(detectIssueLink('#fix login', 10)).toBeNull();
+        expect(detectIssueLink('ask @maya', 9)).toBeNull();
+    });
+
+    it('reads only up to the caret', () => {
+        expect(detectIssueLink('#fix now', 4)).toEqual({ start: 0, end: 4, q: 'fix' });
     });
 });

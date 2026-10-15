@@ -11,12 +11,14 @@ const css = readFileSync(resolve(__dirname, '../../../resources/css/shared.css')
 type RGB = [number, number, number];
 type Token = { rgb: RGB; alpha: number };
 
-/** Palette custom properties of the first block whose selector is exactly `selector`. */
-function palette(selector: string): Record<string, Token> {
+/** Palette custom properties of the `nth` block (1-based) whose selector is exactly `selector`. */
+function palette(selector: string, nth = 1): Record<string, Token> {
     const re = /([^{}]+)\{([^{}]*)\}/g;
     let m: RegExpExecArray | null;
+    let seen = 0;
     while ((m = re.exec(css)) !== null) {
         if (m[1].split(/;|\*\//).pop()!.trim() !== selector) continue;
+        if (++seen < nth) continue;
         const out: Record<string, Token> = {};
         for (const d of m[2].matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)) {
             const v = d[2].trim();
@@ -85,6 +87,14 @@ describe.each(Object.entries(THEMES))('contrast in the %s theme', (_name, p) => 
         expect(ratio(rgb('--on-accent'), rgb('--red'))).toBeGreaterThanOrEqual(4.5);
         expect(ratio(rgb('--on-accent'), rgb('--red-ink'))).toBeGreaterThanOrEqual(4.5);
         expect(ratio(rgb('--on-hi'), rgb('--hi'))).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('Today v2: the to-dos\' issue list reads in ink and indigo on white, and its reference on either highlighter', () => {
+        const sticky = palette(':root', 3); // the theme-independent sticky-note block
+        const other = Object.values(THEMES).find((t) => t !== p)!;
+        expect(ratio(rgb('--on-hi'), sticky['--sticky-pop'].rgb)).toBeGreaterThanOrEqual(4.5);
+        expect(ratio(sticky['--sticky-ref'].rgb, sticky['--sticky-pop'].rgb)).toBeGreaterThanOrEqual(4.5);
+        for (const hi of [rgb('--hi'), other['--hi'].rgb]) expect(ratio(sticky['--sticky-ref'].rgb, hi)).toBeGreaterThanOrEqual(4.5);
     });
 
     it('G3c: the danger hover fill keeps 4.5:1 for its text and is a visible step from --red', () => {

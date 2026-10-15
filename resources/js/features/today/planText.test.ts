@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PlanItem } from '../../lib/types';
-import { capacityNote, formatMinutes, headline, localDayStart, projectSplit } from './planText';
+import { capacityNote, formatMinutes, headline, linkStarters, localDayStart, projectSplit } from './planText';
 
 // Today v2: the plan's words and sums.
 function item(identifier: string, minutes: number, extra: Partial<PlanItem> = {}, project: PlanItem['issue']['project'] = null): PlanItem {
@@ -59,5 +59,19 @@ describe('projectSplit', () => {
         const split = projectSplit([item('A', 60, {}, sla), item('B', 30, {}, inbox), item('C', 45), item('D', 90, {}, sla)]);
 
         expect(split.map((s) => [s.project.name, s.minutes])).toEqual([['SLA & Metrics', 150], ['Unified Inbox', 30]]);
+    });
+});
+
+describe('linkStarters', () => {
+    it('offers the plan in order, then the suggestions, each issue once, as the # list shows them', () => {
+        const plan = [item('PRZ-B', 60), item('PRZ-A', 30)];
+        const suggestions = [{ ...item('PRZ-A', 60), reason: '' }, { ...item('PRZ-C', 60), reason: '' }];
+
+        expect(linkStarters(plan, suggestions)).toEqual([
+            { id: 'PRZ-B', identifier: 'PRZ-B', title: 'PRZ-B', status: 'todo' },
+            { id: 'PRZ-A', identifier: 'PRZ-A', title: 'PRZ-A', status: 'todo' },
+            { id: 'PRZ-C', identifier: 'PRZ-C', title: 'PRZ-C', status: 'todo' },
+        ]);
+        expect(linkStarters([], [])).toEqual([]);
     });
 });

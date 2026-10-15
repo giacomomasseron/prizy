@@ -5,10 +5,9 @@ import type { Announcements, DragEndEvent, UniqueIdentifier } from '@dnd-kit/cor
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { QueryState } from '../../components/ui/QueryState';
 import type { IssueLookupItem, Todo } from '../../lib/types';
-import { useMembers } from '../members/hooks';
-import { useMentionPicker } from '../mentions/useMentionPicker';
 import { TodoText } from './TodoText';
 import { positionForMove, splitTodos, useAddTodo, useClearDoneTodos, useDeleteTodo, useTodos, useUpdateTodo } from './todoHooks';
+import { useIssueLinkPicker } from './useIssueLinkPicker';
 
 const MAX_TEXT = 500;
 /** The loading and failure states sit on the yellow note in both themes: give them its ink. */
@@ -21,7 +20,7 @@ const isPending = (todo: Todo) => todo.id.startsWith('pending-');
 const REORDER_HELP = 'To reorder a to-do, press Space on its Reorder button, move it with the arrow keys, then press Space to drop it or Escape to cancel.';
 
 /** One open to-do: a drag handle (pointer or keyboard, via dnd-kit), the checkbox, the text, and ✕. */
-function OpenTodoRow({ todo, names, onDone, onDelete }: { todo: Todo; names: string[]; onDone: () => void; onDelete: () => void }) {
+function OpenTodoRow({ todo, onDone, onDelete }: { todo: Todo; onDone: () => void; onDelete: () => void }) {
     const pending = isPending(todo);
     const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } = useSortable({ id: todo.id, disabled: pending });
     return (
@@ -56,7 +55,7 @@ function OpenTodoRow({ todo, names, onDone, onDelete }: { todo: Todo; names: str
                 onChange={onDone}
             />
             <div id={`todo-${todo.id}`} style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}>
-                <TodoText todo={todo} names={names} />
+                <TodoText todo={todo} />
             </div>
             <button
                 type="button"
@@ -75,12 +74,11 @@ function OpenTodoRow({ todo, names, onDone, onDelete }: { todo: Todo; names: str
 
 /**
  * My to-dos (PRD §3.2.10, the Today v2 design): a private checklist on a yellow sticky note. Add on top with Enter
- * (`@` mentions people and issues; a picked issue becomes a pill), tick into Done, ✕ deletes straight away, Clear
- * empties Done. The tilt sits on a background layer, so the picker's popover is never rotated.
+ * (`#` or the # button links an issue, offering today's `starters` first; a linked issue becomes a pill), tick into
+ * Done, ✕ deletes straight away, Clear empties Done. The tilt sits on a background layer, so the list is never rotated.
  */
-export function TodoCard() {
+export function TodoCard({ starters }: { starters: IssueLookupItem[] }) {
     const todos = useTodos();
-    const members = useMembers();
     const [draft, setDraft] = useState('');
     const [picked, setPicked] = useState<IssueLookupItem | null>(null);
     const [error, setError] = useState('');
@@ -96,12 +94,11 @@ export function TodoCard() {
     const clear = useClearDoneTodos(fail);
     const fieldRef = useRef<HTMLInputElement>(null);
     const headingId = useId();
-    const picker = useMentionPicker({
-        value: draft, onValueChange: setDraft, fieldRef, field: 'input', canSearchIssues: true, onPickIssue: setPicked,
+    const picker = useIssueLinkPicker({
+        value: draft, onValueChange: setDraft, fieldRef, starters, onPickIssue: setPicked, maxLength: MAX_TEXT,
     });
 
     const { open, done } = splitTodos(todos.data ?? []);
-    const names = (members.data ?? []).map((m) => m.name);
 
     function addDraft() {
         const text = draft.trim();
@@ -170,13 +167,24 @@ export function TodoCard() {
                         ref={fieldRef}
                         type="text"
                         aria-label="Add a to-do"
-                        placeholder="Add a to-do… @ to mention"
+                        placeholder="Add a to-do… type # to link an issue"
                         maxLength={MAX_TEXT}
                         value={draft}
                         {...picker.fieldProps}
                         onKeyDown={onKeyDown}
                         style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none', color: 'var(--on-hi)', fontSize: 14.5, fontFamily: 'inherit' }}
                     />
+                    <button
+                        type="button"
+                        aria-label="Link an issue"
+                        title="Link an issue"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={picker.openFromButton}
+                        className="opacity-60 hover:opacity-100"
+                        style={{ border: 'none', background: 'none', color: 'var(--on-hi)', fontSize: 15, fontWeight: 800, cursor: 'pointer', padding: '0 2px', fontFamily: 'inherit' }}
+                    >
+                        #
+                    </button>
                     {picker.menu}
                 </div>
 
@@ -193,7 +201,6 @@ export function TodoCard() {
                                         <OpenTodoRow
                                             key={todo.id}
                                             todo={todo}
-                                            names={names}
                                             onDone={() => setDone(todo, true)}
                                             onDelete={() => { setError(''); remove.mutate(todo.id); }}
                                         />

@@ -30,8 +30,9 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // "/" is the tracker's front door: it redirects to Today.
     await expect(page).toHaveURL('http://smoke.localhost:8001/today');
 
-    // 3. Projects — create a project via the /create screen (inline form was removed)
-    await page.getByRole('link', { name: 'Projects' }).click();
+    // 3. Projects — create a project via the /create screen (inline form was removed). Exact: Today's left bar also
+    // lists your projects by name.
+    await page.getByRole('link', { name: 'Projects', exact: true }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/projects');
     await page.getByRole('button', { name: 'New project' }).click();
     await expect(page).toHaveURL(/\/create/);
