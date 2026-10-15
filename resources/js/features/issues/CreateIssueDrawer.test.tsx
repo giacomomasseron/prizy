@@ -16,8 +16,9 @@ vi.mock('../teams/hooks', () => ({
 vi.mock('../projects/hooks', () => ({
     useProjects: () => ({ data: { items: [{ id: 'p1', name: 'Apollo', description: null, icon: null, color: '#6d69f2', status: 'in_progress', team_id: 't1', start_date: null, target_date: null, created_by: 'u1', created_at: '', updated_at: '' }], next: null } }),
 }));
+let members: { id: string; name: string }[] | undefined = [{ id: 'u1', name: 'Bob Smith' }];
 vi.mock('../members/hooks', () => ({
-    useMembers: () => ({ data: [{ id: 'u1', name: 'Bob Smith' }] }),
+    useMembers: () => ({ data: members }),
 }));
 // Signed in as Bob Smith.
 let me: { id: string; name: string } | undefined = { id: 'u1', name: 'Bob Smith' };
@@ -220,7 +221,7 @@ describe('CreateIssueDrawer', () => {
 });
 
 describe('CreateIssueDrawer: Assign to me (Prizy v2)', () => {
-    beforeEach(() => { mockMutateAsync.mockClear(); me = { id: 'u1', name: 'Bob Smith' }; });
+    beforeEach(() => { mockMutateAsync.mockClear(); me = { id: 'u1', name: 'Bob Smith' }; members = [{ id: 'u1', name: 'Bob Smith' }]; });
 
     it('sits beside the picker on one line and assigns you, then says so', async () => {
         mount({});
@@ -279,6 +280,23 @@ describe('CreateIssueDrawer: Assign to me (Prizy v2)', () => {
 
         fireEvent.keyDown(chip, { key: 'i' });
         expect(assigned()).toBeInTheDocument();
+    });
+
+    it('I also works after a click on a blank part of the form, which focuses the form itself', () => {
+        mount({});
+        // Clicking what cannot take focus focuses the nearest focusable ancestor: the form, not the dialog around it.
+        const form = screen.getByRole('dialog').firstElementChild as HTMLElement;
+        expect(form).toHaveAttribute('tabindex', '-1');
+        expect(form.style.outline).toBe('none');
+        fireEvent.keyDown(form, { key: 'i' });
+        expect(screen.getByRole('button', { name: 'Assigned to me' })).toBeInTheDocument();
+    });
+
+    it('the picker shows you even before the member list has loaded', () => {
+        members = undefined;
+        mount({});
+        fireEvent.click(screen.getByRole('button', { name: 'Assign to me' }));
+        expect(screen.getByRole('button', { name: 'Issue assignee' })).toHaveTextContent('Bob Smith');
     });
 
     it('is not offered before you are known, and I does nothing then', async () => {

@@ -136,6 +136,30 @@ describe('AssigneeEditor: Assign to me (Issue v2)', () => {
         expect(trigger).toHaveFocus();
     });
 
+    it('goes while it saves you, and stays while someone else is being saved', () => {
+        vi.mocked(hooks.useAssignIssue).mockReturnValue({ mutateAsync: vi.fn(), isPending: true, variables: 'm2' } as any);
+        const { unmount } = render(<AssigneeEditor issue={baseIssue} canDevelop />, { wrapper });
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        unmount();
+
+        vi.mocked(hooks.useAssignIssue).mockReturnValue({ mutateAsync: vi.fn(), isPending: true, variables: 'm1' } as any);
+        render(<AssigneeEditor issue={baseIssue} canDevelop />, { wrapper });
+        expect(screen.getByRole('button', { name: 'Assign to me' })).toBeInTheDocument();
+    });
+
+    it('the name ends in … rather than pushing the caret under Assign to me (Issue v2)', () => {
+        const long: Issue = { ...baseIssue, assignee_id: 'm1', assignee: { id: 'm1', name: 'Alice' } };
+        const { unmount } = render(<AssigneeEditor issue={long} canDevelop />, { wrapper });
+        for (const pass of ['editable', 'read-only']) {
+            const name = screen.getByText('Alice');
+            expect(name.style.overflow, pass).toBe('hidden');
+            expect(name.style.textOverflow, pass).toBe('ellipsis');
+            expect(name.style.whiteSpace, pass).toBe('nowrap');
+            expect(name.style.minWidth, pass).toBe('0px');
+            if (pass === 'editable') { unmount(); render(<AssigneeEditor issue={long} canDevelop={false} />, { wrapper }); }
+        }
+    });
+
     it('shows on an unassigned issue too', () => {
         render(<AssigneeEditor issue={baseIssue} canDevelop />, { wrapper });
         expect(screen.getByRole('button', { name: 'Assign to me' })).toBeInTheDocument();

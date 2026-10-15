@@ -272,9 +272,11 @@ export function useAssignIssue(id: string) {
     return useMutation({
         mutationFn: (assigneeId: string | null) =>
             api.put<Issue>(`/issues/${id}/assignee`, { assignee_id: assigneeId }),
-        onSuccess: () => {
-            qc.invalidateQueries({ queryKey: ['issue', id] });
+        // Pending until the issue is fetched again: an Assign to me button hidden while it saves you does not come
+        // back in between.
+        onSuccess: async () => {
             qc.invalidateQueries({ queryKey: ['issues'] });
+            await qc.invalidateQueries({ queryKey: ['issue', id] });
         },
     });
 }

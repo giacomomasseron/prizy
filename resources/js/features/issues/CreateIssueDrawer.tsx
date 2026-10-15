@@ -65,7 +65,8 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const members = useMembers();
     const labels = useLabels({ enabled: open });
     const createIssue = useCreateIssue();
-    const meId = useMe().data?.id;
+    const me = useMe().data;
+    const meId = me?.id;
 
     const [teamId, setTeamId] = useState<string | null>(null);
     const [projectId, setProjectId] = useState<string | null>(null);
@@ -107,8 +108,9 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const projectList = projects.data?.items ?? [];
     const releaseList = releases.data ?? [];
     const memberList = members.data ?? [];
-    const selectedMember = memberList.find((m) => m.id === assigneeId);
     const assignedToMe = !!meId && assigneeId === meId;
+    // You, even before the member list has loaded.
+    const selectedMember = memberList.find((m) => m.id === assigneeId) ?? (assignedToMe ? me : undefined);
     const labelList = labels.data?.items ?? [];
     const canSubmit = !!teamId && !!title.trim() && !createIssue.isPending;
 
@@ -141,8 +143,11 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
 
     return (
         <Drawer open={open} onClose={onClose} side="right" width={520}>
+            {/* Focusable by click (not by Tab): a click on a blank part of the form, or on a button in a browser that
+                does not focus buttons, lands here rather than on the dialog around it, so I still reaches the handler. */}
             <div
-                style={{ display: 'flex', flexDirection: 'column', height: '100%' }}
+                tabIndex={-1}
+                style={{ display: 'flex', flexDirection: 'column', height: '100%', outline: 'none' }}
                 onKeyDown={(e) => {
                     // I: Assign to me, as its tooltip says.
                     if (!meId || e.key.toLowerCase() !== 'i' || e.ctrlKey || e.metaKey || e.altKey || typingTarget(e.target)) return;

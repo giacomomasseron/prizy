@@ -23,6 +23,8 @@ let issueLabels: { id: string; name: string; color: string; group: string | null
 let me: Record<string, unknown> = { id: 'u1', name: 'Me' };
 // The issue ids the drawer's save hooks were given.
 const saveHookIds: string[] = [];
+// The assign save's state (pending, and for whom).
+let assignState: Record<string, unknown> = {};
 
 vi.mock('./hooks', () => ({
     STATUSES: ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'],
@@ -34,7 +36,7 @@ vi.mock('./hooks', () => ({
     useToggleStar: () => ({ mutate: toggleStarMutate, isPending: false }),
     useUpdateIssue: (id: string) => { saveHookIds.push(id); return { mutateAsync: updateMutate }; },
     useTransitionStatus: () => ({ mutateAsync: transitionMutate }),
-    useAssignIssue: (id: string) => { saveHookIds.push(id); return { mutateAsync: assignMutate }; },
+    useAssignIssue: (id: string) => { saveHookIds.push(id); return { mutateAsync: assignMutate, ...assignState }; },
     useSetIssueLabels: (id: string) => { saveHookIds.push(id); return { mutateAsync: setLabelsMutate }; },
 }));
 vi.mock('../members/hooks', () => ({ useMembers: () => ({ data: [{ id: 'u2', name: 'Maya Chen', is_agent: true }, { id: 'u1', name: 'Alex Rivera', is_agent: false }] }) }));
@@ -136,6 +138,7 @@ describe('Prizy v2: the drawer\'s fields are editable', () => {
         me = { id: 'u1', name: 'Me' };
         overrideIssue = null;
         issueLabels = [];
+        assignState = {};
     });
 
     function open(onClose = vi.fn()) {
@@ -367,6 +370,28 @@ describe('Prizy v2: the drawer\'s fields are editable', () => {
         open();
         expect(screen.getByRole('button', { name: 'Assignee Alex Rivera' })).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+    });
+
+    it('Assign to me goes while it saves you, and stays while someone else is being saved', () => {
+        assignState = { isPending: true, variables: 'u1' };
+        const { unmount } = render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        unmount();
+
+        assignState = { isPending: true, variables: null };
+        open();
+        expect(screen.getByRole('button', { name: 'Assign to me' })).toBeInTheDocument();
+    });
+
+    it('the assignee\'s name ends in … when the row runs short, as in the mockup', () => {
+        open();
+        const name = within(screen.getByRole('button', { name: 'Assignee Maya Chen' })).getByText('Maya Chen');
+        expect(name.style.overflow).toBe('hidden');
+        expect(name.style.textOverflow).toBe('ellipsis');
+        expect(name.style.whiteSpace).toBe('nowrap');
+        expect(name.style.minWidth).toBe('0px');
+        expect((name.parentElement as HTMLElement).style.minWidth).toBe('0px');
+        expect((name.parentElement as HTMLElement).style.maxWidth).toBe('100%');
     });
 
     it('Assign to me closes an open Assignee menu, which still spans the row; a failure says so', async () => {

@@ -17,12 +17,15 @@ export function AssigneeEditor({ issue, canDevelop }: Props) {
     const assign = useAssignIssue(issue.id);
     const members = useMembers();
     const meId = useMe().data?.id;
+    // Not while you are being saved: the button would only come back until the issue is fetched again.
+    const offerAssignToMe = !!meId && issue.assignee_id !== meId && !(assign.isPending && assign.variables === meId);
     const av = avatarFor(issue.assignee ?? null);
 
     const display = (
         <>
             <Avatar initials={av.initials || undefined} color={av.color} size={20} />
-            <span>{issue.assignee?.name ?? 'Unassigned'}</span>
+            {/* Ends in … rather than pushing the caret under Assign to me (Issue v2). */}
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{issue.assignee?.name ?? 'Unassigned'}</span>
         </>
     );
 
@@ -61,7 +64,7 @@ export function AssigneeEditor({ issue, canDevelop }: Props) {
                 items={items}
             />
             {/* Issue v2: 6px from the panel's edge, where the property row pads 12px. */}
-            {meId && issue.assignee_id !== meId && <AssignToMeButton onAssign={() => { assign.mutateAsync(meId); }} style={{ marginRight: -6 }} />}
+            {offerAssignToMe && meId && <AssignToMeButton onAssign={() => { assign.mutateAsync(meId); }} style={{ marginRight: -6 }} />}
         </>
     );
 }

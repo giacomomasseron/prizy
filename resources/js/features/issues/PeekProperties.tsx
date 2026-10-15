@@ -30,6 +30,8 @@ const labelStyle: CSSProperties = { width: 96, flexShrink: 0, fontSize: 12, colo
 const valueStyle: CSSProperties = { flex: 1, minWidth: 0, display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 13 };
 const caretStyle: CSSProperties = { fontSize: 9, color: 'var(--fg3)' };
 const muted: CSSProperties = { color: 'var(--fg3)' };
+/** A name that ends in … rather than crowding the row (the mockup's assignee). */
+const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };
 /** The menu opens under the value column. */
 const POPOVER: CSSProperties = { left: 106, right: 6, minWidth: 0, maxHeight: 300, borderRadius: 14, display: 'flex', flexDirection: 'column', gap: 2 };
 const OPTION: CSSProperties = { padding: '7px 10px', borderRadius: 9, fontSize: 13, fontWeight: 400 };
@@ -111,6 +113,8 @@ export function PeekProperties({ issue, canEdit, track }: PeekPropertiesProps) {
     const labelList = allLabels.data?.items ?? [];
     const assignee = issue.assignee ?? null;
     const meId = me.data?.id;
+    // Not while you are being saved: the button would only come back until the issue is fetched again.
+    const offerAssignToMe = !!meId && issue.assignee_id !== meId && !(assign.isPending && assign.variables === meId);
 
     return (
         <div role="group" aria-label="Properties" style={{ display: 'flex', flexDirection: 'column', gap: 2, border: 'var(--line) solid var(--border)', borderRadius: 16, padding: 6 }}>
@@ -135,7 +139,12 @@ export function PeekProperties({ issue, canEdit, track }: PeekPropertiesProps) {
             <Row
                 label="Assignee"
                 canEdit={canEdit}
-                value={<><span aria-hidden="true" style={{ display: 'inline-flex' }}>{assignee ? <Avatar {...avatarFor(assignee)} size={20} /> : <Avatar size={20} />}</span>{assignee?.name ?? 'Unassigned'}</>}
+                value={
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0, maxWidth: '100%' }}>
+                        <span aria-hidden="true" style={{ display: 'inline-flex' }}>{assignee ? <Avatar {...avatarFor(assignee)} size={20} /> : <Avatar size={20} />}</span>
+                        <span style={ellipsis}>{assignee?.name ?? 'Unassigned'}</span>
+                    </span>
+                }
                 options={[
                     ...(members.data ?? []).map((m) => ({
                         key: m.id, label: m.id === me.data?.id ? `${m.name} (me)` : m.name, icon: <Avatar {...avatarFor(m)} size={20} />,
@@ -143,7 +152,7 @@ export function PeekProperties({ issue, canEdit, track }: PeekPropertiesProps) {
                     })),
                     { key: 'none', label: 'Unassigned', icon: <Avatar size={20} />, checked: !issue.assignee_id, onPick: () => track(assign.mutateAsync(null)) },
                 ]}
-                quick={meId && issue.assignee_id !== meId ? <AssignToMeButton onAssign={() => track(assign.mutateAsync(meId))} /> : null}
+                quick={offerAssignToMe && meId ? <AssignToMeButton onAssign={() => track(assign.mutateAsync(meId))} /> : null}
             />
             <Row
                 label="Project"
