@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { PeekDrawer } from './PeekDrawer';
 
@@ -11,24 +12,37 @@ const issue = {
 };
 const addCommentMutate = vi.fn();
 const toggleStarMutate = vi.fn();
+const updateMutate = vi.fn();
+const transitionMutate = vi.fn();
+const assignMutate = vi.fn();
+const setLabelsMutate = vi.fn();
 let overrideIssue: typeof issue | null = null;
 let loadingIssue = false;
+let issueLabels: { id: string; name: string; color: string; group: string | null }[] = [];
+// Read-only by default (no tracker write access); the editing tests sign in a developer.
+let me: Record<string, unknown> = { id: 'u1', name: 'Me' };
+// The issue ids the drawer's save hooks were given.
+const saveHookIds: string[] = [];
 
 vi.mock('./hooks', () => ({
+    STATUSES: ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'],
     useIssue: () => (loadingIssue ? { data: undefined, isLoading: true } : { data: overrideIssue ?? issue, isLoading: false }),
-    useIssueLabels: () => ({ data: { items: [] } }),
+    useIssueLabels: () => ({ data: { items: issueLabels } }),
     useActivities: () => ({ data: { items: [{ id: 'a1', user_id: 'u2', type: 'created', to_value: null, created_at: new Date().toISOString() }] } }),
     useComments: () => ({ data: { items: [{ id: 'c1', user_id: 'u2', body: 'Confirmed on staging.', created_at: new Date().toISOString(), reactions: [] }] } }),
     useAddComment: () => ({ mutate: addCommentMutate, isPending: false }),
     useToggleStar: () => ({ mutate: toggleStarMutate, isPending: false }),
-    // Pulled in by the (read-only, canDevelop=false) ReleaseEditor mount.
-    useUpdateIssue: () => ({ mutateAsync: vi.fn() }),
+    useUpdateIssue: (id: string) => { saveHookIds.push(id); return { mutateAsync: updateMutate }; },
+    useTransitionStatus: () => ({ mutateAsync: transitionMutate }),
+    useAssignIssue: (id: string) => { saveHookIds.push(id); return { mutateAsync: assignMutate }; },
+    useSetIssueLabels: (id: string) => { saveHookIds.push(id); return { mutateAsync: setLabelsMutate }; },
 }));
-vi.mock('../members/hooks', () => ({ useMembers: () => ({ data: [{ id: 'u2', name: 'Maya Chen', is_agent: true }] }) }));
-vi.mock('../projects/hooks', () => ({ useProjects: () => ({ data: { items: [] } }) }));
-vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [] } }) }));
-vi.mock('../releases/hooks', () => ({ useReleases: () => ({ data: [] }) }));
-vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
+vi.mock('../members/hooks', () => ({ useMembers: () => ({ data: [{ id: 'u2', name: 'Maya Chen', is_agent: true }, { id: 'u1', name: 'Alex Rivera', is_agent: false }] }) }));
+vi.mock('../projects/hooks', () => ({ useProjects: () => ({ data: { items: [{ id: 'p2', name: 'Escalation Engine', color: '#b06ae0' }, { id: 'p1', name: 'Unified Inbox', color: '#5b8def' }] } }) }));
+vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [{ id: 'c24', name: 'Cycle 24' }, { id: 'c25', name: 'Cycle 25' }] } }) }));
+vi.mock('../releases/hooks', () => ({ useReleases: () => ({ data: [{ id: 'r1', name: 'v1.4', shipped_at: null }] }) }));
+vi.mock('../labels/hooks', () => ({ useLabels: () => ({ data: { items: [{ id: 'l1', name: 'Bug', color: '#d93a3f', group: null }, { id: 'l2', name: 'Support', color: '#3a8f4d', group: null }] } }) }));
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: me }) }));
 
 function wrap(ui: React.ReactNode) { return <MemoryRouter>{ui}</MemoryRouter>; }
 
@@ -110,5 +124,276 @@ describe('P7-A: the drawer\'s Star button', () => {
         expect(star).toHaveAttribute('aria-pressed', 'false');
         fireEvent.click(star);
         expect(toggleStarMutate).toHaveBeenCalledWith({ id: 'i1', starred: true });
+    });
+});
+
+describe('Prizy v2: the drawer\'s fields are editable', () => {
+    beforeEach(() => {
+        me = { id: 'u1', name: 'Alex Rivera', is_developer: true, admin_level: 'member' };
+        for (const m of [updateMutate, transitionMutate, assignMutate, setLabelsMutate]) m.mockReset().mockResolvedValue({});
+    });
+    afterEach(() => {
+        me = { id: 'u1', name: 'Me' };
+        overrideIssue = null;
+        issueLabels = [];
+    });
+
+    function open(onClose = vi.fn()) {
+        render(wrap(<PeekDrawer issueId="i1" onClose={onClose} />));
+        return onClose;
+    }
+
+    it('the title is a field in the display type that saves when you leave it', async () => {
+        open();
+        const title = screen.getByRole('textbox', { name: 'Issue title' });
+        expect(title).toHaveValue('Escalated ticket loses attachments');
+        expect(title).toHaveAttribute('placeholder', 'Issue title');
+        expect(title.style.fontFamily).toBe('var(--font-display)');
+        expect(title.style.fontSize).toBe('28px');
+        // Border colours are classes, so hover and focus can change them.
+        expect(title.className).toContain('hover:border-border');
+        expect(title.className).toContain('focus:border-fg');
+        expect(title.className).toContain('focus:bg-bg');
+
+        await userEvent.clear(title);
+        await userEvent.type(title, 'Attachments vanish on convert');
+        expect(updateMutate).not.toHaveBeenCalled();
+        await userEvent.tab();
+        expect(updateMutate).toHaveBeenCalledOnce();
+        expect(updateMutate.mock.calls[0][0]).toEqual({ title: 'Attachments vanish on convert' });
+    });
+
+    it('Enter saves the title without a line break and keeps you in the field; leaving after does not save twice', async () => {
+        open();
+        const title = screen.getByRole('textbox', { name: 'Issue title' });
+        await userEvent.type(title, ' fast{Enter}');
+        expect(title).toHaveValue('Escalated ticket loses attachments fast');
+        expect(updateMutate).toHaveBeenCalledOnce();
+        expect(updateMutate.mock.calls[0][0]).toEqual({ title: 'Escalated ticket loses attachments fast' });
+        expect(document.activeElement).toBe(title);
+        await userEvent.tab();
+        expect(updateMutate).toHaveBeenCalledOnce();
+    });
+
+    it('an emptied title goes back to the saved one and is not sent', async () => {
+        open();
+        const title = screen.getByRole('textbox', { name: 'Issue title' });
+        await userEvent.clear(title);
+        await userEvent.tab();
+        expect(title).toHaveValue('Escalated ticket loses attachments');
+        expect(updateMutate).not.toHaveBeenCalled();
+    });
+
+    it('Escape undoes a title edit and keeps the drawer open; a second Escape closes it', async () => {
+        const onClose = open();
+        const title = screen.getByRole('textbox', { name: 'Issue title' });
+        await userEvent.type(title, ' oops');
+        await userEvent.keyboard('{Escape}');
+        expect(title).toHaveValue('Escalated ticket loses attachments');
+        expect(onClose).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(title);
+        await userEvent.keyboard('{Escape}');
+        expect(onClose).toHaveBeenCalledOnce();
+        expect(updateMutate).not.toHaveBeenCalled();
+    });
+
+    it('the description is a field that keeps line breaks, saves when you leave it, and sends an emptied one as null', async () => {
+        overrideIssue = { ...issue, description: 'Line one' } as unknown as typeof issue;
+        open();
+        const desc = screen.getByRole('textbox', { name: 'Issue description' });
+        expect(desc).toHaveValue('Line one');
+        expect(desc).toHaveAttribute('placeholder', 'Add a description…');
+        expect(desc.className).toContain('hover:border-border');
+        expect(desc.className).toContain('focus:border-fg');
+
+        await userEvent.type(desc, '{Enter}Line two');
+        await userEvent.tab();
+        expect(updateMutate.mock.calls[0][0]).toEqual({ description: 'Line one\nLine two' });
+
+        updateMutate.mockClear();
+        await userEvent.clear(desc);
+        await userEvent.tab();
+        expect(updateMutate.mock.calls[0][0]).toEqual({ description: null });
+    });
+
+    it('Escape undoes a description edit and keeps the drawer open', async () => {
+        const onClose = open();
+        const desc = screen.getByRole('textbox', { name: 'Issue description' });
+        await userEvent.type(desc, 'Draft');
+        await userEvent.keyboard('{Escape}');
+        expect(desc).toHaveValue('');
+        expect(onClose).not.toHaveBeenCalled();
+        await userEvent.tab();
+        expect(updateMutate).not.toHaveBeenCalled();
+    });
+
+    it('a failed save says so', async () => {
+        updateMutate.mockRejectedValue(new Error('boom'));
+        open();
+        await userEvent.type(screen.getByRole('textbox', { name: 'Issue title' }), '!');
+        await userEvent.tab();
+        expect(await screen.findByRole('alert')).toHaveTextContent('Update failed.');
+    });
+
+    it('a failed save is reported even when another save went out after it', async () => {
+        let failTitle: (e: Error) => void = () => {};
+        updateMutate.mockImplementationOnce(() => new Promise((_resolve, reject) => { failTitle = reject; }));
+        open();
+        await userEvent.type(screen.getByRole('textbox', { name: 'Issue title' }), '!');
+        await userEvent.click(screen.getByRole('textbox', { name: 'Issue description' }));
+        await userEvent.type(screen.getByRole('textbox', { name: 'Issue description' }), 'More');
+        await userEvent.tab();
+        expect(updateMutate).toHaveBeenCalledTimes(2);
+        failTitle(new Error('boom'));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Update failed.');
+    });
+
+    it('a property pick that fails says so', async () => {
+        transitionMutate.mockRejectedValue(new Error('boom'));
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Status In Progress' }));
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Done' }));
+        expect(await screen.findByRole('alert')).toHaveTextContent('Update failed.');
+    });
+
+    it('closing the drawer never points its saves at no issue, and a reopened drawer starts without the old error', async () => {
+        updateMutate.mockRejectedValue(new Error('boom'));
+        saveHookIds.length = 0;
+        const { rerender } = render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        await userEvent.type(screen.getByRole('textbox', { name: 'Issue title' }), '!');
+        await userEvent.tab();
+        expect(await screen.findByRole('alert')).toBeInTheDocument();
+
+        rerender(wrap(<PeekDrawer issueId={null} onClose={vi.fn()} />));
+        expect(saveHookIds.length).toBeGreaterThan(0);
+        expect(saveHookIds.every((id) => id === 'i1')).toBe(true);
+
+        rerender(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('names the dialog after the issue, since the title is a field rather than a heading', () => {
+        open();
+        expect(screen.getByRole('dialog', { name: 'PRZ-238 Escalated ticket loses attachments' })).toBeInTheDocument();
+    });
+
+    it('after a failed save, leaving the field again sends the same text again', async () => {
+        updateMutate.mockRejectedValueOnce(new Error('boom'));
+        open();
+        const title = screen.getByRole('textbox', { name: 'Issue title' });
+        await userEvent.type(title, '!');
+        await userEvent.tab();
+        await screen.findByRole('alert');
+        await userEvent.click(title);
+        await userEvent.tab();
+        expect(updateMutate).toHaveBeenCalledTimes(2);
+        expect(updateMutate.mock.calls[1][0]).toEqual({ title: 'Escalated ticket loses attachments!' });
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('each property row is one button: its label, its value, and a caret', () => {
+        open();
+        const box = within(screen.getByRole('group', { name: 'Properties' }));
+        // Named "label value" (the avatar's initials are hidden), in the mockup's order plus Release.
+        const names = ['Status In Progress', 'Priority Urgent', 'Assignee Maya Chen', 'Project No project', 'Release No release', 'Labels Add labels', 'Cycle No cycle'];
+        expect(box.getAllByRole('button')).toEqual(names.map((name) => box.getByRole('button', { name })));
+        for (const row of box.getAllByRole('button')) expect(row.lastElementChild).toHaveTextContent('▾');
+        const status = screen.getByRole('button', { name: 'Status In Progress' });
+        expect(status).toHaveAttribute('aria-haspopup', 'menu');
+        expect(status.className).toContain('hover:bg-hover');
+        expect((status.firstElementChild as HTMLElement).style.width).toBe('96px');
+    });
+
+    it('Status: every status, the current one checked; a pick moves the issue and closes the menu', async () => {
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Status In Progress' }));
+        const options = screen.getAllByRole('menuitemradio');
+        expect(options.map((o) => o.getAttribute('aria-label'))).toEqual(['Backlog', 'Todo', 'In Progress', 'In Review', 'Done', 'Cancelled']);
+        expect(screen.getByRole('menuitemradio', { name: 'In Progress' })).toHaveAttribute('aria-checked', 'true');
+        // The menu lines up with the value column.
+        expect(screen.getByRole('menu').style.left).toBe('106px');
+        expect(screen.getByRole('menu').style.right).toBe('6px');
+
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Done' }));
+        expect(transitionMutate.mock.calls[0][0]).toEqual({ id: 'i1', status: 'done' });
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('Priority: Urgent to Low, then No priority', async () => {
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Priority Urgent' }));
+        expect(screen.getAllByRole('menuitemradio').map((o) => o.getAttribute('aria-label'))).toEqual(['Urgent', 'High', 'Medium', 'Low', 'No priority']);
+        expect(screen.getByRole('menuitemradio', { name: 'Urgent' })).toHaveAttribute('aria-checked', 'true');
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'High' }));
+        expect(updateMutate.mock.calls[0][0]).toEqual({ priority: 'high' });
+    });
+
+    it('Assignee: the members, you marked (me), then Unassigned', async () => {
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Assignee Maya Chen' }));
+        expect(screen.getAllByRole('menuitemradio').map((o) => o.getAttribute('aria-label'))).toEqual(['Maya Chen', 'Alex Rivera (me)', 'Unassigned']);
+        expect(screen.getByRole('menuitemradio', { name: 'Maya Chen' })).toHaveAttribute('aria-checked', 'true');
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Unassigned' }));
+        expect(assignMutate.mock.calls[0][0]).toBeNull();
+    });
+
+    it('Project: the projects with their colour, then No project (checked when there is none)', async () => {
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Project No project' }));
+        expect(screen.getAllByRole('menuitemradio').map((o) => o.getAttribute('aria-label'))).toEqual(['Escalation Engine', 'Unified Inbox', 'No project']);
+        expect(screen.getByRole('menuitemradio', { name: 'No project' })).toHaveAttribute('aria-checked', 'true');
+        const dot = screen.getByRole('menuitemradio', { name: 'Escalation Engine' }).querySelector('span span') as HTMLElement;
+        expect(dot.style.background).toBe('rgb(176, 106, 224)');
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Escalation Engine' }));
+        expect(updateMutate.mock.calls[0][0]).toEqual({ project_id: 'p2' });
+    });
+
+    it('Release: the releases, then No release', async () => {
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Release No release' }));
+        expect(screen.getAllByRole('menuitemradio').map((o) => o.getAttribute('aria-label'))).toEqual(['v1.4', 'No release']);
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'v1.4' }));
+        expect(updateMutate.mock.calls[0][0]).toEqual({ release_id: 'r1' });
+    });
+
+    it('Labels: several at once, so the menu stays open after a pick', async () => {
+        issueLabels = [{ id: 'l2', name: 'Support', color: '#3a8f4d', group: null }];
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Labels Support' }));
+        expect(screen.getByRole('menuitemcheckbox', { name: 'Support' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByRole('menuitemcheckbox', { name: 'Bug' })).toHaveAttribute('aria-checked', 'false');
+        await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Bug' }));
+        expect(setLabelsMutate.mock.calls[0][0]).toEqual(['l2', 'l1']);
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    it('Cycle: the team\'s cycles, then No cycle', async () => {
+        open();
+        await userEvent.click(screen.getByRole('button', { name: 'Cycle No cycle' }));
+        expect(screen.getAllByRole('menuitemradio').map((o) => o.getAttribute('aria-label'))).toEqual(['Cycle 24', 'Cycle 25', 'No cycle']);
+        await userEvent.click(screen.getByRole('menuitemradio', { name: 'Cycle 25' }));
+        expect(updateMutate.mock.calls[0][0]).toEqual({ cycle_id: 'c25' });
+    });
+
+    it('Escape in a property menu closes the menu, not the drawer', async () => {
+        const onClose = open();
+        await userEvent.click(screen.getByRole('button', { name: 'Priority Urgent' }));
+        await userEvent.keyboard('{Escape}');
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('without write access the drawer stays read-only: a heading, plain text, rows that are not buttons', () => {
+        me = { id: 'u1', name: 'Me', is_developer: false, admin_level: 'member' };
+        overrideIssue = { ...issue, description: 'Line one' } as unknown as typeof issue;
+        open();
+        expect(screen.getByRole('heading', { level: 1, name: 'Escalated ticket loses attachments' })).toBeInTheDocument();
+        expect(screen.queryByRole('textbox', { name: /Issue/ })).toBeNull();
+        expect(screen.getByText('Line one')).toBeInTheDocument();
+        const box = screen.getByRole('group', { name: 'Properties' });
+        expect(within(box).queryAllByRole('button')).toEqual([]);
+        expect(box).toHaveTextContent('Status In Progress');
+        expect(box).toHaveTextContent('Labels No labels');
+        expect(box).not.toHaveTextContent('▾');
     });
 });
