@@ -11,9 +11,12 @@ final class ListProjects
 {
     public function __construct(private readonly ProjectRepository $projects) {}
 
-    /** @param array<string, string> $filters */
-    public function handle(array $filters, int $limit): CursorPaginator
+    /**
+     * @param  array<string, string>  $filters
+     * @param  string|null  $userId  the caller, for `mine=true`
+     */
+    public function handle(array $filters, int $limit, ?string $userId = null): CursorPaginator
     {
-        return $this->projects->paginate($filters, $limit);
+        return $this->projects->paginate($filters, $limit, $userId);
     }
 }

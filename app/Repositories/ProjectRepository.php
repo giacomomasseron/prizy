@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\Project;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\CursorPaginator;
 use Illuminate\Support\Str;
@@ -36,13 +37,36 @@ final class ProjectRepository
         return Project::find($id);
     }
 
-    /** @param array<string, string> $filters */
-    public function paginate(array $filters, int $limit): CursorPaginator
+    /**
+     * @param  array<string, string>  $filters  field => CSV value (special key: mine = true)
+     * @param  string|null  $mineFor  whose projects `mine=true` keeps (the caller)
+     */
+    public function paginate(array $filters, int $limit, ?string $mineFor = null): CursorPaginator
     {
         $query = Project::query();
         foreach (['status', 'team_id'] as $field) {
             if (isset($filters[$field])) {
                 $query->whereIn($field, array_filter(array_map('trim', explode(',', $filters[$field]))));
+            }
+        }
+
+        // mine=true (Today v2's left bar): the projects the caller leads, or that hold an open issue assigned to them
+        // or on their day plan. Without a caller, nothing.
+        if (($filters['mine'] ?? null) === 'true') {
+            if ($mineFor === null) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where(function (Builder $mine) use ($mineFor): void {
+                    $mine->where('lead_id', $mineFor)
+                        ->orWhereHas('issues', fn (Builder $issue) => $issue
+                            ->whereNotIn('status', ['done', 'cancelled'])
+                            ->whereNull('archived_at')
+                            ->where(fn (Builder $who) => $who
+                                ->where('assignee_id', $mineFor)
+                                ->orWhereIn('id', function ($sub) use ($mineFor): void {
+                                    $sub->select('issue_id')->from('user_plan_items')->where('user_id', $mineFor);
+                                })));
+                });
             }
         }
 
