@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import SignupPage from './SignupPage';
 
@@ -33,18 +33,48 @@ it('submits to /workspaces and shows field errors on 422', async () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain('/workspaces');
 });
 
-it('shows the success message once the workspace is created', async () => {
+function signedUp(body: { activation_required: boolean; workspace_url: string }) {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true, status: 201,
         headers: { get: () => 'application/json' },
-        json: async () => ({ data: { slug: 'acme' } }),
+        json: async () => body,
     }));
+}
+
+it('shows the success message once the workspace is created, linking the address the server returned', async () => {
+    signedUp({ activation_required: false, workspace_url: 'https://acme.prizy.dev' });
     render(<SignupPage />);
     fireEvent.change(screen.getByLabelText('slug'), { target: { value: 'acme' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
     await waitFor(() => expect(screen.getByText(/Workspace created/)).toBeInTheDocument());
-    expect(screen.getByText('acme')).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Workspace created');
+    expect(screen.getByRole('status')).toHaveTextContent('Visit acme.prizy.dev to log in.');
+    expect(screen.getByRole('link', { name: 'acme.prizy.dev' })).toHaveAttribute('href', 'https://acme.prizy.dev');
+    expect(screen.getByRole('status').textContent).not.toContain('localhost');
+});
+
+it('asks the owner to check their email when the workspace waits for activation', async () => {
+    signedUp({ activation_required: true, workspace_url: 'https://acme.prizy.dev' });
+    render(<SignupPage />);
+    fireEvent.change(screen.getByLabelText('email'), { target: { value: 'alice@acme.co' } });
+    fireEvent.change(screen.getByLabelText('slug'), { target: { value: 'acme' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Check your email' })).toBeInTheDocument());
+    expect(screen.getByRole('status')).toHaveTextContent(
+        'Open the link we sent to alice@acme.co within 24 hours to activate acme.prizy.dev.',
+    );
+    // Not reachable yet, so no link to it.
+    expect(within(screen.getByRole('status')).queryByRole('link')).toBeNull();
+    expect(screen.queryByText(/Workspace created/)).toBeNull();
+});
+
+it('lowercases the slug as it is typed, since it becomes a hostname', () => {
+    render(<SignupPage />);
+    fireEvent.change(screen.getByLabelText('slug'), { target: { value: 'Acme-Corp' } });
+    expect(screen.getByLabelText('slug')).toHaveValue('acme-corp');
+    // Only the slug: the other fields keep what was typed.
+    fireEvent.change(screen.getByLabelText('workspace name'), { target: { value: 'Acme Corp' } });
+    expect(screen.getByLabelText('workspace name')).toHaveValue('Acme Corp');
 });
 
 it('gives the fields autofill hints, and the email field the email keyboard', () => {
