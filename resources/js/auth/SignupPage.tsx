@@ -1,22 +1,14 @@
 import { useState } from 'react';
 import { ApiError } from '../lib/apiClient';
 import { Button } from '../components/ui/Button';
-import { AuthColumn } from './AuthChrome';
-import { authColumn, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
+import { AuthFrame } from './AuthChrome';
+import { AUTH_LINK_CLASSES, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
 import { sessionPost } from './useAuth';
-
-/** The v2 auth frame: the login page's left column on its own. */
-function AuthFrame({ children }: { children: React.ReactNode }) {
-    return (
-        <div style={{ ...authColumn, minHeight: '100vh', width: '100%', color: 'var(--fg)', background: 'var(--bg)' }}>
-            <AuthColumn>{children}</AuthColumn>
-        </div>
-    );
-}
 
 const AUTOCOMPLETE = { workspace_name: 'organization', slug: 'off', name: 'name', email: 'email', password: 'new-password' } as const;
 
-type SignedUp = { activation_required: boolean; workspace_url: string };
+/** login_url: a one-time link that logs the owner in on their workspace's own host (null while it awaits activation). */
+type SignedUp = { activation_required: boolean; workspace_url: string; login_url: string | null };
 
 const addressStyle = { fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var(--fg)' };
 
@@ -41,7 +33,10 @@ export default function SignupPage() {
         setFormError(null);
         setSubmitting(true);
         try {
-            setDone(await sessionPost<SignedUp>('/workspaces', form));
+            const result = await sessionPost<SignedUp>('/workspaces', form);
+            setDone(result);
+            // The workspace lives on its own host; this host's session is no use there.
+            if (result.login_url) window.location.assign(result.login_url);
         } catch (err) {
             if (err instanceof ApiError && err.errors) setErrors(err.errors);
             else if (err instanceof ApiError && err.status === 429) setFormError('Too many sign-ups from this network. Try again later.');
@@ -66,7 +61,7 @@ export default function SignupPage() {
                     <div role="status">
                         <h1 style={authTitle}><span className="hl">Workspace created</span></h1>
                         <p style={{ ...authLead, margin: '14px 0 0' }}>
-                            Visit <a href={done.workspace_url} style={{ color: 'var(--fg)' }}><code style={addressStyle}>{address}</code></a> to log in.
+                            Taking you to <a href={done.login_url ?? done.workspace_url} style={{ color: 'var(--fg)' }}><code style={addressStyle}>{address}</code></a>…
                         </p>
                     </div>
                 )}
@@ -96,6 +91,9 @@ export default function SignupPage() {
                 {formError && <p role="alert" style={authError}>{formError}</p>}
                 <Button type="submit" disabled={submitting} style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>Create</Button>
             </form>
+            <p style={{ margin: '28px 0 0', textAlign: 'center', color: 'var(--fg2)', fontSize: 15 }}>
+                Already have a workspace? <a href="/find" className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Find it</a>
+            </p>
         </AuthFrame>
     );
 }

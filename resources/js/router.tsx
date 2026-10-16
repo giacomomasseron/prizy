@@ -5,6 +5,7 @@ import AppLayout from './components/AppLayout';
 import { RootRedirect } from './components/RootRedirect';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
+import FindWorkspacePage from './auth/FindWorkspacePage';
 import IssueListPage from './features/issues/IssueListPage';
 import BoardPage from './features/issues/BoardPage';
 import IssueDetailPage from './features/issues/IssueDetailPage';
@@ -64,6 +65,7 @@ export default function AppRouter() {
         <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
+            <Route path="/find" element={<FindWorkspacePage />} />
             <Route element={<AuthedLayout />}>
                 <Route path="/" element={<RootRedirect />} />
                 {/* P7-B: the tracker user's home (homePathFor); `/` leads here */}
