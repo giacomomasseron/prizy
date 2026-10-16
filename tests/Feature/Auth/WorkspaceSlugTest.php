@@ -14,8 +14,8 @@ uses(RefreshDatabase::class);
 // keeps for itself.
 
 /**
- * Post a sign-up with $slug. Each call comes from its own address: sign-up is
- * throttled per IP, and these datasets post far more often than the limit.
+ * Post a sign-up with $slug, each from its own address, so no case depends on
+ * how many sign-ups the per-IP throttles have already counted.
  */
 function slugRulesSignUp(string $slug): \Illuminate\Testing\TestResponse
 {

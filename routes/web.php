@@ -72,8 +72,9 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
         ->middleware('throttle:60,1')
         ->name('caddy.ask');
 
-    // Per hour, not per minute: every sign-up emails whatever address it was given.
-    Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,60']);
+    // Every attempt, mistakes included. SignUpController also caps the sign-ups
+    // that pass validation (each emails whatever address it was given) per hour.
+    Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
 
     // Email verification — landlord route because the user may click the link
     // on any device or host with no tenant session. WorkspaceScope is a no-op

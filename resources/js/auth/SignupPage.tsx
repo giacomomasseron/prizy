@@ -23,6 +23,8 @@ const addressStyle = { fontFamily: 'var(--font-mono)', fontSize: 15, color: 'var
 export default function SignupPage() {
     const [form, setForm] = useState({ workspace_name: '', slug: '', name: '', email: '', password: '' });
     const [errors, setErrors] = useState<Record<string, string[]>>({});
+    // An error no field owns: a throttled network, or a server failure.
+    const [formError, setFormError] = useState<string | null>(null);
     const [done, setDone] = useState<SignedUp | null>(null);
     const [submitting, setSubmitting] = useState(false);
 
@@ -36,11 +38,14 @@ export default function SignupPage() {
         e.preventDefault();
         if (submitting) return;
         setErrors({});
+        setFormError(null);
         setSubmitting(true);
         try {
             setDone(await sessionPost<SignedUp>('/workspaces', form));
         } catch (err) {
-            if (err instanceof ApiError) setErrors(err.errors ?? {});
+            if (err instanceof ApiError && err.errors) setErrors(err.errors);
+            else if (err instanceof ApiError && err.status === 429) setFormError('Too many sign-ups from this network. Try again later.');
+            else setFormError("Couldn't create the workspace. Try again.");
             setSubmitting(false);
         }
     }
@@ -88,6 +93,7 @@ export default function SignupPage() {
                         {errors[field]?.map((m) => <p key={m} role="alert" style={authError}>{m}</p>)}
                     </div>
                 ))}
+                {formError && <p role="alert" style={authError}>{formError}</p>}
                 <Button type="submit" disabled={submitting} style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>Create</Button>
             </form>
         </AuthFrame>

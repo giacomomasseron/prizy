@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Throwable;
 
 final class SignUpWorkspace
 {
@@ -72,7 +73,19 @@ final class SignUpWorkspace
         if (! $pending) {
             Auth::login($user);
         }
-        $user->notify(new VerifyEmail());
+
+        try {
+            $user->notify(new VerifyEmail());
+        } catch (Throwable $e) {
+            // A logged-in owner can ask for the link again; a pending one can
+            // never log in, so the workspace would only hold its slug until the
+            // prune. Undo it, so the person can simply sign up again.
+            if ($pending) {
+                $workspace->forceDelete();
+            }
+
+            throw $e;
+        }
 
         return [
             'workspace'           => $workspace,

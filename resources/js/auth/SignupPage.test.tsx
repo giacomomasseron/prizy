@@ -68,6 +68,45 @@ it('asks the owner to check their email when the workspace waits for activation'
     expect(screen.queryByText(/Workspace created/)).toBeNull();
 });
 
+function failsWith(status: number) {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false, status,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Too Many Attempts.' }),
+    }));
+}
+
+it('says so when this network has made too many sign-ups, and lets the form be sent again', async () => {
+    failsWith(429);
+    render(<SignupPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many sign-ups from this network. Try again later.');
+    expect(screen.getByRole('button', { name: 'Create' })).toBeEnabled();
+});
+
+it('says the workspace could not be created when the server fails', async () => {
+    failsWith(500);
+    render(<SignupPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't create the workspace. Try again.");
+});
+
+it('shows field errors alone on a 422, and clears the form-level message on the next try', async () => {
+    failsWith(500);
+    render(<SignupPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    await screen.findByText("Couldn't create the workspace. Try again.");
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+        ok: false, status: 422,
+        headers: { get: () => 'application/json' },
+        json: async () => ({ message: 'Invalid.', errors: { slug: ['That address is reserved.'] } }),
+    }));
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }));
+    expect(await screen.findByText('That address is reserved.')).toBeInTheDocument();
+    expect(screen.queryByText("Couldn't create the workspace. Try again.")).toBeNull();
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+});
+
 it('lowercases the slug as it is typed, since it becomes a hostname', () => {
     render(<SignupPage />);
     fireEvent.change(screen.getByLabelText('slug'), { target: { value: 'Acme-Corp' } });

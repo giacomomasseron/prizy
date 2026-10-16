@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 uses(RefreshDatabase::class);
@@ -51,6 +52,15 @@ it('frees the address, so the same slug can sign up again', function (): void {
     ])->assertStatus(201);
 });
 
+it('also deletes a pending workspace that was soft-deleted', function (): void {
+    [$workspace, $owner] = pruneSeed(['slug' => 'binned', 'activated_at' => null, 'created_at' => now()->subHours(25)]);
+    $workspace->delete();
+
+    $this->artisan('workspaces:prune-pending')->assertExitCode(0);
+
+    expect(pruneExists($workspace, $owner))->toBeFalse();
+});
+
 it('keeps a pending workspace younger than 24 hours', function (): void {
     [$workspace, $owner] = pruneSeed(['slug' => 'fresh', 'activated_at' => null, 'created_at' => now()->subHours(23)]);
 
@@ -68,8 +78,13 @@ it('keeps a live workspace however old it is', function (): void {
 });
 
 it('runs every hour', function (): void {
-    $this->artisan('schedule:list')
-        ->expectsOutputToContain('workspaces:prune-pending')
-        ->expectsOutputToContain('0 * * * *')
-        ->assertExitCode(0);
+    // withSchedule() registers its events when Artisan starts, so start it.
+    $this->artisan('schedule:list')->expectsOutputToContain('workspaces:prune-pending')->assertExitCode(0);
+
+    // Read the expression off the event: schedule:list pads each cron field
+    // to the widest in its column, so "0 * * * *" never prints verbatim.
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn ($event): bool => str_contains((string) $event->command, 'workspaces:prune-pending'));
+
+    expect($event?->expression)->toBe('0 * * * *');
 });

@@ -186,9 +186,16 @@ it('verifying someone in a live workspace sends them to it and leaves activated_
     expect($workspace->fresh()->activated_at->equalTo($activatedAt))->toBeTrue();
 });
 
-it('allows ten sign-ups an hour from one address, then refuses until the hour is up', function (): void {
+it('allows ten sign-ups an hour from one address, and mistakes do not count', function (): void {
     config(['app.signup_requires_activation' => true]);
     $ip = '198.51.100.27';
+
+    // A reserved, malformed or too-short slug sends no email, so it costs
+    // nothing against the hourly cap (only the per-minute attempt throttle).
+    foreach (['www', 'Bad Slug', 'admin', 'xy'] as $slug) {
+        activationSignUp($slug, $ip)->assertStatus(422);
+    }
+    $this->travel(61)->seconds();
 
     for ($i = 1; $i <= 10; $i++) {
         activationSignUp("burst{$i}", $ip)->assertStatus(201);
@@ -196,10 +203,90 @@ it('allows ten sign-ups an hour from one address, then refuses until the hour is
 
     activationSignUp('burst11', $ip)->assertStatus(429);
 
-    // A per-minute window would have reset by now.
+    // The per-minute window has reset by now; the hourly cap has not.
     $this->travel(2)->minutes();
-    activationSignUp('burst12', $ip)->assertStatus(429);
+    activationSignUp('burst12', $ip)->assertStatus(429)->assertHeader('Retry-After');
 
     $this->travel(60)->minutes();
     activationSignUp('burst13', $ip)->assertStatus(201);
+});
+
+it('still throttles every attempt per minute, mistakes included', function (): void {
+    $ip = '198.51.100.28';
+
+    for ($i = 1; $i <= 10; $i++) {
+        activationSignUp('www', $ip)->assertStatus(422);
+    }
+
+    activationSignUp('acme', $ip)->assertStatus(429);
+    expect(Workspace::query()->where('slug', 'acme')->exists())->toBeFalse();
+});
+
+it('keeps a pending workspace\'s address taken', function (): void {
+    Workspace::factory()->create(['slug' => 'acme', 'activated_at' => null]);
+
+    activationSignUp('acme', '198.51.100.29')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['slug' => 'taken']);
+});
+
+it('a link with the wrong hash neither verifies nor activates a pending owner', function (): void {
+    config(['app.signup_requires_activation' => true]);
+    activationSignUp('acme', '198.51.100.30')->assertStatus(201);
+    $workspace = Workspace::query()->where('slug', 'acme')->firstOrFail();
+    $owner = activationOwner($workspace);
+
+    $link = URL::temporarySignedRoute('verification.verify', now()->addHour(), ['id' => $owner->id, 'hash' => sha1('someone@else.example')]);
+    $this->get($link)->assertForbidden();
+
+    expect($workspace->fresh()->activated_at)->toBeNull()
+        ->and($owner->fresh()->email_verified_at)->toBeNull();
+});
+
+it('with activation on, a failed verification email deletes the workspace again, freeing its address', function (): void {
+    config(['app.signup_requires_activation' => true]);
+    Notification::shouldReceive('send')->andThrow(new RuntimeException('SMTP is down'));
+
+    activationSignUp('acme', '198.51.100.31')->assertStatus(500);
+
+    // Nobody can log in to a pending workspace to ask for another link.
+    expect(Workspace::withTrashed()->where('slug', 'acme')->exists())->toBeFalse()
+        ->and(User::withoutGlobalScopes()->where('email', 'owner@acme.example')->exists())->toBeFalse();
+
+    Notification::fake();
+    activationSignUp('acme', '198.51.100.32')->assertStatus(201);
+});
+
+it('with activation off, a failed verification email keeps the live workspace (its owner can resend)', function (): void {
+    config(['app.signup_requires_activation' => false]);
+    Notification::shouldReceive('send')->andThrow(new RuntimeException('SMTP is down'));
+
+    activationSignUp('acme', '198.51.100.33')->assertStatus(500);
+
+    expect(Workspace::query()->where('slug', 'acme')->exists())->toBeTrue();
+});
+
+it('the email tells a pending owner the link activates the workspace and lasts 24 hours', function (): void {
+    config(['app.signup_requires_activation' => true]);
+    activationSignUp('acme', '198.51.100.34')->assertStatus(201);
+    $owner = activationOwner(Workspace::query()->where('slug', 'acme')->firstOrFail());
+
+    $mail = (new VerifyEmail())->toMail($owner);
+    $text = implode(' ', [...$mail->introLines, ...$mail->outroLines]);
+
+    expect($text)->toContain('activates your workspace at acme.prizy.test')
+        ->and($text)->toContain('expires in 24 hours');
+});
+
+it('the email to someone in a live workspace says nothing about activating it', function (): void {
+    $workspace = Workspace::factory()->create(['slug' => 'beta']);
+    $workspace->makeCurrent();
+    $user = User::factory()->for($workspace, 'workspace')->create(['email_verified_at' => null]);
+    Workspace::forgetCurrent();
+
+    $mail = (new VerifyEmail())->toMail($user);
+    $text = implode(' ', [...$mail->introLines, ...$mail->outroLines]);
+
+    expect($text)->not->toContain('activates')
+        ->and($text)->toContain('expires in 24 hours');
 });
