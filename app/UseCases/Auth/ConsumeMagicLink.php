@@ -20,6 +20,11 @@ use RuntimeException;
  * is required. User::find() works globally because WorkspaceScope adds no
  * WHERE clause when no workspace is current, and Postgres RLS is permissive
  * when app.current_workspace_id is unset.
+ *
+ * It is ALSO invoked from /auth/handoff (LoginHandoff), a tenant route whose
+ * link is signed relative to the host. There the lookup being scoped to the
+ * current workspace is what stops a link opened on another workspace's host
+ * from logging anyone in: never widen it with withoutGlobalScopes().
  */
 final class ConsumeMagicLink
 {

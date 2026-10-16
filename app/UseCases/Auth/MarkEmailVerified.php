@@ -6,6 +6,7 @@ namespace App\UseCases\Auth;
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\LoginHandoff;
 use App\Services\WorkspaceUrl;
 use Illuminate\Support\Facades\DB;
 
@@ -23,7 +24,7 @@ final class MarkEmailVerified
      * Verifying the owner of a pending workspace also activates it: this link
      * is the confirmation SIGNUP_REQUIRES_ACTIVATION waits for.
      *
-     * @return string|null  the workspace's URL to send the user to, or null = user not found or hash mismatch
+     * @return string|null  where to send the user, or null = user not found or hash mismatch
      */
     public function handle(string $id, string $hash): ?string
     {
@@ -43,16 +44,25 @@ final class MarkEmailVerified
             return null;
         }
 
-        DB::transaction(function () use ($user, $workspace): void {
+        $activated = DB::transaction(function () use ($user, $workspace): bool {
             if (! $user->hasVerifiedEmail()) {
                 $user->markEmailAsVerified();
             }
 
             if ($workspace->activated_at === null && $user->admin_level === 'owner') {
                 $workspace->forceFill(['activated_at' => now()])->save();
+
+                return true;
             }
+
+            return false;
         });
 
-        return WorkspaceUrl::for($workspace);
+        // The click that activates the workspace logs its owner in there, as
+        // sign-up does for a workspace that is live at once. Later clicks only
+        // open it: the link lasts 24 hours and must not work as a password.
+        return $activated
+            ? LoginHandoff::url($user, $workspace)
+            : WorkspaceUrl::for($workspace).'/';
     }
 }

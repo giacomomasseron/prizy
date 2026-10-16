@@ -9,12 +9,19 @@ use Illuminate\Support\Str;
 use Spatie\Multitenancy\Contracts\IsTenant;
 use Spatie\Multitenancy\TenantFinder\TenantFinder;
 use App\Models\Workspace;
+use App\Services\SignupHost;
 
 final class WorkspaceTenantFinder extends TenantFinder
 {
     public function findForRequest(Request $request): ?IsTenant
     {
         $host = $request->getHost(); // e.g. "acme.app.com" or "support.acme.com"
+
+        // The sign-up host is never a workspace, whatever slug it looks like
+        // (a workspace named "signup" from before the name was reserved).
+        if ($host === SignupHost::host()) {
+            return null;
+        }
 
         // Only activated workspaces: a pending sign-up stays unreachable until
         // its owner confirms (AuthorizeTlsHost applies the same filter).

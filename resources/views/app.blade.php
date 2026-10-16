@@ -4,6 +4,8 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Prizy') }}</title>
+    {{-- Where sign-up lives (APP_SIGNUP_HOST), for links to it from a workspace host. --}}
+    <meta name="prizy-signup-url" content="{{ \App\Services\SignupHost::url() }}">
     <script>
     (function(){
         var t=null;

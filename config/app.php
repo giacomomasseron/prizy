@@ -56,6 +56,10 @@ return [
 
     'base_domain' => env('APP_BASE_DOMAIN'),
 
+    // The host sign-up and "find your workspace" live on, which never resolves
+    // to a workspace (signup.prizy.dev on the cloud). Unset: the base domain.
+    'signup_host' => env('APP_SIGNUP_HOST') ?: null,
+
     // On, a new sign-up stays pending (no hostname, no certificate) until its
     // owner clicks the emailed link, and is deleted after 24 hours if they never
     // do. For a public cloud; a self-hosted install leaves it off.

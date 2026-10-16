@@ -1,8 +1,18 @@
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import SignupPage from './SignupPage';
 
-afterEach(() => vi.unstubAllGlobals());
+// Sign-up ends by leaving for the workspace's own host: a full page load.
+const realLocation = window.location;
+const assign = vi.fn();
+beforeEach(() => {
+    assign.mockReset();
+    Object.defineProperty(window, 'location', { value: { assign } as unknown as Location, writable: true });
+});
+afterEach(() => {
+    vi.unstubAllGlobals();
+    Object.defineProperty(window, 'location', { value: realLocation, writable: true });
+});
 
 it('v2: the login frame — brand, a display title on the highlighter, labelled fields and an ink Create button', () => {
     render(<SignupPage />);
@@ -33,7 +43,7 @@ it('submits to /workspaces and shows field errors on 422', async () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain('/workspaces');
 });
 
-function signedUp(body: { activation_required: boolean; workspace_url: string }) {
+function signedUp(body: { activation_required: boolean; workspace_url: string; login_url: string | null }) {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: true, status: 201,
         headers: { get: () => 'application/json' },
@@ -41,20 +51,23 @@ function signedUp(body: { activation_required: boolean; workspace_url: string })
     }));
 }
 
-it('shows the success message once the workspace is created, linking the address the server returned', async () => {
-    signedUp({ activation_required: false, workspace_url: 'https://acme.prizy.dev' });
+const LOGIN_URL = 'https://acme.prizy.dev/auth/handoff?nonce=n&user=u&signature=s';
+
+it('takes the owner to their workspace, logged in, once it is created', async () => {
+    signedUp({ activation_required: false, workspace_url: 'https://acme.prizy.dev', login_url: LOGIN_URL });
     render(<SignupPage />);
     fireEvent.change(screen.getByLabelText('slug'), { target: { value: 'acme' } });
     fireEvent.click(screen.getByRole('button', { name: 'Create' }));
-    await waitFor(() => expect(screen.getByText(/Workspace created/)).toBeInTheDocument());
+    await waitFor(() => expect(assign).toHaveBeenCalledWith(LOGIN_URL));
+    // While the browser leaves, say where it is going (and offer the link).
     expect(screen.getByRole('status')).toHaveTextContent('Workspace created');
-    expect(screen.getByRole('status')).toHaveTextContent('Visit acme.prizy.dev to log in.');
-    expect(screen.getByRole('link', { name: 'acme.prizy.dev' })).toHaveAttribute('href', 'https://acme.prizy.dev');
+    expect(screen.getByRole('status')).toHaveTextContent('Taking you to acme.prizy.dev…');
+    expect(screen.getByRole('link', { name: 'acme.prizy.dev' })).toHaveAttribute('href', LOGIN_URL);
     expect(screen.getByRole('status').textContent).not.toContain('localhost');
 });
 
 it('asks the owner to check their email when the workspace waits for activation', async () => {
-    signedUp({ activation_required: true, workspace_url: 'https://acme.prizy.dev' });
+    signedUp({ activation_required: true, workspace_url: 'https://acme.prizy.dev', login_url: null });
     render(<SignupPage />);
     fireEvent.change(screen.getByLabelText('email'), { target: { value: 'alice@acme.co' } });
     fireEvent.change(screen.getByLabelText('slug'), { target: { value: 'acme' } });
@@ -66,6 +79,13 @@ it('asks the owner to check their email when the workspace waits for activation'
     // Not reachable yet, so no link to it.
     expect(within(screen.getByRole('status')).queryByRole('link')).toBeNull();
     expect(screen.queryByText(/Workspace created/)).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
+});
+
+it('points to find-your-workspace for people who already have one', () => {
+    render(<SignupPage />);
+    expect(screen.getByRole('link', { name: 'Find it' })).toHaveAttribute('href', '/find');
+    expect(screen.getByText(/Already have a workspace\?/)).toBeInTheDocument();
 });
 
 function failsWith(status: number) {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Rules;
 
+use App\Services\SignupHost;
 use Closure;
 use Illuminate\Contracts\Validation\ValidationRule;
 
@@ -37,8 +38,16 @@ final class WorkspaceSlug implements ValidationRule
             return;
         }
 
-        if (in_array($value, self::RESERVED, true)) {
+        if (in_array($value, self::RESERVED, true) || $this->isSignupHostLabel($value)) {
             $fail('That address is reserved.');
         }
+    }
+
+    /** APP_SIGNUP_HOST may be any subdomain (join.example.com), not only "signup". */
+    private function isSignupHostLabel(string $value): bool
+    {
+        $base = strtolower((string) config('app.base_domain'));
+
+        return $base !== '' && "{$value}.{$base}" === SignupHost::host();
     }
 }

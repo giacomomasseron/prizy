@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { BrandMark } from '../components/ui/BrandMark';
+import { authColumn } from './authStyles';
 
 /** The ink brand lockup at the top of the auth pages. */
 export function AuthBrand() {
@@ -20,6 +21,15 @@ export function AuthFooter() {
             <span>© 2026 Prizy</span>
             <a href="https://prizy.dev/privacy" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK_CLASSES}>Privacy</a>
             <a href="https://prizy.dev/terms" target="_blank" rel="noopener noreferrer" className={FOOTER_LINK_CLASSES}>Terms</a>
+        </div>
+    );
+}
+
+/** A whole auth page that is only the column: sign-up, find your workspace. */
+export function AuthFrame({ children }: { children: ReactNode }) {
+    return (
+        <div style={{ ...authColumn, minHeight: '100vh', width: '100%', color: 'var(--fg)', background: 'var(--bg)' }}>
+            <AuthColumn>{children}</AuthColumn>
         </div>
     );
 }

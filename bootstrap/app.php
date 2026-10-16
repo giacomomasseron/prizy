@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureHelpdeskEnabled;
+use App\Services\SignupHost;
 use App\Support\Http\ProblemDetails;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
@@ -9,6 +10,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Spatie\Multitenancy\Exceptions\NoCurrentTenant;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
@@ -87,6 +89,23 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // A host with no workspace behind it — the sign-up host, a mistyped or
+        // still-pending workspace, a bare domain — answers with a way forward
+        // instead of a 500. Registered before the Problem Details renderer,
+        // which would otherwise claim v1/* first (in practice auth, sorted
+        // ahead of NeedsTenant there, answers a guest 401 before this).
+        // Routine (typos, bots probing subdomains), so not worth a log line.
+        $exceptions->dontReport(NoCurrentTenant::class);
+        $exceptions->render(function (NoCurrentTenant $e, Request $request) {
+            if (! $request->isMethodSafe() || $request->expectsJson() || $request->is('v1/*')) {
+                return response()->json(['message' => 'Not Found'], 404);
+            }
+
+            $onSignupHost = $request->getHost() === SignupHost::host();
+
+            return redirect()->away(SignupHost::url($onSignupHost && $request->path() === '/' ? '/signup' : '/find'));
+        });
 
         // RFC 7807 Problem Details for the v1 API surface.
         $exceptions->render(function (Throwable $e, Request $request): ?JsonResponse {

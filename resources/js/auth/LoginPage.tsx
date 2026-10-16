@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ApiError } from '../lib/apiClient';
 import { Button } from '../components/ui/Button';
 import { AuthColumn } from './AuthChrome';
 import { AUTH_LINK_CLASSES, authColumn, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
+import { signupUrl } from './signupUrl';
 import { useLogin } from './useAuth';
 import { ink } from '../lib/ink';
 
@@ -62,7 +63,8 @@ export default function LoginPage() {
                     </form>
 
                     <p style={{ margin: '28px 0 0', textAlign: 'center', color: 'var(--fg2)', fontSize: 15 }}>
-                        New to Prizy? <Link to="/signup" className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</Link>
+                        {/* Sign-up lives on its own host (signup.prizy.dev), not this workspace's. */}
+                        New to Prizy? <a href={signupUrl('/signup')} className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</a>
                     </p>
                 </AuthColumn>
             </section>

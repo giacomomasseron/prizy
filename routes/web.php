@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Auth\AcceptInviteController;
 use App\Http\Controllers\Auth\EmailVerificationController;
+use App\Http\Controllers\Auth\FindWorkspacesController;
+use App\Http\Controllers\Auth\LoginHandoffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
@@ -26,6 +28,11 @@ Route::view('/issues', 'app');
 // the workspace still resolves; the login handler regenerates the session anyway).
 Route::view('/login', 'app')->withoutMiddleware([EnsureValidTenantSession::class]);
 Route::view('/signup', 'app')->withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class]);
+Route::view('/find', 'app')->withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class]);
+// The one-time link sign-up hands back (LoginHandoff): opened on the new
+// workspace's host, so the owner's session starts there. It checks its own
+// signature, so a used or expired link lands on /login rather than a 403 page.
+Route::get('/auth/handoff', LoginHandoffController::class)->name('auth.handoff');
 Route::view('/board', 'app');
 Route::view('/issues/{issue}', 'app');
 Route::view('/teams', 'app');
@@ -75,6 +82,11 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
     // Every attempt, mistakes included. SignUpController also caps the sign-ups
     // that pass validation (each emails whatever address it was given) per hour.
     Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
+
+    // Each request may email a list of workspace links, so keep it rare. Its
+    // own key (the third argument): an unnamed throttle keys on the IP alone,
+    // so it would share one count, and one window, with every guest route.
+    Route::post('/find-workspaces', FindWorkspacesController::class)->middleware(['throttle:5,60,find-workspaces']);
 
     // Email verification — landlord route because the user may click the link
     // on any device or host with no tenant session. WorkspaceScope is a no-op

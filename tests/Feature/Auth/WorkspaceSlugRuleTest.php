@@ -5,7 +5,8 @@ declare(strict_types=1);
 use App\Rules\WorkspaceSlug;
 
 // Over HTTP TrimStrings strips a trailing newline before validation, so this
-// pins the rule on its own, for any caller that skips that middleware.
+// pins the rule on its own, for any caller that skips that middleware. (A
+// Feature test: the rule reads config to reserve the sign-up host's label.)
 
 function workspaceSlugRuleMessage(mixed $value): ?string
 {

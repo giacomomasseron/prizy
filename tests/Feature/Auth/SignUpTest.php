@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Notification;
 
 uses(RefreshDatabase::class);
 
-it('creates a workspace and owner user, logs them in, and dispatches a verification notification', function (): void {
+it('creates a workspace and owner user, hands back a login link for their workspace, and dispatches a verification notification', function (): void {
     Notification::fake();
 
     $response = $this->postJson('/workspaces', [
@@ -24,6 +24,7 @@ it('creates a workspace and owner user, logs them in, and dispatches a verificat
     ]);
 
     $response->assertStatus(201);
+    expect($response->json('login_url'))->toContain('/auth/handoff?');
 
     // Workspace row created
     $this->assertDatabaseHas('workspaces', ['slug' => 'acme', 'name' => 'Acme Corp']);
@@ -41,8 +42,9 @@ it('creates a workspace and owner user, logs them in, and dispatches a verificat
 
     Workspace::forgetCurrent();
 
-    // Session: the owner is logged in
-    $this->assertAuthenticatedAs($user);
+    // Nobody is logged in here: this host is the sign-up host, and the owner
+    // works on their workspace's own (LoginHandoffTest follows the link).
+    $this->assertGuest();
 
     // Verification notification sent
     Notification::assertSentTo($user, VerifyEmail::class);

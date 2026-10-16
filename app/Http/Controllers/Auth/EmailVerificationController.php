@@ -30,17 +30,17 @@ final class EmailVerificationController extends Controller
      * an invalid signature aborts with 403 before we are reached.
      *
      * The link is clicked from a mail client, so it lands on the workspace
-     * (which, for a pending sign-up, this click has just activated).
+     * (logged in, when this click is the one that activated it).
      */
     public function verify(Request $request, string $id, string $hash): RedirectResponse
     {
-        $workspaceUrl = $this->markEmailVerified->handle($id, $hash);
+        $destination = $this->markEmailVerified->handle($id, $hash);
 
-        if ($workspaceUrl === null) {
+        if ($destination === null) {
             abort(403, 'Invalid verification link.');
         }
 
-        return redirect()->away($workspaceUrl.'/');
+        return redirect()->away($destination);
     }
 
     /**

@@ -27,6 +27,19 @@ it('renders the redesigned login (Sign in button + Create a workspace link + fie
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
 });
 
+it('points "Create a workspace" at the sign-up host, which may not be this one', () => {
+    const meta = document.createElement('meta');
+    meta.name = 'prizy-signup-url';
+    meta.content = 'https://signup.prizy.dev';
+    document.head.append(meta);
+    try {
+        renderLogin();
+        expect(screen.getByRole('link', { name: /Create a workspace/i })).toHaveAttribute('href', 'https://signup.prizy.dev/signup');
+    } finally {
+        meta.remove();
+    }
+});
+
 it('shows a field error when login returns 422', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
         ok: false, status: 422,

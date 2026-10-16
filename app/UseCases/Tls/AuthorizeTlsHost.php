@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UseCases\Tls;
 
 use App\Models\Workspace;
+use App\Services\SignupHost;
 use Illuminate\Support\Str;
 
 /**
@@ -36,6 +37,10 @@ final class AuthorizeTlsHost
         $base = strtolower((string) config('app.base_domain'));
 
         if ($base !== '' && $host === $base) {
+            return true;
+        }
+
+        if ($host === SignupHost::host()) {
             return true;
         }
 
