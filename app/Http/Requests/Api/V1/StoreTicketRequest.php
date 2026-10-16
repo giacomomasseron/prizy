@@ -11,7 +11,7 @@ final class StoreTicketRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // capability gate lives in the use case (is_agent), not here
+        return true; // capability gate lives in the use case (an agent, not a viewer), not here
     }
 
     /** @return array<string, mixed> */

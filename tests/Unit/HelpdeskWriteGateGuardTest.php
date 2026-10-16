@@ -58,3 +58,30 @@ it('lets only the listed reads use the read-only helpdesk gate', function (): vo
     // moved or stopped asking (the list must not keep stale exemptions).
     expect($readGateCallers)->toBe($reads);
 });
+
+// The allowlist above only catches a write that asks the wrong gate. A support
+// use case that asks NEITHER (a hand-rolled is_agent check, or none) would pass
+// it, so every use case in the support folders must ask one of the two.
+it('makes every support use case ask a helpdesk gate', function (): void {
+    $root = realpath(__DIR__.'/../../app/UseCases');
+
+    $folders = ['Tickets', 'Contacts', 'Kb', 'SlaPolicies', 'BusinessHours', 'HelpdeskSavedViews', 'HelpdeskSavedReports'];
+    $exempt = [
+        'Tickets/RecordCsatResponse.php', // the customer's signed rating link: no agent is acting
+    ];
+
+    $ungated = [];
+    foreach ($folders as $folder) {
+        foreach (glob($root.'/'.$folder.'/*.php') ?: [] as $path) {
+            $relative = $folder.'/'.basename($path);
+            if (in_array($relative, $exempt, true)) {
+                continue;
+            }
+            if (preg_match('/HelpdeskAccess::gate(Write)?\s*\(\s*\$/', (string) file_get_contents($path)) !== 1) {
+                $ungated[] = $relative;
+            }
+        }
+    }
+
+    expect($ungated)->toBe([]);
+});

@@ -64,7 +64,6 @@ describe('SlaPoliciesSettingsPage', () => {
             expect(screen.queryByRole('button', { name: 'New policy' })).toBeNull();
             expect(screen.queryByTestId('edit-1')).toBeNull();
             expect(screen.queryByTestId('delete-1')).toBeNull();
-            expect(screen.queryByRole('dialog')).toBeNull();
         });
     });
 

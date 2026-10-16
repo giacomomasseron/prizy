@@ -116,6 +116,17 @@ describe('KbTranslationDrawer', () => {
         expect(screen.getByPlaceholderText(/Write the translation/)).toHaveAttribute('readonly');
     });
 
+    it('renders a viewer\'s translation once, from its own text, never from the empty pane it loads into', async () => {
+        const { fetchMock } = renderDrawer({ initialLocale: 'fr', readOnly: true });
+        expect(await screen.findByText('rendered')).toBeInTheDocument();
+        const previewBodies = fetchMock.mock.calls
+            .filter(([url]) => String(url).includes('/kb/preview'))
+            .map(([, init]) => JSON.parse(String((init as RequestInit).body)).body);
+        // The article's own (source) render, plus exactly one for the French text.
+        expect(previewBodies.filter((b) => b === 'Ouvrez votre espace de travail.')).toHaveLength(1);
+        expect(previewBodies).not.toContain('');
+    });
+
     it('tells a viewer a language is not translated, with no way to start one', async () => {
         renderDrawer({ initialLocale: 'it', readOnly: true });
         expect(await screen.findByText('Not translated yet')).toBeInTheDocument();

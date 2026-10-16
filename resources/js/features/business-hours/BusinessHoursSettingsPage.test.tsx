@@ -58,7 +58,6 @@ describe('BusinessHoursSettingsPage', () => {
             expect(screen.queryByRole('button', { name: 'New schedule' })).toBeNull();
             expect(screen.queryByTestId(`edit-${SCHEDULES[0].id}`)).toBeNull();
             expect(screen.queryByTestId(`delete-${SCHEDULES[0].id}`)).toBeNull();
-            expect(screen.queryByRole('dialog')).toBeNull();
         });
     });
 

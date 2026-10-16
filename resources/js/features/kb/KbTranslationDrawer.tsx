@@ -249,6 +249,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
             setOriginal({ title: detailQuery.data.title, body: detailQuery.data.body });
             setTitle(detailQuery.data.title);
             setBody(detailQuery.data.body);
+            setDebouncedBody(detailQuery.data.body); // no stale empty-body preview on the way in
             setStatus(detailQuery.data.status);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -259,10 +260,13 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
         const t = setTimeout(() => setDebouncedBody(body), 400);
         return () => clearTimeout(t);
     }, [body]);
+    // Not before the translation has loaded: a viewer opens on Preview, and rendering the
+    // still-empty body would spend a call on the rate-limited preview route for nothing.
+    const loaded = original !== null;
     useEffect(() => {
-        if (tab === 'preview') preview.mutate(debouncedBody);
+        if (tab === 'preview' && loaded) preview.mutate(debouncedBody);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tab, debouncedBody]);
+    }, [tab, debouncedBody, loaded]);
 
     const dirty = original !== null && (title !== original.title || body !== original.body);
     useEffect(() => {

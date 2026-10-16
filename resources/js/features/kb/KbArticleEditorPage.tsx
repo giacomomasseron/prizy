@@ -40,6 +40,7 @@ const STATUS_HINT: Record<KbStatus, string> = {
 };
 
 const EDITOR_SUB = 'Authoring · publishes to the customer help center';
+const READER_SUB = 'Knowledge base · read only';
 const cardColumn: CSSProperties = { ...kbCard, display: 'flex', flexDirection: 'column', gap: 12 };
 
 export default function KbArticleEditorPage() {
@@ -71,7 +72,7 @@ export default function KbArticleEditorPage() {
     if (!isNew && !article) {
         return (
             <KbShell>
-                <KbHeader title="Knowledge base" subtitle={EDITOR_SUB} />
+                <KbHeader title="Knowledge base" subtitle={readOnly ? READER_SUB : EDITOR_SUB} />
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg3)', fontSize: 13 }}>
                     {articleQuery.isError ? 'This article could not be found.' : 'Loading…'}
                 </div>
@@ -301,7 +302,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
 
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <KbHeader title={isNew ? 'New article' : title.trim() || 'Untitled article'} subtitle={EDITOR_SUB} />
+            <KbHeader title={isNew ? 'New article' : title.trim() || 'Untitled article'} subtitle={readOnly ? READER_SUB : EDITOR_SUB} />
 
             <div data-testid="kb-editor-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '22px 26px 40px', alignItems: 'flex-start' }}>
@@ -394,7 +395,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                 <h1 style={{ margin: '10px 0 8px', fontSize: 24, fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.25 }}>{title || 'Untitled article'}</h1>
                                 <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginBottom: 22 }}>{previewMeta}</div>
                                 {body.trim() === '' ? (
-                                    <p style={{ fontStyle: 'italic', color: 'var(--fg3)' }}>Nothing written yet — switch to Write and start the article.</p>
+                                    <p style={{ fontStyle: 'italic', color: 'var(--fg3)' }}>{readOnly ? 'Nothing written yet.' : 'Nothing written yet — switch to Write and start the article.'}</p>
                                 ) : (
                                     // Safe: this HTML comes ONLY from the POST /v1/kb/preview response (never concatenated
                                     // with local state, never built client-side), rendered server-side by
@@ -428,6 +429,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                     {status === 'published' ? 'Unpublish' : 'Publish'}
                                 </Button>
                             )}
+                            {(!readOnly || (status === 'published' && article?.public_url)) && (
                             <div style={{ display: 'flex', gap: 8 }}>
                                 {!readOnly && (
                                     <Button variant="secondary" size="sm" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={(isNew && noSections) || pending} style={{ flex: 1 }}>
@@ -438,6 +440,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                     <a href={article.public_url} target="_blank" rel="noreferrer" className={PILL_CLASSES} style={{ ...pillBtn, flex: 1, justifyContent: 'center', textDecoration: 'none' }}>Open ↗</a>
                                 )}
                             </div>
+                            )}
                             {statusError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{statusError}</div>}
                         </div>
 

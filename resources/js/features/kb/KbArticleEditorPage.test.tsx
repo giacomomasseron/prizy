@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -71,6 +71,52 @@ describe('KbArticleEditorPage', () => {
 
             await userEvent.click(screen.getByRole('button', { name: 'Markdown' }));
             expect(screen.getByLabelText('Article body')).toHaveAttribute('readonly');
+        });
+
+        it('hands read-only on to the history and translation drawers it opens', async () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            const versions = [
+                { id: 'v2', author: { id: 'u1', name: 'Alex' }, created_at: '2026-09-10T00:00:00Z', summary: 'Title and body', is_current: true },
+                { id: 'v1', author: { id: 'u1', name: 'Alex' }, created_at: '2026-09-01T00:00:00Z', summary: 'Created', is_current: false },
+            ];
+            const versionDetail = {
+                ...versions[1], title: 'Original title', body: 'Original body', html: '<p>Original body</p>',
+                diff: { title: { from: 'Published one', to: 'Original title' }, lines: [{ sign: '-', text: '# Hi' }, { sign: '+', text: 'Original body' }], added: 1, removed: 1 },
+            };
+            const translations = [
+                { locale: 'en', name: 'English', is_source: true, status: null, updated_at: null, stale: false },
+                { locale: 'fr', name: 'French', is_source: false, status: 'published', updated_at: '2026-09-10T09:00:00Z', stale: false },
+            ];
+            const french = { locale: 'fr', name: 'French', is_source: false, title: 'Publié', body: 'Bonjour', status: 'published', updated_at: '2026-09-10T09:00:00Z' };
+            vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+                if (url.includes('/kb/library')) return j({ data: library });
+                if (/\/versions\/v1$/.test(url)) return j({ data: versionDetail });
+                if (url.includes('/versions')) return j({ data: versions });
+                if (/\/translations\/fr$/.test(url)) return j({ data: french });
+                if (url.includes('/translations')) return j({ data: translations });
+                if (url.includes('/kb/preview')) return j({ data: { html: '' } });
+                if (url.includes('/kb/articles/a1')) return j({ data: articles.a1 });
+                return j({ data: {} });
+            }));
+            const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            render(
+                <QueryClientProvider client={qc}>
+                    <MemoryRouter initialEntries={['/support/kb/articles/a1']}>
+                        <Routes>
+                            <Route path="/support/kb/articles/:id" element={<KbArticleEditorPage />} />
+                        </Routes>
+                    </MemoryRouter>
+                </QueryClientProvider>,
+            );
+
+            await userEvent.click(await screen.findByRole('button', { name: /Created/ }));
+            const versionFooter = await screen.findByTestId('kb-version-footer');
+            expect(within(versionFooter).queryByRole('button', { name: 'Restore this version' })).toBeNull();
+            await userEvent.click(within(versionFooter).getByRole('button', { name: 'Close' }));
+
+            await userEvent.click(await screen.findByRole('button', { name: /French/ }));
+            expect(await screen.findByText('Read only: viewers cannot edit translations')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Save translation' })).toBeNull();
         });
 
         it('is sent back to the library from New article', async () => {
