@@ -39,7 +39,9 @@ final class AuthorizeTlsHost
             return true;
         }
 
-        if (Workspace::query()->where('custom_domain', $host)->exists()) {
+        // activated(): WorkspaceTenantFinder serves no pending workspace, so
+        // no certificate for one either — junk sign-ups never reach the CA.
+        if (Workspace::query()->activated()->where('custom_domain', $host)->exists()) {
             return true;
         }
 
@@ -66,6 +68,6 @@ final class AuthorizeTlsHost
             return false;
         }
 
-        return Workspace::query()->where('slug', $slug)->exists();
+        return Workspace::query()->activated()->where('slug', $slug)->exists();
     }
 }

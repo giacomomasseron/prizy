@@ -16,8 +16,12 @@ final class WorkspaceTenantFinder extends TenantFinder
     {
         $host = $request->getHost(); // e.g. "acme.app.com" or "support.acme.com"
 
+        // Only activated workspaces: a pending sign-up stays unreachable until
+        // its owner confirms (AuthorizeTlsHost applies the same filter).
+
         // 1. Try custom domain first (exact match).
         $workspace = Workspace::query()
+            ->activated()
             ->where('custom_domain', $host)
             ->first();
 
@@ -36,6 +40,7 @@ final class WorkspaceTenantFinder extends TenantFinder
         }
 
         return Workspace::query()
+            ->activated()
             ->where('slug', $subdomain)
             ->first();
     }

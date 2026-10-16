@@ -137,10 +137,13 @@ CREATE TABLE workspaces (
     helpdesk_enabled    BOOLEAN         NOT NULL DEFAULT TRUE, -- support module switch
     timezone            VARCHAR(64)     NOT NULL DEFAULT 'UTC',
     locale              VARCHAR(10)     NOT NULL DEFAULT 'en',
+    activated_at        TIMESTAMPTZ     DEFAULT now(),       -- NULL = pending owner confirmation
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     deleted_at          TIMESTAMPTZ
 );
+
+CREATE INDEX workspaces_pending_created_at_idx ON workspaces (created_at) WHERE activated_at IS NULL;
 
 -- ---------------------------------------------------------------------------
 -- users

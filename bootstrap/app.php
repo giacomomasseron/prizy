@@ -101,5 +101,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('notifications:send-digests --frequency=daily')->dailyAt('08:00');
         $schedule->command('notifications:send-digests --frequency=weekly')->weeklyOn(1, '08:00');
         $schedule->command('sla:record-breaches')->everyFiveMinutes();
+        $schedule->command('workspaces:prune-pending')->hourly();
     })
     ->create();

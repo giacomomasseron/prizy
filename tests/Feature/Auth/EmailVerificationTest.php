@@ -57,8 +57,10 @@ it('hitting a valid signed verify URL sets email_verified_at', function (): void
         ['id' => $user->id, 'hash' => sha1($user->email)]
     );
 
-    $response = $this->getJson($url);
-    $response->assertStatus(200);
+    // The link is clicked in a mail client, so it lands on the workspace
+    // rather than a bare JSON body (SignUpActivationTest pins the target).
+    $response = $this->get($url);
+    $response->assertRedirect();
 
     $user->refresh();
     expect($user->email_verified_at)->not->toBeNull();
@@ -82,8 +84,10 @@ it('verifying an already-verified user is idempotent', function (): void {
         ['id' => $user->id, 'hash' => sha1($user->email)]
     );
 
-    $response = $this->getJson($url);
-    $response->assertStatus(200);
+    // The link is clicked in a mail client, so it lands on the workspace
+    // rather than a bare JSON body (SignUpActivationTest pins the target).
+    $response = $this->get($url);
+    $response->assertRedirect();
 
     $user->refresh();
     expect($user->email_verified_at)->not->toBeNull();

@@ -196,6 +196,7 @@ final class WorkspaceTenantFinder extends TenantFinder
 
         // 1. Try custom domain first (exact match).
         $workspace = Workspace::query()
+            ->activated()
             ->where('custom_domain', $host)
             ->first();
 
@@ -214,6 +215,7 @@ final class WorkspaceTenantFinder extends TenantFinder
         }
 
         return Workspace::query()
+            ->activated()
             ->where('slug', $subdomain)
             ->first();
     }
@@ -221,6 +223,15 @@ final class WorkspaceTenantFinder extends TenantFinder
 ```
 
 Add `APP_BASE_DOMAIN=app.com` to `.env`.
+
+### Pending sign-ups
+
+`activated()` skips workspaces whose `activated_at` is NULL. Only a sign-up made with
+`SIGNUP_REQUIRES_ACTIVATION=true` (meant for a public cloud) starts that way: its hostname
+resolves to no tenant and `AuthorizeTlsHost` refuses it a certificate until the owner clicks
+the emailed link, which sets `activated_at`. `workspaces:prune-pending` (hourly) deletes any
+still pending after 24 hours, freeing the slug. Off, the default, every workspace is live
+from the start.
 
 ---
 

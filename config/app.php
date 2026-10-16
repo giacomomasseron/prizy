@@ -56,6 +56,11 @@ return [
 
     'base_domain' => env('APP_BASE_DOMAIN'),
 
+    // On, a new sign-up stays pending (no hostname, no certificate) until its
+    // owner clicks the emailed link, and is deleted after 24 hours if they never
+    // do. For a public cloud; a self-hosted install leaves it off.
+    'signup_requires_activation' => (bool) env('SIGNUP_REQUIRES_ACTIVATION', false),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

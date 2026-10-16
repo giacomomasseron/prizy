@@ -72,6 +72,8 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
         ->middleware('throttle:60,1')
         ->name('caddy.ask');
 
+    // Every attempt, mistakes included. SignUpController also caps the sign-ups
+    // that pass validation (each emails whatever address it was given) per hour.
     Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
 
     // Email verification — landlord route because the user may click the link
