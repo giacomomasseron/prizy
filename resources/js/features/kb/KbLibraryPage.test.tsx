@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import KbLibraryPage from './KbLibraryPage';
 
-vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Alex', is_agent: true } }) }));
+const AGENT = { id: 'u1', name: 'Alex', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+let meData: Record<string, unknown> = AGENT;
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: meData }) }));
 
 const art = (o: Record<string, unknown>) => ({ id: 'a', title: 'T', slug: 't', status: 'published', position: 0, author: { id: 'u1', name: 'Alex' }, views_count: 12, helpful_count: 1, unhelpful_count: 0, published_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-10T00:00:00Z', created_at: '2026-09-01T00:00:00Z', public_url: 'http://x/help/g/b/t', ...o });
 const library = { categories: [
@@ -28,6 +30,56 @@ function renderPage(lib: unknown = library) {
 
 describe('KbLibraryPage', () => {
     afterEach(() => vi.unstubAllGlobals());
+
+    describe('a viewer who is an agent (read-only)', () => {
+        afterEach(() => { meData = AGENT; });
+
+        it('browses the tree and the table, but cannot add, reorder, edit, archive or delete', async () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            renderPage();
+            await screen.findByText('Published one');
+            expect(screen.queryByRole('button', { name: '＋ New article' })).toBeNull();
+            expect(screen.queryByText('＋ Category')).toBeNull();
+            expect(screen.queryByText('＋ Section')).toBeNull();
+            expect(screen.queryByTestId('tree-actions-c1')).toBeNull();
+
+            await userEvent.click(screen.getByRole('button', { name: /Basics/ })); // a section: agents get the reorder arrows here
+            expect(await screen.findByText('Published one')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'Move up' })).toBeNull();
+
+            const row = screen.getByText('Published one').closest('[role=row]') as HTMLElement;
+            await userEvent.click(within(row).getByRole('button', { name: 'More actions' }));
+            expect(screen.getByRole('menuitem', { name: 'Open article' })).toBeInTheDocument();
+            expect(screen.getByRole('menuitem', { name: 'Open on help center ↗' })).toBeInTheDocument();
+            expect(screen.queryByRole('menuitem', { name: /Edit|Publish|Archive|Delete/ })).toBeNull();
+        });
+
+        it('finds an empty topic empty, with nothing offered to write', async () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            renderPage();
+            await userEvent.click(await screen.findByRole('button', { name: /Empty topic/ }));
+            expect(await screen.findByText('No articles in here yet')).toBeInTheDocument();
+            expect(screen.getByText('Nothing has been written in here yet.')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: '＋ New article here' })).toBeNull();
+        });
+
+        it('meets an empty library with no First category button', async () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            renderPage({ categories: [] });
+            expect(await screen.findByText('No categories yet')).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: '＋ First category' })).toBeNull();
+        });
+    });
+
+    it('gives an agent the reorder arrows and the full row menu in a section', async () => {
+        renderPage();
+        await userEvent.click(await screen.findByRole('button', { name: /Basics/ }));
+        const row = (await screen.findByText('Published one')).closest('[role=row]') as HTMLElement;
+        expect(within(row).getByRole('button', { name: 'Move up' })).toBeInTheDocument();
+        await userEvent.click(within(row).getByRole('button', { name: 'More actions' }));
+        expect(screen.getByRole('menuitem', { name: 'Edit article' })).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Delete…' })).toBeInTheDocument();
+    });
 
     it('renders the tree with counts and the article rows with status pills', async () => {
         renderPage();

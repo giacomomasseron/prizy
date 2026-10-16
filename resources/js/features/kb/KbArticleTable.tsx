@@ -20,7 +20,8 @@ const ellipsis: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', 
  * of the last rows, while the page's scroll area grows to fit them instead. minWidth = 874 (columns) + 6 × 12 (gaps)
  * + 44 (padding).
  */
-export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleSummary & { sectionName: string })[]; canReorder: boolean }) {
+/** readOnly (a viewer): the ⋯ menu only opens the article, here or on the help center. */
+export function KbArticleTable({ articles, canReorder, readOnly = false }: { articles: (KbArticleSummary & { sectionName: string })[]; canReorder: boolean; readOnly?: boolean }) {
     const navigate = useNavigate();
     const confirm = useConfirm();
     const moveArticle = useMoveKbArticle();
@@ -58,15 +59,17 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
                 </div>
 
                 {articles.map((a) => {
-                    const items: MenuItem[] = [
-                        { key: 'edit', label: 'Edit article', onActivate: () => navigate(`/support/kb/articles/${a.id}`) },
-                        { key: 'publish', label: a.status === 'published' ? 'Unpublish → Draft' : 'Publish', onActivate: () => setStatus(a, a.status === 'published' ? 'draft' : 'published') },
-                        { key: 'archive', label: a.status === 'archived' ? 'Restore as draft' : 'Archive', onActivate: () => setStatus(a, a.status === 'archived' ? 'draft' : 'archived') },
-                    ];
+                    const items: MenuItem[] = readOnly
+                        ? [{ key: 'view', label: 'Open article', onActivate: () => navigate(`/support/kb/articles/${a.id}`) }]
+                        : [
+                            { key: 'edit', label: 'Edit article', onActivate: () => navigate(`/support/kb/articles/${a.id}`) },
+                            { key: 'publish', label: a.status === 'published' ? 'Unpublish → Draft' : 'Publish', onActivate: () => setStatus(a, a.status === 'published' ? 'draft' : 'published') },
+                            { key: 'archive', label: a.status === 'archived' ? 'Restore as draft' : 'Archive', onActivate: () => setStatus(a, a.status === 'archived' ? 'draft' : 'archived') },
+                        ];
                     if (a.public_url) {
                         items.push({ key: 'open', label: 'Open on help center ↗', onActivate: () => window.open(a.public_url as string, '_blank') });
                     }
-                    items.push({ key: 'delete', label: 'Delete…', danger: true, onActivate: () => onDelete(a) });
+                    if (!readOnly) items.push({ key: 'delete', label: 'Delete…', danger: true, onActivate: () => onDelete(a) });
 
                     return (
                         <div key={a.id} role="row" className="border-b border-border hover:bg-hover" style={{ display: 'grid', gridTemplateColumns: GRID, gap: 12, alignItems: 'center', padding: '12px 22px' }}>
@@ -97,7 +100,7 @@ export function KbArticleTable({ articles, canReorder }: { articles: (KbArticleS
                             <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg2)', textAlign: 'right' }}>{formatViews(a.views_count)}</span>
 
                             <div style={{ display: 'flex', alignItems: 'center', gap: 2, justifyContent: 'flex-end' }}>
-                                {canReorder && (
+                                {canReorder && !readOnly && (
                                     <>
                                         <IconButton title="Move up" onClick={() => moveArticle.mutate({ id: a.id, direction: 'up' }, { onError: (err) => onError(err, 'Failed to reorder the article.') })}>▲</IconButton>
                                         <IconButton title="Move down" onClick={() => moveArticle.mutate({ id: a.id, direction: 'down' }, { onError: (err) => onError(err, 'Failed to reorder the article.') })}>▼</IconButton>

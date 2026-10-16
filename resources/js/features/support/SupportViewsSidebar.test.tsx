@@ -32,6 +32,20 @@ function sidebarProps(overrides = {}) {
 }
 
 describe('SupportViewsSidebar', () => {
+    it('without save/delete handlers (a viewer) applies a saved view but cannot add or delete one', () => {
+        const onSelectSavedView = vi.fn();
+        render(<SupportViewsSidebar {...sidebarProps({ onSelectSavedView, onSaveView: undefined, onDeleteSavedView: undefined })} />);
+        fireEvent.click(screen.getByText(savedViews[0].name));
+        expect(onSelectSavedView).toHaveBeenCalledWith(savedViews[0].id);
+        expect(screen.queryByText('+ Save view')).toBeNull();
+        expect(screen.queryByRole('button', { name: `Delete view ${savedViews[0].name}` })).toBeNull();
+    });
+
+    it('drops the Saved views heading when there is nothing to apply and nothing to save', () => {
+        render(<SupportViewsSidebar {...sidebarProps({ savedViews: [], onSaveView: undefined, onDeleteSavedView: undefined })} />);
+        expect(screen.queryByText('Saved views')).toBeNull();
+    });
+
     it('renders the six views with composed count badges', () => {
         render(<SupportViewsSidebar {...sidebarProps({ counts })} />);
         expect(screen.getByText('Your unsolved tickets')).toBeInTheDocument();

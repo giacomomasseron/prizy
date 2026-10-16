@@ -7,7 +7,9 @@ import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import KbArticleEditorPage from './KbArticleEditorPage';
 import * as kbHooks from './hooks';
 
-vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Alex', is_agent: true } }) }));
+const AGENT = { id: 'u1', name: 'Alex', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+let meData: Record<string, unknown> = AGENT;
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: meData }) }));
 
 const art = (o: Record<string, unknown>) => ({ id: 'a', title: 'T', slug: 't', status: 'published', position: 0, author: { id: 'u1', name: 'Alex' }, views_count: 12, helpful_count: 1, unhelpful_count: 0, published_at: '2026-09-01T00:00:00Z', updated_at: '2026-09-10T00:00:00Z', created_at: '2026-09-01T00:00:00Z', public_url: 'http://x/help/g/b/t', ...o });
 const library = { categories: [
@@ -48,6 +50,47 @@ function renderEditor(id = 'a1', previewHtml?: string) {
 
 describe('KbArticleEditorPage', () => {
     afterEach(() => vi.unstubAllGlobals());
+
+    describe('a viewer who is an agent (read-only)', () => {
+        afterEach(() => { meData = AGENT; });
+
+        it('reads the article as customers see it, every field read-only, nothing to publish, archive, delete or save', async () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            renderEditor('a1', '<p>rendered body</p>');
+            expect(await screen.findByText('rendered body')).toBeInTheDocument(); // opens on the preview
+            expect(screen.getByLabelText('Article title')).toHaveAttribute('readonly');
+            expect(screen.getByPlaceholderText('article-slug')).toHaveAttribute('readonly');
+            expect(screen.getByLabelText('Section')).toBeDisabled();
+            expect(screen.queryByText('✓ available')).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Unpublish' })).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Archive' })).toBeNull();
+            expect(screen.queryByTestId('kb-danger-zone')).toBeNull();
+            expect(screen.queryByRole('button', { name: /Save changes|Saved/ })).toBeNull();
+            expect(screen.getByText('Read only: viewers cannot edit articles')).toBeInTheDocument();
+            expect(screen.getByRole('link', { name: 'Open ↗' })).toHaveAttribute('href', 'http://x/help/g/b/t');
+
+            await userEvent.click(screen.getByRole('button', { name: 'Markdown' }));
+            expect(screen.getByLabelText('Article body')).toHaveAttribute('readonly');
+        });
+
+        it('is sent back to the library from New article', async () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: library }) : j({ data: {} }))));
+            const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+            render(
+                <QueryClientProvider client={qc}>
+                    <MemoryRouter initialEntries={['/support/kb/new']}>
+                        <Routes>
+                            <Route path="/support/kb/new" element={<KbArticleEditorPage />} />
+                            <Route path="/support/kb" element={<div>library page</div>} />
+                        </Routes>
+                    </MemoryRouter>
+                </QueryClientProvider>,
+            );
+            expect(await screen.findByText('library page')).toBeInTheDocument();
+            expect(screen.queryByLabelText('Article title')).toBeNull();
+        });
+    });
 
     it('loads the article, derives the slug from a new title only while untouched, and tracks dirty state', async () => {
         renderEditor();

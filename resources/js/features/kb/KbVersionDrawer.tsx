@@ -33,10 +33,12 @@ export interface KbVersionDrawerProps {
     // save path can do. This prop is that hook: EditorForm passes its persist function, called
     // here only when `dirty`, and awaited (its rejection aborts the restore) before restoring.
     onSaveFirst(): Promise<void>;
+    /** A viewer reads the history: no restore. */
+    readOnly?: boolean;
 }
 
 
-export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onClose, onRestored, onSaveFirst }: KbVersionDrawerProps) {
+export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onClose, onRestored, onSaveFirst, readOnly = false }: KbVersionDrawerProps) {
     const articleQuery = useKbArticle(articleId);
     const versionsQuery = useKbArticleVersions(articleId);
     // Defensive, matching KbVersionCard's convention: an unexpected payload shape falls back to an
@@ -151,13 +153,19 @@ export function KbVersionDrawer({ articleId, open, initialVersionId, dirty, onCl
 
             <div data-testid="kb-version-footer" style={drawerFooter}>
                 {restoreError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 10 }}>{restoreError}</div>}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                    <p style={{ ...footNote, flex: 1, minWidth: 0, margin: 0 }}>
-                        Restoring copies this version’s title and body into the article. Nothing is overwritten — the current text is kept as a version.
-                    </p>
-                    <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
-                    <Button size="sm" onClick={handleRestore} disabled={!detail || isCurrent}>Restore this version</Button>
-                </div>
+                {readOnly ? (
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <Button variant="secondary" size="sm" onClick={onClose}>Close</Button>
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <p style={{ ...footNote, flex: 1, minWidth: 0, margin: 0 }}>
+                            Restoring copies this version’s title and body into the article. Nothing is overwritten — the current text is kept as a version.
+                        </p>
+                        <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
+                        <Button size="sm" onClick={handleRestore} disabled={!detail || isCurrent}>Restore this version</Button>
+                    </div>
+                )}
             </div>
         </Drawer>
     );

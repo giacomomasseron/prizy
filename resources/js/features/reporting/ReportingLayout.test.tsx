@@ -52,7 +52,9 @@ vi.mock('./hooks', () => ({
     useCreateSavedReport: () => ({ mutate: vi.fn() }),
     useDeleteSavedReport: () => ({ mutate: vi.fn() }),
 }));
-vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: { id: 'u1', name: 'Me' } }) }));
+const AGENT = { id: 'u1', name: 'Me', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+let meData: Record<string, unknown> = AGENT;
+vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: meData }) }));
 
 function renderLayout(qc: QueryClient = new QueryClient()) {
     return render(
@@ -63,6 +65,25 @@ function renderLayout(qc: QueryClient = new QueryClient()) {
 }
 
 describe('ReportingLayout', () => {
+    it('lets an agent save and delete reports', () => {
+        renderLayout();
+        expect(screen.getByText('+ Save report')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Delete report Weekly overview' })).toBeInTheDocument();
+    });
+
+    it('lets a viewer who is an agent open a saved report, but not save or delete one (they are shared)', () => {
+        meData = { ...AGENT, admin_level: 'viewer' };
+        try {
+            renderLayout();
+            fireEvent.click(screen.getByText('Weekly overview'));
+            expect(screen.getByText('Ticket volume')).toBeInTheDocument();
+            expect(screen.queryByText('+ Save report')).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Delete report Weekly overview' })).toBeNull();
+        } finally {
+            meData = AGENT;
+        }
+    });
+
     it('renders the KPI cards and the Overview section', () => {
         renderLayout();
         expect(screen.getByText('Tickets created')).toBeInTheDocument();

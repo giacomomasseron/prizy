@@ -38,11 +38,12 @@ interface DrawerOverrides {
     statusFails?: boolean;
     deleteFails?: boolean;
     translationsFail?: boolean;
+    readOnly?: boolean;
 }
 
 function renderDrawer(overrides: DrawerOverrides = {}) {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes('/kb/preview')) return j({ html: '<p>rendered</p>' });
+        if (url.includes('/kb/preview')) return j({ data: { html: '<p>rendered</p>' } });
         if (/\/kb\/articles\/a1$/.test(url)) return j({ data: article });
         if (init?.method === 'PUT' && url.includes('/translations/')) {
             if (overrides.saveGate) await overrides.saveGate;
@@ -86,6 +87,7 @@ function renderDrawer(overrides: DrawerOverrides = {}) {
                     articleStatus={overrides.articleStatus ?? 'published'}
                     onClose={onClose}
                     onViewChanges={onViewChanges}
+                    readOnly={overrides.readOnly}
                 />
             </ConfirmProvider>
         </QueryClientProvider>,
@@ -100,6 +102,26 @@ describe('KbTranslationDrawer', () => {
         renderDrawer({ initialLocale: 'en' });
         expect(await screen.findByText('English (source) · edited in the article editor')).toBeInTheDocument();
         expect(screen.queryByPlaceholderText('Translated title')).toBeNull();
+    });
+
+    it('lets a viewer read a translation, rendered first, with nothing to save, publish or delete', async () => {
+        renderDrawer({ initialLocale: 'fr', readOnly: true });
+        expect(await screen.findByText('rendered')).toBeInTheDocument();
+        expect(screen.getByText('Read only: viewers cannot edit translations')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Save translation' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Delete translation' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Draft' })).toBeNull();
+        await userEvent.click(screen.getByRole('button', { name: 'Markdown' }));
+        expect(screen.getByPlaceholderText('Translated title')).toHaveAttribute('readonly');
+        expect(screen.getByPlaceholderText(/Write the translation/)).toHaveAttribute('readonly');
+    });
+
+    it('tells a viewer a language is not translated, with no way to start one', async () => {
+        renderDrawer({ initialLocale: 'it', readOnly: true });
+        expect(await screen.findByText('Not translated yet')).toBeInTheDocument();
+        expect(screen.getByText('Nobody has translated this article into this language yet.')).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Start from English' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Start blank' })).toBeNull();
     });
 
     it('offers both starting points for an untranslated language', async () => {

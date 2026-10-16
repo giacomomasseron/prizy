@@ -4,7 +4,7 @@ import { useKbArticleTranslations } from './hooks';
 import { LIST_ROW_CLASSES, kbCard, kbLabel, listRow, notTranslatedPill, sourceTag, staleDot } from './kbStyles';
 import { StatusPill } from './StatusPill';
 
-export function KbTranslationCard({ articleId, onOpen }: { articleId: string; onOpen(locale?: string): void }) {
+export function KbTranslationCard({ articleId, onOpen, readOnly = false }: { articleId: string; onOpen(locale?: string): void; readOnly?: boolean }) {
     const translationsQuery = useKbArticleTranslations(articleId);
 
     // Defensive: same contract as KbVersionCard — the endpoint's contract is an array, but a
@@ -50,7 +50,7 @@ export function KbTranslationCard({ articleId, onOpen }: { articleId: string; on
                         ))}
                     </div>
                     <Button variant="secondary" size="sm" onClick={() => onOpen()} style={{ width: '100%', marginTop: 10 }}>
-                        Manage translations
+                        {readOnly ? 'View translations' : 'Manage translations'}
                     </Button>
                 </>
             )}

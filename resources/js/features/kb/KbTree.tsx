@@ -23,6 +23,8 @@ export interface KbTreeProps {
     onSelect(node: TreeNode): void;
     totalArticles: number;
     onOpenModal(state: NodeModalState): void;
+    /** A viewer browses the library: no reorder, edit, archive or delete, no ＋ Section / ＋ Category. */
+    readOnly?: boolean;
 }
 
 // Layout only for inactive rows; their colours live in rowClasses() so the hover shows.
@@ -50,7 +52,7 @@ const ACTION_PILL_CLASSES = 'opacity-0 pointer-events-none group-hover:opacity-1
 const arrowBtn: CSSProperties = { width: 24, height: 24, fontSize: 9 };
 const moreBtn: CSSProperties = { width: 24, height: 24, fontSize: 13 };
 
-export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal }: KbTreeProps) {
+export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal, readOnly = false }: KbTreeProps) {
     const confirm = useConfirm();
     const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
     const [error, setError] = useState<string | null>(null);
@@ -124,7 +126,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                     <span style={nameStyle}>{c.name}</span>
                                     <span style={countStyle}>{articleCount}</span>
                                 </button>
-                                <span data-testid={`tree-actions-${c.id}`} className={ACTION_PILL_CLASSES} style={actionPill}>
+                                {!readOnly && <span data-testid={`tree-actions-${c.id}`} className={ACTION_PILL_CLASSES} style={actionPill}>
                                     <IconButton title="Move up" style={arrowBtn} onClick={() => move((opts) => moveCategory.mutate({ id: c.id, direction: 'up' }, opts), 'Failed to reorder the category.')}>▲</IconButton>
                                     <IconButton title="Move down" style={arrowBtn} onClick={() => move((opts) => moveCategory.mutate({ id: c.id, direction: 'down' }, opts), 'Failed to reorder the category.')}>▼</IconButton>
                                     <Menu
@@ -136,7 +138,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                             { key: 'delete', label: 'Delete…', danger: true, onActivate: () => deleteNode('category', c.name, articleCount, (opts) => deleteCategory.mutate(c.id, opts)) },
                                         ]}
                                     />
-                                </span>
+                                </span>}
                             </div>
 
                             {expanded && (
@@ -150,7 +152,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                                     <span style={nameStyle}>{s.name}</span>
                                                     <span style={countStyle}>{s.articles.length}</span>
                                                 </button>
-                                                <span className={ACTION_PILL_CLASSES} style={actionPill}>
+                                                {!readOnly && <span className={ACTION_PILL_CLASSES} style={actionPill}>
                                                     <IconButton title="Move up" style={arrowBtn} onClick={() => move((opts) => moveSection.mutate({ id: s.id, direction: 'up' }, opts), 'Failed to reorder the section.')}>▲</IconButton>
                                                     <IconButton title="Move down" style={arrowBtn} onClick={() => move((opts) => moveSection.mutate({ id: s.id, direction: 'down' }, opts), 'Failed to reorder the section.')}>▼</IconButton>
                                                     <Menu
@@ -162,13 +164,15 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                                                             { key: 'delete', label: 'Delete…', danger: true, onActivate: () => deleteNode('section', s.name, s.articles.length, (opts) => deleteSection.mutate(s.id, opts)) },
                                                         ]}
                                                     />
-                                                </span>
+                                                </span>}
                                             </div>
                                         );
                                     })}
-                                    <button type="button" onClick={() => onOpenModal({ kind: 'section', categoryId: c.id })} className="bg-transparent text-fg3 hover:bg-hover hover:text-fg" style={rowBtn(false, 30)}>
-                                        ＋ Section
-                                    </button>
+                                    {!readOnly && (
+                                        <button type="button" onClick={() => onOpenModal({ kind: 'section', categoryId: c.id })} className="bg-transparent text-fg3 hover:bg-hover hover:text-fg" style={rowBtn(false, 30)}>
+                                            ＋ Section
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -178,7 +182,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
 
             {error && <div role="alert" style={{ margin: '0 10px 10px', fontSize: 12, color: 'var(--red-ink)' }}>{error}</div>}
 
-            <div style={{ padding: 8, borderTop: '1px solid var(--border)' }}>
+            {!readOnly && <div style={{ padding: 8, borderTop: '1px solid var(--border)' }}>
                 <button
                     type="button"
                     onClick={() => onOpenModal({ kind: 'category' })}
@@ -187,7 +191,7 @@ export function KbTree({ categories, node, onSelect, totalArticles, onOpenModal 
                 >
                     ＋ Category
                 </button>
-            </div>
+            </div>}
         </nav>
     );
 }

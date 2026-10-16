@@ -24,8 +24,9 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
     savedViews: HelpdeskSavedView[];
     savedViewId: string | null;
     onSelectSavedView: (id: string) => void;
-    onDeleteSavedView: (id: string) => void;
-    onSaveView: (name: string) => void;
+    /** Without these two (a viewer) the saved views are there to apply, not to add or delete. */
+    onDeleteSavedView?: (id: string) => void;
+    onSaveView?: (name: string) => void;
 }) {
     const [saving, setSaving] = useState(false);
     const [name, setName] = useState('');
@@ -33,7 +34,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
     const submit = () => {
         const trimmed = name.trim();
         if (trimmed === '') return;
-        onSaveView(trimmed);
+        onSaveView?.(trimmed);
         setName('');
         setSaving(false);
     };
@@ -71,6 +72,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                 })}
             </div>
 
+            {(savedViews.length > 0 || onSaveView) && (<>
             <div style={sideSection}>Saved views</div>
             <div style={rowList}>
                 {savedViews.map((sv) => {
@@ -81,11 +83,11 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                                 <span style={icon}>☰</span>
                                 <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sv.name}</span>
                             </button>
-                            <button type="button" aria-label={`Delete view ${sv.name}`} onClick={() => onDeleteSavedView(sv.id)} className={DELETE_X_CLASSES} style={{ ...deleteXStyle, fontSize: 13 }}>✕</button>
+                            {onDeleteSavedView && <button type="button" aria-label={`Delete view ${sv.name}`} onClick={() => onDeleteSavedView(sv.id)} className={DELETE_X_CLASSES} style={{ ...deleteXStyle, fontSize: 13 }}>✕</button>}
                         </div>
                     );
                 })}
-                {saving ? (
+                {!onSaveView ? null : saving ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 4px' }}>
                         <Input autoFocus aria-label="View name" value={name} onChange={(e) => setName(e.target.value)} placeholder="View name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -100,6 +102,7 @@ export function SupportViewsSidebar({ counts, view, onSelectView, channel, onSel
                     </button>
                 )}
             </div>
+            </>)}
 
             {tag && (
                 <>

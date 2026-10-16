@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import SlaPoliciesSettingsPage from './SlaPoliciesSettingsPage';
 import type { Schedule, SlaPolicy } from '../../lib/types';
 import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
@@ -32,6 +32,12 @@ const POLICIES: SlaPolicy[] = [
 let policiesData: SlaPolicy[] = POLICIES;
 let policiesQuery: Record<string, unknown> | null = null;
 
+const AGENT = { id: 'me-1', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+let meData: Record<string, unknown> = AGENT;
+vi.mock('../../auth/useAuth', () => ({
+    useMe: () => ({ data: meData }),
+}));
+
 vi.mock('./hooks', () => ({
     useSlaPolicies: () => policiesQuery ?? ({ isLoading: false, data: policiesData }),
     useDeleteSlaPolicy: () => ({ mutateAsync: deleteMutate }),
@@ -46,6 +52,22 @@ vi.mock('../business-hours/hooks', () => ({
 }));
 
 describe('SlaPoliciesSettingsPage', () => {
+    describe('a viewer who is an agent (read-only)', () => {
+        afterEach(() => { meData = AGENT; });
+
+        it('sees every policy and its targets, with no New, Edit or Delete', () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            policiesData = POLICIES;
+            render(<SlaPoliciesSettingsPage />);
+            expect(screen.getByText('Priority support')).toBeInTheDocument();
+            expect(screen.getByText(/First 30m/)).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'New policy' })).toBeNull();
+            expect(screen.queryByTestId('edit-1')).toBeNull();
+            expect(screen.queryByTestId('delete-1')).toBeNull();
+            expect(screen.queryByRole('dialog')).toBeNull();
+        });
+    });
+
     it('renders the policy list with the targets summary and schedule name', () => {
         policiesData = POLICIES;
         render(<SlaPoliciesSettingsPage />);

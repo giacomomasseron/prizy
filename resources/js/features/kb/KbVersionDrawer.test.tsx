@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, within, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -38,6 +38,7 @@ interface DrawerOverrides {
     saveFirstFails?: boolean;
     versionsFail?: boolean;
     detailFail?: boolean;
+    readOnly?: boolean;
 }
 
 function renderDrawer(overrides: DrawerOverrides = {}) {
@@ -78,6 +79,7 @@ function renderDrawer(overrides: DrawerOverrides = {}) {
                     onClose={onClose}
                     onRestored={onRestored}
                     onSaveFirst={onSaveFirst}
+                    readOnly={overrides.readOnly}
                 />
             </ConfirmProvider>
         </QueryClientProvider>,
@@ -113,6 +115,14 @@ describe('KbVersionDrawer', () => {
     it('warns when the editor has unsaved changes', async () => {
         renderDrawer({ dirty: true });
         expect(await screen.findByText('You have unsaved changes — this compares against the last saved version.')).toBeInTheDocument();
+    });
+
+    it('lets a viewer read a past version, with Close instead of Restore', async () => {
+        const { onClose } = renderDrawer({ readOnly: true });
+        await screen.findByText('gone');
+        expect(screen.queryByRole('button', { name: 'Restore this version' })).toBeNull();
+        await userEvent.click(within(screen.getByTestId('kb-version-footer')).getByRole('button', { name: 'Close' }));
+        expect(onClose).toHaveBeenCalled();
     });
 
     it('enables restore for a past version, and it is genuinely usable', async () => {

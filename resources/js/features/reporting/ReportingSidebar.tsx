@@ -16,8 +16,9 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
     onSelectSection: (s: ReportSectionKey) => void;
     savedReports: HelpdeskSavedReport[];
     onSelectReport: (section: ReportSectionKey, range: ReportRange) => void;
-    onDeleteReport: (id: string) => void;
-    onSaveReport: (name: string) => void;
+    /** Without these two (a viewer) the saved reports are there to open, not to add or delete. */
+    onDeleteReport?: (id: string) => void;
+    onSaveReport?: (name: string) => void;
 }) {
     const [saving, setSaving] = useState(false);
     const [name, setName] = useState('');
@@ -25,7 +26,7 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
     const submit = () => {
         const trimmed = name.trim();
         if (trimmed === '') return;
-        onSaveReport(trimmed);
+        onSaveReport?.(trimmed);
         setName('');
         setSaving(false);
     };
@@ -45,6 +46,7 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
                 ))}
             </div>
 
+            {(savedReports.length > 0 || onSaveReport) && (<>
             <div style={sideSection}>Saved reports</div>
             <div style={rowList}>
                 {savedReports.map((sr) => (
@@ -53,10 +55,10 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
                             <span style={icon}>☰</span>
                             <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sr.name}</span>
                         </button>
-                        <button type="button" aria-label={`Delete report ${sr.name}`} onClick={() => onDeleteReport(sr.id)} className={DELETE_X_CLASSES} style={{ ...deleteXStyle, fontSize: 13 }}>✕</button>
+                        {onDeleteReport && <button type="button" aria-label={`Delete report ${sr.name}`} onClick={() => onDeleteReport(sr.id)} className={DELETE_X_CLASSES} style={{ ...deleteXStyle, fontSize: 13 }}>✕</button>}
                     </div>
                 ))}
-                {saving ? (
+                {!onSaveReport ? null : saving ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '6px 4px' }}>
                         <Input autoFocus aria-label="Report name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Report name" onKeyDown={(e) => { if (e.key === 'Enter') submit(); if (e.key === 'Escape') { setSaving(false); setName(''); } }} style={{ padding: '6px 12px', fontSize: 13 }} />
                         <div style={{ display: 'flex', gap: 6 }}>
@@ -71,6 +73,7 @@ export function ReportingSidebar({ section, onSelectSection, savedReports, onSel
                     </button>
                 )}
             </div>
+            </>)}
         </aside>
     );
 }
