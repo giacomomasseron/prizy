@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\AssignTicketRequest;
 use App\Http\Requests\Api\V1\ListTicketsRequest;
 use App\Http\Requests\Api\V1\PatchTicketRequest;
 use App\Http\Requests\Api\V1\StoreTicketRequest;
 use App\Http\Resources\TicketMessageResource;
 use App\Http\Resources\TicketResource;
+use App\UseCases\Tickets\AssignTicket;
 use App\UseCases\Tickets\ChangeTicketStatus;
 use App\UseCases\Tickets\CountTickets;
 use App\UseCases\Tickets\CreateTicket;
@@ -26,6 +28,7 @@ final class TicketController extends Controller
         private readonly ChangeTicketStatus $changeTicketStatus,
         private readonly CreateTicket $createTicket,
         private readonly CountTickets $countTickets,
+        private readonly AssignTicket $assignTicket,
     ) {}
 
     public function index(ListTicketsRequest $request): JsonResponse
@@ -74,6 +77,17 @@ final class TicketController extends Controller
             $request->user(),
             $ticket,
             (string) $request->validated('status'),
+        );
+
+        return (new TicketResource($model))->response();
+    }
+
+    public function assignee(AssignTicketRequest $request, string $ticket): JsonResponse
+    {
+        $model = $this->assignTicket->handle(
+            $request->user(),
+            $ticket,
+            $request->validated('assignee_id'),
         );
 
         return (new TicketResource($model))->response();

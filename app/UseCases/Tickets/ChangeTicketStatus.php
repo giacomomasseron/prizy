@@ -22,7 +22,7 @@ final class ChangeTicketStatus
 
     public function handle(User $actor, string $ticketId, string $status): Ticket
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         $ticket = $this->tickets->find($ticketId);
         if ($ticket === null) {

@@ -24,6 +24,12 @@ final class HelpdeskAccess
         abort_unless($actor->canWorkHelpdesk(), 403);
     }
 
+    /** The choke point for writes: gate() plus no viewers (User::canWriteHelpdesk()). */
+    public static function gateWrite(User $actor): void
+    {
+        abort_unless($actor->canWriteHelpdesk(), 403);
+    }
+
     /**
      * Is the support module on for this workspace?
      *

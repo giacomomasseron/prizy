@@ -328,6 +328,18 @@ class User extends Authenticatable implements MustVerifyEmailContract
     }
 
     /**
+     * May this user change anything in the support module — create, reply to,
+     * reassign or move a ticket, or add a contact?
+     *
+     * Working the desk, minus the viewer level: a viewer is read-only in every
+     * module they can see (roles.md), agent or not.
+     */
+    public function canWriteHelpdesk(): bool
+    {
+        return $this->canWorkHelpdesk() && $this->admin_level !== 'viewer';
+    }
+
+    /**
      * @return BelongsToMany<AgentGroup, $this>
      */
     public function agentGroupMembersAgentGroups(): BelongsToMany

@@ -64,3 +64,9 @@ it('validates name and email (422)', function (): void {
     $this->withToken($token)->postJson('/v1/contacts', ['name' => '', 'email' => 'a@x.com'])->assertStatus(422);
     $this->withToken($token)->postJson('/v1/contacts', ['name' => 'A', 'email' => 'not-an-email'])->assertStatus(422);
 });
+
+it('forbids a viewer who is an agent (403)', function (): void {
+    [$token, $ws] = contactCreateWorld(['is_agent' => true, 'admin_level' => 'viewer']);
+    $this->withToken($token)->postJson('/v1/contacts', ['name' => 'A', 'email' => 'a@x.com'])->assertStatus(403);
+    expect(Contact::where('workspace_id', $ws->id)->exists())->toBeFalse();
+});
