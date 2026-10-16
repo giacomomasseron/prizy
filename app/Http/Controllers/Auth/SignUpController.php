@@ -50,6 +50,7 @@ final class SignUpController extends Controller
         return response()->json([
             'activation_required' => $result['activation_required'],
             'workspace_url'       => $result['workspace_url'],
+            'login_url'           => $result['login_url'],
             'workspace' => $result['workspace'],
             'user'      => $result['user']->only([
                 'id', 'workspace_id', 'name', 'email', 'admin_level',

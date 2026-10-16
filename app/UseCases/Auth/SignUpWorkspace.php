@@ -8,8 +8,8 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\VerifyEmail;
 use App\Repositories\UserRepository;
+use App\Services\LoginHandoff;
 use App\Services\WorkspaceUrl;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -22,17 +22,20 @@ final class SignUpWorkspace
     ) {}
 
     /**
-     * Create a new Workspace and its owner User in a single transaction,
-     * then log the user in and dispatch the verification notification OUTSIDE
-     * the transaction so a mail-driver failure cannot roll back a valid signup
-     * or leave the session pointing at a rolled-back user.
+     * Create a new Workspace and its owner User in a single transaction, then
+     * dispatch the verification notification OUTSIDE it so a mail-driver
+     * failure cannot roll back a valid signup.
+     *
+     * Nobody is logged in here: this runs on the sign-up host, whose session
+     * the workspace never sees. Instead the owner gets a one-time login link
+     * on the workspace's own host (LoginHandoff).
      *
      * With app.signup_requires_activation on (the public cloud), the workspace
      * is created pending instead: no hostname reaches it until the owner clicks
-     * the emailed link (MarkEmailVerified), so nobody is logged in here.
+     * the emailed link (MarkEmailVerified), which is when they get logged in.
      *
      * @param  array<string, mixed>  $data  Validated input (workspace_name, slug, name, email, password)
-     * @return array{workspace: Workspace, user: User, activation_required: bool, workspace_url: string}
+     * @return array{workspace: Workspace, user: User, activation_required: bool, workspace_url: string, login_url: string|null}
      */
     public function handle(array $data): array
     {
@@ -67,24 +70,22 @@ final class SignUpWorkspace
             return [$workspace, $user];
         });
 
-        // Authenticate and notify AFTER the transaction commits so a mail-driver
-        // exception cannot roll back the user/workspace rows or leave an auth
-        // session pointing at a non-existent user.
-        if (! $pending) {
-            Auth::login($user);
-        }
-
+        // Notify AFTER the transaction commits so a mail-driver exception
+        // cannot roll back the user/workspace rows.
         try {
             $user->notify(new VerifyEmail());
         } catch (Throwable $e) {
-            // A logged-in owner can ask for the link again; a pending one can
-            // never log in, so the workspace would only hold its slug until the
-            // prune. Undo it, so the person can simply sign up again.
+            // A pending owner can never log in to ask for the link again, so
+            // the workspace would only hold its slug until the prune. Undo it,
+            // so the person can simply sign up again.
             if ($pending) {
                 $workspace->forceDelete();
+
+                throw $e;
             }
 
-            throw $e;
+            // A live workspace's owner logs in below and can ask for another.
+            report($e);
         }
 
         return [
@@ -92,6 +93,7 @@ final class SignUpWorkspace
             'user'                => $user,
             'activation_required' => $pending,
             'workspace_url'       => WorkspaceUrl::for($workspace),
+            'login_url'           => $pending ? null : LoginHandoff::url($user, $workspace),
         ];
     }
 }

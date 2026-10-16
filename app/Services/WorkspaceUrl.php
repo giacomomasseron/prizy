@@ -14,10 +14,16 @@ final class WorkspaceUrl
 {
     public static function for(Workspace $workspace): string
     {
+        return self::origin("{$workspace->slug}.".config('app.base_domain'));
+    }
+
+    /** "{scheme}://{$host}{:port}", the scheme and port taken from APP_URL. */
+    public static function origin(string $host): string
+    {
         $app = parse_url((string) config('app.url'));
         $scheme = ($app['scheme'] ?? 'http') === 'https' ? 'https' : 'http';
         $port = isset($app['port']) ? ':'.$app['port'] : '';
 
-        return "{$scheme}://{$workspace->slug}.".config('app.base_domain').$port;
+        return "{$scheme}://{$host}{$port}";
     }
 }

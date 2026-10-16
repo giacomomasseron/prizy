@@ -63,18 +63,18 @@ it('ships with activation off, so a self-hosted install is unchanged', function 
     expect(config('app.signup_requires_activation'))->toBeFalse();
 });
 
-it('with activation off, sign-up puts the workspace live at once and logs the owner in', function (): void {
+it('with activation off, sign-up puts the workspace live at once and hands back a login link for it', function (): void {
     config(['app.signup_requires_activation' => false]);
 
-    activationSignUp('acme', '198.51.100.21')
+    $response = activationSignUp('acme', '198.51.100.21')
         ->assertStatus(201)
         ->assertJsonPath('activation_required', false)
         ->assertJsonPath('workspace_url', 'https://acme.prizy.test');
 
     $workspace = Workspace::query()->where('slug', 'acme')->firstOrFail();
-    expect($workspace->activated_at)->not->toBeNull();
-    $this->assertAuthenticatedAs(activationOwner($workspace));
-    expect(activationFinds('acme.prizy.test')?->id)->toBe($workspace->id);
+    expect($workspace->activated_at)->not->toBeNull()
+        ->and($response->json('login_url'))->toStartWith('https://acme.prizy.test/auth/handoff?')
+        ->and(activationFinds('acme.prizy.test')?->id)->toBe($workspace->id);
 });
 
 it('with activation on, sign-up leaves the workspace pending, logs nobody in and emails the link', function (): void {
@@ -83,7 +83,8 @@ it('with activation on, sign-up leaves the workspace pending, logs nobody in and
     activationSignUp('acme', '198.51.100.22')
         ->assertStatus(201)
         ->assertJsonPath('activation_required', true)
-        ->assertJsonPath('workspace_url', 'https://acme.prizy.test');
+        ->assertJsonPath('workspace_url', 'https://acme.prizy.test')
+        ->assertJsonPath('login_url', null);
 
     $workspace = Workspace::query()->where('slug', 'acme')->firstOrFail();
     expect($workspace->activated_at)->toBeNull();
@@ -129,9 +130,11 @@ it('the emailed link verifies the owner, activates the workspace and sends them 
     $workspace = Workspace::query()->where('slug', 'acme')->firstOrFail();
     $owner = activationOwner($workspace);
 
-    $this->get(activationLink($owner))->assertRedirect('https://acme.prizy.test/');
+    // The activating click signs the owner in there (LoginHandoffTest follows it).
+    $location = $this->get(activationLink($owner))->assertRedirect()->headers->get('Location');
 
-    expect($workspace->fresh()->activated_at)->not->toBeNull()
+    expect($location)->toStartWith('https://acme.prizy.test/auth/handoff?')
+        ->and($workspace->fresh()->activated_at)->not->toBeNull()
         ->and($owner->fresh()->email_verified_at)->not->toBeNull()
         ->and(activationFinds('acme.prizy.test')?->id)->toBe($workspace->id);
 });
@@ -144,7 +147,7 @@ it('the emailed link still works after 23 hours', function (): void {
 
     $this->travel(23)->hours();
 
-    $this->get($link)->assertRedirect('https://acme.prizy.test/');
+    expect($this->get($link)->assertRedirect()->headers->get('Location'))->toStartWith('https://acme.prizy.test/auth/handoff?');
     expect($workspace->fresh()->activated_at)->not->toBeNull();
 });
 
@@ -257,13 +260,14 @@ it('with activation on, a failed verification email deletes the workspace again,
     activationSignUp('acme', '198.51.100.32')->assertStatus(201);
 });
 
-it('with activation off, a failed verification email keeps the live workspace (its owner can resend)', function (): void {
+it('with activation off, a failed verification email still completes the sign-up (its owner can resend)', function (): void {
     config(['app.signup_requires_activation' => false]);
     Notification::shouldReceive('send')->andThrow(new RuntimeException('SMTP is down'));
 
-    activationSignUp('acme', '198.51.100.33')->assertStatus(500);
+    $response = activationSignUp('acme', '198.51.100.33')->assertStatus(201);
 
-    expect(Workspace::query()->where('slug', 'acme')->exists())->toBeTrue();
+    expect(Workspace::query()->where('slug', 'acme')->exists())->toBeTrue()
+        ->and($response->json('login_url'))->toStartWith('https://acme.prizy.test/auth/handoff?');
 });
 
 it('the email tells a pending owner the link activates the workspace and lasts 24 hours', function (): void {
