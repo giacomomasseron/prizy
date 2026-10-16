@@ -26,9 +26,9 @@ final class AuthorizeTlsHost
 
         // Neither reaches this endpoint through real Caddy traffic — SNI
         // carries no port, and RFC 6066 excludes a trailing dot — but
-        // WorkspaceTenantFinder sees a host already normalised by Symfony's
-        // Request::getHost(), while this one arrives raw from a query
-        // string. Strip both here too, to stay in agreement.
+        // WorkspaceTenantFinder strips both (the port via Symfony's
+        // Request::getHost(), the dot itself), while this host arrives raw
+        // from a query string. Strip both here too, to stay in agreement.
         $host = rtrim($host, '.');
         $host = Str::before($host, ':');
 

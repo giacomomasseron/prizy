@@ -15,7 +15,9 @@ final class WorkspaceTenantFinder extends TenantFinder
 {
     public function findForRequest(Request $request): ?IsTenant
     {
-        $host = $request->getHost(); // e.g. "acme.app.com" or "support.acme.com"
+        // e.g. "acme.app.com" or "support.acme.com". getHost() lowercases and
+        // drops the port, but keeps a fully qualified trailing dot.
+        $host = rtrim($request->getHost(), '.');
 
         // The sign-up host is never a workspace, whatever slug it looks like
         // (a workspace named "signup" from before the name was reserved).

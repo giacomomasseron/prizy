@@ -81,10 +81,13 @@ function reverbOriginsEnvFile(string $file): array
     return $values;
 }
 
-it('accepts the base domain and its workspaces when no list is set', function (): void {
-    expect(reverbOriginsConfigured(['APP_BASE_DOMAIN' => 'prizy.test', 'REVERB_ALLOWED_ORIGINS' => '']))
+it('accepts the base domain and its workspaces when no list is set', function (string $list): void {
+    expect(reverbOriginsConfigured(['APP_BASE_DOMAIN' => 'prizy.test', 'REVERB_ALLOWED_ORIGINS' => $list]))
         ->toBe(['prizy.test', '*.prizy.test']);
-});
+})->with([
+    'empty' => '',
+    'blank' => '  ',
+]);
 
 it('uses the list given, trimmed and lower-cased', function (): void {
     expect(reverbOriginsConfigured(['APP_BASE_DOMAIN' => 'prizy.test', 'REVERB_ALLOWED_ORIGINS' => ' prizy.test, *.Prizy.test ,support.acme.co,']))

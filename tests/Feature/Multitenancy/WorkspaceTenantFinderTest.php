@@ -29,15 +29,23 @@ function finderResolve(string $host): ?Workspace
     return $workspace instanceof Workspace ? $workspace : null;
 }
 
-it('resolves a workspace on its own subdomain, in any letter case', function (string $host): void {
+it('resolves a workspace on its own subdomain, in any letter case or fully qualified', function (string $host): void {
     expect(finderResolve($host)?->slug)->toBe('acme');
 })->with([
-    'lower case' => 'acme.prizy.test',
-    'mixed case' => 'ACME.Prizy.Test',
+    'lower case'        => 'acme.prizy.test',
+    'mixed case'        => 'ACME.Prizy.Test',
+    'with trailing dot' => 'acme.prizy.test.',
 ]);
 
-it('resolves a workspace on its custom domain', function (): void {
-    expect(finderResolve('support.acme.co')?->slug)->toBe('acme');
+it('resolves a subdomain when the base domain is configured in capitals', function (): void {
+    config(['app.base_domain' => 'Prizy.Test']);
+
+    expect(finderResolve('acme.prizy.test')?->slug)->toBe('acme');
+});
+
+it('resolves a workspace on its custom domain, fully qualified or not', function (): void {
+    expect(finderResolve('support.acme.co')?->slug)->toBe('acme')
+        ->and(finderResolve('support.acme.co.')?->slug)->toBe('acme');
 });
 
 it('resolves no workspace for a host that is not exactly {slug}.base', function (string $host): void {

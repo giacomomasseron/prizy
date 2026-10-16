@@ -1,12 +1,13 @@
 <?php
 
-// Which sites' pages may open a socket: hostnames, `*` wildcards allowed, as
-// Reverb matches the host of the Origin header with Str::is(). Unset, the
-// base domain and every workspace under it ({slug}.base, the sign-up host);
-// with no base domain either, no site at all. A workspace's custom domain
-// must be added by hand. `*` lets any website connect.
-$reverbAllowedOrigins = strtolower((string) env('REVERB_ALLOWED_ORIGINS', ''));
-$reverbBaseDomain = strtolower((string) env('APP_BASE_DOMAIN', ''));
+// Which sites' pages may open a socket: hostnames only (no scheme or port),
+// `*` wildcards allowed, as Reverb matches the host of the Origin header with
+// Str::is(). Unset or blank, the base domain and every workspace under it
+// ({slug}.base, the sign-up host); with no base domain either, no site at
+// all. A list replaces that default, so a workspace's custom domain is added
+// alongside the base domain entries. `*` lets any website connect.
+$reverbAllowedOrigins = strtolower(trim((string) env('REVERB_ALLOWED_ORIGINS', '')));
+$reverbBaseDomain = strtolower(trim((string) env('APP_BASE_DOMAIN', '')));
 
 return [
 
