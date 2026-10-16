@@ -43,8 +43,9 @@ final class SignUpController extends Controller
 
         $result = $this->signUpWorkspace->handle($data);
 
-        // Rotate the session ID after signup to prevent session fixation:
-        // a planted (pre-signup) session ID must not survive authentication.
+        // Nobody is logged in here any more (the owner logs in on their
+        // workspace's host through login_url), but rotating the session ID
+        // is cheap and keeps a planted one from outliving a sign-up.
         $request->session()->regenerate();
 
         return response()->json([

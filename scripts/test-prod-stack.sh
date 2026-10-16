@@ -256,9 +256,9 @@ fi
 # page. The bare root ("/") is NOT that proof on this host: it carries
 # NeedsTenant with no exemption, and WorkspaceTenantFinder deliberately
 # returns no tenant when the request Host equals APP_BASE_DOMAIN (localhost
-# here) — so "/" 500s by design on the landlord domain. /health and /signup
-# are both landlord-reachable and between them prove the app boots, routes to
-# a controller, and renders a view.
+# here) — so "/" only redirects to /signup on the landlord domain. /health and
+# /signup are both landlord-reachable and between them prove the app boots,
+# routes to a controller, and renders a view.
 if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/health")" = "200" ]; then
     pass "/health returns 200 (the app boots and routes to a controller)"
 else

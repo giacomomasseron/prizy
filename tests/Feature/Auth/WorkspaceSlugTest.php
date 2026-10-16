@@ -75,6 +75,15 @@ it('accepts a slug at the edges of the rules', function (string $slug): void {
     'a reserved word inside' => 'www-acme',
 ]);
 
+it('refuses the slug a custom sign-up host would shadow', function (): void {
+    config(['app.base_domain' => 'prizy.test', 'app.signup_host' => 'join.prizy.test']);
+
+    slugRulesSignUp('join')
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['slug' => 'That address is reserved.']);
+    slugRulesSignUp('joint')->assertStatus(201);
+});
+
 it('still reports a taken slug as taken once the format passes', function (): void {
     Workspace::factory()->create(['slug' => 'taken']);
 

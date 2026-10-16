@@ -98,7 +98,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Routine (typos, bots probing subdomains), so not worth a log line.
         $exceptions->dontReport(NoCurrentTenant::class);
         $exceptions->render(function (NoCurrentTenant $e, Request $request) {
-            if (! $request->isMethodSafe() || $request->expectsJson()) {
+            if (! $request->isMethodSafe() || $request->expectsJson() || $request->is('v1/*')) {
                 return response()->json(['message' => 'Not Found'], 404);
             }
 

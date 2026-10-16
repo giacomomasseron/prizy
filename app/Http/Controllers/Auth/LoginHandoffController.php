@@ -8,7 +8,7 @@ use App\Http\Controllers\Controller;
 use App\UseCases\Auth\ConsumeMagicLink;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Throwable;
+use RuntimeException;
 
 /**
  * Opens a LoginHandoff link on the workspace's own host: logs the user in and
@@ -33,7 +33,9 @@ final class LoginHandoffController extends Controller
 
         try {
             $this->consumeMagicLink->handle($nonce, $userId);
-        } catch (Throwable) {
+        } catch (RuntimeException) {
+            // Used, expired, or not a user of this workspace. Anything else
+            // (the database down) is a real error and goes to the handler.
             return redirect('/login');
         }
 

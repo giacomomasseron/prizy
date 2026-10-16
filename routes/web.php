@@ -83,8 +83,10 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
     // that pass validation (each emails whatever address it was given) per hour.
     Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
 
-    // Each request may email a list of workspace links, so keep it rare.
-    Route::post('/find-workspaces', FindWorkspacesController::class)->middleware(['throttle:5,60']);
+    // Each request may email a list of workspace links, so keep it rare. Its
+    // own key (the third argument): an unnamed throttle keys on the IP alone,
+    // so it would share one count, and one window, with every guest route.
+    Route::post('/find-workspaces', FindWorkspacesController::class)->middleware(['throttle:5,60,find-workspaces']);
 
     // Email verification — landlord route because the user may click the link
     // on any device or host with no tenant session. WorkspaceScope is a no-op

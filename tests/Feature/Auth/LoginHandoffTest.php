@@ -135,6 +135,20 @@ it('a tampered login link logs nobody in', function (): void {
     $this->assertGuest();
 });
 
+it('a link with a bad signature logs nobody in, and does not use up the real one', function (): void {
+    $url = handoffSignUp('acme', '198.51.100.68')->assertStatus(201)->json('login_url');
+    $workspace = handoffWorkspace('acme');
+
+    $forged = preg_replace('/signature=[0-9a-f]+/', 'signature='.str_repeat('0', 64), $url);
+    expect($forged)->not->toBe($url);
+
+    expect(handoffLocation(handoffFollow($forged, $workspace)))->toBe('https://acme.prizy.test/login');
+    $this->assertGuest();
+
+    expect(handoffLocation(handoffFollow($url, $workspace)))->toBe('https://acme.prizy.test');
+    $this->assertAuthenticatedAs(handoffOwner($workspace));
+});
+
 it('with activation on, sign-up returns no login link', function (): void {
     config(['app.signup_requires_activation' => true]);
 

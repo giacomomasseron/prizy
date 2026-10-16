@@ -86,6 +86,40 @@ it('refuses a malformed address', function (): void {
     findWorkspacesPost('not-an-email')->assertStatus(422)->assertJsonValidationErrors(['email']);
 });
 
+it('keeps its own hourly count, apart from the other throttled guest routes', function (): void {
+    $ip = '198.51.100.82';
+
+    // An unnamed throttle keys on the IP alone, so this would otherwise share
+    // (and its one-minute window would set) the count find-workspaces uses.
+    $this->withServerVariables(['REMOTE_ADDR' => $ip])->postJson('https://signup.prizy.test/workspaces', [])->assertStatus(422);
+
+    for ($i = 1; $i <= 5; $i++) {
+        findWorkspacesPost("own{$i}@example.com", $ip)->assertStatus(202);
+    }
+    findWorkspacesPost('own6@example.com', $ip)->assertStatus(429);
+
+    $this->travel(2)->minutes();
+    findWorkspacesPost('own7@example.com', $ip)->assertStatus(429);
+});
+
+it('answers before any email goes out, and the same when sending fails', function (): void {
+    findWorkspacesMember(['slug' => 'acme', 'name' => 'Acme Corp'], 'sam@example.com');
+    Notification::shouldReceive('send')->andThrow(new RuntimeException('SMTP is down'));
+
+    // Sent after the response (defer), and a failure is only reported: a match
+    // must look exactly like a miss, in time and in status.
+    findWorkspacesPost('sam@example.com')->assertStatus(202)->assertJsonPath('message', FIND_WORKSPACES_REPLY);
+});
+
+it('escapes workspace names in the email, so a name cannot become a link', function (): void {
+    $mail = (new WorkspaceLinks([['name' => '[Click here](https://evil.test)', 'url' => 'https://acme.prizy.test/login']]))
+        ->toMail(new AnonymousNotifiable());
+
+    expect(implode(' ', $mail->introLines))
+        ->toContain('\[Click here\]\(https://evil.test\)')
+        ->not->toContain('[Click here](');
+});
+
 it('allows five requests an hour from one address', function (): void {
     $ip = '198.51.100.81';
 
