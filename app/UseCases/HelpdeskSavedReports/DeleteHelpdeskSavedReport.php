@@ -14,7 +14,7 @@ final class DeleteHelpdeskSavedReport
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $report = $this->reports->findInWorkspace($id);
         abort_unless($report !== null, 404);
 

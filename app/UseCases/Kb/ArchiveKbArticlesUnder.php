@@ -15,7 +15,7 @@ final class ArchiveKbArticlesUnder
     /** @param 'category'|'section' $kind */
     public function handle(User $actor, string $kind, string $id): int
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         if ($kind === 'category') {
             $category = $this->kb->findCategory($id);
             abort_unless($category !== null, 404);

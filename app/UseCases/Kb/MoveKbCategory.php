@@ -15,7 +15,7 @@ final class MoveKbCategory
 
     public function handle(User $actor, string $id, string $direction): KbCategory
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $category = $this->kb->findCategory($id);
         abort_unless($category !== null, 404);
         $this->kb->moveCategory($category, $direction);

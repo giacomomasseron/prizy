@@ -16,7 +16,7 @@ final class CreateHelpdeskSavedView
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): HelpdeskSavedView
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         return $this->views->create([
             'name' => $data['name'],

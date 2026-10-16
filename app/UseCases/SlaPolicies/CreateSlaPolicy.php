@@ -16,7 +16,7 @@ final class CreateSlaPolicy
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): SlaPolicy
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         return $this->policies->create([
             'name' => $data['name'],

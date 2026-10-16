@@ -22,7 +22,7 @@ final class CreateKbArticle
     /** @param array{section_id:string,title:string,slug:string,body:string} $data */
     public function handle(User $actor, array $data): KbArticle
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $section = $this->kb->findSection($data['section_id']);
         if ($section === null) {
             throw ValidationException::withMessages(['section_id' => ['Unknown section.']]);

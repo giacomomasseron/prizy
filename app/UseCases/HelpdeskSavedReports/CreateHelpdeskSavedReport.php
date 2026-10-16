@@ -16,7 +16,7 @@ final class CreateHelpdeskSavedReport
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): HelpdeskSavedReport
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         return $this->reports->create([
             'name' => $data['name'],

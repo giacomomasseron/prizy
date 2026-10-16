@@ -14,7 +14,7 @@ final class DeleteKbArticle
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
         $this->kb->deleteArticle($article);

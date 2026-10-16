@@ -17,7 +17,7 @@ final class UpdateKbCategory
     /** @param array<string,mixed> $data */
     public function handle(User $actor, string $id, array $data): KbCategory
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $category = $this->kb->findCategory($id);
         abort_unless($category !== null, 404);
         if ($this->kb->categorySlugTaken($data['slug'], $category->id)) {

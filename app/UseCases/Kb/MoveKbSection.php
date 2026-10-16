@@ -15,7 +15,7 @@ final class MoveKbSection
 
     public function handle(User $actor, string $id, string $direction): KbSection
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $section = $this->kb->findSection($id);
         abort_unless($section !== null, 404);
         $this->kb->moveSection($section, $direction);

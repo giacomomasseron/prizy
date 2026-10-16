@@ -16,7 +16,7 @@ final class UpdateSlaPolicy
     /** @param array<string,mixed> $data */
     public function handle(User $actor, string $id, array $data): SlaPolicy
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $policy = $this->policies->find($id);
         abort_unless($policy !== null, 404);
 

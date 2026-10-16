@@ -26,7 +26,7 @@ final class RestoreKbArticleVersion
 
     public function handle(User $actor, string $articleId, string $versionId): KbArticle
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
         $version = $this->versions->findForArticle($article->id, $versionId);

@@ -17,7 +17,7 @@ final class CreateKbCategory
     /** @param array{name:string,slug:string,icon:string,color:string,description:?string} $data */
     public function handle(User $actor, array $data): KbCategory
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         if ($this->kb->categorySlugTaken($data['slug'])) {
             throw ValidationException::withMessages(['slug' => ['Already used by another category.']]);
         }

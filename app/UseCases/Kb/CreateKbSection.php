@@ -17,7 +17,7 @@ final class CreateKbSection
     /** @param array{category_id:string,name:string,slug:string} $data */
     public function handle(User $actor, array $data): KbSection
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $category = $this->kb->findCategory($data['category_id']);
         if ($category === null) {
             throw ValidationException::withMessages(['category_id' => ['Unknown category.']]);
