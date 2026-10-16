@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Rules\WorkspaceSlug;
 use App\UseCases\Auth\SignUpWorkspace;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,8 @@ final class SignUpController extends Controller
     {
         $data = $request->validate([
             'workspace_name' => ['required', 'string', 'max:255'],
-            'slug'           => ['required', 'string', 'max:63', 'unique:workspaces,slug'],
+            // bail: a malformed or reserved slug needs no uniqueness query.
+            'slug'           => ['bail', 'required', 'string', new WorkspaceSlug(), 'unique:workspaces,slug'],
             'name'           => ['required', 'string', 'max:255'],
             'email'          => ['required', 'email', 'max:255'],
             'password'       => ['required', 'string', Password::defaults()],
@@ -33,6 +35,8 @@ final class SignUpController extends Controller
         $request->session()->regenerate();
 
         return response()->json([
+            'activation_required' => $result['activation_required'],
+            'workspace_url'       => $result['workspace_url'],
             'workspace' => $result['workspace'],
             'user'      => $result['user']->only([
                 'id', 'workspace_id', 'name', 'email', 'admin_level',

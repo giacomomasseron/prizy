@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\UseCases\Auth\MarkEmailVerified;
 use App\UseCases\Auth\ResendVerification;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 final class EmailVerificationController extends Controller
@@ -27,14 +28,19 @@ final class EmailVerificationController extends Controller
      *
      * The `signed` middleware validates the URL signature before this method runs;
      * an invalid signature aborts with 403 before we are reached.
+     *
+     * The link is clicked from a mail client, so it lands on the workspace
+     * (which, for a pending sign-up, this click has just activated).
      */
-    public function verify(Request $request, string $id, string $hash): JsonResponse
+    public function verify(Request $request, string $id, string $hash): RedirectResponse
     {
-        if (! $this->markEmailVerified->handle($id, $hash)) {
+        $workspaceUrl = $this->markEmailVerified->handle($id, $hash);
+
+        if ($workspaceUrl === null) {
             abort(403, 'Invalid verification link.');
         }
 
-        return response()->json(['verified' => true]);
+        return redirect()->away($workspaceUrl.'/');
     }
 
     /**

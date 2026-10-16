@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Models\Workspace;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\URL;
@@ -23,7 +24,9 @@ class VerifyEmail extends Notification
     {
         $verifyUrl = URL::temporarySignedRoute(
             'verification.verify',
-            now()->addMinutes(60),
+            // As long as a pending sign-up waits: its owner cannot log in to
+            // ask for a fresh link until this one has activated the workspace.
+            now()->addHours(Workspace::ACTIVATION_WINDOW_HOURS),
             [
                 'id'   => $notifiable->getKey(),
                 'hash' => sha1($notifiable->getEmailForVerification()),

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\UseCases\Auth;
 
 use App\Models\User;
+use App\Models\Workspace;
+use App\Services\WorkspaceUrl;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Verifies a user's email given their UUID and the expected SHA-1 hash of their email address.
@@ -17,24 +20,39 @@ use App\Models\User;
 final class MarkEmailVerified
 {
     /**
-     * @return bool  true = verified (or already verified), false = user not found or hash mismatch
+     * Verifying the owner of a pending workspace also activates it: this link
+     * is the confirmation SIGNUP_REQUIRES_ACTIVATION waits for.
+     *
+     * @return string|null  the workspace's URL to send the user to, or null = user not found or hash mismatch
      */
-    public function handle(string $id, string $hash): bool
+    public function handle(string $id, string $hash): ?string
     {
         $user = User::find($id);
 
         if ($user === null) {
-            return false;
+            return null;
         }
 
         if (! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
-            return false;
+            return null;
         }
 
-        if (! $user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
+        $workspace = Workspace::find($user->workspace_id);
+
+        if ($workspace === null) {
+            return null;
         }
 
-        return true;
+        DB::transaction(function () use ($user, $workspace): void {
+            if (! $user->hasVerifiedEmail()) {
+                $user->markEmailAsVerified();
+            }
+
+            if ($workspace->activated_at === null && $user->admin_level === 'owner') {
+                $workspace->forceFill(['activated_at' => now()])->save();
+            }
+        });
+
+        return WorkspaceUrl::for($workspace);
     }
 }
