@@ -17,7 +17,7 @@ final class UpdateKbSection
     /** @param array<string,mixed> $data */
     public function handle(User $actor, string $id, array $data): KbSection
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $section = $this->kb->findSection($id);
         abort_unless($section !== null, 404);
         if ($this->kb->sectionSlugTaken($section->category_id, $data['slug'], $section->id)) {

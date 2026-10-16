@@ -217,7 +217,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/sla-policies/{id}', [SlaPolicyController::class, 'update'])->middleware('verified');
         Route::delete('/sla-policies/{id}', [SlaPolicyController::class, 'destroy'])->middleware('verified');
 
-        // Knowledge-base authoring (HC-4) — is_agent gate lives in each use case.
+        // Knowledge-base authoring (HC-4) — the gate lives in each use case: an agent to read, an agent who is not a viewer to write.
         Route::post('/kb/categories', [KbCategoryController::class, 'store'])->middleware('verified');
         Route::patch('/kb/categories/{id}', [KbCategoryController::class, 'update'])->middleware('verified');
         Route::delete('/kb/categories/{id}', [KbCategoryController::class, 'destroy'])->middleware('verified');

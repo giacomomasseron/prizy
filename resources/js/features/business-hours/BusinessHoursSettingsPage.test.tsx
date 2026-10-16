@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import BusinessHoursSettingsPage from './BusinessHoursSettingsPage';
 import type { Schedule } from '../../lib/types';
 import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
@@ -32,6 +32,12 @@ const SCHEDULES: Schedule[] = [
 let schedulesData: Schedule[] = SCHEDULES;
 let schedulesQuery: Record<string, unknown> | null = null;
 
+const AGENT = { id: 'me-1', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+let meData: Record<string, unknown> = AGENT;
+vi.mock('../../auth/useAuth', () => ({
+    useMe: () => ({ data: meData }),
+}));
+
 vi.mock('./hooks', () => ({
     useSchedules: () => schedulesQuery ?? ({ isLoading: false, data: schedulesData }),
     useDeleteSchedule: () => ({ mutateAsync: deleteMutate }),
@@ -40,6 +46,21 @@ vi.mock('./hooks', () => ({
 }));
 
 describe('BusinessHoursSettingsPage', () => {
+    describe('a viewer who is an agent (read-only)', () => {
+        afterEach(() => { meData = AGENT; });
+
+        it('sees every schedule and its hours, with no New, Edit or Delete', () => {
+            meData = { ...AGENT, admin_level: 'viewer' };
+            schedulesData = SCHEDULES;
+            render(<BusinessHoursSettingsPage />);
+            expect(screen.getByText('Weekday support')).toBeInTheDocument();
+            expect(screen.getByText(/Mon–Fri 09:00–17:00/)).toBeInTheDocument();
+            expect(screen.queryByRole('button', { name: 'New schedule' })).toBeNull();
+            expect(screen.queryByTestId(`edit-${SCHEDULES[0].id}`)).toBeNull();
+            expect(screen.queryByTestId(`delete-${SCHEDULES[0].id}`)).toBeNull();
+        });
+    });
+
     it('renders the schedule list with a compact open-days summary', () => {
         schedulesData = SCHEDULES;
         render(<BusinessHoursSettingsPage />);

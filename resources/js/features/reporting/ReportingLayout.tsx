@@ -13,6 +13,8 @@ import { AgentsSection } from './AgentsSection';
 import { SlaSection } from './SlaSection';
 import { ReportingSidebar } from './ReportingSidebar';
 import { RangeToggle } from './RangeToggle';
+import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 
 export default function ReportingLayout() {
     const [range, setRange] = useState<ReportRange>('7d');
@@ -24,6 +26,7 @@ export default function ReportingLayout() {
     const savedReportsQ = useSavedReports();
     const createReport = useCreateSavedReport();
     const deleteReport = useDeleteSavedReport();
+    const canWrite = canWriteHelpdesk(useMe().data); // saved reports are shared: a viewer opens them, nothing more
     const sectionLabel = REPORT_SECTIONS.find((s) => s.key === section)?.label ?? 'Overview';
 
     const cached = section === 'overview' ? q.data : section === 'agents' ? agentsQ.data : slaQ.data;
@@ -45,8 +48,8 @@ export default function ReportingLayout() {
                 onSelectSection={setSection}
                 savedReports={savedReportsQ.data ?? []}
                 onSelectReport={(s, r) => { setSection(s); setRange(r); }}
-                onSaveReport={(name) => createReport.mutate({ name, definition: { section, range } })}
-                onDeleteReport={(id) => deleteReport.mutate(id)}
+                onSaveReport={canWrite ? (name) => createReport.mutate({ name, definition: { section, range } }) : undefined}
+                onDeleteReport={canWrite ? (id) => deleteReport.mutate(id) : undefined}
             />
 
             <div style={{ flex: 1, minWidth: 640, display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>

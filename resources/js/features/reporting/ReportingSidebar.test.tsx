@@ -20,6 +20,20 @@ function sidebarProps(overrides = {}) {
 }
 
 describe('ReportingSidebar', () => {
+    it('without save/delete handlers (a viewer) opens a saved report but cannot add or delete one', () => {
+        const onSelectReport = vi.fn();
+        render(<ReportingSidebar {...sidebarProps({ onSelectReport, onSaveReport: undefined, onDeleteReport: undefined })} />);
+        fireEvent.click(screen.getByText('Weekly overview'));
+        expect(onSelectReport).toHaveBeenCalledWith('overview', '7d');
+        expect(screen.queryByText('+ Save report')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Delete report Weekly overview' })).toBeNull();
+    });
+
+    it('drops the Saved reports heading when there is nothing to open and nothing to save', () => {
+        render(<ReportingSidebar {...sidebarProps({ savedReports: [], onSaveReport: undefined, onDeleteReport: undefined })} />);
+        expect(screen.queryByText('Saved reports')).toBeNull();
+    });
+
     it('renders the three report sections and calls onSelectSection', () => {
         const onSelectSection = vi.fn();
         render(<ReportingSidebar {...sidebarProps({ onSelectSection })} />);

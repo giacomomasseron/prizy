@@ -21,7 +21,7 @@ final class ChangeKbTranslationStatus
     /** @param 'draft'|'published'|'archived' $status */
     public function handle(User $actor, string $articleId, string $locale, string $status): KbArticleTranslation
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
         UpsertKbArticleTranslation::assertTranslatable($locale);

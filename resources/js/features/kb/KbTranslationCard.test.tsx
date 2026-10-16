@@ -20,6 +20,11 @@ function renderCard(data: unknown[], onOpen = vi.fn()) {
     render(<QueryClientProvider client={qc}><KbTranslationCard articleId="a1" onOpen={onOpen} /></QueryClientProvider>);
     return onOpen;
 }
+function renderCardReadOnly(data: unknown[]) {
+    vi.stubGlobal('fetch', vi.fn(async () => j({ data })));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(<QueryClientProvider client={qc}><KbTranslationCard articleId="a1" onOpen={vi.fn()} readOnly /></QueryClientProvider>);
+}
 function renderCardPending() {
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -33,6 +38,12 @@ function renderCardFailing() {
 
 describe('KbTranslationCard', () => {
     afterEach(() => vi.unstubAllGlobals());
+
+    it('offers a viewer View translations, not Manage translations', async () => {
+        renderCardReadOnly(rows);
+        expect(await screen.findByRole('button', { name: 'View translations' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Manage translations' })).toBeNull();
+    });
 
     it('renders every language with its state, source first', async () => {
         renderCard(rows);

@@ -33,11 +33,13 @@ export interface KbTranslationDrawerProps {
     // The stale banner's "View what changed" hands off to the OTHER drawer the editor owns —
     // this component never reaches across to open it directly.
     onViewChanges(): void;
+    /** A viewer reads the translations: nothing to start, save, publish or delete. */
+    readOnly?: boolean;
 }
 
 const sourceH2: CSSProperties = { margin: '0 0 10px', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--fg)' };
 
-export function KbTranslationDrawer({ articleId, open, initialLocale, articleStatus, onClose, onViewChanges }: KbTranslationDrawerProps) {
+export function KbTranslationDrawer({ articleId, open, initialLocale, articleStatus, onClose, onViewChanges, readOnly = false }: KbTranslationDrawerProps) {
     const articleQuery = useKbArticle(articleId);
     const article = articleQuery.data;
     const translationsQuery = useKbArticleTranslations(articleId);
@@ -162,6 +164,7 @@ export function KbTranslationDrawer({ articleId, open, initialLocale, articleSta
                             articleStatus={articleStatus}
                             onViewChanges={handleViewChanges}
                             onDirtyChange={setEditorDirty}
+                            readOnly={readOnly}
                         />
                     ) : null}
                 </div>
@@ -208,12 +211,13 @@ interface TranslationEditorProps {
     // this component has no way to know it's about to be unmounted or navigated away from, so the
     // parent has to ask before that happens, not after.
     onDirtyChange(dirty: boolean): void;
+    readOnly: boolean;
 }
 
 // Keyed by locale in the parent, so switching languages — or closing and reopening the drawer,
 // which unmounts everything under Drawer — always starts this component fresh rather than
 // carrying one language's unsaved draft into another's fields.
-function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus, onViewChanges, onDirtyChange }: TranslationEditorProps) {
+function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus, onViewChanges, onDirtyChange, readOnly }: TranslationEditorProps) {
     const confirm = useConfirm();
     // Owned locally rather than read straight from `row.status`: a successful delete must flip
     // this pane back to the empty state immediately, and the parent's `rows` list is only as
@@ -234,7 +238,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
     const [title, setTitle] = useState('');
     const [body, setBody] = useState('');
     const [status, setStatus] = useState<KbStatus | null>(null);
-    const [tab, setTab] = useState<Tab>('write');
+    const [tab, setTab] = useState<Tab>(readOnly ? 'preview' : 'write');
     const [compareOpen, setCompareOpen] = useState(false);
     const [saveError, setSaveError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
@@ -245,6 +249,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
             setOriginal({ title: detailQuery.data.title, body: detailQuery.data.body });
             setTitle(detailQuery.data.title);
             setBody(detailQuery.data.body);
+            setDebouncedBody(detailQuery.data.body); // no stale empty-body preview on the way in
             setStatus(detailQuery.data.status);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -255,10 +260,13 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
         const t = setTimeout(() => setDebouncedBody(body), 400);
         return () => clearTimeout(t);
     }, [body]);
+    // Not before the translation has loaded: a viewer opens on Preview, and rendering the
+    // still-empty body would spend a call on the rate-limited preview route for nothing.
+    const loaded = original !== null;
     useEffect(() => {
-        if (tab === 'preview') preview.mutate(debouncedBody);
+        if (tab === 'preview' && loaded) preview.mutate(debouncedBody);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [tab, debouncedBody]);
+    }, [tab, debouncedBody, loaded]);
 
     const dirty = original !== null && (title !== original.title || body !== original.body);
     useEffect(() => {
@@ -331,13 +339,17 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
             <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 32px' }}>
                 <div style={{ textAlign: 'center', maxWidth: 350 }}>
                     <p style={{ margin: '0 0 7px', fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em' }}>Not translated yet</p>
-                    <p style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.6, margin: '0 0 20px' }}>
-                        Start from the English article and edit it, or write this translation from scratch.
-                    </p>
-                    <div style={{ display: 'flex', gap: 9, justifyContent: 'center' }}>
-                        <Button size="sm" onClick={startFromEnglish}>Start from English</Button>
-                        <Button variant="secondary" size="sm" onClick={startBlank}>Start blank</Button>
-                    </div>
+                    {readOnly ? (
+                        <p style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.6, margin: 0 }}>Nobody has translated this article into this language yet.</p>
+                    ) : (<>
+                        <p style={{ fontSize: 12.5, color: 'var(--fg2)', lineHeight: 1.6, margin: '0 0 20px' }}>
+                            Start from the English article and edit it, or write this translation from scratch.
+                        </p>
+                        <div style={{ display: 'flex', gap: 9, justifyContent: 'center' }}>
+                            <Button size="sm" onClick={startFromEnglish}>Start from English</Button>
+                            <Button variant="secondary" size="sm" onClick={startBlank}>Start blank</Button>
+                        </div>
+                    </>)}
                 </div>
             </div>
         );
@@ -369,6 +381,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                 placeholder="Translated title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
+                readOnly={readOnly}
                 style={{ fontFamily: 'var(--font-display)', fontSize: 18, fontWeight: 800, letterSpacing: '-.025em', marginBottom: 10 }}
             />
             <Textarea
@@ -376,6 +389,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                 placeholder="Write the translation in markdown, matching the English structure."
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
+                readOnly={readOnly}
                 style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7, minHeight: 380 }}
             />
         </>
@@ -404,7 +418,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                     <SegmentedControl<Tab>
                         value={tab}
                         onChange={setTab}
-                        options={[{ value: 'write', label: 'Write' }, { value: 'preview', label: 'Preview' }]}
+                        options={[{ value: 'write', label: readOnly ? 'Markdown' : 'Write' }, { value: 'preview', label: 'Preview' }]}
                     />
                     <Button
                         variant={compareOpen ? 'primary' : 'secondary'}
@@ -432,6 +446,12 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                 ) : editor}
             </div>
 
+            {readOnly ? (
+                <div data-testid="kb-translation-footer" style={{ ...drawerFooter, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {status !== null && <StatusPill status={status} />}
+                    <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>Read only: viewers cannot edit translations</span>
+                </div>
+            ) : (
             <div data-testid="kb-translation-footer" style={drawerFooter}>
                 {deleteError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 8 }}>{deleteError}</div>}
                 {statusError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12, marginBottom: 8 }}>{statusError}</div>}
@@ -468,6 +488,7 @@ function TranslationEditor({ articleId, row, article, sourceHtml, articleStatus,
                     )}
                 </div>
             </div>
+            )}
         </>
     );
 }

@@ -16,7 +16,7 @@ final class HelpdeskSavedViewRequest extends FormRequest
 
     public function authorize(): bool
     {
-        return true; // capability gate is is_agent in the use case
+        return true; // capability gate lives in the use case (an agent, not a viewer)
     }
 
     /** @return array<string, mixed> */

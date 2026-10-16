@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { KbShell } from './KbShell';
 import { KbHeader } from './KbHeader';
 import { StatusPill } from './StatusPill';
@@ -11,6 +11,8 @@ import { Button } from '../../components/ui/Button';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
+import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 import { KbTranslationCard } from './KbTranslationCard';
 import { KbTranslationDrawer } from './KbTranslationDrawer';
 import { KbVersionCard } from './KbVersionCard';
@@ -38,6 +40,7 @@ const STATUS_HINT: Record<KbStatus, string> = {
 };
 
 const EDITOR_SUB = 'Authoring · publishes to the customer help center';
+const READER_SUB = 'Knowledge base · read only';
 const cardColumn: CSSProperties = { ...kbCard, display: 'flex', flexDirection: 'column', gap: 12 };
 
 export default function KbArticleEditorPage() {
@@ -49,6 +52,7 @@ export default function KbArticleEditorPage() {
     const article = articleQuery.data;
     const lib = useKbLibrary();
     const categories = lib.data?.categories ?? [];
+    const readOnly = !canWriteHelpdesk(useMe().data); // a viewer reads articles, writes none
 
     // Set by EditorForm right before it creates a brand-new article and navigates to its
     // permanent URL. That navigation changes the `id` route param, which makes useKbArticle(id)
@@ -59,6 +63,8 @@ export default function KbArticleEditorPage() {
     // restructuring the loading-gate/remount pattern itself.
     const [justSavedId, setJustSavedId] = useState<string | null>(null);
 
+    if (isNew && readOnly) return <Navigate to="/support/kb" replace />;
+
     // Existing article: hold off on mounting the form until it has actually loaded, so the form's
     // local state (see EditorForm) can seed itself synchronously from real data on its first render
     // instead of racing an effect (a naive effect-based reseed leaves one render where inputs are
@@ -66,7 +72,7 @@ export default function KbArticleEditorPage() {
     if (!isNew && !article) {
         return (
             <KbShell>
-                <KbHeader title="Knowledge base" subtitle={EDITOR_SUB} />
+                <KbHeader title="Knowledge base" subtitle={readOnly ? READER_SUB : EDITOR_SUB} />
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--fg3)', fontSize: 13 }}>
                     {articleQuery.isError ? 'This article could not be found.' : 'Loading…'}
                 </div>
@@ -86,6 +92,7 @@ export default function KbArticleEditorPage() {
                 initialSection={searchParams.get('section') ?? ''}
                 justCreated={!!article && article.id === justSavedId}
                 onCreated={setJustSavedId}
+                readOnly={readOnly}
             />
         </KbShell>
     );
@@ -99,9 +106,11 @@ interface EditorFormProps {
     initialSection: string;
     justCreated: boolean;
     onCreated(id: string): void;
+    /** A viewer: the article reads as customers will see it, every field read-only, nothing to save or change. */
+    readOnly: boolean;
 }
 
-function EditorForm({ id, isNew, article, categories, initialSection, justCreated, onCreated }: EditorFormProps) {
+function EditorForm({ id, isNew, article, categories, initialSection, justCreated, onCreated, readOnly }: EditorFormProps) {
     const navigate = useNavigate();
     const confirm = useConfirm();
 
@@ -116,10 +125,10 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
     const [slugTouched, setSlugTouched] = useState(false);
     const [sectionId, setSectionId] = useState(article?.section_id ?? initialSection ?? categories.flatMap((c) => c.sections)[0]?.id ?? '');
     const [body, setBody] = useState(article?.body ?? '');
-    const [tab, setTab] = useState<Tab>('write');
+    const [tab, setTab] = useState<Tab>(readOnly ? 'preview' : 'write');
     const slugInputRef = useRef<HTMLInputElement>(null);
     const [dirty, setDirty] = useState(false);
-    const [savedMsg, setSavedMsg] = useState(isNew ? 'Not saved yet' : justCreated ? 'Saved just now' : 'All changes saved');
+    const [savedMsg, setSavedMsg] = useState(readOnly ? 'Read only: viewers cannot edit articles' : isNew ? 'Not saved yet' : justCreated ? 'Saved just now' : 'All changes saved');
     const [saveError, setSaveError] = useState<string | null>(null);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -293,7 +302,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
 
     return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <KbHeader title={isNew ? 'New article' : title.trim() || 'Untitled article'} subtitle={EDITOR_SUB} />
+            <KbHeader title={isNew ? 'New article' : title.trim() || 'Untitled article'} subtitle={readOnly ? READER_SUB : EDITOR_SUB} />
 
             <div data-testid="kb-editor-scroll" style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, padding: '22px 26px 40px', alignItems: 'flex-start' }}>
@@ -313,6 +322,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                             placeholder="Article title"
                             value={title}
                             onChange={(e) => onTitleChange(e.target.value)}
+                            readOnly={readOnly}
                             className={TITLE_FIELD_CLASSES}
                             style={{ ...titleFieldEdge, width: '100%', boxSizing: 'border-box', outline: 'none', color: 'var(--fg)', background: 'transparent', padding: 0, borderRadius: 0, fontFamily: 'var(--font-display)', fontSize: 32, fontWeight: 800, letterSpacing: '-.04em', lineHeight: 1.15 }}
                         />
@@ -336,10 +346,11 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                         placeholder="article-slug"
                                         value={slug}
                                         onChange={(e) => onSlugChange(e.target.value)}
+                                        readOnly={readOnly}
                                         style={{ flex: 1, minWidth: 60, border: 'none', background: 'none', outline: 'none', padding: 0, color: 'var(--fg)', fontFamily: 'var(--font-mono)', fontSize: 12.5 }}
                                     />
                                 </div>
-                                <div style={{ marginTop: 7, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: taken ? 'var(--red-ink)' : 'var(--fg3)' }}>{slugNote}</div>
+                                {!readOnly && <div style={{ marginTop: 7, fontSize: 11.5, fontFamily: 'var(--font-mono)', color: taken ? 'var(--red-ink)' : 'var(--fg3)' }}>{slugNote}</div>}
                             </div>
 
                             <div style={{ flex: '0 1 260px', minWidth: 200 }}>
@@ -349,7 +360,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                         No sections exist yet — create one in the library before writing this article.
                                     </div>
                                 ) : (
-                                    <select id="kb-article-section" aria-label="Section" value={sectionId} onChange={(e) => onSectionChange(e.target.value)} className={FIELD_CLASSES} style={{ ...selectStyle, width: '100%', fontSize: 13 }}>
+                                    <select id="kb-article-section" aria-label="Section" value={sectionId} onChange={(e) => onSectionChange(e.target.value)} disabled={readOnly} className={FIELD_CLASSES} style={{ ...selectStyle, width: '100%', fontSize: 13 }}>
                                         {allSections.map((s) => (
                                             <option key={s.id} value={s.id}>{s.categoryName} › {s.name}</option>
                                         ))}
@@ -362,7 +373,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                             <SegmentedControl<Tab>
                                 value={tab}
                                 onChange={setTab}
-                                options={[{ value: 'write', label: 'Write' }, { value: 'preview', label: 'Preview' }]}
+                                options={[{ value: 'write', label: readOnly ? 'Markdown' : 'Write' }, { value: 'preview', label: 'Preview' }]}
                             />
                             <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
                                 {stats.words === 0 ? 'empty' : `${stats.words} words · ${stats.minutes} min read`}
@@ -374,6 +385,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                 aria-label="Article body"
                                 value={body}
                                 onChange={(e) => onBodyChange(e.target.value)}
+                                readOnly={readOnly}
                                 placeholder={'# Heading\n\nWrite the article in markdown. Use ## for sections, - for bullets, **bold** and `code`.'}
                                 style={{ fontFamily: 'var(--font-mono)', fontSize: 12.5, lineHeight: 1.7, minHeight: 460, resize: 'vertical', marginTop: 10, padding: '16px 18px' }}
                             />
@@ -383,7 +395,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                 <h1 style={{ margin: '10px 0 8px', fontSize: 24, fontWeight: 600, letterSpacing: '-.02em', lineHeight: 1.25 }}>{title || 'Untitled article'}</h1>
                                 <div style={{ fontSize: 11.5, color: 'var(--fg3)', marginBottom: 22 }}>{previewMeta}</div>
                                 {body.trim() === '' ? (
-                                    <p style={{ fontStyle: 'italic', color: 'var(--fg3)' }}>Nothing written yet — switch to Write and start the article.</p>
+                                    <p style={{ fontStyle: 'italic', color: 'var(--fg3)' }}>{readOnly ? 'Nothing written yet.' : 'Nothing written yet — switch to Write and start the article.'}</p>
                                 ) : (
                                     // Safe: this HTML comes ONLY from the POST /v1/kb/preview response (never concatenated
                                     // with local state, never built client-side), rendered server-side by
@@ -407,22 +419,28 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                                 <span style={{ marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>{isNew ? '—' : shortRef(id ?? '')}</span>
                             </div>
                             <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.55, color: 'var(--fg2)' }}>{STATUS_HINT[status]}</p>
-                            <Button
-                                variant={status === 'published' ? 'secondary' : 'primary'}
-                                onClick={() => runStatus(status === 'published' ? 'draft' : 'published')}
-                                disabled={!title.trim() || !body.trim() || noSections || pending}
-                                style={{ width: '100%' }}
-                            >
-                                {status === 'published' ? 'Unpublish' : 'Publish'}
-                            </Button>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <Button variant="secondary" size="sm" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={(isNew && noSections) || pending} style={{ flex: 1 }}>
-                                    {status === 'archived' ? 'Restore' : 'Archive'}
+                            {!readOnly && (
+                                <Button
+                                    variant={status === 'published' ? 'secondary' : 'primary'}
+                                    onClick={() => runStatus(status === 'published' ? 'draft' : 'published')}
+                                    disabled={!title.trim() || !body.trim() || noSections || pending}
+                                    style={{ width: '100%' }}
+                                >
+                                    {status === 'published' ? 'Unpublish' : 'Publish'}
                                 </Button>
+                            )}
+                            {(!readOnly || (status === 'published' && article?.public_url)) && (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                {!readOnly && (
+                                    <Button variant="secondary" size="sm" onClick={() => runStatus(status === 'archived' ? 'draft' : 'archived')} disabled={(isNew && noSections) || pending} style={{ flex: 1 }}>
+                                        {status === 'archived' ? 'Restore' : 'Archive'}
+                                    </Button>
+                                )}
                                 {status === 'published' && article?.public_url && (
                                     <a href={article.public_url} target="_blank" rel="noreferrer" className={PILL_CLASSES} style={{ ...pillBtn, flex: 1, justifyContent: 'center', textDecoration: 'none' }}>Open ↗</a>
                                 )}
                             </div>
+                            )}
                             {statusError && <div role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{statusError}</div>}
                         </div>
 
@@ -442,7 +460,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         </div>
 
                         {!isNew && id && (
-                            <KbTranslationCard articleId={id} onOpen={(locale) => setTranslationDrawer({ open: true, locale: locale ?? null })} />
+                            <KbTranslationCard articleId={id} readOnly={readOnly} onOpen={(locale) => setTranslationDrawer({ open: true, locale: locale ?? null })} />
                         )}
 
                         {!isNew && id && (
@@ -458,7 +476,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                             </div>
                         </div>
 
-                        {!isNew && (
+                        {!isNew && !readOnly && (
                             <div data-testid="kb-danger-zone" style={dangerCard}>
                                 <div style={{ ...kbLabel, marginBottom: 6 }}>Danger zone</div>
                                 <p style={{ margin: '0 0 11px', fontSize: 12, lineHeight: 1.5, color: 'var(--fg2)' }}>Deleting removes the article and its URL. Customers with the link will get a 404.</p>
@@ -475,6 +493,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         open={versionDrawer.open}
                         initialVersionId={versionDrawer.versionId}
                         dirty={dirty}
+                        readOnly={readOnly}
                         onClose={() => setVersionDrawer({ open: false, versionId: null })}
                         onRestored={(msg, restoredArticle) => {
                             setSavedMsg(msg);
@@ -497,6 +516,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                         open={translationDrawer.open}
                         initialLocale={translationDrawer.locale}
                         articleStatus={article?.status ?? 'draft'}
+                        readOnly={readOnly}
                         onClose={() => setTranslationDrawer({ open: false, locale: null })}
                         onViewChanges={() => setVersionDrawer({ open: true, versionId: null })}
                     />
@@ -508,7 +528,7 @@ function EditorForm({ id, isNew, article, categories, initialSection, justCreate
                 <div style={{ flex: 1 }} />
                 {saveError && <span role="alert" style={{ color: 'var(--red-ink)', fontSize: 12 }}>{saveError}</span>}
                 <Button variant="secondary" size="sm" onClick={() => navigate('/support/kb')}>Close</Button>
-                {canSave ? (
+                {readOnly ? null : canSave ? (
                     <Button size="sm" onClick={onSave} disabled={pending}>Save changes</Button>
                 ) : (
                     <Button size="sm" disabled>Saved</Button>

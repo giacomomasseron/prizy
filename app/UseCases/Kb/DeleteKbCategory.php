@@ -14,7 +14,7 @@ final class DeleteKbCategory
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $category = $this->kb->findCategory($id);
         abort_unless($category !== null, 404);
         $this->kb->deleteCategory($category);

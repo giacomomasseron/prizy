@@ -14,7 +14,7 @@ final class DeleteHelpdeskSavedView
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $view = $this->views->findInWorkspace($id);
         abort_unless($view !== null, 404);
 

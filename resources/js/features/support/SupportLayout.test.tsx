@@ -68,7 +68,7 @@ describe('SupportLayout', () => {
         expect(screen.getByRole('dialog', { name: 'New ticket' })).toBeInTheDocument();
     });
 
-    it('gives a viewer who is an agent the desk to read, but no New ticket, status menu or reply box (Assign to me: TicketContext.test)', () => {
+    it('gives a viewer who is an agent the desk to read, but no New ticket, status menu, reply box or saved-view editing (Assign to me: TicketContext.test)', () => {
         const member = meData.current;
         meData.current = { ...member, admin_level: 'viewer' };
         try {
@@ -78,6 +78,10 @@ describe('SupportLayout', () => {
             expect(screen.queryByRole('button', { name: 'New ticket' })).toBeNull();
             expect(screen.queryByRole('button', { name: /^Status/ })).toBeNull();
             expect(screen.queryByRole('textbox', { name: /reply/i })).toBeNull();
+            // Saved views are shared: a viewer applies them, adds and deletes none.
+            expect(screen.getByText('Email backlog')).toBeInTheDocument();
+            expect(screen.queryByText('+ Save view')).toBeNull();
+            expect(screen.queryByRole('button', { name: 'Delete view Email backlog' })).toBeNull();
         } finally {
             meData.current = member;
         }

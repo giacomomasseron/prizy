@@ -10,7 +10,7 @@ final class KbPreviewRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true; // capability gate is is_agent in the use case
+        return true; // capability gate lives in the use case (an agent; reading is open to viewers)
     }
 
     /** @return array<string, mixed> */

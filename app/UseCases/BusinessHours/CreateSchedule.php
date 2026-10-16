@@ -16,7 +16,7 @@ final class CreateSchedule
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): BusinessHourSchedule
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         return $this->schedules->create(
             ['name' => $data['name'], 'timezone' => $data['timezone']],

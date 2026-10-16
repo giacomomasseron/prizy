@@ -14,7 +14,7 @@ final class DeleteSlaPolicy
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $policy = $this->policies->find($id);
         abort_unless($policy !== null, 404);
 

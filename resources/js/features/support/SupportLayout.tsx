@@ -84,8 +84,8 @@ export default function SupportLayout() {
                     savedViews={savedViewsQ.data ?? []}
                     savedViewId={savedViewId}
                     onSelectSavedView={setSavedViewId}
-                    onDeleteSavedView={removeView}
-                    onSaveView={saveView}
+                    onDeleteSavedView={canWrite ? removeView : undefined}
+                    onSaveView={canWrite ? saveView : undefined}
                 />
             )}
             <TicketList

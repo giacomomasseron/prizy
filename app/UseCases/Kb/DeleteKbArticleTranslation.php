@@ -18,7 +18,7 @@ final class DeleteKbArticleTranslation
 
     public function handle(User $actor, string $articleId, string $locale): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
         UpsertKbArticleTranslation::assertTranslatable($locale);

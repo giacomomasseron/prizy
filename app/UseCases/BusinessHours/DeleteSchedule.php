@@ -14,7 +14,7 @@ final class DeleteSchedule
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $schedule = $this->schedules->find($id);
         abort_unless($schedule !== null, 404);
 

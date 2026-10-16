@@ -22,7 +22,7 @@ final class UpsertKbArticleTranslation
     /** @param array{title: string, body: string} $data */
     public function handle(User $actor, string $articleId, string $locale, array $data): KbArticleTranslation
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($articleId);
         abort_unless($article !== null, 404);
         self::assertTranslatable($locale);

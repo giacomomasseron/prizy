@@ -5,6 +5,8 @@ import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { Button } from '../../components/ui/Button';
 import { QueryState } from '../../components/ui/QueryState';
 import { ApiError } from '../../lib/apiClient';
+import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 import type { Schedule } from '../../lib/types';
 import { DELETE_X_CLASSES, deleteXStyle, emptyState } from '../projects/projectStyles';
 import { ROW_CLASSES, listCard, pageFrame, pageLead, pageTitle, titleRow } from '../settings/settingsStyles';
@@ -36,6 +38,7 @@ export default function BusinessHoursSettingsPage() {
     const schedulesQ = useSchedules();
     const del = useDeleteSchedule();
     const confirm = useConfirm();
+    const canWrite = canWriteHelpdesk(useMe().data); // a viewer sees the schedules, changes none
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<Schedule | undefined>(undefined);
@@ -76,9 +79,11 @@ export default function BusinessHoursSettingsPage() {
                         Schedules define when your team is available and are used to calculate SLA due dates.
                     </p>
                 </div>
-                <Button onClick={openCreate} style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                    New schedule
-                </Button>
+                {canWrite && (
+                    <Button onClick={openCreate} style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                        New schedule
+                    </Button>
+                )}
             </div>
 
             {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
@@ -102,26 +107,28 @@ export default function BusinessHoursSettingsPage() {
                                     <span style={{ fontSize: 12, color: 'var(--fg3)', overflowWrap: 'anywhere' }}>{s.timezone} · {summarizeIntervals(s)}</span>
                                 </div>
                                 <span style={{ flex: 1 }} />
-                                <Button variant="secondary" size="sm" data-testid={`edit-${s.id}`} onClick={() => openEdit(s)}>
-                                    Edit
-                                </Button>
-                                <button
-                                    type="button"
-                                    title="Delete"
-                                    data-testid={`delete-${s.id}`}
-                                    onClick={() => remove(s)}
-                                    className={DELETE_X_CLASSES}
-                                    style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
-                                >
-                                    ×
-                                </button>
+                                {canWrite && (<>
+                                    <Button variant="secondary" size="sm" data-testid={`edit-${s.id}`} onClick={() => openEdit(s)}>
+                                        Edit
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        title="Delete"
+                                        data-testid={`delete-${s.id}`}
+                                        onClick={() => remove(s)}
+                                        className={DELETE_X_CLASSES}
+                                        style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
+                                    >
+                                        ×
+                                    </button>
+                                </>)}
                             </div>
                         ))}
                     </div>
                 )}
             </QueryState>
 
-            <ScheduleModal open={modalOpen} schedule={editing} onClose={closeModal} />
+            {canWrite && <ScheduleModal open={modalOpen} schedule={editing} onClose={closeModal} />}
         </div>
     );
 }

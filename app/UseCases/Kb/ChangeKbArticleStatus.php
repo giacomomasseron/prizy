@@ -17,7 +17,7 @@ final class ChangeKbArticleStatus
     /** @param 'draft'|'published'|'archived' $status */
     public function handle(User $actor, string $id, string $status): KbArticle
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
 

@@ -14,7 +14,7 @@ final class DeleteKbSection
 
     public function handle(User $actor, string $id): void
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $section = $this->kb->findSection($id);
         abort_unless($section !== null, 404);
         $this->kb->deleteSection($section);

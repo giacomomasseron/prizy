@@ -5,6 +5,8 @@ import { useConfirm } from '../../components/ui/ConfirmProvider';
 import { Button } from '../../components/ui/Button';
 import { QueryState } from '../../components/ui/QueryState';
 import { ApiError } from '../../lib/apiClient';
+import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 import type { SlaPolicy } from '../../lib/types';
 import { DELETE_X_CLASSES, deleteXStyle, emptyState } from '../projects/projectStyles';
 import { ROW_CLASSES, listCard, pageFrame, pageLead, pageTitle, titleRow } from '../settings/settingsStyles';
@@ -17,6 +19,7 @@ export default function SlaPoliciesSettingsPage() {
     const policiesQ = useSlaPolicies();
     const del = useDeleteSlaPolicy();
     const confirm = useConfirm();
+    const canWrite = canWriteHelpdesk(useMe().data); // a viewer sees the policies, changes none
 
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState<SlaPolicy | undefined>(undefined);
@@ -57,9 +60,11 @@ export default function SlaPoliciesSettingsPage() {
                         Policies define first reply, next reply, and resolution targets for tickets, optionally scoped to a business-hours schedule.
                     </p>
                 </div>
-                <Button onClick={openCreate} style={{ marginLeft: 'auto', flexShrink: 0 }}>
-                    New policy
-                </Button>
+                {canWrite && (
+                    <Button onClick={openCreate} style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                        New policy
+                    </Button>
+                )}
             </div>
 
             {error && <p role="alert" style={{ margin: '10px 0 0', fontSize: 13, color: 'var(--red-ink)' }}>{error}</p>}
@@ -83,26 +88,28 @@ export default function SlaPoliciesSettingsPage() {
                                     <span style={{ fontSize: 12, color: 'var(--fg3)', overflowWrap: 'anywhere' }}>{summarizeTargets(p)} · {p.schedule_name ?? '24/7'}</span>
                                 </div>
                                 <span style={{ flex: 1 }} />
-                                <Button variant="secondary" size="sm" data-testid={`edit-${p.id}`} onClick={() => openEdit(p)}>
-                                    Edit
-                                </Button>
-                                <button
-                                    type="button"
-                                    title="Delete"
-                                    data-testid={`delete-${p.id}`}
-                                    onClick={() => remove(p)}
-                                    className={DELETE_X_CLASSES}
-                                    style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
-                                >
-                                    ×
-                                </button>
+                                {canWrite && (<>
+                                    <Button variant="secondary" size="sm" data-testid={`edit-${p.id}`} onClick={() => openEdit(p)}>
+                                        Edit
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        title="Delete"
+                                        data-testid={`delete-${p.id}`}
+                                        onClick={() => remove(p)}
+                                        className={DELETE_X_CLASSES}
+                                        style={{ ...deleteXStyle, width: 24, height: 24, padding: 0, flexShrink: 0 }}
+                                    >
+                                        ×
+                                    </button>
+                                </>)}
                             </div>
                         ))}
                     </div>
                 )}
             </QueryState>
 
-            <SlaPolicyModal open={modalOpen} policy={editing} onClose={closeModal} />
+            {canWrite && <SlaPolicyModal open={modalOpen} policy={editing} onClose={closeModal} />}
         </div>
     );
 }

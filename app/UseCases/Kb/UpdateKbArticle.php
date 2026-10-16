@@ -22,7 +22,7 @@ final class UpdateKbArticle
     /** @param array<string,mixed> $data any of title, slug, body, section_id */
     public function handle(User $actor, string $id, array $data): KbArticle
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
         $article = $this->kb->findArticle($id);
         abort_unless($article !== null, 404);
 
