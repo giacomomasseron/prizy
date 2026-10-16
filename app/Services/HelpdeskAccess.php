@@ -10,12 +10,13 @@ use App\Models\Workspace;
 /**
  * Reads the workspace-level support-module switch.
  *
- * The actor-facing predicate is User::canWorkHelpdesk() (is_agent AND this
- * switch) — it lives on the entity so the policy layer can ask it too. This
- * service is the abort-403 choke point use cases call, plus the workspace-only
- * question for callers that have no actor: middleware, background jobs and
- * serialization. SlaBreachRepository filters in SQL instead, which no PHP
- * predicate can do for it.
+ * The actor-facing predicates are User::canWorkHelpdesk() (is_agent AND this
+ * switch) and, for writes, User::canWriteHelpdesk() (the same minus viewers) —
+ * they live on the entity so the policy layer can ask them too. This service
+ * is the abort-403 choke point use cases call (gate() to read, gateWrite() to
+ * write), plus the workspace-only question for callers that have no actor:
+ * middleware, background jobs and serialization. SlaBreachRepository filters
+ * in SQL instead, which no PHP predicate can do for it.
  */
 final class HelpdeskAccess
 {

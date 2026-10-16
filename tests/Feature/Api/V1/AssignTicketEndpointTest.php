@@ -79,6 +79,24 @@ it('unassigns a ticket with a null assignee', function (): void {
     expect($ticket->refresh()->assignee_id)->toBeNull();
 });
 
+// Re-assigning the agent the ticket already has writes nothing (no updated_at bump that would
+// re-sort the queue), also when the id comes in upper case — Postgres stores uuids lower-case.
+it('changes nothing when the ticket already has that assignee', function (string $case): void {
+    [$token, $ws, $agent] = assignTicketWorld();
+    $ticket = assignTicketSeed($ws, ['assignee_id' => $agent->id]);
+    $before = $ticket->refresh()->updated_at;
+    $this->travel(5)->minutes();
+
+    $id = $case === 'upper' ? strtoupper($agent->id) : $agent->id;
+    $this->withToken($token)->putJson("/v1/tickets/{$ticket->id}/assignee", ['assignee_id' => $id])
+        ->assertStatus(200)
+        ->assertJsonPath('data.assignee.id', $agent->id);
+
+    $ticket->refresh();
+    expect($ticket->assignee_id)->toBe($agent->id);
+    expect($ticket->updated_at->equalTo($before))->toBeTrue();
+})->with(['as stored' => ['lower'], 'in upper case' => ['upper']]);
+
 it('lets an admin agent assign', function (): void {
     [$token, $ws, $admin] = assignTicketWorld(['is_agent' => true, 'admin_level' => 'admin']);
     $ticket = assignTicketSeed($ws);

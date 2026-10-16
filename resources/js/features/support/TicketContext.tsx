@@ -19,18 +19,19 @@ const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', ga
 const label: CSSProperties = { ...smallLabel, padding: '18px 18px 8px' };
 const ellipsis: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
-export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void }) {
+/** onAssignToMe runs as you take the ticket, before the save: the desk pins it as the selection. */
+export function TicketContext({ ticketId, onFilterTag = () => {}, onAssignToMe = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void; onAssignToMe?: (id: string) => void }) {
     const q = useTicket(ticketId ?? '');
     if (!ticketId) return <aside aria-label="Ticket details" style={asideStyle} />;
     return (
         <aside aria-label="Ticket details" tabIndex={-1} style={asideStyle}>
             {/* While the ticket loads or fails the aside stays empty: the conversation pane (same useTicket) carries the message. */}
-            {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} />}
+            {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} onAssignToMe={onAssignToMe} />}
         </aside>
     );
 }
 
-function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: string, name: string) => void }) {
+function TicketDetails({ t, onFilterTag, onAssignToMe }: { t: TicketDetail; onFilterTag: (id: string, name: string) => void; onAssignToMe: (id: string) => void }) {
     const req = t.requester;
     const linked = t.linked_issues[0];
     return (
@@ -49,7 +50,7 @@ function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: 
                 {req?.plan && <div style={kv}><span style={{ color: 'var(--fg3)' }}>Plan</span><span style={{ fontWeight: 600 }}>{req.plan}</span></div>}
                 <div style={kv}><span style={{ color: 'var(--fg3)' }}>Assignee</span><span style={{ fontWeight: 600 }}>{t.assignee?.name ?? 'Unassigned'}</span></div>
                 <div style={kv}><span style={{ color: 'var(--fg3)' }}>Priority</span><span style={{ fontWeight: 600 }}>{TICKET_PRIORITY[t.priority].label}</span></div>
-                {!t.assignee && <AssignToMe key={t.id} ticketId={t.id} />}
+                {!t.assignee && <AssignToMe key={t.id} ticketId={t.id} onAssign={onAssignToMe} />}
             </div>
             {t.sla_metrics.length > 0 && (
                 <div style={{ margin: '0 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -107,7 +108,7 @@ const assignToMeStyle: CSSProperties = {
 };
 
 /** Support v2: an unassigned ticket offers to take it. Keyed by ticket, so a failure stays on the ticket it happened to. */
-function AssignToMe({ ticketId }: { ticketId: string }) {
+function AssignToMe({ ticketId, onAssign }: { ticketId: string; onAssign: (id: string) => void }) {
     const me = useMe().data;
     const assign = useAssignTicket(ticketId);
     if (!me || !canWriteHelpdesk(me)) return null;
@@ -116,7 +117,7 @@ function AssignToMe({ ticketId }: { ticketId: string }) {
             {/* Gone while you are being assigned: the ticket comes back with you on it. */}
             {!assign.isPending && <button
                     type="button"
-                    onClick={(e) => { e.currentTarget.closest('aside')?.focus(); assign.mutate(me.id); }}
+                    onClick={(e) => { e.currentTarget.closest('aside')?.focus(); onAssign(ticketId); assign.mutate(me.id); }}
                     style={assignToMeStyle}
                 >
                     Assign to me

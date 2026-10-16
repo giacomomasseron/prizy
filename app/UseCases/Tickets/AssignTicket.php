@@ -36,11 +36,14 @@ final class AssignTicket
             }
         }
 
-        if ($ticket->assignee_id === $assigneeId) {
+        // The stored id, not the input: the uuid rule lets an upper-case id through, and it
+        // must still read as "no change" for the agent the ticket already has.
+        $newAssigneeId = $assignee?->id;
+        if ($ticket->assignee_id === $newAssigneeId) {
             return $ticket;
         }
 
-        $ticket->assignee_id = $assigneeId;
+        $ticket->assignee_id = $newAssigneeId;
         $ticket->save();
         $ticket->setRelation('assignee', $assignee); // find() eager-loaded the previous one
 

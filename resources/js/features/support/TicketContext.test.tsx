@@ -108,6 +108,14 @@ describe('TicketContext', () => {
             expect(assignMutate).toHaveBeenCalledWith('me-1');
         });
 
+        it('tells the desk which ticket you are taking, so it can keep it on screen', () => {
+            ticketData = ticket({ id: 'tk-9', assignee: null });
+            const onAssignToMe = vi.fn();
+            render(<MemoryRouter><TicketContext ticketId="tk-9" onAssignToMe={onAssignToMe} /></MemoryRouter>);
+            fireEvent.click(screen.getByRole('button', { name: 'Assign to me' }));
+            expect(onAssignToMe).toHaveBeenCalledWith('tk-9');
+        });
+
         it('leaves keyboard focus in the details panel as it goes away', () => {
             ticketData = ticket({ assignee: null });
             renderWithRouter('t1');
