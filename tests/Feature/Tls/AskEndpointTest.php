@@ -113,11 +113,9 @@ it('refuses a host that embeds the base domain rather than ending in it', functi
     config(['app.base_domain' => 'example.com']);
     Workspace::factory()->create(['slug' => 'acme']);
 
-    // WorkspaceTenantFinder derives its slug with Str::before(), which matches
-    // the FIRST occurrence of ".example.com" anywhere in the string rather
-    // than an anchored suffix, so it would actually resolve this host to the
-    // "acme" workspace — a pre-existing bug in the finder, out of scope here.
-    // This endpoint's anchored str_ends_with() check must still refuse it, so
-    // no certificate is ever issued for an attacker-controlled host like this.
+    // Anyone can point DNS for a host of their own at this box: no certificate
+    // for a host that merely contains the base domain (WorkspaceTenantFinder
+    // serves no workspace on it either — both read the slug the same way).
     $this->get('/_caddy/ask?domain=acme.example.com.evil.test')->assertNotFound();
+    $this->get('/_caddy/ask?domain=acme.example.community')->assertNotFound();
 });
