@@ -85,6 +85,16 @@ it('forbids a non-agent from creating a ticket (403)', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('forbids a viewer who is an agent from creating a ticket (403)', function (): void {
+    [$token, $ws] = createTicketWorld(['is_agent' => true, 'admin_level' => 'viewer']);
+    $contact = makeContact($ws);
+
+    $this->withToken($token)->postJson('/v1/tickets', validTicketPayload($contact))->assertStatus(403);
+    expect(Ticket::query()->count())->toBe(0);
+
+    Workspace::forgetCurrent();
+});
+
 it('forbids an unverified agent from creating a ticket (403)', function (): void {
     [$token, $ws] = createTicketWorld(['is_agent' => true, 'email_verified_at' => null]);
     $contact = makeContact($ws);

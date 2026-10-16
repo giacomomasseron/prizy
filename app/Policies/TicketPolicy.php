@@ -30,7 +30,8 @@ final class TicketPolicy
      * that an OWNER never reaches these methods: Gate::before short-circuits
      * every policy inside the owner's own workspace, and a policy cannot undo
      * that. The authoritative gate for the module is HelpdeskAccess::gate() in
-     * the use cases (no bypass — HelpdeskToggleTest pins it for an owner) plus
+     * the use cases — gateWrite() for every write, which also turns viewers
+     * away (no bypass — HelpdeskToggleTest pins it for an owner) — plus
      * EnsureHelpdeskEnabled at the request boundary; these abilities are a
      * secondary check and are not currently wired to any route.
      */
@@ -38,12 +39,12 @@ final class TicketPolicy
     /** Replying to a ticket requires agent capability, a non-viewer level, and same workspace. */
     public function reply(User $user, Ticket $ticket): bool
     {
-        return $user->canWorkHelpdesk() && $user->admin_level !== 'viewer' && $user->workspace_id === $ticket->workspace_id;
+        return $user->canWriteHelpdesk() && $user->workspace_id === $ticket->workspace_id;
     }
 
     /** Full ticket management (status, assignment, macros) requires the same as reply. */
     public function manage(User $user, Ticket $ticket): bool
     {
-        return $user->canWorkHelpdesk() && $user->admin_level !== 'viewer' && $user->workspace_id === $ticket->workspace_id;
+        return $user->canWriteHelpdesk() && $user->workspace_id === $ticket->workspace_id;
     }
 }

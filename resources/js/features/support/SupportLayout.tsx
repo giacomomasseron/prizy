@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 import { useTickets, useTicketCounts, useSavedViews, useCreateSavedView, useDeleteSavedView } from './hooks';
 import { viewFilters, type TicketViewKey } from './ticketViews';
 import { SupportIconRail } from './SupportIconRail';
@@ -46,11 +47,15 @@ export default function SupportLayout() {
     const shown = useMemo(() => ticketsQ.data?.pages.flatMap((p) => p.items) ?? [], [ticketsQ.data]);
     const selectedId = id ?? shown[0]?.id;
     const counts = useTicketCounts().data;
+    const canWrite = canWriteHelpdesk(me.data);
 
     const selectView = (v: TicketViewKey) => { setSavedViewId(null); setView(v); };
     const selectChannel = (c: TicketChannel) => { setSavedViewId(null); setChannel((cur) => (cur === c ? null : c)); };
     const changeSort = (s: string) => { setSavedViewId(null); setSort(s); };
     const filterTag = (tid: string, name: string) => { setSavedViewId(null); setTag({ id: tid, name }); };
+    // Shown as the first of the list, a ticket you take would leave the screen with the list
+    // (Unassigned) — put it in the URL so it stays, as in Support v2.
+    const keepSelected = (tid: string) => { if (!id) navigate(`/support/tickets/${tid}`, { replace: true }); };
 
     const saveView = (name: string) => {
         createView.mutate(
@@ -66,7 +71,7 @@ export default function SupportLayout() {
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)' }}>
-            <SupportIconRail viewsOpen={viewsOpen} onToggleViews={() => setViewsOpen((o) => !o)} onNewTicket={() => setNewOpen(true)} />
+            <SupportIconRail viewsOpen={viewsOpen} onToggleViews={() => setViewsOpen((o) => !o)} onNewTicket={canWrite ? () => setNewOpen(true) : undefined} />
             {viewsOpen && (
                 <SupportViewsSidebar
                     counts={counts}
@@ -95,8 +100,8 @@ export default function SupportLayout() {
                 query={ticketsQ}
             />
             <TicketConversation ticketId={selectedId} />
-            <TicketContext ticketId={selectedId} onFilterTag={filterTag} />
-            <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} />
+            <TicketContext ticketId={selectedId} onFilterTag={filterTag} onAssignToMe={keepSelected} />
+            {canWrite && <NewTicketModal open={newOpen} onClose={() => setNewOpen(false)} />}
         </div>
     );
 }

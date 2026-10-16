@@ -16,7 +16,7 @@ final class CreateContact
     /** @param array<string,mixed> $data */
     public function handle(User $actor, array $data): Contact
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         return $this->contacts->create([
             'name' => $data['name'],

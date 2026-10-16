@@ -7,7 +7,9 @@ import { avatarFor } from '../../lib/avatarFor';
 import { TICKET_CHANNEL } from './ticketMeta';
 import type { TicketDetail, TicketMessage } from '../../lib/types';
 import { TicketComposer } from './TicketComposer';
-import { TicketStatusMenu } from './TicketStatusMenu';
+import { TicketStatusLabel, TicketStatusMenu } from './TicketStatusMenu';
+import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 import { paneHeader, paneTitle, tint } from './supportStyles';
 import { ink } from '../../lib/ink';
 import { issueRef } from '../issues/issueMeta';
@@ -51,6 +53,7 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
 
 function TicketBody({ t }: { t: TicketDetail }) {
     const linked = t.linked_issues[0];
+    const canWrite = canWriteHelpdesk(useMe().data); // a viewer reads the thread: no status menu, no composer
     return (
         <>
             <header style={paneHeader}>
@@ -66,14 +69,14 @@ function TicketBody({ t }: { t: TicketDetail }) {
                     </span>
                 )}
                 {linked && <Link to={`/issues/${linked.id}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 12px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--accent)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 12.5, fontWeight: 700, textDecoration: 'none', whiteSpace: 'nowrap' }}>↩ {issueRef(linked)} ↗</Link>}
-                <TicketStatusMenu ticket={t} />
+                {canWrite ? <TicketStatusMenu ticket={t} /> : <TicketStatusLabel ticket={t} />}
             </header>
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '22px 20px 20px' }}>
                 <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
                     {t.messages.map((m) => <MessageRow key={m.id} m={m} />)}
                 </div>
             </div>
-            <TicketComposer ticket={t} />
+            {canWrite && <TicketComposer ticket={t} />}
         </>
     );
 }

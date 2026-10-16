@@ -24,7 +24,7 @@ final class CreateTicket
     /** @param array<string, mixed> $data */
     public function handle(User $actor, array $data): Ticket
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         $contact = $this->contacts->find((string) $data['requester_id']);
         if ($contact === null) {

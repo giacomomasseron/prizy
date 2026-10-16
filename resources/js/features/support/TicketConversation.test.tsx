@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TicketConversation } from './TicketConversation';
@@ -39,6 +39,10 @@ vi.mock('./hooks', () => ({
     useTicket: () => ({ data: ticketData, isLoading, isError, refetch: vi.fn() }),
     usePostTicketMessage: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
     useChangeTicketStatus: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+let meData: Record<string, unknown> = { id: 'me-1', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+vi.mock('../../auth/useAuth', () => ({
+    useMe: () => ({ data: meData }),
 }));
 
 function renderWithRouter(ticketId: string | undefined) {
@@ -95,6 +99,29 @@ describe('TicketConversation', () => {
         renderWithRouter('t1');
         expect(screen.getByRole('textbox')).toBeInTheDocument();
         expect(document.querySelector('textarea')).toBeInTheDocument();
+    });
+
+    it('lets an agent change the status from the header', () => {
+        ticketData = ticket({ status: 'pending' });
+        renderWithRouter('t1');
+        expect(screen.getByRole('button', { name: 'Status: Pending' })).toBeInTheDocument();
+    });
+
+    describe('a viewer who is an agent (read-only)', () => {
+        const member = meData;
+        afterEach(() => { meData = member; });
+
+        it('reads the thread and the status, but has no composer and no status menu', () => {
+            meData = { ...member, admin_level: 'viewer' };
+            ticketData = ticket({ status: 'pending', messages: [msg({ body: 'Still broken' })] });
+            renderWithRouter('t1');
+            expect(screen.getByText('Still broken')).toBeInTheDocument();
+            expect(screen.queryByRole('textbox')).toBeNull();
+            expect(screen.queryByRole('button', { name: /^Status/ })).toBeNull();
+            const status = screen.getByText('Pending');
+            expect(status.closest('button')).toBeNull();
+            expect(status.closest('header')).not.toBeNull();
+        });
     });
 
     it('renders a linked-issue link pointing at /issues/:id', () => {

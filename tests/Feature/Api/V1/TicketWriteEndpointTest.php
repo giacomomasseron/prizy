@@ -231,3 +231,34 @@ it('forbids an unverified agent from changing status (403)', function (): void {
 
     Workspace::forgetCurrent();
 });
+
+// roles.md: a viewer is read-only in every module, the agent capability included.
+it('forbids a viewer who is an agent from replying or changing status (403)', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true, 'admin_level' => 'viewer']);
+    $ticket = seedWriteTicket($ws, ['status' => 'open']);
+
+    $this->withToken($token)->postJson("/v1/tickets/{$ticket->id}/messages", ['body' => 'Hi'])
+        ->assertStatus(403);
+    $this->withToken($token)->postJson("/v1/tickets/{$ticket->id}/messages", ['body' => 'Note', 'internal' => true])
+        ->assertStatus(403);
+    $this->withToken($token)->patchJson("/v1/tickets/{$ticket->id}", ['status' => 'solved'])
+        ->assertStatus(403);
+
+    expect(TicketMessage::query()->where('ticket_id', $ticket->id)->count())->toBe(0);
+    expect($ticket->refresh()->status)->toBe('open');
+
+    Workspace::forgetCurrent();
+});
+
+// Control for the 403s above: the viewer still reads the desk.
+it('still lets a viewer who is an agent read tickets', function (): void {
+    [$token, $ws] = ticketWriteWorld(['is_agent' => true, 'admin_level' => 'viewer']);
+    $ticket = seedWriteTicket($ws);
+
+    $this->withToken($token)->getJson('/v1/tickets')->assertStatus(200);
+    $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")
+        ->assertStatus(200)
+        ->assertJsonPath('data.id', $ticket->id);
+
+    Workspace::forgetCurrent();
+});

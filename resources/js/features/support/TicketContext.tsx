@@ -1,33 +1,37 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
-import { useTicket } from './hooks';
+import { useAssignTicket, useTicket } from './hooks';
+import { useMe } from '../../auth/useAuth';
+import { canWriteHelpdesk } from '../../auth/capabilities';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
 import { ink } from '../../lib/ink';
 import type { TicketDetail } from '../../lib/types';
 import { TICKET_STATUS, TICKET_PRIORITY } from './ticketMeta';
 import { slaMetricPresentation } from './sla';
-import { SMALL_PILL_CLASSES, deskCard, smallLabel, smallPill } from './supportStyles';
+import { SMALL_PILL_CLASSES, deskCard, smallLabel, smallPill, tint } from './supportStyles';
 import { sectionTitle } from '../issues/issueStyles';
 import { issueRef } from '../issues/issueMeta';
 
-const asideStyle: CSSProperties = { width: 296, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto' };
+// Focusable from script only: Assign to me hands focus back here as it goes away.
+const asideStyle: CSSProperties = { width: 296, flexShrink: 0, borderLeft: '1px solid var(--border)', background: 'var(--bg2)', overflowY: 'auto', outline: 'none' };
 const kv: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 13 };
 const label: CSSProperties = { ...smallLabel, padding: '18px 18px 8px' };
 const ellipsis: CSSProperties = { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
 
-export function TicketContext({ ticketId, onFilterTag = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void }) {
+/** onAssignToMe runs as you take the ticket, before the save: the desk pins it as the selection. */
+export function TicketContext({ ticketId, onFilterTag = () => {}, onAssignToMe = () => {} }: { ticketId: string | undefined; onFilterTag?: (id: string, name: string) => void; onAssignToMe?: (id: string) => void }) {
     const q = useTicket(ticketId ?? '');
     if (!ticketId) return <aside aria-label="Ticket details" style={asideStyle} />;
     return (
-        <aside aria-label="Ticket details" style={asideStyle}>
+        <aside aria-label="Ticket details" tabIndex={-1} style={asideStyle}>
             {/* While the ticket loads or fails the aside stays empty: the conversation pane (same useTicket) carries the message. */}
-            {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} />}
+            {q.data && <TicketDetails t={q.data} onFilterTag={onFilterTag} onAssignToMe={onAssignToMe} />}
         </aside>
     );
 }
 
-function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: string, name: string) => void }) {
+function TicketDetails({ t, onFilterTag, onAssignToMe }: { t: TicketDetail; onFilterTag: (id: string, name: string) => void; onAssignToMe: (id: string) => void }) {
     const req = t.requester;
     const linked = t.linked_issues[0];
     return (
@@ -46,6 +50,7 @@ function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: 
                 {req?.plan && <div style={kv}><span style={{ color: 'var(--fg3)' }}>Plan</span><span style={{ fontWeight: 600 }}>{req.plan}</span></div>}
                 <div style={kv}><span style={{ color: 'var(--fg3)' }}>Assignee</span><span style={{ fontWeight: 600 }}>{t.assignee?.name ?? 'Unassigned'}</span></div>
                 <div style={kv}><span style={{ color: 'var(--fg3)' }}>Priority</span><span style={{ fontWeight: 600 }}>{TICKET_PRIORITY[t.priority].label}</span></div>
+                {!t.assignee && <AssignToMe key={t.id} ticketId={t.id} onAssign={onAssignToMe} />}
             </div>
             {t.sla_metrics.length > 0 && (
                 <div style={{ margin: '0 18px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -93,6 +98,35 @@ function TicketDetails({ t, onFilterTag }: { t: TicketDetail; onFilterTag: (id: 
                     {t.requester_history.map((h) => <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 9px', borderRadius: 'var(--radius-row)' }}><span style={{ width: 7, height: 7, borderRadius: '50%', background: TICKET_STATUS[h.status].color, flexShrink: 0 }} /><span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{h.subject}</span></div>)}
                 </div>
             </>)}
+        </>
+    );
+}
+
+const assignToMeStyle: CSSProperties = {
+    marginTop: 3, padding: '9px 14px', borderRadius: 'var(--radius-pill)', border: 'var(--line) solid var(--fg)',
+    background: 'var(--hi)', color: 'var(--on-hi)', fontSize: 13.5, fontWeight: 800, fontFamily: 'inherit', cursor: 'pointer',
+};
+
+/** Support v2: an unassigned ticket offers to take it. Keyed by ticket, so a failure stays on the ticket it happened to. */
+function AssignToMe({ ticketId, onAssign }: { ticketId: string; onAssign: (id: string) => void }) {
+    const me = useMe().data;
+    const assign = useAssignTicket(ticketId);
+    if (!me || !canWriteHelpdesk(me)) return null;
+    return (
+        <>
+            {/* Gone while you are being assigned: the ticket comes back with you on it. */}
+            {!assign.isPending && <button
+                    type="button"
+                    onClick={(e) => { e.currentTarget.closest('aside')?.focus(); onAssign(ticketId); assign.mutate(me.id); }}
+                    style={assignToMeStyle}
+                >
+                    Assign to me
+                </button>}
+            {assign.isError && (
+                <div role="alert" style={{ padding: '9px 12px', borderRadius: 'var(--radius-row)', border: 'var(--line) solid ' + tint('var(--red)', 45), background: tint('var(--red)', 10), color: 'var(--red-ink)', fontSize: 12.5 }}>
+                    Couldn't assign the ticket. Try again.
+                </div>
+            )}
         </>
     );
 }

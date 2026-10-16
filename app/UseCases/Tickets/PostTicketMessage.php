@@ -19,7 +19,7 @@ final class PostTicketMessage
 
     public function handle(User $actor, string $ticketId, string $body, bool $internal): TicketMessage
     {
-        HelpdeskAccess::gate($actor);
+        HelpdeskAccess::gateWrite($actor);
 
         $ticket = $this->tickets->find($ticketId); // WorkspaceScope → cross-workspace id yields null
         if ($ticket === null) {

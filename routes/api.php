@@ -159,6 +159,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/tickets/{ticket}', [TicketController::class, 'show']);
         Route::post('/tickets/{ticket}/messages', [TicketMessageController::class, 'store'])->middleware('verified');
         Route::patch('/tickets/{ticket}', [TicketController::class, 'update'])->middleware('verified');
+        Route::put('/tickets/{ticket}/assignee', [TicketController::class, 'assignee'])->middleware('verified');
 
         Route::get('/contacts', [ContactController::class, 'index']);
         Route::post('/contacts', [ContactController::class, 'store'])->middleware('verified');

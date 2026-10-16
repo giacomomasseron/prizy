@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TicketContext } from './TicketContext';
@@ -30,8 +30,16 @@ let ticketData: TicketDetail | undefined;
 const onFilterTag = vi.fn();
 let ticketError = false;
 
+const assignMutate = vi.fn();
+let assignState: { isPending: boolean; isError: boolean } = { isPending: false, isError: false };
+let meData: Record<string, unknown> | undefined = { id: 'me-1', name: 'Alex Rivera', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+
 vi.mock('./hooks', () => ({
     useTicket: () => ({ data: ticketData, isLoading: false, isError: ticketError, refetch: vi.fn() }),
+    useAssignTicket: () => ({ mutate: assignMutate, ...assignState }),
+}));
+vi.mock('../../auth/useAuth', () => ({
+    useMe: () => ({ data: meData }),
 }));
 
 function renderWithRouter(ticketId: string | undefined) {
@@ -81,6 +89,96 @@ describe('TicketContext', () => {
         ticketData = ticket({ assignee: null });
         renderWithRouter('t2');
         expect(screen.getByText('Unassigned')).toBeInTheDocument();
+    });
+
+    describe('Assign to me (Support v2)', () => {
+        const agentMember = { id: 'me-1', name: 'Alex Rivera', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+        beforeEach(() => {
+            assignMutate.mockReset();
+            assignState = { isPending: false, isError: false };
+            meData = agentMember;
+        });
+        afterEach(() => { assignState = { isPending: false, isError: false }; meData = agentMember; });
+
+        it('offers Assign to me on an unassigned ticket and assigns you', () => {
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            fireEvent.click(screen.getByRole('button', { name: 'Assign to me' }));
+            expect(assignMutate).toHaveBeenCalledTimes(1);
+            expect(assignMutate).toHaveBeenCalledWith('me-1');
+        });
+
+        it('tells the desk which ticket you are taking, so it can keep it on screen', () => {
+            ticketData = ticket({ id: 'tk-9', assignee: null });
+            const onAssignToMe = vi.fn();
+            render(<MemoryRouter><TicketContext ticketId="tk-9" onAssignToMe={onAssignToMe} /></MemoryRouter>);
+            fireEvent.click(screen.getByRole('button', { name: 'Assign to me' }));
+            expect(onAssignToMe).toHaveBeenCalledWith('tk-9');
+        });
+
+        it('leaves keyboard focus in the details panel as it goes away', () => {
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            const button = screen.getByRole('button', { name: 'Assign to me' });
+            button.focus();
+            fireEvent.click(button);
+            expect(document.activeElement).toBe(screen.getByRole('complementary', { name: 'Ticket details' }));
+        });
+
+        it('sits under the property rows, drawn as the mockup draws it', () => {
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            const button = screen.getByRole('button', { name: 'Assign to me' });
+            expect(screen.getByText('Priority').compareDocumentPosition(button) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+            expect(button.style.background).toBe('var(--hi)');
+            expect(button.style.color).toBe('var(--on-hi)');
+            expect(button.style.border).toBe('var(--line) solid var(--fg)');
+            expect(button.style.borderRadius).toBe('var(--radius-pill)');
+            expect(button.style.padding).toBe('9px 14px');
+            expect(button.style.fontSize).toBe('13.5px');
+            expect(button.style.fontWeight).toBe('800');
+        });
+
+        it('is not offered once the ticket has an assignee, you or anyone else', () => {
+            ticketData = ticket({ assignee: { id: 'u2', name: 'Maya Chen' } });
+            const { unmount } = renderWithRouter('t1');
+            expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+            unmount();
+
+            ticketData = ticket({ assignee: { id: 'me-1', name: 'Alex Rivera' } });
+            renderWithRouter('t1');
+            expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        });
+
+        it('is not offered to a viewer, who only reads the desk', () => {
+            meData = { ...agentMember, admin_level: 'viewer' };
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+            expect(screen.getByText('Unassigned')).toBeInTheDocument();
+        });
+
+        it('is not offered before you are known', () => {
+            meData = undefined;
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        });
+
+        it('goes away while you are being assigned, so it cannot be pressed twice', () => {
+            assignState = { isPending: true, isError: false };
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            expect(screen.queryByRole('button', { name: 'Assign to me' })).toBeNull();
+        });
+
+        it('says so when the assignment fails, and leaves the button to try again', () => {
+            assignState = { isPending: false, isError: true };
+            ticketData = ticket({ assignee: null });
+            renderWithRouter('t1');
+            expect(screen.getByRole('alert').textContent).toBe("Couldn't assign the ticket. Try again.");
+            expect(screen.getByRole('button', { name: 'Assign to me' })).toBeInTheDocument();
+        });
     });
 
     it('renders tags when present', () => {

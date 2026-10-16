@@ -11,6 +11,17 @@ function dot(color: string): CSSProperties {
     return { width: 8, height: 8, borderRadius: '50%', background: color, display: 'inline-block' };
 }
 
+/** The status as the menu trigger shows it, for a viewer: no ▾, nothing to press. */
+export function TicketStatusLabel({ ticket }: { ticket: TicketDetail }) {
+    const current = TICKET_STATUS[ticket.status];
+    return (
+        <span className="border-border bg-panel text-fg2" style={{ ...toolPillStyle, padding: '6px 13px', fontSize: 12.5, cursor: 'default' }}>
+            <span style={dot(current.color)} />
+            {current.label}
+        </span>
+    );
+}
+
 export function TicketStatusMenu({ ticket }: { ticket: TicketDetail }) {
     const changeStatus = useChangeTicketStatus(ticket.id);
     const current = TICKET_STATUS[ticket.status];
