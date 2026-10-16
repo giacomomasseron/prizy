@@ -53,6 +53,20 @@ export function useChangeTicketStatus(ticketId: string) {
     });
 }
 
+export function useAssignTicket(ticketId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (assigneeId: string | null) =>
+            api.put<TicketListItem>(`/tickets/${ticketId}/assignee`, { assignee_id: assigneeId }),
+        // Pending until the ticket is fetched again, so Assign to me does not flash back in between.
+        onSuccess: async () => {
+            qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
+            await qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
+        },
+    });
+}
+
 export function useContacts() {
     return useQuery({ queryKey: ['contacts'], queryFn: () => api.get<ContactOption[]>('/contacts') });
 }

@@ -19,6 +19,12 @@ describe('SupportIconRail', () => {
         expect(onNewTicket).toHaveBeenCalledTimes(1);
     });
 
+    it('has no New ticket button for someone who cannot write to the desk (no onNewTicket)', () => {
+        render(<MemoryRouter><SupportIconRail viewsOpen onToggleViews={vi.fn()} /></MemoryRouter>);
+        expect(screen.queryByRole('button', { name: 'New ticket' })).toBeNull();
+        expect(screen.getByRole('button', { name: 'Views' })).toBeInTheDocument();
+    });
+
     it('links to the reporting screen', () => {
         render(
             <MemoryRouter>

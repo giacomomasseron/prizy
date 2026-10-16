@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canDevelop, canUseTracker, canWorkHelpdesk, homePathFor } from './capabilities';
+import { canDevelop, canUseTracker, canWorkHelpdesk, canWriteHelpdesk, homePathFor } from './capabilities';
 import type { Me } from '../lib/types';
 
 const me = (over: Partial<Me>): Me => ({
@@ -29,6 +29,15 @@ describe('canWorkHelpdesk', () => {
     it('is false for a non-agent however the switch is set', () => expect(canWorkHelpdesk(me({ is_agent: false }))).toBe(false));
     it('is false for an owner who is not an agent (no owner bypass, matching the backend)', () => expect(canWorkHelpdesk(me({ admin_level: 'owner' }))).toBe(false));
     it('is false when me is undefined', () => expect(canWorkHelpdesk(undefined)).toBe(false));
+});
+
+describe('canWriteHelpdesk', () => {
+    it('is true for an agent member', () => expect(canWriteHelpdesk(me({ is_agent: true }))).toBe(true));
+    it('is true for an agent admin', () => expect(canWriteHelpdesk(me({ is_agent: true, admin_level: 'admin' }))).toBe(true));
+    it('is false for a viewer even with is_agent (read-only)', () => expect(canWriteHelpdesk(me({ is_agent: true, admin_level: 'viewer' }))).toBe(false));
+    it('is false for an agent once the workspace switches the helpdesk off', () => expect(canWriteHelpdesk(me({ is_agent: true, workspace: { helpdesk_enabled: false } }))).toBe(false));
+    it('is false for an owner who is not an agent (no owner bypass, matching the backend)', () => expect(canWriteHelpdesk(me({ admin_level: 'owner' }))).toBe(false));
+    it('is false when me is undefined', () => expect(canWriteHelpdesk(undefined)).toBe(false));
 });
 
 describe('homePathFor', () => {

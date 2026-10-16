@@ -23,6 +23,14 @@ export function canWorkHelpdesk(me: Me | undefined): boolean {
     return !!me && me.is_agent && me.workspace?.helpdesk_enabled === true;
 }
 
+/**
+ * Desk write capability: create, reply to, move or assign a ticket, add a contact. Mirrors
+ * User::canWriteHelpdesk() — working the desk, minus viewers (read-only in every module).
+ */
+export function canWriteHelpdesk(me: Me | undefined): boolean {
+    return canWorkHelpdesk(me) && me?.admin_level !== 'viewer';
+}
+
 /** Where a user belongs on landing / when redirected off a route they can't use. Tracker users: Today (P7-B). */
 export function homePathFor(me: Me | undefined): string {
     if (canUseTracker(me)) return '/today';

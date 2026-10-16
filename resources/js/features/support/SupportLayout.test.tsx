@@ -20,6 +20,7 @@ vi.mock('./hooks', () => ({
     },
     usePostTicketMessage: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
     useChangeTicketStatus: () => ({ mutate: vi.fn(), isPending: false }),
+    useAssignTicket: () => ({ mutate: vi.fn(), isPending: false, isError: false }),
     useContacts: () => ({ data: [] }),
     useCreateTicket: () => ({ mutate: vi.fn(), isPending: false }),
     useCreateContact: () => ({ mutate: vi.fn(), isPending: false }),
@@ -27,8 +28,9 @@ vi.mock('./hooks', () => ({
     useCreateSavedView: () => ({ mutate: vi.fn() }),
     useDeleteSavedView: () => ({ mutate: vi.fn() }),
 }));
+const meData = vi.hoisted(() => ({ current: { id: 'u1', workspace_id: 'w1', name: 'Me', email: 'me@example.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true } } }));
 vi.mock('../../auth/useAuth', () => ({
-    useMe: () => ({ data: { id: 'u1', workspace_id: 'w1', name: 'Me', email: 'me@example.com', admin_level: 'member', is_developer: false, is_agent: true, email_digest_frequency: 'off' } }),
+    useMe: () => ({ data: meData.current }),
 }));
 
 function wrapper(ui: React.ReactNode) {
@@ -54,6 +56,27 @@ describe('SupportLayout', () => {
         expect(screen.getByText('Support')).toBeInTheDocument();
         expect(screen.getByText('Agent workspace')).toBeInTheDocument();
         expect(screen.getByText('Your unsolved tickets')).toBeInTheDocument();
+    });
+
+    it('opens the New ticket form from the rail for an agent', () => {
+        render(<SupportLayout />, { wrapper: ({ children }) => wrapper(children) });
+        fireEvent.click(screen.getByRole('button', { name: 'New ticket' }));
+        expect(screen.getByRole('dialog', { name: 'New ticket' })).toBeInTheDocument();
+    });
+
+    it('gives a viewer who is an agent the desk to read, but no New ticket, status menu or reply box (Assign to me: TicketContext.test)', () => {
+        const member = meData.current;
+        meData.current = { ...member, admin_level: 'viewer' };
+        try {
+            render(<SupportLayout />, { wrapper: ({ children }) => wrapper(children) });
+            expect(screen.getByText('Your unsolved tickets')).toBeInTheDocument();
+            expect(screen.getAllByText('Cannot log in').length).toBeGreaterThan(0);
+            expect(screen.queryByRole('button', { name: 'New ticket' })).toBeNull();
+            expect(screen.queryByRole('button', { name: /^Status/ })).toBeNull();
+            expect(screen.queryByRole('textbox', { name: /reply/i })).toBeNull();
+        } finally {
+            meData.current = member;
+        }
     });
 
     it('toggles the views sidebar off via the rail Views button', () => {
