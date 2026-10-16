@@ -70,4 +70,6 @@ docker compose exec -T app php artisan db:seed --class=SmokeSeeder --force
   `rm -f public/hot && npm run build`.
 - **`composer dev:full`** adds the optional `--profile full` docker services (Reverb
   websockets, Horizon, Meilisearch) if you need real-time / queue dashboard / Meili search
-  locally. It also waits-for-DB, migrates, and seeds like `composer dev`.
+  locally. It also waits-for-DB, migrates, and seeds like `composer dev`. Reverb accepts
+  sockets only from pages on `APP_BASE_DOMAIN` and its subdomains (`*.localhost`, so
+  `smoke.localhost` works); `REVERB_ALLOWED_ORIGINS` overrides that list.

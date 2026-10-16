@@ -1,5 +1,13 @@
 <?php
 
+// Which sites' pages may open a socket: hostnames, `*` wildcards allowed, as
+// Reverb matches the host of the Origin header with Str::is(). Unset, the
+// base domain and every workspace under it ({slug}.base, the sign-up host);
+// with no base domain either, no site at all. A workspace's custom domain
+// must be added by hand. `*` lets any website connect.
+$reverbAllowedOrigins = strtolower((string) env('REVERB_ALLOWED_ORIGINS', ''));
+$reverbBaseDomain = strtolower((string) env('APP_BASE_DOMAIN', ''));
+
 return [
 
     /*
@@ -82,7 +90,9 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                'allowed_origins' => $reverbAllowedOrigins !== ''
+                    ? array_values(array_filter(array_map('trim', explode(',', $reverbAllowedOrigins))))
+                    : ($reverbBaseDomain !== '' ? [$reverbBaseDomain, '*.'.$reverbBaseDomain] : []),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),
