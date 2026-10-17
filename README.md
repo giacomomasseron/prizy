@@ -170,7 +170,9 @@ workspace.
 
 First, point **both `example.com` and `*.example.com`** at the server. Every
 workspace gets its own subdomain, and certificates are issued per hostname on
-first request.
+first request. If Cloudflare runs the domain's DNS, a `CLOUDFLARE_API_TOKEN` in
+`.env` gets one wildcard certificate for every workspace instead (see
+`.env.production.example`).
 
 Then, **on the server as root**, run:
 

@@ -140,6 +140,10 @@
 	# port, so no automatic HTTPS will be applied" and this directive is
 	# inert, proven by `caddy validate` passing in both modes and a plain
 	# `:80` run still answering HTTP with no TLS involved.
+	#
+	# Caddyfile.cloudflare imports all of this and adds a more specific site
+	# for *.APP_BASE_DOMAIN with one wildcard certificate; this site then
+	# still serves the base domain, nested subdomains and custom domains.
 	tls {
 		on_demand
 	}

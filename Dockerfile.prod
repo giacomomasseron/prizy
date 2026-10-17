@@ -1,5 +1,9 @@
 # syntax=docker/dockerfile:1
 
+# Read by the web stage's FROM line, which can only see an ARG declared before
+# the first FROM. See "caddy" below.
+ARG CADDY_DNS_PROVIDER
+
 # ---------------------------------------------------------------------------
 # assets — the compiled frontend.
 #
@@ -118,6 +122,26 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
         cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong
 
 # ---------------------------------------------------------------------------
+# caddy — the Caddy the web stage starts from.
+#
+# Stock, unless CADDY_DNS_PROVIDER=cloudflare, which docker-compose.prod.yml
+# passes when .env has a CLOUDFLARE_API_TOKEN. Then Caddy is rebuilt with the
+# caddy-dns/cloudflare plugin, which docker/prod/Caddyfile.cloudflare needs to
+# prove a wildcard certificate over DNS. BuildKit builds only the stages the
+# target uses, so a stock build never pulls or runs the Go toolchain.
+#
+# The plugin is pinned so a rebuild cannot pick up a new one unseen. v0.2.4 is
+# the first to accept the cfat_/cfut_ token format Cloudflare issues today.
+# ---------------------------------------------------------------------------
+FROM caddy:2-builder-alpine AS caddy-cloudflare-build
+RUN xcaddy build --with github.com/caddy-dns/cloudflare@v0.2.4
+
+FROM caddy:2-alpine AS caddy-stock
+
+FROM caddy:2-alpine AS caddy-cloudflare
+COPY --from=caddy-cloudflare-build /usr/bin/caddy /usr/bin/caddy
+
+# ---------------------------------------------------------------------------
 # web — Caddy carrying the same compiled assets as the runtime image.
 #
 # Caddy replaces nginx here: it terminates TLS with on-demand certificates,
@@ -126,10 +150,11 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
 # asset filenames are content-hashed and the app's Vite manifest points at
 # them, so serving a different build renders a blank page with no error.
 # ---------------------------------------------------------------------------
-FROM caddy:2-alpine AS web
+# :-stock because Compose passes an EMPTY value, not none, without a token.
+FROM caddy-${CADDY_DNS_PROVIDER:-stock} AS web
 
 COPY --from=runtime /var/www/html/public /var/www/html/public
-COPY docker/prod/Caddyfile /etc/caddy/Caddyfile
+COPY docker/prod/Caddyfile docker/prod/Caddyfile.cloudflare /etc/caddy/
 
 # Probed on the INTERNAL listener, which is always plain HTTP. The public site
 # cannot be used: with auto_https on, Caddy answers :80 with a redirect to

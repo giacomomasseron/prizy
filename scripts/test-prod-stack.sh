@@ -169,6 +169,36 @@ else
     fail "without it, the bundled postgres runs"
 fi
 
+log "A Cloudflare API token switches Caddy to one wildcard certificate"
+# Config only; the image it selects is built and checked in the TLS section.
+# Without a token, the web service must be the stock Caddy reading the plain
+# Caddyfile, as before the token existed. With one, the build, the tag and
+# the config file must all follow it, or Compose starts an image that cannot
+# load the config it is told to run. A made-up token in the cfat_ format of
+# Cloudflare's account tokens: nothing in this script ever sends it anywhere.
+cf_token="cfat_$(openssl rand -hex 20)"
+web_image="prizy/web:${PRIZY_VERSION:-local}"
+web_shape='.services.web | "\(.image)|\(.build.args.CADDY_DNS_PROVIDER // "")|\(.command | join(" "))"'
+web_stock=$(compose config --format json web | jq -r "$web_shape")
+if [ "$web_stock" = "$web_image||caddy run --config /etc/caddy/Caddyfile --adapter caddyfile" ]; then
+    pass "without a token, the web service is stock Caddy reading Caddyfile"
+else
+    fail "without a token, the web service is stock Caddy reading Caddyfile (got: $web_stock)"
+fi
+web_cf=$(CLOUDFLARE_API_TOKEN="$cf_token" compose config --format json web | jq -r "$web_shape")
+if [ "$web_cf" = "$web_image-cloudflare|cloudflare|caddy run --config /etc/caddy/Caddyfile.cloudflare --adapter caddyfile" ]; then
+    pass "with a token, the web service builds the plugin image under its own tag and reads Caddyfile.cloudflare"
+else
+    fail "with a token, the web service builds the plugin image under its own tag and reads Caddyfile.cloudflare (got: $web_cf)"
+fi
+web_cf_env=$(CLOUDFLARE_API_TOKEN="$cf_token" compose config --format json web | jq -r '.services.web.environment
+    | "\(.CLOUDFLARE_API_TOKEN) \(.APP_BASE_DOMAIN)"')
+if [ "$web_cf_env" = "$cf_token localhost" ]; then
+    pass "Caddy gets the token and APP_BASE_DOMAIN, which the wildcard is for"
+else
+    fail "Caddy gets the token and APP_BASE_DOMAIN, which the wildcard is for (got: $web_cf_env)"
+fi
+
 log "Bringing the stack up"
 compose up -d --build --wait
 
@@ -548,6 +578,67 @@ if grep -q '"endpoint":"http://127.0.0.1:2020/_caddy/ask"' <<<"$shipped_adapt"; 
     pass "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
 else
     fail "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
+fi
+
+# The web image a Cloudflare API token selects: Caddy rebuilt with the DNS
+# plugin, reading Caddyfile.cloudflare. Nothing here reaches Cloudflare or an
+# ACME server. `caddy validate` provisions every module without starting
+# anything, and provisioning is where the plugin checks the token's format,
+# so the made-up $cf_token from the config checks above is enough. Built here,
+# after the stack, so the runtime stage is cached and only Caddy is new.
+cf_image="${web_image}-cloudflare"
+if CLOUDFLARE_API_TOKEN="$cf_token" compose build web >/dev/null 2>&1; then
+    pass "with a token, the web image builds"
+else
+    fail "with a token, the web image builds"
+fi
+cf_caddy() {
+    docker run --rm -e APP_BASE_DOMAIN=example.org -e ACME_EMAIL=ops@example.org \
+        -e CLOUDFLARE_API_TOKEN="$cf_token" --entrypoint caddy "$cf_image" "$@"
+}
+# file_server stands for "this really is a list of Caddy's modules", so a run
+# that failed outright cannot pass the stock image's check by printing nothing.
+cf_modules="$(cf_caddy list-modules 2>&1)" || true
+stock_modules="$(docker run --rm --entrypoint caddy "$web_image" list-modules 2>&1)" || true
+if grep -qx 'dns.providers.cloudflare' <<<"$cf_modules"; then
+    pass "with a token, Caddy carries the Cloudflare DNS plugin"
+else
+    fail "with a token, Caddy carries the Cloudflare DNS plugin"
+fi
+if grep -qx 'http.handlers.file_server' <<<"$stock_modules" && ! grep -qx 'dns.providers.cloudflare' <<<"$stock_modules"; then
+    pass "without one, Caddy is the stock build, so a self-hosted install compiles no plugin"
+else
+    fail "without one, Caddy is the stock build, so a self-hosted install compiles no plugin"
+fi
+cf_validate="$(cf_caddy validate --config /etc/caddy/Caddyfile.cloudflare --adapter caddyfile 2>&1)" || true
+if grep -q 'Valid configuration' <<<"$cf_validate"; then
+    pass "Caddyfile.cloudflare loads, the Cloudflare module included"
+else
+    fail "Caddyfile.cloudflare loads, the Cloudflare module included (got: $(tail -n 1 <<<"$cf_validate"))"
+fi
+cf_adapt="$(cf_caddy adapt --config /etc/caddy/Caddyfile.cloudflare --adapter caddyfile 2>/dev/null)" || true
+cf_wildcard=$(jq -r '.apps.tls.automation.policies[] | select(.subjects == ["*.example.org"])
+    | .issuers[0].challenges.dns.provider | "\(.name) \(.api_token)"' <<<"$cf_adapt" 2>/dev/null || true)
+if [ "$cf_wildcard" = "cloudflare {env.CLOUDFLARE_API_TOKEN}" ]; then
+    pass "*.APP_BASE_DOMAIN gets one certificate, proven over Cloudflare DNS with the token read at run time"
+else
+    fail "*.APP_BASE_DOMAIN gets one certificate, proven over Cloudflare DNS with the token read at run time (got: $cf_wildcard)"
+fi
+if [ -n "$cf_adapt" ] && ! grep -qF "$cf_token" <<<"$cf_adapt"; then
+    pass "the token itself is never written into Caddy's config"
+else
+    fail "the token itself is never written into Caddy's config"
+fi
+# The wildcard covers one label under the base domain only. The base domain,
+# nested subdomains and custom domains must still get certificates on demand,
+# gated by the application as before.
+cf_on_demand=$(jq -r '[.apps.tls.automation.policies[] | select(.on_demand == true and .subjects == null)]
+    | length' <<<"$cf_adapt" 2>/dev/null || true)
+cf_ask=$(jq -r '.apps.tls.automation.on_demand.permission.endpoint' <<<"$cf_adapt" 2>/dev/null || true)
+if [ "$cf_on_demand $cf_ask" = "1 http://127.0.0.1:2020/_caddy/ask" ]; then
+    pass "every other hostname still gets an on-demand certificate, gated on the ask endpoint"
+else
+    fail "every other hostname still gets an on-demand certificate, gated on the ask endpoint (got: $cf_on_demand $cf_ask)"
 fi
 
 # A real workspace, inserted directly by SQL: Workspace::factory() pulls in
