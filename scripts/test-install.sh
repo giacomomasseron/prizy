@@ -1059,11 +1059,189 @@ else
     fail "--yes with an unwritable PRIZY_SMTP_PASSWORD dies, naming that variable (exit $yes_dollar_rc: $yes_dollar_out)"
 fi
 
+log "An external database: what --db-* accept"
+for good_host in db.internal 10.0.0.5 fd00::5 my-db-1.example.com db_primary.internal; do
+    if validate_db_host "$good_host"; then pass "'$good_host' is a database host"; else fail "'$good_host' is a database host"; fi
+done
+for bad_host in "db.internal:5432" "-db" "db internal" "postgres://db" "db..internal" ""; do
+    if validate_db_host "$bad_host"; then fail "'$bad_host' is refused as a database host"; else pass "'$bad_host' is refused as a database host"; fi
+done
+for good_port in 5432 1 65535 06432; do
+    if validate_port "$good_port"; then pass "$good_port is a port"; else fail "$good_port is a port"; fi
+done
+for bad_port in 0 65536 99999 abc "" "54 32"; do
+    if validate_port "$bad_port"; then fail "'$bad_port' is refused as a port"; else pass "'$bad_port' is refused as a port"; fi
+done
+for good_name in prizy prizy_app defaultdb _x; do
+    if validate_db_identifier "$good_name"; then pass "$good_name is a database identifier"; else fail "$good_name is a database identifier"; fi
+done
+# SC2016: the literal $ is the point.
+# shellcheck disable=SC2016
+for bad_name in 1prizy prizy-app "pri zy" 'p$y' ""; do
+    if validate_db_identifier "$bad_name"; then fail "'$bad_name' is refused as a database identifier"; else pass "'$bad_name' is refused as a database identifier"; fi
+done
+
+bad_db_rc=0
+bad_db_out="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
+    --db-host db.internal:5432 2>&1)" || bad_db_rc=$?
+if [ "$bad_db_rc" -ne 0 ] && printf '%s' "$bad_db_out" | grep -qF 'ERROR: --db-host must be a hostname or an IP address, with no port'; then
+    pass "a --db-host with a port in it is refused, saying where the port goes"
+else
+    fail "a --db-host with a port in it is refused, saying where the port goes (exit $bad_db_rc: $bad_db_out)"
+fi
+
+for loopback in localhost 127.0.0.1 ::1; do
+    loop_rc=0
+    loop_out="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
+        --source-path "$(dirname "$0")/.." --db-host "$loopback" 2>&1)" || loop_rc=$?
+    if [ "$loop_rc" -ne 0 ] && printf '%s' "$loop_out" | grep -qF "ERROR: the database host $loopback would be Prizy's own container"; then
+        pass "--db-host $loopback is refused: inside Docker it is the app's own container"
+    else
+        fail "--db-host $loopback is refused: inside Docker it is the app's own container (exit $loop_rc: $loop_out)"
+    fi
+done
+
+log "An external database: which one a run uses"
+DB_TMP="$(mktemp -d -p "$TMP")"
+touch "$DB_TMP/docker-compose.external-db.yml"
+
+# shellcheck disable=SC2030,SC2031
+if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0; DB_EXTERNAL=1
+     collect_database_settings >/dev/null 2>&1
+     [ "$DB_EXTERNAL" -eq 0 ] ); then
+    pass "with no --db-host and no .env, the bundled database is used"
+else
+    fail "with no --db-host and no .env, the bundled database is used"
+fi
+
+# shellcheck disable=SC2030,SC2031
+if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0
+     OPT_DB_HOST=db.internal; PRIZY_DB_PASSWORD=Ext-pass-1
+     collect_database_settings >/dev/null 2>&1
+     [ "$DB_EXTERNAL $DB_HOST $DB_PORT $DB_NAME $DB_USER $DB_PASSWORD" = "1 db.internal 5432 prizy prizy_app Ext-pass-1" ] ); then
+    pass "--db-host alone uses the external server with the default port, database and role"
+else
+    fail "--db-host alone uses the external server with the default port, database and role"
+fi
+
+printf 'DB_HOST=10.0.0.5\nDB_PORT=6432\nDB_DATABASE=defaultdb\nDB_USERNAME=prizy\nPRIZY_APP_DB_PASSWORD=Live-pass-2\n' > "$DB_TMP/.env"
+# shellcheck disable=SC2030,SC2031
+if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0
+     collect_database_settings >/dev/null 2>&1
+     [ "$DB_EXTERNAL $DB_HOST $DB_PORT $DB_NAME $DB_USER $DB_PASSWORD" = "1 10.0.0.5 6432 defaultdb prizy Live-pass-2" ] ); then
+    pass "a re-run without --db-host stays on the external server the .env names, password included"
+else
+    fail "a re-run without --db-host stays on the external server the .env names, password included"
+fi
+
+# shellcheck disable=SC2030,SC2031
+if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0
+     OPT_DB_PORT=5433; PRIZY_DB_PASSWORD=New-pass-3
+     collect_database_settings >/dev/null 2>&1
+     [ "$DB_HOST $DB_PORT $DB_NAME $DB_PASSWORD" = "10.0.0.5 5433 defaultdb New-pass-3" ] ); then
+    pass "a flag or PRIZY_DB_PASSWORD on a re-run changes just that setting"
+else
+    fail "a flag or PRIZY_DB_PASSWORD on a re-run changes just that setting"
+fi
+
+printf 'DB_HOST=postgres\nPRIZY_APP_DB_PASSWORD=Bundled-pass-4\n' > "$DB_TMP/.env"
+# shellcheck disable=SC2030,SC2031
+if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0; OPT_DB_HOST=db.internal
+     collect_database_settings >/dev/null 2>&1
+     [ "$DB_EXTERNAL $DB_PASSWORD" = "1 Bundled-pass-4" ] ); then
+    pass "moving from the bundled database, the password defaults to the one prizy_app already had"
+else
+    fail "moving from the bundled database, the password defaults to the one prizy_app already had"
+fi
+
+# The installer's refusals tell an operator to write a password it cannot
+# carry (a `$`) into the .env by hand, and promise later runs leave it alone.
+# An unattended re-run must keep that promise, not stop for want of one.
+# SC2016: the literal $ is the point.
+# shellcheck disable=SC2016
+printf 'DB_HOST=10.0.0.5\nPRIZY_APP_DB_PASSWORD=pa$s-by-hand\n' > "$DB_TMP/.env"
+cp "$(dirname "$0")/../.env.production.example" "$DB_TMP/.env.production.example"
+hand_rc=0
+# shellcheck disable=SC2030,SC2031
+(
+    SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    collect_database_settings
+    write_env_file "$DB_TMP/.env" "$DB_TMP/.env.production.example"
+) >/dev/null 2>&1 || hand_rc=$?
+assert_eq "an unattended re-run keeps a hand-written password with a \$ in it" \
+    "0 10.0.0.5 pa\$s-by-hand" \
+    "$hand_rc $(env_value_of DB_HOST "$DB_TMP/.env") $(env_value_of PRIZY_APP_DB_PASSWORD "$DB_TMP/.env")"
+
+log "An external database: the .env and the compose command"
+EXT_TMP="$(mktemp -d -p "$TMP")"
+cp "$(dirname "$0")/../.env.production.example" "$EXT_TMP/.env.production.example"
+# shellcheck disable=SC2030,SC2031
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    DB_EXTERNAL=1; DB_HOST=db.internal; DB_PORT=6432; DB_NAME=defaultdb; DB_USER=prizy; DB_PASSWORD=Ext-pass-5
+    write_env_file "$EXT_TMP/.env" "$EXT_TMP/.env.production.example"
+) >/dev/null 2>&1 || true   # a step that dies must redden the assertions below, not abort the file
+assert_eq "a fresh external-database install writes the server, and the role's password rather than a generated one" \
+    "db.internal 6432 defaultdb prizy Ext-pass-5" \
+    "$(env_value_of DB_HOST "$EXT_TMP/.env") $(env_value_of DB_PORT "$EXT_TMP/.env") $(env_value_of DB_DATABASE "$EXT_TMP/.env") $(env_value_of DB_USERNAME "$EXT_TMP/.env") $(env_value_of PRIZY_APP_DB_PASSWORD "$EXT_TMP/.env")"
+
+# shellcheck disable=SC2030,SC2031
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    DB_EXTERNAL=1; DB_HOST=db.internal; DB_PORT=6432; DB_NAME=defaultdb; DB_USER=prizy; DB_PASSWORD=""
+    write_env_file "$EXT_TMP/.env" "$EXT_TMP/.env.production.example"
+) >/dev/null 2>&1 || true
+assert_eq "an empty collected password leaves the .env's alone" "Ext-pass-5" \
+    "$(env_value_of PRIZY_APP_DB_PASSWORD "$EXT_TMP/.env")"
+
+# SC2016: the literal $ is the point.
+# shellcheck disable=SC2030,SC2031,SC2016
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
+    DB_EXTERNAL=1; DB_HOST=db.internal; DB_PORT=6432; DB_NAME=defaultdb; DB_USER=prizy; DB_PASSWORD='pa$$word'
+    write_env_file "$EXT_TMP/.env" "$EXT_TMP/.env.production.example"
+) >/dev/null 2>&1 || true
+assert_eq "a password the .env cannot carry is refused, not written" "Ext-pass-5" \
+    "$(env_value_of PRIZY_APP_DB_PASSWORD "$EXT_TMP/.env")"
+
+printf 'DB_HOST=postgres\nDB_PORT=6543\nDB_DATABASE=other\nDB_USERNAME=prizy\n' > "$EXT_TMP/.env"
+# shellcheck disable=SC2030,SC2031
+(
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0; DB_EXTERNAL=0
+    write_env_file "$EXT_TMP/.env" "$EXT_TMP/.env.production.example"
+) >/dev/null 2>&1 || true
+assert_eq "the bundled database's settings are fixed, whatever the stack used to ignore in the .env" \
+    "postgres 5432 prizy prizy_app" \
+    "$(env_value_of DB_HOST "$EXT_TMP/.env") $(env_value_of DB_PORT "$EXT_TMP/.env") $(env_value_of DB_DATABASE "$EXT_TMP/.env") $(env_value_of DB_USERNAME "$EXT_TMP/.env")"
+
+# shellcheck disable=SC2030,SC2031
+assert_eq "an external database switches the bundled one off in every compose command" \
+    "docker compose -f docker-compose.prod.yml -f docker-compose.external-db.yml --profile realtime" \
+    "$(DB_EXTERNAL=1; OPT_WITH_REALTIME=1; compose_cmd)"
+# shellcheck disable=SC2030,SC2031
+assert_eq "the bundled database needs no extra compose file" \
+    "docker compose -f docker-compose.prod.yml" "$(DB_EXTERNAL=0; OPT_WITH_REALTIME=0; compose_cmd)"
+
+ext_dry="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
+    --source-path "$(dirname "$0")/.." --db-host db.internal 2>&1 || true)"
+if printf '%s' "$ext_dry" | grep -q 'DRY-RUN:.*compose -f docker-compose.prod.yml -f docker-compose.external-db.yml up -d --wait'; then
+    pass "--dry-run --db-host deploys with the bundled database switched off"
+else
+    fail "--dry-run --db-host deploys with the bundled database switched off"
+fi
+
 log "Every PRIZY_* variable is documented in --help"
 help_text="$(bash "$INSTALL_SH" --help 2>&1 || true)"
 missing_env_docs=""
 for prizy_var in PRIZY_DOMAIN PRIZY_EMAIL PRIZY_MAIL PRIZY_SMTP_HOST PRIZY_SMTP_PORT \
                  PRIZY_SMTP_USERNAME PRIZY_SMTP_PASSWORD PRIZY_SMTP_ENCRYPTION \
+                 PRIZY_DB_HOST PRIZY_DB_PORT PRIZY_DB_NAME PRIZY_DB_USER PRIZY_DB_PASSWORD \
                  PRIZY_ROOT PRIZY_REPO_URL; do
     printf '%s' "$help_text" | grep -q "$prizy_var" || missing_env_docs="$missing_env_docs $prizy_var"
 done
@@ -1885,7 +2063,8 @@ mkdir -p "$E2E_BIN" "$E2E_SRC"
 # A checkout needs only what the installer reads from it; the image build
 # that would use the rest is docker's, and docker is a stand-in. The .env is a
 # developer's, which must not be imported.
-cp "$(dirname "$0")/../docker-compose.prod.yml" "$(dirname "$0")/../.env.production.example" "$E2E_SRC/"
+cp "$(dirname "$0")/../docker-compose.prod.yml" "$(dirname "$0")/../docker-compose.external-db.yml" \
+    "$(dirname "$0")/../.env.production.example" "$E2E_SRC/"
 printf 'APP_ENV=local\nAPP_DEBUG=true\nAPP_KEY=base64:developer-key\nREDIS_PASSWORD=null\n' > "$E2E_SRC/.env"
 
 # docker records where and how it was called; the rest either answer the
@@ -1898,6 +2077,10 @@ case "\$*" in
     version*)                echo 27.3.1 ;;
     "compose version")       [ -z "\${STUB_NO_COMPOSE:-}" ] || exit 1 ;;
     *" build")               echo "VITE_REVERB_APP_KEY=\${VITE_REVERB_APP_KEY:-}" >> "$E2E_DIR/build-env" ;;
+    *" up -d --wait")        echo "\${DB_DATABASE:-unset} \${DB_USERNAME:-unset}" >> "$E2E_DIR/up-env"
+                             [ -z "\${STUB_UP_FAILS:-}" ] || exit 1 ;;
+    *" ps -a")               echo "migrate-1  Exited (1) 2 seconds ago" ;;
+    *" logs "*" migrate")    echo "migrate-1  | The role prizy is a superuser." ;;
 esac
 exit 0
 STUB
@@ -2055,6 +2238,98 @@ else
     fail "--with-realtime builds the bundle with the install's own Reverb key and starts Reverb (exit $rt_rc; key '$rt_key'; build env '$(cat "$E2E_DIR/build-env")'; $rt_out)"
 fi
 
+# An external database: the flags and PRIZY_DB_PASSWORD reach the .env, every
+# compose command switches the bundled database off, and the password stays
+# out of the log. Then the plain re-run an upgrade is, which must not fall
+# back to the bundled database.
+ext_root="$E2E_DIR/external"
+: > "$E2E_DIR/docker-calls"
+ext_rc=0
+ext_out="$(e2e_install "$ext_root" PRIZY_SMTP_HOST=smtp.example.org PRIZY_DB_PASSWORD=Ext-Db-Pass-9 \
+    -- --db-host db.internal.example --db-name defaultdb)" || ext_rc=$?
+ext_env="$ext_root/source/.env"
+if [ "$ext_rc" -eq 0 ] && printf '%s' "$ext_out" | grep -q 'Database: db.internal.example:5432 (database defaultdb, role prizy_app)'; then
+    pass "an external-database install runs to the end and names the server it uses"
+else
+    fail "an external-database install runs to the end and names the server it uses (exit $ext_rc: $ext_out)"
+fi
+assert_eq "it writes the external server and the role's password to the .env" \
+    "db.internal.example 5432 defaultdb prizy_app Ext-Db-Pass-9" \
+    "$(env_of DB_HOST "$ext_env") $(env_of DB_PORT "$ext_env") $(env_of DB_DATABASE "$ext_env") $(env_of DB_USERNAME "$ext_env") $(env_of PRIZY_APP_DB_PASSWORD "$ext_env")"
+assert_eq "it builds and starts the stack with the bundled database switched off" \
+    "$ext_root/source|compose -f docker-compose.prod.yml -f docker-compose.external-db.yml build
+$ext_root/source|compose -f docker-compose.prod.yml -f docker-compose.external-db.yml up -d --wait" \
+    "$(grep -E 'compose .*(build|up -d --wait)$' "$E2E_DIR/docker-calls")"
+ext_logs=("$ext_root"/install-*.log)
+if [ "${#ext_logs[@]}" -eq 1 ] && grep -q '==> \[8\] Ready' "${ext_logs[0]}" && ! grep -q 'Ext-Db-Pass-9' "${ext_logs[0]}"; then
+    pass "the database password never reaches the install log"
+else
+    fail "the database password never reaches the install log (logs: ${ext_logs[*]})"
+fi
+
+: > "$E2E_DIR/docker-calls"
+ext_rc=0
+ext_out="$(e2e_install "$ext_root")" || ext_rc=$?
+if [ "$ext_rc" -eq 0 ] && grep -q 'compose -f docker-compose.prod.yml -f docker-compose.external-db.yml up -d --wait' "$E2E_DIR/docker-calls" \
+    && [ "$(env_of DB_HOST "$ext_env") $(env_of PRIZY_APP_DB_PASSWORD "$ext_env")" = "db.internal.example Ext-Db-Pass-9" ]; then
+    pass "a re-run with no database flags stays on the external server, password kept"
+else
+    fail "a re-run with no database flags stays on the external server, password kept (exit $ext_rc: $ext_out)"
+fi
+
+# The move the docs describe: a bundled install, then the same command with
+# --db-host, the new server's role created with the password prizy_app had.
+move_root="$E2E_DIR/move"
+e2e_install "$move_root" PRIZY_SMTP_HOST=smtp.example.org >/dev/null || true
+move_pw="$(env_of PRIZY_APP_DB_PASSWORD "$move_root/source/.env")"
+: > "$E2E_DIR/docker-calls"
+move_rc=0
+move_out="$(e2e_install "$move_root" -- --db-host 10.0.0.3)" || move_rc=$?
+if [ "$move_rc" -eq 0 ] && [ -n "$move_pw" ] \
+    && [ "$(env_of DB_HOST "$move_root/source/.env") $(env_of PRIZY_APP_DB_PASSWORD "$move_root/source/.env")" = "10.0.0.3 $move_pw" ] \
+    && grep -q 'compose -f docker-compose.prod.yml -f docker-compose.external-db.yml up -d --wait' "$E2E_DIR/docker-calls"; then
+    pass "moving a bundled install to an external server keeps prizy_app's password and switches the bundled database off"
+else
+    fail "moving a bundled install to an external server keeps prizy_app's password and switches the bundled database off (exit $move_rc: $move_out)"
+fi
+
+# The way back the docs give: --db-host postgres puts the bundled database's
+# settings back and starts it again. The password was reused for the move, so
+# it is still the one the bundled prizy_app has.
+: > "$E2E_DIR/docker-calls"
+back_rc=0
+back_out="$(e2e_install "$move_root" -- --db-host postgres)" || back_rc=$?
+if [ "$back_rc" -eq 0 ] && printf '%s' "$back_out" | grep -qF 'going back from 10.0.0.3 to the bundled database' \
+    && [ "$(env_of DB_HOST "$move_root/source/.env") $(env_of DB_PORT "$move_root/source/.env") $(env_of DB_DATABASE "$move_root/source/.env") $(env_of DB_USERNAME "$move_root/source/.env") $(env_of PRIZY_APP_DB_PASSWORD "$move_root/source/.env")" = "postgres 5432 prizy prizy_app $move_pw" ] \
+    && grep -qxF "$move_root/source|compose -f docker-compose.prod.yml up -d --wait" "$E2E_DIR/docker-calls"; then
+    pass "--db-host postgres goes back to the bundled database, password unchanged, and says what that means"
+else
+    fail "--db-host postgres goes back to the bundled database, password unchanged, and says what that means (exit $back_rc: $back_out)"
+fi
+
+# A stack that does not come up shows why: the migrate step's own lines, which
+# on an external database carry the check's refusal.
+fail_rc=0
+fail_out="$(e2e_install "$E2E_DIR/up-fails" STUB_UP_FAILS=1 PRIZY_SMTP_HOST=smtp.example.org)" || fail_rc=$?
+if [ "$fail_rc" -ne 0 ] && printf '%s' "$fail_out" | grep -qF 'migrate-1  Exited (1)' \
+    && printf '%s' "$fail_out" | grep -qF 'The role prizy is a superuser.' \
+    && printf '%s' "$fail_out" | grep -qF 'ERROR: the stack did not start'; then
+    pass "a stack that does not start ends on each service's state, the migrate step's last lines and an ERROR"
+else
+    fail "a stack that does not start ends on each service's state, the migrate step's last lines and an ERROR (exit $fail_rc: $fail_out)"
+fi
+
+# Compose prefers the shell to the .env, so the installer must not hand it a
+# DB_DATABASE or DB_USERNAME the operator's shell happens to export.
+: > "$E2E_DIR/up-env"
+stray_rc=0
+stray_out="$(e2e_install "$E2E_DIR/stray-env" PRIZY_SMTP_HOST=smtp.example.org DB_DATABASE=stray DB_USERNAME=stray)" || stray_rc=$?
+if [ "$stray_rc" -eq 0 ] && [ "$(cat "$E2E_DIR/up-env")" = "unset unset" ]; then
+    pass "DB_* exported in the operator's shell never reach Compose"
+else
+    fail "DB_* exported in the operator's shell never reach Compose (exit $stray_rc; seen '$(cat "$E2E_DIR/up-env")': $stray_out)"
+fi
+
 # The README's one-liner, end to end and not dry: piped into bash in a
 # terminal, the settings passed through `bash -s --`, and the SMTP settings —
 # password included — asked for and typed at that terminal.
@@ -2101,6 +2376,28 @@ e2e_refuses "an unsupported CPU architecture stops the run" \
     "unsupported architecture: riscv64" "$E2E_DIR/riscv" STUB_ARCH=riscv64 PRIZY_SMTP_HOST=smtp.example.org
 e2e_refuses "a Docker without the compose v2 plugin stops the run before building" \
     "docker compose v2 is required" "$E2E_DIR/no-compose" STUB_NO_COMPOSE=1 PRIZY_SMTP_HOST=smtp.example.org
+e2e_refuses "a first external-database run under --yes needs PRIZY_DB_PASSWORD, and stops before building" \
+    "--yes was given but DB_PASSWORD has no value and no default; set PRIZY_DB_PASSWORD" \
+    "$E2E_DIR/no-db-password" PRIZY_SMTP_HOST=smtp.example.org -- --db-host db.internal.example
+e2e_refuses "--db-port without --db-host is refused rather than ignored" \
+    "--db-port, --db-name and --db-user are for an external database; pass --db-host too" \
+    "$E2E_DIR/port-only" PRIZY_SMTP_HOST=smtp.example.org -- --db-port 6432
+OLD_SRC="$E2E_DIR/old-checkout"
+mkdir -p "$OLD_SRC"
+cp "$E2E_SRC/docker-compose.prod.yml" "$E2E_SRC/.env.production.example" "$OLD_SRC/"
+: > "$E2E_DIR/docker-calls"
+old_rc=0
+# SC2031: a per-command PATH prefix, not a lost subshell assignment.
+# shellcheck disable=SC2031
+old_out="$(env PRIZY_ROOT="$E2E_DIR/old-release" PATH="$E2E_BIN:$PATH" PRIZY_SMTP_HOST=smtp.example.org PRIZY_DB_PASSWORD=x \
+    bash "$INSTALL_SH" --yes --domain prizy.example.com --email ops@example.com --mail=smtp \
+    --source-path "$OLD_SRC" --db-host db.internal.example < /dev/null 2>&1)" || old_rc=$?
+if [ "$old_rc" -ne 0 ] && printf '%s' "$old_out" | grep -qF 'ERROR: this version of Prizy cannot use an external database' \
+    && ! grep -q ' build' "$E2E_DIR/docker-calls"; then
+    pass "a release without external-database support refuses --db-host before building"
+else
+    fail "a release without external-database support refuses --db-host before building (exit $old_rc: $old_out)"
+fi
 else
     skip "end to end install (needs a Debian- or RHEL-family /etc/os-release)"
 fi
