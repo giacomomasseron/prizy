@@ -8,24 +8,24 @@ test('settings: email digest frequency persists after reload', async ({ page }) 
     await page.goto('/settings/general');
 
     // Set Email digest frequency to Daily
-    const select = page.getByLabel('Email digest frequency');
-    await expect(select).toBeVisible();
+    const digest = page.getByRole('group', { name: 'Email digest frequency' });
+    await expect(digest).toBeVisible();
 
     const patchResponsePromise = page.waitForResponse(
         (response) =>
             response.url().includes('/notifications/preferences') &&
             response.request().method() === 'PATCH',
     );
-    await select.selectOption('daily');
+    await digest.getByRole('button', { name: 'Daily' }).click();
     await patchResponsePromise;
 
-    // Assert "Saved" feedback appears
-    await expect(page.getByText('Saved')).toBeVisible();
+    // The note under the title says what the choice means
+    await expect(page.getByText('A summary of activity lands in your inbox every day at 8:00 UTC.')).toBeVisible();
 
     // Reload and assert the preference persisted
     await page.reload();
     await page.waitForLoadState('networkidle');
-    await expect(page.getByLabel('Email digest frequency')).toHaveValue('daily');
+    await expect(page.getByRole('group', { name: 'Email digest frequency' }).getByRole('button', { name: 'Daily' })).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('settings members: navigate, toggle capability, change level, invite, remove invited', async ({ page }) => {
