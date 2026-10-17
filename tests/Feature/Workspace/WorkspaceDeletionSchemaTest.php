@@ -11,12 +11,12 @@ uses(RefreshDatabase::class);
 // what that relies on, so a new table cannot quietly survive a deletion, or
 // make one fail.
 
-/** @return list<object{child: string, parent: string, column: string, on_delete: string, deferrable: bool}> */
+/** @return list<object{child: string, parent: string, column: string, on_delete: string, deferrable: bool, not_null: bool}> */
 function deletionSchemaForeignKeys(): array
 {
     return DB::select(<<<'SQL'
         SELECT c.conrelid::regclass::text AS child, c.confrelid::regclass::text AS parent,
-               a.attname AS column, c.confdeltype AS on_delete, c.condeferrable AS deferrable
+               a.attname AS column, c.confdeltype AS on_delete, c.condeferrable AS deferrable, a.attnotnull AS not_null
         FROM pg_constraint c
         JOIN pg_namespace n ON n.oid = c.connamespace
         JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
@@ -59,6 +59,35 @@ it('cascades, nulls or defers every foreign key', function (): void {
     ));
 
     expect($blocking)->toBe([]);
+});
+
+// A key that nulls its column acts during the cascade, and neither NOT NULL nor
+// a CHECK constraint can wait for the row to be deleted after it.
+it('nulls only columns that may be null and that no check constraint reads', function (): void {
+    // issues_no_self_parent is parent_issue_id <> id, which a NULL passes.
+    $harmless = ['issues_no_self_parent'];
+    $checked = [];
+    foreach (DB::select(<<<'SQL'
+        SELECT c.conrelid::regclass::text AS child, a.attname AS column, c.conname AS name
+        FROM pg_constraint c
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
+        WHERE c.contype = 'c' AND n.nspname = current_schema()
+    SQL) as $check) {
+        if (! in_array($check->name, $harmless, true)) {
+            $checked["{$check->child}.{$check->column}"] = $check->name;
+        }
+    }
+
+    $clashes = [];
+    foreach (deletionSchemaForeignKeys() as $fk) {
+        $column = "{$fk->child}.{$fk->column}";
+        if ($fk->on_delete === 'n' && ($fk->not_null || isset($checked[$column]))) {
+            $clashes[] = $column.($fk->not_null ? ' (NOT NULL)' : " ({$checked[$column]})");
+        }
+    }
+
+    expect($clashes)->toBe([]);
 });
 
 it('reaches every table but the framework ones from workspaces through cascading keys', function (): void {
