@@ -1,0 +1,66 @@
+{
+  "projectId": "172c25be-5f41-4df3-9b57-050d30ee1f37",
+  "shape": "package",
+  "pkg": "@prizy/ui",
+  "globalName": "PrizyUI",
+  "buildCmd": "npx vite build && node .design-sync/build-pkg.mjs",
+  "entry": ".ds-sync/pkg/dist/index.js",
+  "srcDir": "../../resources/js/components/ui",
+  "cssEntry": "dist/styles.css",
+  "docsDir": "../../.design-sync/docs",
+  "readmeHeader": ".design-sync/conventions.md",
+  "extraFonts": [
+    "dist/fonts/fonts.css"
+  ],
+  "dtsPropsFor": {
+    "Button": "  /** `primary` = ink fill that turns accent on hover (default); `secondary` = outlined; `ghost` = text only, hover tint; `danger` = red fill for destructive confirms. */\n  variant?: \"primary\" | \"secondary\" | \"ghost\" | \"danger\";\n  /** `sm` = 13px text, `md` = 14px (default). */\n  size?: \"sm\" | \"md\";\n  children: React.ReactNode;\n  /** Defaults to \"button\": it only submits a form when set to \"submit\". */\n  type?: \"button\" | \"submit\" | \"reset\";\n  /** Dims to 50% and stops hover and clicks. */\n  disabled?: boolean;\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;\n  title?: string;\n  \"aria-label\"?: string;\n  className?: string;\n  /** Merged last, over the pill's own padding, radius and font. */\n  style?: React.CSSProperties;\n  // Every other native <button> attribute passes through to the element.",
+    "IconButton": "  /** Required: the tooltip and the accessible name (aria-label). */\n  title: string;\n  /** The glyph: a character such as ✕ or ⋯, an emoji, or an inline SVG. */\n  children: React.ReactNode;\n  /** `sm` = 30px circle (default), `md` = 34px. */\n  size?: \"sm\" | \"md\";\n  /** Defaults to \"button\". */\n  type?: \"button\" | \"submit\" | \"reset\";\n  disabled?: boolean;\n  onClick?: React.MouseEventHandler<HTMLButtonElement>;\n  \"aria-pressed\"?: boolean;\n  \"aria-expanded\"?: boolean;\n  className?: string;\n  /** Merged last, over the circle's own size and colour. */\n  style?: React.CSSProperties;\n  // Every other native <button> attribute passes through to the element.",
+    "Input": "  value?: string | number;\n  defaultValue?: string | number;\n  onChange?: React.ChangeEventHandler<HTMLInputElement>;\n  placeholder?: string;\n  /** Native input type; defaults to \"text\". */\n  type?: string;\n  name?: string;\n  id?: string;\n  disabled?: boolean;\n  readOnly?: boolean;\n  required?: boolean;\n  autoFocus?: boolean;\n  autoComplete?: string;\n  maxLength?: number;\n  onKeyDown?: React.KeyboardEventHandler<HTMLInputElement>;\n  onFocus?: React.FocusEventHandler<HTMLInputElement>;\n  onBlur?: React.FocusEventHandler<HTMLInputElement>;\n  \"aria-label\"?: string;\n  \"aria-invalid\"?: boolean;\n  className?: string;\n  /** Merged last, over the pill field: panel ground, 1.5px field-colour border that turns ink on focus, full width. */\n  style?: React.CSSProperties;\n  // Every other native <input> attribute passes through to the element.",
+    "Textarea": "  value?: string;\n  defaultValue?: string;\n  onChange?: React.ChangeEventHandler<HTMLTextAreaElement>;\n  placeholder?: string;\n  rows?: number;\n  name?: string;\n  id?: string;\n  disabled?: boolean;\n  readOnly?: boolean;\n  required?: boolean;\n  autoFocus?: boolean;\n  maxLength?: number;\n  onKeyDown?: React.KeyboardEventHandler<HTMLTextAreaElement>;\n  onFocus?: React.FocusEventHandler<HTMLTextAreaElement>;\n  onBlur?: React.FocusEventHandler<HTMLTextAreaElement>;\n  \"aria-label\"?: string;\n  className?: string;\n  /** Merged last, over the field: panel ground, 18px radius, 1.5px field-colour border that turns ink on focus, full width, vertical resize. */\n  style?: React.CSSProperties;\n  // Every other native <textarea> attribute passes through to the element.",
+    "Menu": "  /** The element that opens the menu, usually a Button or IconButton. Menu clones it to add the click handler and aria-haspopup/aria-expanded. */\n  trigger: React.ReactElement<{ onClick?: React.MouseEventHandler }>;\n  /** The options, in order. `onActivate` runs on a pick; `danger` colours a destructive one red; `checked` marks the current option (✓) when `selection` is set. */\n  items: Array<{ key: string; label: string; subtitle?: string; icon?: React.ReactNode; onActivate: () => void; danger?: boolean; disabled?: boolean; checked?: boolean }>;\n  /** Default \"bottom-start\". */\n  placement?: \"bottom-start\" | \"bottom-end\" | \"top-start\";\n  /** Show a filter input at the top that narrows items by label (case-insensitive). */\n  searchable?: boolean;\n  /** Default \"Search…\". */\n  searchPlaceholder?: string;\n  /** Stretch the trigger wrapper to fill its flex row (property editors on the issue page). */\n  fullWidth?: boolean;\n  /** Options with a current value: `single` closes on a pick, `multi` (several at once) stays open. Each item's `checked` is announced and marked with a ✓. */\n  selection?: \"single\" | \"multi\";\n  /** Merged over the popover's placement (e.g. to line it up with a column of the trigger). */\n  popoverStyle?: React.CSSProperties;\n  /** Merged over each item's type and spacing. */\n  itemStyle?: React.CSSProperties;\n  /** Place the popover against the nearest positioned ancestor instead of the trigger's wrapper: for a row that holds more than the trigger, so the popover spans the whole row. */\n  anchorToParent?: boolean;",
+    "QueryState": "  /** A react-query result (useQuery or useInfiniteQuery); only these fields are read. */\n  query: { isLoading: boolean; isError: boolean; data?: unknown; isPaused?: boolean; isFetching?: boolean; refetch: () => unknown };\n  /** Names what failed in the error card: \"Couldn't load {what}.\" */\n  what: string;\n  /** Wraps the loading line and the error card, for a page whose content area has no padding of its own. */\n  frame?: React.CSSProperties;\n  /** The page's own content, shown once the query has data (it keeps its own empty state). */\n  children: React.ReactNode;",
+    "AvatarStack": "  /** One entry per person, in order; each renders as an Avatar (initials on `color`; no initials = dashed \"Unassigned\" ring). */\n  avatars: Array<{ initials?: string; color?: string; title?: string }>;\n  /** Avatar diameter in px. Default 24. */\n  size?: number;\n  /** Avatars shown before a \"+N\" chip. Default 4. */\n  max?: number;",
+    "SegmentedControl": "  /** The segments, left to right. */\n  options: Array<{ label: string; value: string }>;\n  /** The selected option's value. */\n  value: string;\n  onChange: (value: string) => void;"
+  },
+  "runtimeFontPrefixes": [
+    "Cambria"
+  ],
+  "overrides": {
+    "Button": {
+      "cardMode": "column"
+    },
+    "ConfirmProvider": {
+      "cardMode": "single",
+      "viewport": "680x340",
+      "primaryStory": "DangerConfirm"
+    },
+    "Drawer": {
+      "cardMode": "single",
+      "viewport": "800x560",
+      "primaryStory": "IssuePeek"
+    },
+    "Modal": {
+      "cardMode": "single",
+      "viewport": "720x560",
+      "primaryStory": "CreateTeam"
+    },
+    "Switch": {
+      "cardMode": "column"
+    },
+    "Textarea": {
+      "cardMode": "column"
+    },
+    "LabelChip": {
+      "cardMode": "column"
+    },
+    "PropertyRow": {
+      "cardMode": "column"
+    },
+    "QueryState": {
+      "cardMode": "column"
+    },
+    "TeamTile": {
+      "cardMode": "column"
+    }
+  }
+}

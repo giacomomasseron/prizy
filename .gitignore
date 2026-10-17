@@ -43,3 +43,10 @@ Thumbs.db
 
 # Internal product requirements: kept locally, never published
 /PRD.md
+
+# /design-sync: staged converter + build output + machine state (the durable .design-sync/ files are committed)
+/.ds-sync/
+/ds-bundle/
+/.design-sync/.cache/
+/.design-sync/learnings/
+/.design-sync/node_modules
