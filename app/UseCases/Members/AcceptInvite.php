@@ -68,6 +68,15 @@ final class AcceptInvite
             // Make the invitation's workspace current so the BelongsToWorkspace
             // creating-hook auto-fills workspace_id on the new User.
             $workspace = Workspace::find($invitation->workspace_id);
+
+            // Not found once deleted: the workspace is closed at once, and its
+            // invitations go only when PurgeWorkspace erases it.
+            if ($workspace === null) {
+                throw ValidationException::withMessages([
+                    'token' => ['The invitation token is invalid.'],
+                ]);
+            }
+
             $workspace->makeCurrent();
 
             try {

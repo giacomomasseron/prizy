@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 
 uses(RefreshDatabase::class);
 
-// DeleteWorkspace is a single DELETE on workspaces. These hold the schema to
+// PurgeWorkspace is a single DELETE on workspaces. These hold the schema to
 // what that relies on, so a new table cannot quietly survive a deletion, or
 // make one fail.
 
@@ -50,7 +50,7 @@ it('gives every workspace_id column a foreign key to workspaces', function (): v
 });
 
 // A key with no ON DELETE rule is checked while the cascade still runs, maybe
-// before the rows that would satisfy it are gone; deferrable, DeleteWorkspace
+// before the rows that would satisfy it are gone; deferrable, PurgeWorkspace
 // checks it once the cascade is done.
 it('cascades, nulls or defers every foreign key', function (): void {
     $blocking = array_values(array_map(
