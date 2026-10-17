@@ -98,9 +98,10 @@ it('tells every owner, and nobody else, who deleted the workspace and when', fun
     expect($sentTo)->toBe(['co-owner@example.com', 'olive@example.com']);
 });
 
-it('refuses anyone but an owner', function (string $level): void {
+it('refuses anyone but an owner, whatever they send', function (string $level): void {
     [$workspace, $user] = deletionWorld($level);
 
+    $this->actingAs($user)->deleteJson('/v1/workspace')->assertForbidden();
     $this->actingAs($user)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertForbidden();
 
     expect(Workspace::query()->find($workspace->id))->not->toBeNull();
@@ -140,6 +141,35 @@ it('refuses an owner whose email is not verified', function (): void {
     $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertForbidden();
 
     expect(Workspace::query()->find($workspace->id))->not->toBeNull();
+});
+
+it('finishes the deletion when the email cannot be sent', function (): void {
+    [$workspace, $owner] = deletionWorld();
+    Notification::shouldReceive('send')->once()->andThrow(new RuntimeException('SMTP is down'));
+
+    $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertNoContent();
+
+    Workspace::forgetCurrent();
+    expect(Workspace::withTrashed()->find($workspace->id))->toBeNull();
+});
+
+// The deferred keys are checked before the transaction ends, not at COMMIT,
+// which a test never reaches: a reference from another workspace still fails
+// the deletion here, and leaves everything as it was.
+it('refuses, and keeps everything, while another workspace still names one of its users', function (): void {
+    [$workspace, $owner] = deletionWorld();
+    $other = Workspace::factory()->create(['name' => 'Other', 'slug' => 'other']);
+    $other->makeCurrent();
+    $team = Team::factory()->for($other, 'workspace')->create();
+    Issue::factory()->for($other, 'workspace')->create(['team_id' => $team->id, 'created_by' => $owner->id]);
+    $this->actingInWorkspace($workspace);
+
+    $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertStatus(500);
+
+    Workspace::forgetCurrent();
+    expect(Workspace::query()->find($workspace->id))->not->toBeNull()
+        ->and(DB::table('users')->where('id', $owner->id)->exists())->toBeTrue();
+    Notification::assertNothingSent();
 });
 
 it('deletes a workspace full of data and leaves every other workspace as it was', function (): void {

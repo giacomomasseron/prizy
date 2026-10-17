@@ -90,6 +90,22 @@ it('nulls only columns that may be null and that no check constraint reads', fun
     expect($clashes)->toBe([]);
 });
 
+// Every deleted row is looked up in each table that references it; without an
+// index on the referencing column, each lookup reads that whole table.
+it('indexes every foreign key column', function (): void {
+    $unindexed = array_column(DB::select(<<<'SQL'
+        SELECT c.conrelid::regclass::text || '.' || a.attname AS key
+        FROM pg_constraint c
+        JOIN pg_namespace n ON n.oid = c.connamespace
+        JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
+        WHERE c.contype = 'f' AND n.nspname = current_schema()
+          AND NOT EXISTS (SELECT 1 FROM pg_index i WHERE i.indrelid = c.conrelid AND i.indkey[0] = c.conkey[1])
+        ORDER BY 1
+    SQL), 'key');
+
+    expect($unindexed)->toBe([]);
+});
+
 it('reaches every table but the framework ones from workspaces through cascading keys', function (): void {
     $reached = ['workspaces' => true];
     do {

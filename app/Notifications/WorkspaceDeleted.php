@@ -41,6 +41,6 @@ final class WorkspaceDeleted extends Notification
             ->subject('Your Prizy workspace was deleted')
             ->line("{$who} deleted the Prizy workspace {$what} on {$when}.")
             ->line('Every issue, ticket, article and member in it was deleted with it, and its address is free again.')
-            ->line("If you didn't expect this, reply to this email.");
+            ->line("If nobody meant to delete it, the account that did may be in someone else's hands.");
     }
 }

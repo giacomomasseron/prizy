@@ -42,17 +42,16 @@ final class WorkspaceController extends Controller
     }
 
     /**
-     * The workspace and the caller's session end together: invalidating the
-     * session signs the caller out without touching their user row, which the
-     * deletion has already removed.
+     * The typed name is checked in the use case, after the owner check, so a
+     * non-owner is refused whatever they sent. The workspace and the caller's
+     * session end together: invalidating the session signs the caller out
+     * without touching their user row, which the deletion has already removed.
      */
     public function destroy(Request $request): Response
     {
-        $data = $request->validate([
-            'confirm' => ['required', 'string', 'max:255'],
-        ]);
+        $confirm = $request->input('confirm');
 
-        $this->deleteWorkspace->handle($request->user(), $data['confirm']);
+        $this->deleteWorkspace->handle($request->user(), is_string($confirm) ? $confirm : '');
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

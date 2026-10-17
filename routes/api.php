@@ -99,7 +99,7 @@ Route::prefix('v1')->group(function (): void {
             // token: a leaked token must not be able to destroy everything.
             // Owner only and the typed name are enforced in the use case.
             Route::delete('/workspace', [WorkspaceController::class, 'destroy'])
-                ->middleware([VerifyCsrfToken::class, 'verified', 'throttle:6,1']);
+                ->middleware([VerifyCsrfToken::class, 'verified', 'throttle:6,1,delete-workspace']);
         });
 
     // -----------------------------------------------------------------------
