@@ -29,7 +29,7 @@ export function DeleteWorkspaceCard() {
     const [open, setOpen] = useState(false);
 
     return (
-        <section style={{ ...card, marginTop: 30 }}>
+        <section style={{ ...card, marginTop: 14 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 18, flexWrap: 'wrap' }}>
                 <span aria-hidden="true" style={bang(42, 14, 19)}>!</span>
                 <div style={{ flex: 1, minWidth: 220 }}>
