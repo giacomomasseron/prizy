@@ -2387,6 +2387,8 @@ mkdir -p "$OLD_SRC"
 cp "$E2E_SRC/docker-compose.prod.yml" "$E2E_SRC/.env.production.example" "$OLD_SRC/"
 : > "$E2E_DIR/docker-calls"
 old_rc=0
+# SC2031: a per-command PATH prefix, not a lost subshell assignment.
+# shellcheck disable=SC2031
 old_out="$(env PRIZY_ROOT="$E2E_DIR/old-release" PATH="$E2E_BIN:$PATH" PRIZY_SMTP_HOST=smtp.example.org PRIZY_DB_PASSWORD=x \
     bash "$INSTALL_SH" --yes --domain prizy.example.com --email ops@example.com --mail=smtp \
     --source-path "$OLD_SRC" --db-host db.internal.example < /dev/null 2>&1)" || old_rc=$?
