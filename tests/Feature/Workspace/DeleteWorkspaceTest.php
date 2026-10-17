@@ -93,7 +93,7 @@ it('closes the workspace at once and leaves the erasing to a queued job', functi
 
     $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertNoContent();
 
-    Queue::assertPushed(PurgeWorkspace::class, fn (PurgeWorkspace $job): bool => $job->workspaceId === $workspace->id);
+    Queue::assertPushedOn('purge', PurgeWorkspace::class, fn (PurgeWorkspace $job): bool => $job->workspaceId === $workspace->id);
     Workspace::forgetCurrent();
     expect($found())->toBeNull()
         ->and(Workspace::onlyTrashed()->find($workspace->id))->not->toBeNull()
@@ -135,7 +135,7 @@ it('tells every owner, and nobody else, who deleted the workspace and when', fun
         $sentTo[] = $to->routes['mail'];
         expect(implode(' ', $n->toMail($to)->introLines))
             ->toContain('Olive Owner (olive@example.com) deleted the Prizy workspace Acme Corp (acme.prizy.test) on 17 October 2026 at 09:30 UTC.')
-            ->toContain('its address is free again');
+            ->toContain('its address will be free again once that is done');
 
         return true;
     });

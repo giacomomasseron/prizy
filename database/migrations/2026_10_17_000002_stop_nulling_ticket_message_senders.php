@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
  * users go before the messages they sent, which follow through their ticket.
  *
  * As NO ACTION keys they are deferrable, like every other key that names a
- * user, so DeleteWorkspace checks them once the messages are gone. Deleting a
+ * user, so PurgeWorkspace checks them once the messages are gone. Deleting a
  * sender while their messages remain fails as before, on the key now.
  */
 return new class extends Migration

@@ -31,10 +31,12 @@ function purgeSeed(string $slug, ?int $minutesAgo): Workspace
     return $workspace;
 }
 
-it('queues the erasing again for a workspace closed over an hour ago', function (): void {
+it('queues the erasing again for a workspace closed over an hour ago, once', function (): void {
     Queue::fake();
     $stale = purgeSeed('stale', 61);
 
+    $this->artisan('workspaces:purge-deleted')->assertExitCode(0);
+    // An hour later, the first job still waiting: no second copy behind it.
     $this->artisan('workspaces:purge-deleted')->assertExitCode(0);
 
     Queue::assertPushed(PurgeWorkspace::class, 1);

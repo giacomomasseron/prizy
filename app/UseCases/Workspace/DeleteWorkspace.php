@@ -64,6 +64,9 @@ final class DeleteWorkspace
 
         $workspace->delete();
 
+        // On the sync queue (tests) the job runs right here, and as it is not
+        // tenant-aware, no workspace is current after it; on Redis this one
+        // stays current. Nothing below may depend on either.
         try {
             PurgeWorkspace::dispatch($workspace->id);
         } catch (Throwable $e) {

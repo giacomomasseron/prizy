@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\Workspace;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -32,8 +33,15 @@ use Spatie\Multitenancy\Jobs\NotTenantAware;
  * deletes nothing. That also makes the queue's retry_after harmless: a worker
  * that picks the job up again while the first still runs waits on the row
  * lock, then finds nothing left.
+ *
+ * On its own queue, with its own worker (purge-worker in
+ * docker-compose.prod.yml): an erase that takes minutes would otherwise hold
+ * up every broadcast and Slack post of every workspace behind it. Unique per
+ * workspace, so the hourly re-queue never stacks a second copy behind one
+ * still waiting or running; a workspace that can never be erased then shows up
+ * as at most one failed job an hour, until someone looks.
  */
-final class PurgeWorkspace implements NotTenantAware, ShouldQueue
+final class PurgeWorkspace implements NotTenantAware, ShouldBeUnique, ShouldQueue
 {
     use Dispatchable;
     use InteractsWithQueue;
@@ -44,9 +52,19 @@ final class PurgeWorkspace implements NotTenantAware, ShouldQueue
     /** The worker's own default, 60 seconds, is what a large workspace outgrows. */
     public int $timeout = 3600;
 
+    /** Outlives every attempt (3 × the timeout, plus the backoff), in case a lock is never released. */
+    public int $uniqueFor = 4 * 3600;
+
     public function __construct(
         public readonly string $workspaceId,
-    ) {}
+    ) {
+        $this->onQueue('purge');
+    }
+
+    public function uniqueId(): string
+    {
+        return $this->workspaceId;
+    }
 
     /** @return list<int> */
     public function backoff(): array

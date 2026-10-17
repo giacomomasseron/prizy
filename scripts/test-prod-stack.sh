@@ -465,7 +465,7 @@ else
 fi
 
 log "Background roles run without blocking the deploy"
-for svc in worker scheduler; do
+for svc in worker purge-worker scheduler; do
     if [ "$(compose ps --format '{{.Service}} {{.State}}' | grep -cx "$svc running")" -eq 1 ]; then
         pass "$svc is running"
     else
@@ -487,6 +487,32 @@ if compose ps --format '{{.Service}}' | grep -q '^reverb$'; then
     fail "reverb does not start without its profile"
 else
     pass "reverb does not start without its profile"
+fi
+
+log "purge-worker erases a deleted workspace"
+# The erasing runs on its own queue, which only purge-worker listens to: if
+# nothing did, a deleted workspace would stay in the database for good. A row
+# closed two hours ago is what the hourly workspaces:purge-deleted picks up.
+psql_super "INSERT INTO workspaces (name, slug, deleted_at) VALUES ('Closed', 'closed-purge', now() - interval '2 hours') ON CONFLICT (slug) DO NOTHING;" >/dev/null
+compose exec -T app php artisan workspaces:purge-deleted >/dev/null 2>&1 || true
+purged=0
+for _ in $(seq 1 30); do
+    if [ "$(psql_super "SELECT count(*) FROM workspaces WHERE slug = 'closed-purge'")" = "0" ]; then
+        purged=1
+        break
+    fi
+    sleep 1
+done
+if [ "$purged" -eq 1 ]; then
+    pass "a workspace deleted over an hour ago is erased"
+else
+    fail "a workspace deleted over an hour ago is erased"
+fi
+if compose logs purge-worker 2>/dev/null | grep -q 'PurgeWorkspace' \
+    && ! compose logs worker 2>/dev/null | grep -q 'PurgeWorkspace'; then
+    pass "the erasing ran on purge-worker, not on worker"
+else
+    fail "the erasing ran on purge-worker, not on worker"
 fi
 
 log "A non-fpm role leaves the shared view cache alone"

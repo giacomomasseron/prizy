@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\UseCases\Auth;
 
 use App\Models\User;
+use App\Models\Workspace;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
@@ -43,7 +44,9 @@ final class ConsumeMagicLink
 
         $user = User::find($userId);
 
-        if ($user === null) {
+        // A deleted workspace is closed at once, but its members stay until
+        // PurgeWorkspace erases it: none of them signs in meanwhile.
+        if ($user === null || ! Workspace::query()->whereKey($user->workspace_id)->exists()) {
             throw new RuntimeException('User not found.');
         }
 

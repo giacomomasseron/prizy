@@ -157,3 +157,40 @@ it('requesting a magic link for an unknown email returns 202 but sends no notifi
     $response->assertStatus(202);
     Notification::assertNothingSent();
 });
+
+// ---------------------------------------------------------------------------
+// 6. A link for a member of a deleted workspace no longer signs anyone in
+// ---------------------------------------------------------------------------
+
+it('a magic link for a member of a deleted workspace returns 401 and does not authenticate', function (): void {
+    Notification::fake();
+
+    $workspace = Workspace::factory()->create();
+    $this->actingInWorkspace($workspace);
+
+    $user = User::factory()->for($workspace, 'workspace')->create([
+        'email' => 'alice@example.com',
+    ]);
+
+    $this->postJson('/magic-link', ['email' => 'alice@example.com'])
+        ->assertStatus(202);
+
+    $capturedUrl = null;
+
+    Notification::assertSentTo(
+        $user,
+        MagicLinkLogin::class,
+        function (MagicLinkLogin $notification) use (&$capturedUrl): bool {
+            $capturedUrl = $notification->url;
+
+            return true;
+        }
+    );
+
+    Workspace::forgetCurrent();
+    // Closed, as DeleteWorkspace leaves it until the queued erasing runs.
+    $workspace->delete();
+
+    $this->getJson($capturedUrl)->assertStatus(401);
+    $this->assertFalse(auth()->check(), 'A member of a deleted workspace must not be signed in');
+});

@@ -57,7 +57,7 @@
             "docker compose up -d --wait app postgres redis",
             "docker compose exec -T app php artisan migrate --force",
             "docker compose exec -T app php artisan db:seed --class=SmokeSeeder --force",
-            "npx concurrently -c \"#c4b5fd,#fb7185,#fdba74\" \"docker compose exec -T -e BROADCAST_CONNECTION=log app php artisan queue:listen --tries=1 --timeout=0\" \"docker compose exec -T app php artisan pail --timeout=0\" \"npm run dev\" --names=queue,logs,vite --kill-others"
+            "npx concurrently -c \"#c4b5fd,#fb7185,#fdba74\" \"docker compose exec -T -e BROADCAST_CONNECTION=log app php artisan queue:listen --queue=default,purge --tries=1 --timeout=0\" \"docker compose exec -T app php artisan pail --timeout=0\" \"npm run dev\" --names=queue,logs,vite --kill-others"
         ],
         "dev:full": [
             "Composer\\Config::disableProcessTimeout",
