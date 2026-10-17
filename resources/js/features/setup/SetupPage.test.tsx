@@ -196,21 +196,120 @@ it('skipping goes to step 3 with just the owner', async () => {
     expect(screen.getByRole('button', { name: /Invite your team\s*\(done\)/ })).not.toHaveAttribute('aria-disabled');
 });
 
-it('asks an owner who has not confirmed their email to do so first, and sends nothing', async () => {
+it('asks an owner who has not confirmed their email to do so first, and keeps what they typed', async () => {
     const fetchMock = stubFetch({ email_verified_at: null });
     renderSetup();
     await screen.findByText('Confirm your email first');
     fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
 
     expect(screen.getByText('Invitations go out once you’ve opened the link we sent to alice@acme.co.')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Send 1 invite/ })).toBeNull();
+    // The button would only send, which the server refuses until the email is confirmed: it waits instead.
+    expect(screen.getByRole('button', { name: 'Send 1 invite →' })).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Send the link again' }));
     expect(await screen.findByText('Sent. Check your inbox.')).toBeInTheDocument();
     expect(fetchMock.mock.calls.some(([url]) => url === '/email/verification-notification')).toBe(true);
+    expect(emailInput(1)).toHaveValue('ada@acme.co');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Continue →' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
     expect(await screen.findByRole('heading', { level: 1, name: 'Acme is ready' })).toBeInTheDocument();
     expect(invites).toEqual([]);
+});
+
+it('looks again when the owner comes back from confirming in another tab, or says they have', async () => {
+    let verifiedAt: string | null = null;
+    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes('/v1/me')) return json({ data: { ...owner, email_verified_at: verifiedAt } });
+        if (url.endsWith('/v1/workspace')) return json({ data: workspace });
+        if (url === '/invitations') { invites.push(JSON.parse(String(init?.body))); return json({ invitation: {} }, 201); }
+        return json({ data: {} });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderSetup();
+    await screen.findByText('Confirm your email first');
+    const meCalls = () => fetchMock.mock.calls.filter(([url]) => url.includes('/v1/me')).length;
+
+    const before = meCalls();
+    fireEvent.click(screen.getByRole('button', { name: 'I’ve confirmed it' }));
+    await waitFor(() => expect(meCalls()).toBe(before + 1));
+    expect(screen.getByText('Confirm your email first')).toBeInTheDocument();
+
+    verifiedAt = '2026-10-17T10:05:00Z';
+    fireEvent.focus(window);
+    await waitFor(() => expect(screen.queryByText('Confirm your email first')).toBeNull());
+    fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 invite →' }));
+    expect(await screen.findByRole('heading', { level: 2, name: '1 invitation sent' })).toBeInTheDocument();
+});
+
+it('lists an address invited twice once, with its latest role, and sends a repeated row once', async () => {
+    stubFetch();
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+    fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
+    fireEvent.change(emailInput(2), { target: { value: 'ADA@acme.co' } });
+    expect(screen.getByText('1 address ready')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 invite →' }));
+    await screen.findByText('Step 3 of 3');
+    expect(invites).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Invite more people' }));
+    await screen.findByText('Step 2 of 3');
+    fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
+    fireEvent.change(roleSelect(1), { target: { value: 'guest' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 invite →' }));
+
+    expect(await screen.findByRole('heading', { level: 2, name: '1 invitation sent' })).toBeInTheDocument();
+    expect(screen.getAllByText('ada@acme.co')).toHaveLength(1);
+    expect(within(screen.getByText('ada@acme.co').closest('li') as HTMLElement).getByText('Guest')).toBeInTheDocument();
+});
+
+it('keeps a malformed address on step 2 with why, while the good ones go out', async () => {
+    stubFetch();
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+    fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
+    fireEvent.change(emailInput(2), { target: { value: 'bob@acme' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 invite →' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('This doesn’t look like an email address.');
+    expect(screen.getAllByLabelText(/^Email address \d+$/).map((i) => (i as HTMLInputElement).value)).toEqual(['bob@acme']);
+    expect(invites.map((i) => i.email)).toEqual(['ada@acme.co']);
+});
+
+it('holds Skip and Finish later while invitations are going out', async () => {
+    stubFetch({}, () => undefined);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        if (url.includes('/v1/me')) return json({ data: owner });
+        if (url.endsWith('/v1/workspace')) return json({ data: workspace });
+        if (url === '/invitations') return new Promise<Response>(() => {});
+        return json({ data: {} });
+    }));
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+    fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Send 1 invite →' }));
+
+    expect(await screen.findByRole('button', { name: 'Sending…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Skip for now' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Finish later' })).toBeDisabled();
+});
+
+it('moves the focus to a new row, and to the neighbour of a removed one', async () => {
+    stubFetch();
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+
+    fireEvent.change(emailInput(3), { target: { value: 'sam@acme.co' } });
+    fireEvent.keyDown(emailInput(3), { key: 'Enter' });
+    await waitFor(() => expect(emailInput(4)).toHaveFocus());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove email address 2' }));
+    await waitFor(() => expect(screen.getByLabelText('Email address 2')).toHaveFocus());
+    expect(screen.getByLabelText('Email address 2')).toHaveValue('sam@acme.co');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Remove email address 3' }));
+    await waitFor(() => expect(screen.getByLabelText('Email address 2')).toHaveFocus());
 });
 
 it('step 3 offers the knowledge base, goes back to inviting, and opens the workspace on Today', async () => {
@@ -229,7 +328,7 @@ it('step 3 offers the knowledge base, goes back to inviting, and opens the works
     expect(await screen.findByText('today page')).toBeInTheDocument();
 });
 
-it('opens a support-only workspace on the support desk, and leaves out help articles without the support side', async () => {
+it('opens a support-only workspace on the support desk', async () => {
     stubFetch({ is_developer: false, is_agent: true });
     renderSetup();
     await screen.findByText('Step 2 of 3');
@@ -242,9 +341,11 @@ it('shows no "Next" cards when the workspace runs engineering only', async () =>
     renderSetup();
     await screen.findByText('Step 2 of 3');
     fireEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
-    await screen.findByText('Step 3 of 3');
+    // The "Next" cards render with the rest of step 3, once the workspace has loaded.
+    await screen.findByRole('heading', { level: 1, name: 'Acme is ready' });
 
     expect(screen.queryByText('Next, when you have five minutes')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Write your first help article/ })).toBeNull();
 });
 
 it('sends anyone but the owner home', async () => {

@@ -28,7 +28,7 @@ function slugNote(status: SlugStatus, slug: string, base: string): { pill: strin
         case 'short': return { pill: 'too short', note: 'Workspace URLs need at least three characters.', ink: 'var(--amber-ink)', tint: 'var(--note2)' };
         case 'checking': return { pill: null, note: `Checking ${host}…`, ink: 'var(--fg3)', tint: 'transparent' };
         case 'available': return { pill: 'available', note: `Everyone reaches your workspace at ${host}.`, ink: 'var(--green-ink)', tint: 'var(--sup2)' };
-        case 'taken': return { pill: 'taken', note: `That URL belongs to another workspace. Try ${slug}-hq.`, ink: 'var(--red-ink)', tint: RED_TINT };
+        case 'taken': return { pill: 'taken', note: `That URL belongs to another workspace. ${slug.length <= 60 ? `Try ${slug}-hq.` : 'Try another.'}`, ink: 'var(--red-ink)', tint: RED_TINT };
         case 'reserved': return { pill: 'reserved', note: status.message, ink: 'var(--red-ink)', tint: RED_TINT };
         case 'invalid': return { pill: 'invalid', note: status.message, ink: 'var(--red-ink)', tint: RED_TINT };
         default: return { pill: null, note: 'Lowercase letters, numbers and dashes.', ink: 'var(--fg3)', tint: 'transparent' };
@@ -165,7 +165,10 @@ export default function SignupPage() {
                     {note.pill && <span style={{ ...setupPill(note.ink, note.tint), marginRight: 8 }}>{note.pill}</span>}
                 </div>
             </div>
-            <div id="signup-slug-note" aria-live="polite" style={{ fontSize: 13.5, fontWeight: 600, marginTop: 8, color: note.ink }}>{note.note}</div>
+            {/* A verdict is announced; the "Checking…" between keystrokes is not. */}
+            <div id="signup-slug-note" aria-live="polite" style={{ fontSize: 13.5, fontWeight: 600, marginTop: 8, color: note.ink }}>
+                {status.kind === 'checking' ? <span aria-hidden="true">{note.note}</span> : note.note}
+            </div>
             <FieldErrors messages={errors.slug} />
 
             <div id="signup-mark" style={{ ...setupGroupLabel, marginTop: 28 }}>Workspace mark</div>

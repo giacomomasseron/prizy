@@ -7,7 +7,8 @@ export function baseDomain(): string {
 
 /** A workspace URL from its name: lowercase letters, numbers and single dashes, at most 63 characters. */
 export function slugify(name: string): string {
-    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
+    // Cut to length before trimming the end, so a cut at a separator leaves no dash behind.
+    return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').slice(0, 63).replace(/-+$/, '');
 }
 
 /**

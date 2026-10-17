@@ -76,6 +76,8 @@ html, body { background: var(--bg); color: var(--fg); }
       box takes the input's focus look through :focus-within. ── */
 @keyframes setup-rise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
 @keyframes setup-pop  { from { opacity: 0; transform: scale(.8) rotate(-8deg) } to { opacity: 1; transform: none } }
+/* The dynamic viewport unit keeps the footer bar above Safari's toolbar; 100vh is the fallback. */
+.setup-frame { height: 100vh; height: 100dvh; }
 .setup-rise { animation: setup-rise .4s ease both; }
 .setup-pop  { animation: setup-pop .45s ease both; }
 @media (prefers-reduced-motion: reduce) { .setup-rise, .setup-pop { animation: none; } }

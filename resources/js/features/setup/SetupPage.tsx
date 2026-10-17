@@ -35,6 +35,17 @@ function validEmail(email: string): boolean {
     return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim());
 }
 
+/** The rows with a well-formed address, the first of each address only (the server keeps one invitation per address). */
+function uniqueValid(rows: Row[]): Row[] {
+    const seen = new Set<string>();
+    return rows.filter((r) => {
+        const key = r.email.trim().toLowerCase();
+        if (!validEmail(r.email) || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
+
 function initialsOf(name: string): string {
     return name.trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0).toUpperCase()).join('') || '?';
 }
@@ -67,6 +78,8 @@ export default function SetupPage() {
     const destination = canWorkHelpdesk(me) && !me?.is_developer ? '/support' : '/today';
 
     const nextId = useRef(4);
+    const inputs = useRef(new Map<number, HTMLInputElement>());
+    const [focusRow, setFocusRow] = useState<number | null>(null);
     const [step, setStep] = useState<2 | 3>(2);
     const [rows, setRows] = useState<Row[]>([
         { id: 1, email: '', role: 'admin' },
@@ -83,23 +96,54 @@ export default function SetupPage() {
         if (me && !helpdesk) setRows((rs) => rs.map((r) => (r.role === 'agent' ? { ...r, role: 'member' } : r)));
     }, [me, helpdesk]);
 
+    // A new row, or the neighbour of a removed one, takes the focus once it is drawn.
+    useEffect(() => {
+        if (focusRow === null) return;
+        inputs.current.get(focusRow)?.focus();
+        setFocusRow(null);
+    }, [focusRow, rows]);
+
+    // The confirmation link opens in another tab: look again whenever the owner comes back to this one.
+    useEffect(() => {
+        if (!me || verified) return;
+        const recheck = () => {
+            if (document.visibilityState !== 'hidden') void queryClient.invalidateQueries({ queryKey: ['me'] });
+        };
+        window.addEventListener('focus', recheck);
+        document.addEventListener('visibilitychange', recheck);
+        return () => {
+            window.removeEventListener('focus', recheck);
+            document.removeEventListener('visibilitychange', recheck);
+        };
+    }, [me, verified, queryClient]);
+
     // RequireAuth has loaded the user before this renders; until then there is nothing to set up.
     if (!me) return null;
     if (me.admin_level !== 'owner') return <Navigate to="/" replace />;
 
     const name = workspace?.name ?? '';
     const roles = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => helpdesk || r !== 'agent');
-    const valid = rows.filter((r) => validEmail(r.email));
+    const valid = uniqueValid(rows);
     const canSend = verified && valid.length > 0;
 
     function setRow(id: number, patch: Partial<Row>) {
         setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
     }
     function addRow() {
-        setRows((rs) => [...rs, { id: nextId.current++, email: '', role: 'member' }]);
+        const id = nextId.current++;
+        setRows((rs) => [...rs, { id, email: '', role: 'member' }]);
+        setFocusRow(id);
     }
     function removeRow(id: number) {
-        setRows((rs) => (rs.length > 1 ? rs.filter((r) => r.id !== id) : [{ id: nextId.current++, email: '', role: 'member' }]));
+        const i = rows.findIndex((r) => r.id === id);
+        if (rows.length > 1) {
+            setRows((rs) => rs.filter((r) => r.id !== id));
+            setFocusRow((rows[i + 1] ?? rows[i - 1]).id);
+        } else {
+            const fresh = nextId.current++;
+            setRows([{ id: fresh, email: '', role: 'member' }]);
+            setFocusRow(fresh);
+        }
     }
     function onRowKey(e: KeyboardEvent<HTMLInputElement>, id: number) {
         if (e.key !== 'Enter') return;
@@ -124,27 +168,34 @@ export default function SetupPage() {
     }
 
     async function send() {
-        if (sending) return;
+        if (sending || !canSend) return;
         setSending(true);
-        const failed: Row[] = [];
+        const errors = new Map<number, string>();
         const delivered: Sent[] = [];
-        const seen = new Set<string>();
         for (const row of valid) {
             const email = row.email.trim();
-            if (seen.has(email.toLowerCase())) continue;
-            seen.add(email.toLowerCase());
             try {
                 await sessionPost('/invitations', { email, ...invitationFor(row.role, helpdesk) });
                 delivered.push({ email, role: row.role });
             } catch (err) {
-                failed.push({ ...row, error: inviteError(err) });
+                errors.set(row.id, inviteError(err));
             }
         }
+        // An address that never looked like one was not tried: it stays, with why, so a typo is not lost.
+        for (const row of rows) {
+            if (row.email.trim() && !validEmail(row.email)) errors.set(row.id, 'This doesn’t look like an email address.');
+        }
         setSending(false);
-        setSent((s) => [...s, ...delivered]);
+        // Inviting an address again renews its invitation (with the new role), so it is listed once.
+        setSent((s) => {
+            const byEmail = new Map(s.map((p) => [p.email.toLowerCase(), p]));
+            for (const d of delivered) byEmail.set(d.email.toLowerCase(), d);
+            return [...byEmail.values()];
+        });
         if (delivered.length) void queryClient.invalidateQueries({ queryKey: ['workspace-members'] });
-        if (failed.length) {
-            setRows(failed);
+        const left = rows.filter((r) => errors.has(r.id)).map((r) => ({ ...r, error: errors.get(r.id) }));
+        if (left.length) {
+            setRows(left);
         } else {
             setRows([{ id: nextId.current++, email: '', role: 'member' }]);
             setStep(3);
@@ -184,7 +235,7 @@ export default function SetupPage() {
         done: (step === 3 ? [1, 2] : [1]) as SetupStep[],
         onStep: (n: SetupStep) => { if (n === 2) setStep(2); },
         canGoTo: (n: SetupStep) => n === 2,
-        finishLater: { label: 'Finish later', onClick: () => navigate(destination) },
+        finishLater: { label: 'Finish later', onClick: () => navigate(destination), disabled: sending },
         railLinks,
     };
 
@@ -269,12 +320,12 @@ export default function SetupPage() {
             {...frame}
             footer={{
                 note: 'Invites expire after 3 days.',
-                skip: { label: 'Skip for now', onClick: () => setStep(3) },
-                primary: {
-                    label: sending ? 'Sending…' : canSend ? `Send ${valid.length} invite${valid.length > 1 ? 's' : ''} →` : 'Continue →',
-                    onClick: canSend ? send : () => setStep(3),
-                    disabled: sending,
-                },
+                skip: { label: 'Skip for now', onClick: () => setStep(3), disabled: sending },
+                // With addresses typed, the button only ever sends them: an owner who has not confirmed their email
+                // yet cannot, so it waits (Skip moves on) rather than dropping what they typed.
+                primary: valid.length
+                    ? { label: sending ? 'Sending…' : `Send ${valid.length} invite${valid.length > 1 ? 's' : ''} →`, onClick: send, disabled: sending || !verified }
+                    : { label: 'Continue →', onClick: () => setStep(3) },
             }}
         >
             <h1 style={setupTitle}><span className="hl">Invite your teammates</span></h1>
@@ -287,6 +338,7 @@ export default function SetupPage() {
                         Invitations go out once you’ve opened the link we sent to {me.email}.
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                        <Button size="sm" onClick={() => { void queryClient.invalidateQueries({ queryKey: ['me'] }); }}>I’ve confirmed it</Button>
                         <Button variant="secondary" size="sm" onClick={resendLink} disabled={resend === 'sending'}>Send the link again</Button>
                         <span role="status" style={{ fontSize: 13.5, fontWeight: 600, color: resend === 'failed' ? 'var(--red-ink)' : 'var(--green-ink)' }}>
                             {resend === 'sent' ? 'Sent. Check your inbox.' : resend === 'failed' ? "Couldn't send it. Try again." : ''}
@@ -302,6 +354,7 @@ export default function SetupPage() {
                         <li key={r.id}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                                 <input
+                                    ref={(el) => { if (el) inputs.current.set(r.id, el); else inputs.current.delete(r.id); }}
                                     type="email"
                                     value={r.email}
                                     onChange={(e) => setRow(r.id, { email: e.target.value, error: undefined })}

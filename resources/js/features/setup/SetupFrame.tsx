@@ -17,7 +17,7 @@ export interface SetupFooter {
     /** Shown only when given; the space stays, so the rest of the bar never moves. */
     onBack?: () => void;
     note?: string;
-    skip?: { label: string; onClick: () => void };
+    skip?: { label: string; onClick: () => void; disabled?: boolean };
     /** Without onClick it submits the frame's form (step 1). */
     primary?: { label: string; onClick?: () => void; disabled?: boolean };
 }
@@ -30,7 +30,7 @@ export interface SetupFrameProps {
     onStep?: (n: SetupStep) => void;
     canGoTo?: (n: SetupStep) => boolean;
     /** Where "Finish later" goes; hidden without one (there is nothing to finish before the workspace exists). */
-    finishLater?: { label: string; onClick: () => void };
+    finishLater?: { label: string; onClick: () => void; disabled?: boolean };
     /** The rail's foot: help and account links. */
     railLinks: ReactNode;
     footer: SetupFooter;
@@ -59,7 +59,7 @@ export function SetupFrame({ step, done, onStep, canGoTo, finishLater, railLinks
                 {footer.note && <span style={{ fontSize: 13.5, fontWeight: 500, color: 'var(--fg3)', minWidth: 0 }}>{footer.note}</span>}
                 <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                     {footer.skip && (
-                        <Button variant="ghost" onClick={footer.skip.onClick} style={{ color: 'var(--fg2)', padding: '9px 12px' }}>
+                        <Button variant="ghost" onClick={footer.skip.onClick} disabled={footer.skip.disabled} style={{ color: 'var(--fg2)', padding: '9px 12px' }}>
                             {footer.skip.label}
                         </Button>
                     )}
@@ -79,7 +79,7 @@ export function SetupFrame({ step, done, onStep, canGoTo, finishLater, railLinks
     );
 
     return (
-        <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)', fontSize: 15, lineHeight: 1.5 }}>
+        <div className="setup-frame" style={{ display: 'flex', width: '100%', overflow: 'hidden', color: 'var(--fg)', background: 'var(--bg)', fontSize: 15, lineHeight: 1.5 }}>
             <aside className="setup-aside" aria-label="Setup steps" style={{ width: 300, flexShrink: 0, background: 'var(--bg2)', borderRight: 'var(--line) solid var(--border)', display: 'flex', flexDirection: 'column', padding: '28px 24px 22px', overflow: 'auto', boxSizing: 'border-box' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 40 }}>
                     <BrandMark size={32} />
@@ -149,7 +149,8 @@ export function SetupFrame({ step, done, onStep, canGoTo, finishLater, railLinks
                         <button
                             type="button"
                             onClick={finishLater.onClick}
-                            className="bg-transparent text-fg2 hover:bg-hover hover:text-fg"
+                            disabled={finishLater.disabled}
+                            className="bg-transparent text-fg2 enabled:hover:bg-hover enabled:hover:text-fg disabled:opacity-50"
                             style={{ marginLeft: 'auto', fontSize: 14, fontWeight: 700, padding: '7px 14px', borderRadius: 'var(--radius-pill)', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
                         >
                             {finishLater.label}
