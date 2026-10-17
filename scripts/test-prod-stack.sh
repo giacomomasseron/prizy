@@ -17,6 +17,10 @@ HTTP_PORT="18080"
 HTTPS_PORT="18443"
 ENV_FILE="$(mktemp)"
 export ENV_FILE   # Compose interpolates ${ENV_FILE} in the service's env_file
+# The external PostgreSQL the last section moves the data to, and the dump
+# that carries it there.
+EXTDB="${PROJECT}-extdb"
+DUMP="$(mktemp)"
 FAILED=0
 
 log()  { printf '\033[0;34m==>\033[0m %s\n' "$1"; }
@@ -24,6 +28,9 @@ pass() { printf '  \033[0;32mok\033[0m   %s\n' "$1"; }
 fail() { printf '  \033[0;31mFAIL\033[0m %s\n' "$1"; FAILED=1; }
 
 compose() { docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" -p "$PROJECT" "$@"; }
+# The same stack on an external database: what the installer runs once .env
+# names a DB_HOST other than `postgres`.
+compose_ext() { docker compose -f docker-compose.prod.yml -f docker-compose.external-db.yml --env-file "$ENV_FILE" -p "$PROJECT" "$@"; }
 
 # Teardown must run whatever happens, and must not change the exit code.
 # --profile realtime is required here even though the base run never selects
@@ -33,10 +40,14 @@ compose() { docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" -p 
 # the `storage` volume via the `app` anchor) for one assertion; without the
 # flag here, a plain `down -v` leaves that container behind exited and the
 # shared volume undeletable because that container still references it.
+#
+# The external database goes first: it sits on the stack's network, which
+# `down` cannot remove while a container it does not own is still attached.
 cleanup() {
     local status=$?
+    docker rm -f -v "$EXTDB" >/dev/null 2>&1 || true
     compose --profile realtime down -v --remove-orphans >/dev/null 2>&1 || true
-    rm -f "$ENV_FILE" || true
+    rm -f "$ENV_FILE" "$DUMP" || true
     return $status
 }
 trap cleanup EXIT
@@ -121,6 +132,41 @@ if [ "$set_args" = "config-test-key config-test-host 8080 https" ]; then
     pass "VITE_REVERB_* values carry through build.args when the operator sets them"
 else
     fail "VITE_REVERB_* values carry through build.args when the operator sets them (got: $set_args)"
+fi
+
+log "The database comes from .env, the bundled one unless it names another"
+# An .env from before external databases names none of DB_HOST/DB_PORT/
+# DB_DATABASE/DB_USERNAME (this harness's does not), and must deploy exactly
+# as it did when the compose file hardcoded them. Shell variables win over
+# --env-file in Compose's interpolation, which is how the second run sets them.
+db_default=$(compose config --format json app | jq -r '.services.app.environment
+    | "\(.DB_HOST) \(.DB_PORT) \(.DB_DATABASE) \(.DB_USERNAME)"')
+if [ "$db_default" = "postgres 5432 prizy prizy_app" ]; then
+    pass "with no DB_* in .env, the app talks to the bundled postgres as prizy_app"
+else
+    fail "with no DB_* in .env, the app talks to the bundled postgres as prizy_app (got: $db_default)"
+fi
+db_external=$(DB_HOST=db.example.internal DB_PORT=6432 DB_DATABASE=defaultdb DB_USERNAME=prizy \
+    compose config --format json app | jq -r '.services.app.environment
+    | "\(.DB_HOST) \(.DB_PORT) \(.DB_DATABASE) \(.DB_USERNAME)"')
+if [ "$db_external" = "db.example.internal 6432 defaultdb prizy" ]; then
+    pass "DB_HOST, DB_PORT, DB_DATABASE and DB_USERNAME reach the app"
+else
+    fail "DB_HOST, DB_PORT, DB_DATABASE and DB_USERNAME reach the app (got: $db_external)"
+fi
+# A dependency on a switched-off service makes `config` itself fail, which a
+# bare grep for postgres would read as a pass, so the exit code counts too.
+ext_services_rc=0
+ext_services="$(compose_ext config --services 2>&1)" || ext_services_rc=$?
+if [ "$ext_services_rc" -eq 0 ] && grep -qx migrate <<<"$ext_services" && ! grep -qx postgres <<<"$ext_services"; then
+    pass "docker-compose.external-db.yml switches the bundled postgres off, and nothing depends on it"
+else
+    fail "docker-compose.external-db.yml switches the bundled postgres off, and nothing depends on it (exit $ext_services_rc: $ext_services)"
+fi
+if compose config --services | grep -qx postgres; then
+    pass "without it, the bundled postgres runs"
+else
+    fail "without it, the bundled postgres runs"
 fi
 
 log "Bringing the stack up"
@@ -567,6 +613,139 @@ if [ "$bogus_code" != "200" ]; then
     pass "a bogus hostname (nonexistent-workspace.localhost) is refused a certificate, not served (got '$bogus_code')"
 else
     fail "a bogus hostname (nonexistent-workspace.localhost) is refused a certificate, not served (got '$bogus_code')"
+fi
+
+log "Moving to an external database, step by step as the docs describe it"
+# the docs.prizy.dev/move-to-external-postgresql page, command for command:
+# stop the app, dump the bundled database, prepare the new server with
+# scripts/create-database-role.sql, restore into it as prizy_app, stop the
+# bundled database, and redeploy with the new server in .env. A second
+# postgres:16 on the stack's network stands in for the other machine, and its
+# administrator is `postgres`, as on a server of your own. After the TLS
+# section on purpose: it needs the bundled database to insert its workspace.
+psql_ext() { docker exec -e PGPASSWORD="$ext_admin_pw" "$EXTDB" psql -h 127.0.0.1 -U postgres -d prizy -tAc "$1" 2>/dev/null | tr -d '[:space:]'; }
+ext_admin_pw=$(secret)
+
+compose exec -T postgres psql -U prizy -d prizy -c \
+    "INSERT INTO workspaces (name, slug) VALUES ('Moved', 'moved-db') ON CONFLICT (slug) DO NOTHING;" >/dev/null 2>&1
+
+# Step: stop everything that writes, keep the database running.
+compose --profile realtime stop web app worker scheduler reverb >/dev/null 2>&1 || true
+
+# Step: dump it. Custom format, as the superuser, from inside its container.
+if compose exec -T postgres pg_dump -U prizy -d prizy -Fc > "$DUMP" && [ -s "$DUMP" ]; then
+    pass "the bundled database dumps"
+else
+    fail "the bundled database dumps"
+fi
+
+# Step: the new server. Ready means it answers over TCP: during its first
+# initialisation the image listens on the socket only.
+docker run -d --name "$EXTDB" --network "${PROJECT}_default" --network-alias extdb \
+    -e POSTGRES_PASSWORD="$ext_admin_pw" postgres:16 >/dev/null || true
+ext_ready=0
+for _ in $(seq 1 60); do
+    if docker exec "$EXTDB" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; then
+        ext_ready=1
+        break
+    fi
+    sleep 1
+done
+if [ "$ext_ready" -eq 1 ]; then
+    pass "the external server is up"
+else
+    fail "the external server is up"
+fi
+
+# Step: the role and database, with the password prizy_app already has, so
+# the .env's PRIZY_APP_DB_PASSWORD stays right. Twice: the script says a
+# second run changes nothing but the password.
+role_ok=1
+for _ in 1 2; do
+    docker exec -i -e PGPASSWORD="$ext_admin_pw" "$EXTDB" psql -h 127.0.0.1 -U postgres -d postgres \
+        -v app_password="$app_pw" < scripts/create-database-role.sql >/dev/null 2>&1 || role_ok=0
+done
+if [ "$role_ok" -eq 1 ]; then
+    pass "scripts/create-database-role.sql prepares the server, and runs again cleanly"
+else
+    fail "scripts/create-database-role.sql prepares the server, and runs again cleanly"
+fi
+if [ "$(psql_ext "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname='prizy_app'")" = "f" ]; then
+    pass "the role it creates is no superuser and has no BYPASSRLS"
+else
+    fail "the role it creates is no superuser and has no BYPASSRLS"
+fi
+
+# Step: restore, connected AS prizy_app, so every object it creates is its
+# own. Run from the bundled database's container, which has pg_restore and
+# reaches the new server, as the docs do it.
+restore_err="$(compose exec -T -e PGPASSWORD="$app_pw" postgres pg_restore -h extdb -U prizy_app -d prizy \
+    --no-owner --no-privileges --single-transaction < "$DUMP" 2>&1 >/dev/null)" && restore_rc=0 || restore_rc=$?
+if [ "$restore_rc" -eq 0 ]; then
+    pass "the dump restores into the external server as prizy_app"
+else
+    fail "the dump restores into the external server as prizy_app (exit $restore_rc: $restore_err)"
+fi
+
+# Step: stop the bundled database; its volume stays as the way back.
+compose stop postgres >/dev/null 2>&1 || true
+
+# Step: redeploy on the new server, what the installer does with --db-host.
+printf 'DB_HOST=extdb\n' >> "$ENV_FILE"
+if compose_ext up -d --wait >/dev/null 2>&1; then
+    pass "the stack comes up on the external database"
+else
+    fail "the stack comes up on the external database"
+fi
+if [ "$(compose_ext ps -a --format '{{.Service}} {{.Status}}' | grep -cE '^migrate Exited \(0\)')" -eq 1 ] \
+    && compose_ext logs --no-color migrate 2>/dev/null | grep -q 'The database keeps workspaces apart'; then
+    pass "the migrate step checked the external database and migrated it"
+else
+    fail "the migrate step checked the external database and migrated it"
+fi
+# docker itself, not `compose ps`: a service switched off by a profile is
+# left out of the latter's listing even while its container runs.
+if [ -z "$(docker ps -q --filter "label=com.docker.compose.project=$PROJECT" \
+        --filter label=com.docker.compose.service=postgres --filter status=running)" ]; then
+    pass "the bundled postgres is not running"
+else
+    fail "the bundled postgres is not running"
+fi
+if docker volume inspect "${PROJECT}_pgdata" >/dev/null 2>&1; then
+    pass "the bundled database's volume is kept"
+else
+    fail "the bundled database's volume is kept"
+fi
+if compose_ext exec -T web wget -qO- http://127.0.0.1:2020/health >/dev/null 2>&1; then
+    pass "/health answers on the external database"
+else
+    fail "/health answers on the external database"
+fi
+# The certificate gate answers from the workspaces table, so a 200 for the
+# workspace inserted before the dump, and not for one that never existed,
+# proves the app reads the moved data.
+if compose_ext exec -T web wget -qO- "http://127.0.0.1:2020/_caddy/ask?domain=moved-db.localhost" >/dev/null 2>&1 \
+    && ! compose_ext exec -T web wget -qO- "http://127.0.0.1:2020/_caddy/ask?domain=never-existed.localhost" >/dev/null 2>&1; then
+    pass "the app finds the workspace created before the move"
+else
+    fail "the app finds the workspace created before the move"
+fi
+ext_tables=$(psql_ext "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
+ext_foreign=$(psql_ext "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tableowner <> 'prizy_app'")
+if [ "${ext_tables:-0}" -gt 0 ] && [ "$ext_foreign" = "0" ]; then
+    pass "prizy_app owns every table on the external server ($ext_tables), so RLS applies"
+else
+    fail "prizy_app owns every table on the external server (tables=$ext_tables, owned by others=$ext_foreign)"
+fi
+
+# The check's reason to exist: pointed at the server's superuser, the migrate
+# step refuses rather than run an install whose isolation is off.
+su_rc=0
+su_out="$(compose_ext run --rm -T -e DB_USERNAME=postgres -e DB_PASSWORD="$ext_admin_pw" migrate 2>&1)" || su_rc=$?
+if [ "$su_rc" -ne 0 ] && grep -q 'The role postgres is a superuser' <<<"$su_out"; then
+    pass "the migrate step refuses a superuser, saying why"
+else
+    fail "the migrate step refuses a superuser, saying why (exit $su_rc: $su_out)"
 fi
 
 if [ "$FAILED" -ne 0 ]; then

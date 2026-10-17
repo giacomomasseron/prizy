@@ -207,6 +207,11 @@ before you run it, download it first with
   up on a server.
 - **Real-time:** `--with-realtime` adds WebSockets (Reverb). Without it, the UI
   polls.
+- **External PostgreSQL:** `--db-host` runs Prizy against a PostgreSQL 16+
+  server on another machine, or a managed one, instead of the bundled container.
+  Create its role with `scripts/create-database-role.sql` first. The docs cover
+  [setting it up](https://docs.prizy.dev/external-postgresql) and
+  [moving an existing install](https://docs.prizy.dev/move-to-external-postgresql).
 - **Evaluating:** `--mail=log` sends no email, so portal magic-link sign-in,
   email verification, invitations and CSAT requests won't work.
 - **Previewing:** `--dry-run` prints the plan and changes nothing.

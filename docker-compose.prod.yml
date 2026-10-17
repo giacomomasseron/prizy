@@ -35,17 +35,18 @@ x-app: &app
   image: prizy/app:${PRIZY_VERSION:-local}
   env_file: ["${ENV_FILE:-.env}"]
   environment:
-    # Fixed by this stack's topology, not by the installation — every
-    # deployment of this compose file talks Postgres over the compose
-    # network as prizy_app, never anything else, so these are not left to
-    # the installer's .env (unlike .env.production.example, which lists
-    # DB_CONNECTION alongside the same fixed values as a human-readable
-    # reference, not as the actual source of truth here).
+    # The bundled `postgres` service unless .env names an external server
+    # (the installer's --db-host; see docker-compose.external-db.yml). The
+    # defaults are the bundled topology, so an .env written before external
+    # databases existed deploys exactly as it did. Whichever server it is,
+    # the app connects as a role that is no superuser and owns the tables,
+    # or row-level security does not apply: the migrate service checks that
+    # before it migrates.
     DB_CONNECTION: pgsql
-    DB_HOST: postgres
-    DB_PORT: "5432"
-    DB_DATABASE: prizy
-    DB_USERNAME: prizy_app
+    DB_HOST: ${DB_HOST:-postgres}
+    DB_PORT: ${DB_PORT:-5432}
+    DB_DATABASE: ${DB_DATABASE:-prizy}
+    DB_USERNAME: ${DB_USERNAME:-prizy_app}
     DB_PASSWORD: ${PRIZY_APP_DB_PASSWORD:?PRIZY_APP_DB_PASSWORD is required}
     REDIS_HOST: redis
     REDIS_PORT: "6379"
@@ -98,20 +99,23 @@ services:
     environment:
       REDIS_PASSWORD: ${REDIS_PASSWORD}
 
-  # One-shot: waits for Postgres, migrates, exits. The long-running services
-  # wait on its successful completion, so exactly one container ever runs
-  # migrations. `up -d --wait` alone only redeploys whatever image is already
-  # tagged `prizy/app:${PRIZY_VERSION:-local}` — on an upgrade that means
-  # pairing it with `--build` or a new PRIZY_VERSION, otherwise compose finds
-  # the old image already present, builds nothing, and silently redeploys the
-  # old code (migrations included).
+  # One-shot: waits for Postgres, checks it, migrates, exits. The long-running
+  # services wait on its successful completion, so exactly one container ever
+  # runs migrations. `up -d --wait` alone only redeploys whatever image is
+  # already tagged `prizy/app:${PRIZY_VERSION:-local}` — on an upgrade that
+  # means pairing it with `--build` or a new PRIZY_VERSION, otherwise compose
+  # finds the old image already present, builds nothing, and silently
+  # redeploys the old code (migrations included).
+  #
+  # No depends_on on `postgres`: with an external database that service is
+  # switched off (docker-compose.external-db.yml), and a dependency on a
+  # switched-off service is an error on every Compose version older than
+  # 2.20. tenancy:check-database waits for the server itself instead, then
+  # refuses a role that row-level security would not apply to.
   migrate:
     <<: *app
     restart: "no"
-    command: ["php", "artisan", "migrate", "--force"]
-    depends_on:
-      postgres:
-        condition: service_healthy
+    command: ["sh", "-c", "php artisan tenancy:check-database --wait=120 && exec php artisan migrate --force"]
 
   app:
     <<: *app

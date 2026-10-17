@@ -89,6 +89,26 @@ validate_mail_choice() {
     esac
 }
 
+# A hostname, an IPv4 address or a bare IPv6 one — what PostgreSQL takes as
+# its host. No port: that is --db-port, and `db.internal:5432` is refused
+# rather than read as a hostname. A colon is only allowed in an IPv6 address,
+# which always has at least two.
+validate_db_host() {
+    case "${1:-}" in
+        *:*:*) printf '%s' "$1" | grep -qE '^[0-9A-Fa-f:.]+$' ;;
+        *)     printf '%s' "${1:-}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' ;;
+    esac
+}
+
+validate_port() {
+    [[ "${1:-}" =~ ^[0-9]{1,5}$ ]] && [ "$((10#$1))" -ge 1 ] && [ "$((10#$1))" -le 65535 ]
+}
+
+# A plain PostgreSQL identifier, so the name needs no quoting anywhere.
+validate_db_identifier() {
+    printf '%s' "${1:-}" | grep -qE '^[A-Za-z_][A-Za-z0-9_]{0,62}$'
+}
+
 # Hex for everything except APP_KEY, which Laravel requires as base64: + 32
 # raw bytes. Hex matters: a password containing $ or # would be re-read by
 # Compose's dotenv parser as an interpolation or a comment.
@@ -221,6 +241,10 @@ REPO_URL="${PRIZY_REPO_URL:-https://github.com/giacomomasseron/prizy.git}"
 OPT_DOMAIN=""; OPT_EMAIL=""; OPT_MAIL=""; OPT_REF=""; OPT_SOURCE_PATH=""
 OPT_DRY_RUN=0; OPT_WITH_REALTIME=0; OPT_REQUIRE_DNS=0; OPT_YES=0
 OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"
+OPT_DB_HOST=""; OPT_DB_PORT=""; OPT_DB_NAME=""; OPT_DB_USER=""
+# collect_database_settings sets these; compose_cmd and write_env_file read
+# them. DB_EXTERNAL=0 is the bundled `postgres` service.
+DB_EXTERNAL=0; DB_HOST=""; DB_PORT=""; DB_NAME=""; DB_USER=""; DB_PASSWORD=""
 # preflight sets OS_FAMILY and ensure_docker reads it; start_logging sets LOG_FILE.
 OS_FAMILY=""; LOG_FILE=""
 
@@ -272,6 +296,17 @@ Source:
                          release, its newest vX.Y.Z tag).
   --source-path <dir>    Install from a local directory instead of cloning.
 
+Database (default: a PostgreSQL container on this machine):
+  --db-host <host>       Use an external PostgreSQL 16+ server instead. Its role
+                         must be no superuser and have no BYPASSRLS, or
+                         workspaces would see each other's data: create it with
+                         scripts/create-database-role.sql. The password comes
+                         from PRIZY_DB_PASSWORD, or is asked for. Re-runs keep
+                         using the external server without the flag.
+  --db-port <port>       Default 5432.
+  --db-name <name>       Default prizy.
+  --db-user <role>       Default prizy_app.
+
 Options:
   --with-realtime        Run Reverb and compile the WebSocket client into the
                          bundle. Without it the frontend polls.
@@ -299,6 +334,13 @@ Environment:
   PRIZY_SMTP_USERNAME    SMTP username. Leave unset for an auth-less relay.
   PRIZY_SMTP_PASSWORD    SMTP password. Leave unset for an auth-less relay.
   PRIZY_SMTP_ENCRYPTION  tls, ssl or none (default tls).
+  PRIZY_DB_HOST          Same as --db-host.
+  PRIZY_DB_PORT          Same as --db-port.
+  PRIZY_DB_NAME          Same as --db-name.
+  PRIZY_DB_USER          Same as --db-user.
+  PRIZY_DB_PASSWORD      Password of the external database's role. Required
+                         under --yes on the first external-database run; after
+                         that it defaults to the one in the install's .env.
   PRIZY_ROOT             Install directory (default /data/prizy).
   PRIZY_REPO_URL         Repository to clone under --ref.
 
@@ -328,6 +370,10 @@ parse_args() {
             --source-path)  OPT_SOURCE_PATH="${2:-}"; shift 2 ;;
             --http-port)    OPT_HTTP_PORT="${2:-}"; shift 2 ;;
             --https-port)   OPT_HTTPS_PORT="${2:-}"; shift 2 ;;
+            --db-host)      OPT_DB_HOST="${2:-}"; shift 2 ;;
+            --db-port)      OPT_DB_PORT="${2:-}"; shift 2 ;;
+            --db-name)      OPT_DB_NAME="${2:-}"; shift 2 ;;
+            --db-user)      OPT_DB_USER="${2:-}"; shift 2 ;;
             --with-realtime) OPT_WITH_REALTIME=1; shift ;;
             --require-dns)  OPT_REQUIRE_DNS=1; shift ;;
             --dry-run)      OPT_DRY_RUN=1; shift ;;
@@ -342,6 +388,10 @@ parse_args() {
     OPT_DOMAIN="${OPT_DOMAIN:-${PRIZY_DOMAIN:-}}"
     OPT_EMAIL="${OPT_EMAIL:-${PRIZY_EMAIL:-}}"
     OPT_MAIL="${OPT_MAIL:-${PRIZY_MAIL:-}}"
+    OPT_DB_HOST="${OPT_DB_HOST:-${PRIZY_DB_HOST:-}}"
+    OPT_DB_PORT="${OPT_DB_PORT:-${PRIZY_DB_PORT:-}}"
+    OPT_DB_NAME="${OPT_DB_NAME:-${PRIZY_DB_NAME:-}}"
+    OPT_DB_USER="${OPT_DB_USER:-${PRIZY_DB_USER:-}}"
 
     [ -n "$OPT_REF" ] && [ -n "$OPT_SOURCE_PATH" ] && \
         die "--ref and --source-path are mutually exclusive; pick where the source comes from"
@@ -360,6 +410,18 @@ parse_args() {
     fi
     if [ -n "$OPT_MAIL" ] && ! validate_mail_choice "$OPT_MAIL"; then
         die "--mail must be 'smtp' or 'log' (got '$OPT_MAIL')"
+    fi
+    if [ -n "$OPT_DB_HOST" ] && ! validate_db_host "$OPT_DB_HOST"; then
+        die "--db-host must be a hostname or an IP address, with no port (got '$OPT_DB_HOST')"
+    fi
+    if [ -n "$OPT_DB_PORT" ] && ! validate_port "$OPT_DB_PORT"; then
+        die "--db-port must be a number from 1 to 65535 (got '$OPT_DB_PORT')"
+    fi
+    if [ -n "$OPT_DB_NAME" ] && ! validate_db_identifier "$OPT_DB_NAME"; then
+        die "--db-name must be letters, digits and underscores, not starting with a digit (got '$OPT_DB_NAME')"
+    fi
+    if [ -n "$OPT_DB_USER" ] && ! validate_db_identifier "$OPT_DB_USER"; then
+        die "--db-user must be letters, digits and underscores, not starting with a digit (got '$OPT_DB_USER')"
     fi
 }
 
@@ -1003,6 +1065,62 @@ unseedable_default() {
     printf -v "$var" '%s' ""
 }
 
+# Decides which PostgreSQL the stack runs against: the bundled container, or
+# the external server --db-host names. Sets DB_EXTERNAL, and for an external
+# server DB_HOST, DB_PORT, DB_NAME, DB_USER and DB_PASSWORD.
+#
+# External is remembered by the .env itself: a DB_HOST there other than
+# `postgres` keeps a re-run without --db-host on the external server.
+# Forgetting it would start the empty bundled database and migrate into it,
+# an install that comes up healthy with every workspace gone.
+collect_database_settings() {
+    local live="$SOURCE_DIR/.env" cur_pass
+    DB_HOST="${OPT_DB_HOST:-$(env_value_of DB_HOST "$live")}"
+    DB_HOST="${DB_HOST:-postgres}"
+
+    if [ "$DB_HOST" = postgres ]; then
+        DB_EXTERNAL=0
+        if [ -n "$OPT_DB_PORT$OPT_DB_NAME$OPT_DB_USER" ]; then
+            die "--db-port, --db-name and --db-user are for an external database; pass --db-host too"
+        fi
+        return 0
+    fi
+
+    DB_EXTERNAL=1
+    DB_PORT="${OPT_DB_PORT:-$(env_value_of DB_PORT "$live")}"
+    DB_NAME="${OPT_DB_NAME:-$(env_value_of DB_DATABASE "$live")}"
+    DB_USER="${OPT_DB_USER:-$(env_value_of DB_USERNAME "$live")}"
+    DB_PORT="${DB_PORT:-5432}"; DB_NAME="${DB_NAME:-prizy}"; DB_USER="${DB_USER:-prizy_app}"
+    # The flags were checked in parse_args; this catches a bad value the .env
+    # carries, before Compose is handed it.
+    validate_db_host "$DB_HOST" || die "DB_HOST in $live must be a hostname or an IP address, with no port (got '$DB_HOST')"
+    validate_port "$DB_PORT" || die "DB_PORT in $live must be a number from 1 to 65535 (got '$DB_PORT')"
+    validate_db_identifier "$DB_NAME" || die "DB_DATABASE in $live must be letters, digits and underscores (got '$DB_NAME')"
+    validate_db_identifier "$DB_USER" || die "DB_USERNAME in $live must be letters, digits and underscores (got '$DB_USER')"
+    info "database: the external PostgreSQL server at $DB_HOST:$DB_PORT (database $DB_NAME, role $DB_USER)"
+
+    if [ "$OPT_DRY_RUN" -eq 1 ]; then
+        info "DRY-RUN: would ask for the password of $DB_USER unless PRIZY_DB_PASSWORD is set"
+        return 0
+    fi
+    # A release from before external databases has no such file, and Compose
+    # would fail on it only at the very end, after the build.
+    [ -f "$SOURCE_DIR/docker-compose.external-db.yml" ] || \
+        die "this version of Prizy cannot use an external database ($SOURCE_DIR has no docker-compose.external-db.yml); install a newer release"
+
+    # On a move from the bundled database, the .env holds the password the
+    # bundled prizy_app had: the move's instructions reuse it on the new
+    # server, so Enter keeps it.
+    cur_pass="$(env_value_of PRIZY_APP_DB_PASSWORD "$live")"
+    unseedable_default cur_pass PRIZY_APP_DB_PASSWORD
+    prompt_dotenvable DB_PASSWORD "Password of the database role $DB_USER" "${PRIZY_DB_PASSWORD:-$cur_pass}" 0 PRIZY_APP_DB_PASSWORD 1
+    # Empty is an answer only when the .env already holds a password this
+    # installer would not offer back: write_env_file then leaves it alone.
+    if [ -z "$DB_PASSWORD" ] && [ -z "$(env_value_of PRIZY_APP_DB_PASSWORD "$live")" ]; then
+        die "an external database needs the password of $DB_USER; set PRIZY_DB_PASSWORD or type it when asked"
+    fi
+}
+
 collect_mail_settings() {
     case "$OPT_MAIL" in
         log)
@@ -1182,6 +1300,26 @@ write_env_file() {
     set_env_value HTTP_PORT "$OPT_HTTP_PORT"
     set_env_value HTTPS_PORT "$OPT_HTTPS_PORT"
 
+    # docker-compose.prod.yml reads these four. For the bundled database they
+    # are fixed by its topology: writing them every time keeps a value the
+    # stack used to ignore (it hardcoded them) from now reaching it.
+    if [ "$DB_EXTERNAL" -eq 1 ]; then
+        reject_undotenvable PRIZY_APP_DB_PASSWORD "$DB_PASSWORD"
+        set_env_value DB_HOST "$DB_HOST"
+        set_env_value DB_PORT "$DB_PORT"
+        set_env_value DB_DATABASE "$DB_NAME"
+        set_env_value DB_USERNAME "$DB_USER"
+        # After the secrets loop above, so a fresh install's generated
+        # password is replaced by the external role's. Empty never overwrites,
+        # as for the SMTP settings below.
+        if [ -n "$DB_PASSWORD" ]; then set_env_value PRIZY_APP_DB_PASSWORD "$DB_PASSWORD"; fi
+    else
+        set_env_value DB_HOST postgres
+        set_env_value DB_PORT 5432
+        set_env_value DB_DATABASE prizy
+        set_env_value DB_USERNAME prizy_app
+    fi
+
     if [ "$OPT_MAIL" = "smtp" ]; then
         # Defended here too, not just in collect_mail_settings: write_env_file
         # is what scripts/test-install.sh drives directly, and this is the
@@ -1218,6 +1356,7 @@ write_env_file() {
 
 configure() {
     step 5 "Configuration"
+    collect_database_settings
     collect_mail_settings
     if [ "$OPT_DRY_RUN" -eq 1 ]; then
         info "DRY-RUN: would write $SOURCE_DIR/.env for $OPT_DOMAIN, generating ${#SECRET_KEYS[@]} secrets"
@@ -1295,6 +1434,9 @@ check_dns() {
 
 compose_cmd() {
     printf 'docker compose -f docker-compose.prod.yml'
+    if [ "$DB_EXTERNAL" -eq 1 ]; then
+        printf ' -f docker-compose.external-db.yml'
+    fi
     if [ "$OPT_WITH_REALTIME" -eq 1 ]; then
         printf ' --profile realtime'
     fi
@@ -1335,7 +1477,14 @@ deploy() {
     # before app/web start, and every long-running service has a real health
     # probe, so this returns only once the stack is genuinely serving.
     info "starting the stack (migrate runs first, then app and web)"
-    run sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"
+    if ! run sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"; then
+        # The likeliest failure is the migrate step, and on an external database
+        # its own check says exactly what is wrong (unreachable, a superuser,
+        # tables owned by another role). Compose itself only says it exited 1.
+        warn "the stack did not start. The last lines of the migrate step:"
+        sh -c "cd '$SOURCE_DIR' && $(compose_cmd) logs --no-color --tail=30 migrate" >&2 || true
+        die "the stack did not start; fix what the lines above say, then re-run this installer"
+    fi
 }
 
 # deploy() ran `up -d --wait`, which returns only once every service has passed
@@ -1383,6 +1532,9 @@ report() {
     printf '\n\033[0;32mPrizy is installed.\033[0m\n\n'
     printf '    Open \033[1mhttps://%s/signup\033[0m and create your first workspace.\n\n' "$OPT_DOMAIN"
     printf '    Source and configuration: %s\n' "$SOURCE_DIR"
+    if [ "$DB_EXTERNAL" -eq 1 ]; then
+        printf '    Database: %s:%s (database %s, role %s)\n' "$DB_HOST" "$DB_PORT" "$DB_NAME" "$DB_USER"
+    fi
     printf '    Logs:    cd %s && %s logs -f\n' "$SOURCE_DIR" "$(compose_cmd)"
     printf '    Upgrade: re-run this installer\n\n'
 
