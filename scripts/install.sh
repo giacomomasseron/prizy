@@ -1494,15 +1494,19 @@ deploy() {
     # ${build_env[*]} is deliberate word-splitting of KEY=VALUE pairs into
     # separate words for `env`, not array-into-string interpolation; safe
     # unquoted here because every value is domain/port/hex with no spaces.
-    run sh -c "cd '$SOURCE_DIR' && env ${build_env[*]} $(compose_cmd) build"
+    # CLOUDFLARE_API_TOKEN picks the web image's Caddy build, and a token the
+    # operator exports for other Cloudflare tools must not stand in for .env.
+    run env -u CLOUDFLARE_API_TOKEN \
+        sh -c "cd '$SOURCE_DIR' && env ${build_env[*]} $(compose_cmd) build"
 
     # `up -d --wait` is the whole deploy: the one-shot migrate service runs
     # before app/web start, and every long-running service has a real health
     # probe, so this returns only once the stack is genuinely serving.
     info "starting the stack (migrate runs first, then app and web)"
     # Compose reads DB_HOST and friends from the shell before the .env, so a
-    # stray export in the operator's shell would point the app elsewhere.
-    if ! run env -u DB_HOST -u DB_PORT -u DB_DATABASE -u DB_USERNAME \
+    # stray export in the operator's shell would point the app elsewhere, or
+    # (CLOUDFLARE_API_TOKEN) switch Caddy to a certificate .env never asked for.
+    if ! run env -u DB_HOST -u DB_PORT -u DB_DATABASE -u DB_USERNAME -u CLOUDFLARE_API_TOKEN \
             sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"; then
         # Compose itself says little more than which service failed. The
         # likeliest is the migrate step, whose database check says exactly

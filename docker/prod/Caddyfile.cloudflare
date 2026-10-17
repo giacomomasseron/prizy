@@ -22,10 +22,10 @@ import Caddyfile
 
 	tls {
 		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-		# Docker's own resolver can answer from a cache made before the TXT
-		# record existed, and Caddy waits until it sees the record; Cloudflare's
-		# public resolvers see its own zones at once (the plugin's
-		# troubleshooting notes recommend this).
+		# Find the zone and its nameservers through public resolvers, not the
+		# host's, which may know the domain from /etc/hosts or a local DNS
+		# server and send the lookup astray (the plugin's troubleshooting notes
+		# recommend this).
 		resolvers 1.1.1.1 1.0.0.1
 	}
 }

@@ -56,6 +56,10 @@ x-app: &app
     # MissingAppKeyException — `up -d --wait` would return 0 on a fatally
     # misconfigured install.
     APP_KEY: ${APP_KEY:?APP_KEY is required}
+    # env_file hands every PHP role the whole .env, but only Caddy (the web
+    # service) uses this token, and it can rewrite the domain's DNS. Blanked
+    # here, so a compromised app process cannot read it.
+    CLOUDFLARE_API_TOKEN: ""
   volumes:
     - storage:/var/www/html/storage
 
@@ -139,9 +143,11 @@ services:
       # (Dockerfile.prod reads it with :-stock).
       args:
         CADDY_DNS_PROVIDER: ${CLOUDFLARE_API_TOKEN:+cloudflare}
-    # The two builds get different tags, so adding the token makes Compose
-    # build the plugin image on the next `up`, instead of starting the stock
-    # one, which cannot load Caddyfile.cloudflare and would never start.
+    # The two builds get different tags, so the first `up` after adding the
+    # token builds the plugin image instead of starting the stock one, which
+    # cannot load Caddyfile.cloudflare. After that, each tag holds whatever
+    # was last built under it, which may be an older release: apply a token
+    # change with the installer or `up -d --build`, which rebuild the image.
     image: prizy/web:${PRIZY_VERSION:-local}${CLOUDFLARE_API_TOKEN:+-cloudflare}
     # The image's own command, with the Caddyfile chosen by the token.
     command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile${CLOUDFLARE_API_TOKEN:+.cloudflare}", "--adapter", "caddyfile"]

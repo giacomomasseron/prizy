@@ -235,7 +235,7 @@ Add `APP_BASE_DOMAIN=app.com` to `.env`.
 `activated()` skips workspaces whose `activated_at` is NULL. Only a sign-up made with
 `SIGNUP_REQUIRES_ACTIVATION=true` (meant for a public cloud) starts that way: its hostname
 resolves to no tenant, and `AuthorizeTlsHost` refuses it a certificate (with the optional wildcard
-certificate it has one, but still serves nothing), until the owner clicks the emailed link,
+certificate it has one, but still serves no workspace), until the owner clicks the emailed link,
 which sets `activated_at`. `workspaces:prune-pending` (hourly) deletes any
 still pending after 24 hours, freeing the slug. Off, the default, every workspace is live
 from the start.

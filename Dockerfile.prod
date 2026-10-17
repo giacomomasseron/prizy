@@ -130,8 +130,9 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
 # prove a wildcard certificate over DNS. BuildKit builds only the stages the
 # target uses, so a stock build never pulls or runs the Go toolchain.
 #
-# The plugin is pinned so a rebuild cannot pick up a new one unseen. v0.2.4 is
-# the first to accept the cfat_/cfut_ token format Cloudflare issues today.
+# The plugin is pinned so a rebuild cannot pick up a new release of it unseen;
+# Caddy itself follows the 2.x tag, like the stock stage. v0.2.4 is the first
+# to accept the cfat_/cfut_ token format Cloudflare issues today.
 # ---------------------------------------------------------------------------
 FROM caddy:2-builder-alpine AS caddy-cloudflare-build
 RUN xcaddy build --with github.com/caddy-dns/cloudflare@v0.2.4

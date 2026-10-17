@@ -2076,8 +2076,10 @@ echo "\$PWD|\$*" >> "$E2E_DIR/docker-calls"
 case "\$*" in
     version*)                echo 27.3.1 ;;
     "compose version")       [ -z "\${STUB_NO_COMPOSE:-}" ] || exit 1 ;;
-    *" build")               echo "VITE_REVERB_APP_KEY=\${VITE_REVERB_APP_KEY:-}" >> "$E2E_DIR/build-env" ;;
+    *" build")               echo "VITE_REVERB_APP_KEY=\${VITE_REVERB_APP_KEY:-}" >> "$E2E_DIR/build-env"
+                             echo "build \${CLOUDFLARE_API_TOKEN:-unset}" >> "$E2E_DIR/cloudflare-env" ;;
     *" up -d --wait")        echo "\${DB_DATABASE:-unset} \${DB_USERNAME:-unset}" >> "$E2E_DIR/up-env"
+                             echo "up \${CLOUDFLARE_API_TOKEN:-unset}" >> "$E2E_DIR/cloudflare-env"
                              [ -z "\${STUB_UP_FAILS:-}" ] || exit 1 ;;
     *" ps -a")               echo "migrate-1  Exited (1) 2 seconds ago" ;;
     *" logs "*" migrate")    echo "migrate-1  | The role prizy is a superuser." ;;
@@ -2320,14 +2322,21 @@ else
 fi
 
 # Compose prefers the shell to the .env, so the installer must not hand it a
-# DB_DATABASE or DB_USERNAME the operator's shell happens to export.
-: > "$E2E_DIR/up-env"
+# DB_DATABASE or DB_USERNAME the operator's shell happens to export, nor a
+# CLOUDFLARE_API_TOKEN, which would switch Caddy to a wildcard certificate.
+: > "$E2E_DIR/up-env"; : > "$E2E_DIR/cloudflare-env"
 stray_rc=0
-stray_out="$(e2e_install "$E2E_DIR/stray-env" PRIZY_SMTP_HOST=smtp.example.org DB_DATABASE=stray DB_USERNAME=stray)" || stray_rc=$?
+stray_out="$(e2e_install "$E2E_DIR/stray-env" PRIZY_SMTP_HOST=smtp.example.org DB_DATABASE=stray DB_USERNAME=stray \
+    CLOUDFLARE_API_TOKEN=stray)" || stray_rc=$?
 if [ "$stray_rc" -eq 0 ] && [ "$(cat "$E2E_DIR/up-env")" = "unset unset" ]; then
     pass "DB_* exported in the operator's shell never reach Compose"
 else
     fail "DB_* exported in the operator's shell never reach Compose (exit $stray_rc; seen '$(cat "$E2E_DIR/up-env")': $stray_out)"
+fi
+if [ "$stray_rc" -eq 0 ] && [ "$(tr '\n' ' ' < "$E2E_DIR/cloudflare-env")" = "build unset up unset " ]; then
+    pass "a CLOUDFLARE_API_TOKEN exported in the operator's shell reaches neither the build nor the deploy"
+else
+    fail "a CLOUDFLARE_API_TOKEN exported in the operator's shell reaches neither the build nor the deploy (exit $stray_rc; seen '$(cat "$E2E_DIR/cloudflare-env")')"
 fi
 
 # The README's one-liner, end to end and not dry: piped into bash in a

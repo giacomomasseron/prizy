@@ -21,7 +21,13 @@ export ENV_FILE   # Compose interpolates ${ENV_FILE} in the service's env_file
 # that carries it there.
 EXTDB="${PROJECT}-extdb"
 DUMP="$(mktemp)"
+# The same environment plus a Cloudflare API token, for the wildcard checks.
+CF_ENV_FILE="$(mktemp)"
 FAILED=0
+# Shell variables beat --env-file in Compose's interpolation, and people who
+# use Cloudflare's own tools often export this one: it would bring the whole
+# stack up in wildcard mode.
+unset CLOUDFLARE_API_TOKEN
 
 log()  { printf '\033[0;34m==>\033[0m %s\n' "$1"; }
 pass() { printf '  \033[0;32mok\033[0m   %s\n' "$1"; }
@@ -31,6 +37,9 @@ compose() { docker compose -f docker-compose.prod.yml --env-file "$ENV_FILE" -p 
 # The same stack on an external database: what the installer runs once .env
 # names a DB_HOST other than `postgres`.
 compose_ext() { docker compose -f docker-compose.prod.yml -f docker-compose.external-db.yml --env-file "$ENV_FILE" -p "$PROJECT" "$@"; }
+# The token in the env file, as the installer's .env has it, which is also
+# what every PHP role's env_file reads.
+compose_cf() { ENV_FILE="$CF_ENV_FILE" docker compose -f docker-compose.prod.yml --env-file "$CF_ENV_FILE" -p "$PROJECT" "$@"; }
 
 # Teardown must run whatever happens, and must not change the exit code.
 # --profile realtime is required here even though the base run never selects
@@ -47,7 +56,7 @@ cleanup() {
     local status=$?
     docker rm -f -v "$EXTDB" >/dev/null 2>&1 || true
     compose --profile realtime down -v --remove-orphans >/dev/null 2>&1 || true
-    rm -f "$ENV_FILE" "$DUMP" || true
+    rm -f "$ENV_FILE" "$DUMP" "$CF_ENV_FILE" || true
     return $status
 }
 trap cleanup EXIT
@@ -177,6 +186,7 @@ log "A Cloudflare API token switches Caddy to one wildcard certificate"
 # load the config it is told to run. A made-up token in the cfat_ format of
 # Cloudflare's account tokens: nothing in this script ever sends it anywhere.
 cf_token="cfat_$(openssl rand -hex 20)"
+{ cat "$ENV_FILE"; echo "CLOUDFLARE_API_TOKEN=$cf_token"; } > "$CF_ENV_FILE"
 web_image="prizy/web:${PRIZY_VERSION:-local}"
 web_shape='.services.web | "\(.image)|\(.build.args.CADDY_DNS_PROVIDER // "")|\(.command | join(" "))"'
 web_stock=$(compose config --format json web | jq -r "$web_shape")
@@ -185,18 +195,29 @@ if [ "$web_stock" = "$web_image||caddy run --config /etc/caddy/Caddyfile --adapt
 else
     fail "without a token, the web service is stock Caddy reading Caddyfile (got: $web_stock)"
 fi
-web_cf=$(CLOUDFLARE_API_TOKEN="$cf_token" compose config --format json web | jq -r "$web_shape")
+web_cf=$(compose_cf config --format json web | jq -r "$web_shape")
 if [ "$web_cf" = "$web_image-cloudflare|cloudflare|caddy run --config /etc/caddy/Caddyfile.cloudflare --adapter caddyfile" ]; then
     pass "with a token, the web service builds the plugin image under its own tag and reads Caddyfile.cloudflare"
 else
     fail "with a token, the web service builds the plugin image under its own tag and reads Caddyfile.cloudflare (got: $web_cf)"
 fi
-web_cf_env=$(CLOUDFLARE_API_TOKEN="$cf_token" compose config --format json web | jq -r '.services.web.environment
+web_cf_env=$(compose_cf config --format json web | jq -r '.services.web.environment
     | "\(.CLOUDFLARE_API_TOKEN) \(.APP_BASE_DOMAIN)"')
 if [ "$web_cf_env" = "$cf_token localhost" ]; then
     pass "Caddy gets the token and APP_BASE_DOMAIN, which the wildcard is for"
 else
     fail "Caddy gets the token and APP_BASE_DOMAIN, which the wildcard is for (got: $web_cf_env)"
+fi
+# The token can rewrite the domain's DNS, and env_file hands the whole .env
+# to every PHP role; none of them may end up holding it. Every service but
+# web, reverb included, and a non-empty list so a broken config cannot pass.
+cf_holders=$(compose_cf --profile realtime config --format json | jq -r --arg t "$cf_token" '
+    [.services | to_entries[] | select(.key != "web")]
+    | if length == 0 then "no services" else map(select(.value.environment.CLOUDFLARE_API_TOKEN == $t) | .key) | join(" ") end')
+if [ -z "$cf_holders" ]; then
+    pass "no service but Caddy gets the token, though every PHP role reads .env"
+else
+    fail "no service but Caddy gets the token, though every PHP role reads .env (held by: $cf_holders)"
 fi
 
 log "Bringing the stack up"
@@ -587,10 +608,12 @@ fi
 # so the made-up $cf_token from the config checks above is enough. Built here,
 # after the stack, so the runtime stage is cached and only Caddy is new.
 cf_image="${web_image}-cloudflare"
-if CLOUDFLARE_API_TOKEN="$cf_token" compose build web >/dev/null 2>&1; then
+cf_build_rc=0
+cf_build="$(compose_cf build web 2>&1)" || cf_build_rc=$?
+if [ "$cf_build_rc" -eq 0 ]; then
     pass "with a token, the web image builds"
 else
-    fail "with a token, the web image builds"
+    fail "with a token, the web image builds (exit $cf_build_rc): $(tail -n 20 <<<"$cf_build")"
 fi
 cf_caddy() {
     docker run --rm -e APP_BASE_DOMAIN=example.org -e ACME_EMAIL=ops@example.org \
@@ -606,9 +629,9 @@ else
     fail "with a token, Caddy carries the Cloudflare DNS plugin"
 fi
 if grep -qx 'http.handlers.file_server' <<<"$stock_modules" && ! grep -qx 'dns.providers.cloudflare' <<<"$stock_modules"; then
-    pass "without one, Caddy is the stock build, so a self-hosted install compiles no plugin"
+    pass "without one, the web image is stock Caddy, carrying no plugin"
 else
-    fail "without one, Caddy is the stock build, so a self-hosted install compiles no plugin"
+    fail "without one, the web image is stock Caddy, carrying no plugin"
 fi
 cf_validate="$(cf_caddy validate --config /etc/caddy/Caddyfile.cloudflare --adapter caddyfile 2>&1)" || true
 if grep -q 'Valid configuration' <<<"$cf_validate"; then
@@ -623,6 +646,15 @@ if [ "$cf_wildcard" = "cloudflare {env.CLOUDFLARE_API_TOKEN}" ]; then
     pass "*.APP_BASE_DOMAIN gets one certificate, proven over Cloudflare DNS with the token read at run time"
 else
     fail "*.APP_BASE_DOMAIN gets one certificate, proven over Cloudflare DNS with the token read at run time (got: $cf_wildcard)"
+fi
+# The wildcard site must serve the application like every other site, not
+# just hold a certificate: FastCGI to the app, and Reverb's routes.
+cf_routes=$(jq -r '.apps.http.servers[].routes[]? | select(.match[0].host == ["*.example.org"])
+    | tostring | "\(contains("\"protocol\":\"fastcgi\"")) \(contains("reverb:8080"))"' <<<"$cf_adapt" 2>/dev/null || true)
+if [ "$cf_routes" = "true true" ]; then
+    pass "the wildcard site serves the application, Reverb included"
+else
+    fail "the wildcard site serves the application, Reverb included (got: $cf_routes)"
 fi
 if [ -n "$cf_adapt" ] && ! grep -qF "$cf_token" <<<"$cf_adapt"; then
     pass "the token itself is never written into Caddy's config"
