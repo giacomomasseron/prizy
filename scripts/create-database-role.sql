@@ -13,7 +13,9 @@
 -- which PostgreSQL skips for superusers and BYPASSRLS roles. The role created
 -- here is neither. It runs the migrations itself, so it owns every table, and
 -- the policies still bind it because they are forced. These are the grants
--- docker/prod/postgres-init.sh gives the bundled database.
+-- docker/prod/postgres-init.sh gives the bundled database, less its default
+-- privileges on tables an administrator creates: every table Prizy uses is
+-- its own, and the deploy's check refuses one that is not.
 \set ON_ERROR_STOP on
 
 \if :{?app_password}
@@ -47,11 +49,3 @@ GRANT ALL PRIVILEGES ON DATABASE :"app_database" TO :"app_user";
 -- Migrations create the tables, and the pgcrypto and citext extensions, in
 -- the public schema, as the app's role.
 GRANT ALL ON SCHEMA public TO :"app_user";
-
--- A safety net for anything the administrator creates in public later.
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES TO :"app_user";
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL ON SEQUENCES TO :"app_user";
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT EXECUTE ON FUNCTIONS TO :"app_user";

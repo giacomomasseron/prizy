@@ -627,7 +627,7 @@ psql_ext() { docker exec -e PGPASSWORD="$ext_admin_pw" "$EXTDB" psql -h 127.0.0.
 ext_admin_pw=$(secret)
 
 compose exec -T postgres psql -U prizy -d prizy -c \
-    "INSERT INTO workspaces (name, slug) VALUES ('Moved', 'moved-db') ON CONFLICT (slug) DO NOTHING;" >/dev/null 2>&1
+    "INSERT INTO workspaces (name, slug) VALUES ('Moved', 'moved-db') ON CONFLICT (slug) DO NOTHING;" >/dev/null 2>&1 || true
 
 # Step: stop everything that writes, keep the database running.
 compose --profile realtime stop web app worker scheduler reverb >/dev/null 2>&1 || true
@@ -658,17 +658,27 @@ else
 fi
 
 # Step: the role and database, with the password prizy_app already has, so
-# the .env's PRIZY_APP_DB_PASSWORD stays right. Twice: the script says a
-# second run changes nothing but the password.
+# the .env's PRIZY_APP_DB_PASSWORD stays right. Run first as a managed
+# service's administrator would: a role that may create roles and databases
+# but is no superuser, PostgreSQL 16's narrowest case. Twice, since the
+# script says a second run changes nothing but the password; then once as
+# the superuser, as on a server of your own.
+ext_dbadmin_pw=$(secret)
+docker exec -e PGPASSWORD="$ext_admin_pw" "$EXTDB" psql -h 127.0.0.1 -U postgres -d postgres \
+    -c "CREATE ROLE dbadmin LOGIN CREATEROLE CREATEDB PASSWORD '$ext_dbadmin_pw'" >/dev/null 2>&1 || true
 role_ok=1
-for _ in 1 2; do
-    docker exec -i -e PGPASSWORD="$ext_admin_pw" "$EXTDB" psql -h 127.0.0.1 -U postgres -d postgres \
+for admin in dbadmin dbadmin postgres; do
+    case "$admin" in
+        postgres) admin_pw="$ext_admin_pw" ;;
+        *)        admin_pw="$ext_dbadmin_pw" ;;
+    esac
+    docker exec -i -e PGPASSWORD="$admin_pw" "$EXTDB" psql -h 127.0.0.1 -U "$admin" -d postgres \
         -v app_password="$app_pw" < scripts/create-database-role.sql >/dev/null 2>&1 || role_ok=0
 done
 if [ "$role_ok" -eq 1 ]; then
-    pass "scripts/create-database-role.sql prepares the server, and runs again cleanly"
+    pass "scripts/create-database-role.sql runs as a non-superuser administrator, again, and as the superuser"
 else
-    fail "scripts/create-database-role.sql prepares the server, and runs again cleanly"
+    fail "scripts/create-database-role.sql runs as a non-superuser administrator, again, and as the superuser"
 fi
 if [ "$(psql_ext "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname='prizy_app'")" = "f" ]; then
     pass "the role it creates is no superuser and has no BYPASSRLS"
@@ -679,8 +689,9 @@ fi
 # Step: restore, connected AS prizy_app, so every object it creates is its
 # own. Run from the bundled database's container, which has pg_restore and
 # reaches the new server, as the docs do it.
+restore_rc=0
 restore_err="$(compose exec -T -e PGPASSWORD="$app_pw" postgres pg_restore -h extdb -U prizy_app -d prizy \
-    --no-owner --no-privileges --single-transaction < "$DUMP" 2>&1 >/dev/null)" && restore_rc=0 || restore_rc=$?
+    --no-owner --no-privileges --single-transaction < "$DUMP" 2>&1 >/dev/null)" || restore_rc=$?
 if [ "$restore_rc" -eq 0 ]; then
     pass "the dump restores into the external server as prizy_app"
 else
@@ -698,7 +709,7 @@ else
     fail "the stack comes up on the external database"
 fi
 if [ "$(compose_ext ps -a --format '{{.Service}} {{.Status}}' | grep -cE '^migrate Exited \(0\)')" -eq 1 ] \
-    && compose_ext logs --no-color migrate 2>/dev/null | grep -q 'The database keeps workspaces apart'; then
+    && compose_ext logs --no-color migrate 2>/dev/null | grep -q 'Database check passed: PostgreSQL 16.* at extdb:5432, role prizy_app'; then
     pass "the migrate step checked the external database and migrated it"
 else
     fail "the migrate step checked the external database and migrated it"
@@ -730,8 +741,8 @@ if compose_ext exec -T web wget -qO- "http://127.0.0.1:2020/_caddy/ask?domain=mo
 else
     fail "the app finds the workspace created before the move"
 fi
-ext_tables=$(psql_ext "SELECT count(*) FROM pg_tables WHERE schemaname='public'")
-ext_foreign=$(psql_ext "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tableowner <> 'prizy_app'")
+ext_tables=$(psql_ext "SELECT count(*) FROM pg_tables WHERE schemaname='public'" || true)
+ext_foreign=$(psql_ext "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tableowner <> 'prizy_app'" || true)
 if [ "${ext_tables:-0}" -gt 0 ] && [ "$ext_foreign" = "0" ]; then
     pass "prizy_app owns every table on the external server ($ext_tables), so RLS applies"
 else

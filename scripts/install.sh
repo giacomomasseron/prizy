@@ -92,11 +92,22 @@ validate_mail_choice() {
 # A hostname, an IPv4 address or a bare IPv6 one — what PostgreSQL takes as
 # its host. No port: that is --db-port, and `db.internal:5432` is refused
 # rather than read as a hostname. A colon is only allowed in an IPv6 address,
-# which always has at least two.
+# which always has at least two. Underscores are allowed: internal DNS and
+# container names use them.
 validate_db_host() {
     case "${1:-}" in
+        *..*)  return 1 ;;
         *:*:*) printf '%s' "$1" | grep -qE '^[0-9A-Fa-f:.]+$' ;;
-        *)     printf '%s' "${1:-}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' ;;
+        *)     printf '%s' "${1:-}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9_.-]*[A-Za-z0-9])?$' ;;
+    esac
+}
+
+# True for a host that, from inside a container, is the container itself:
+# Prizy would wait two minutes for a database that can never answer there.
+is_loopback_host() {
+    case "${1:-}" in
+        localhost|localhost.*|127.*|::1|0.0.0.0) return 0 ;;
+        *) return 1 ;;
     esac
 }
 
@@ -1074,14 +1085,20 @@ unseedable_default() {
 # Forgetting it would start the empty bundled database and migrate into it,
 # an install that comes up healthy with every workspace gone.
 collect_database_settings() {
-    local live="$SOURCE_DIR/.env" cur_pass
-    DB_HOST="${OPT_DB_HOST:-$(env_value_of DB_HOST "$live")}"
+    local live="$SOURCE_DIR/.env" cur_pass stored_host allow_empty=0
+    stored_host="$(env_value_of DB_HOST "$live")"
+    DB_HOST="${OPT_DB_HOST:-$stored_host}"
     DB_HOST="${DB_HOST:-postgres}"
 
     if [ "$DB_HOST" = postgres ]; then
         DB_EXTERNAL=0
         if [ -n "$OPT_DB_PORT$OPT_DB_NAME$OPT_DB_USER" ]; then
             die "--db-port, --db-name and --db-user are for an external database; pass --db-host too"
+        fi
+        if [ -n "$stored_host" ] && [ "$stored_host" != postgres ]; then
+            warn "going back from $stored_host to the bundled database. It holds the data it had"
+            warn "before the move, nothing written since, and its prizy_app must still have the"
+            warn "password PRIZY_APP_DB_PASSWORD holds."
         fi
         return 0
     fi
@@ -1097,6 +1114,9 @@ collect_database_settings() {
     validate_port "$DB_PORT" || die "DB_PORT in $live must be a number from 1 to 65535 (got '$DB_PORT')"
     validate_db_identifier "$DB_NAME" || die "DB_DATABASE in $live must be letters, digits and underscores (got '$DB_NAME')"
     validate_db_identifier "$DB_USER" || die "DB_USERNAME in $live must be letters, digits and underscores (got '$DB_USER')"
+    if is_loopback_host "$DB_HOST"; then
+        die "the database host $DB_HOST would be Prizy's own container: it runs in Docker, where localhost is the container itself. Use the database server's network address, or leave --db-host out to use the bundled database"
+    fi
     info "database: the external PostgreSQL server at $DB_HOST:$DB_PORT (database $DB_NAME, role $DB_USER)"
 
     if [ "$OPT_DRY_RUN" -eq 1 ]; then
@@ -1112,11 +1132,14 @@ collect_database_settings() {
     # bundled prizy_app had: the move's instructions reuse it on the new
     # server, so Enter keeps it.
     cur_pass="$(env_value_of PRIZY_APP_DB_PASSWORD "$live")"
+    # Empty is an answer when the .env already holds a password: the one
+    # unseedable_default will not offer back (a `$` written by hand, as the
+    # refusals advise) is then left alone by write_env_file, and under --yes
+    # an empty answer must not stop the run that should keep it.
+    [ -z "$cur_pass" ] || allow_empty=1
     unseedable_default cur_pass PRIZY_APP_DB_PASSWORD
-    prompt_dotenvable DB_PASSWORD "Password of the database role $DB_USER" "${PRIZY_DB_PASSWORD:-$cur_pass}" 0 PRIZY_APP_DB_PASSWORD 1
-    # Empty is an answer only when the .env already holds a password this
-    # installer would not offer back: write_env_file then leaves it alone.
-    if [ -z "$DB_PASSWORD" ] && [ -z "$(env_value_of PRIZY_APP_DB_PASSWORD "$live")" ]; then
+    prompt_dotenvable DB_PASSWORD "Password of the database role $DB_USER" "${PRIZY_DB_PASSWORD:-$cur_pass}" "$allow_empty" PRIZY_APP_DB_PASSWORD 1
+    if [ -z "$DB_PASSWORD" ] && [ "$allow_empty" -eq 0 ]; then
         die "an external database needs the password of $DB_USER; set PRIZY_DB_PASSWORD or type it when asked"
     fi
 }
@@ -1477,11 +1500,15 @@ deploy() {
     # before app/web start, and every long-running service has a real health
     # probe, so this returns only once the stack is genuinely serving.
     info "starting the stack (migrate runs first, then app and web)"
-    if ! run sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"; then
-        # The likeliest failure is the migrate step, and on an external database
-        # its own check says exactly what is wrong (unreachable, a superuser,
-        # tables owned by another role). Compose itself only says it exited 1.
-        warn "the stack did not start. The last lines of the migrate step:"
+    # Compose reads DB_HOST and friends from the shell before the .env, so a
+    # stray export in the operator's shell would point the app elsewhere.
+    if ! run env -u DB_HOST -u DB_PORT -u DB_DATABASE -u DB_USERNAME \
+            sh -c "cd '$SOURCE_DIR' && $(compose_cmd) up -d --wait"; then
+        # Compose itself says little more than which service failed. The
+        # likeliest is the migrate step, whose database check says exactly
+        # what is wrong (unreachable, refused, a superuser, foreign tables).
+        warn "the stack did not start. Each service's state, then the last lines of the migrate step:"
+        sh -c "cd '$SOURCE_DIR' && $(compose_cmd) ps -a" >&2 || true
         sh -c "cd '$SOURCE_DIR' && $(compose_cmd) logs --no-color --tail=30 migrate" >&2 || true
         die "the stack did not start; fix what the lines above say, then re-run this installer"
     fi

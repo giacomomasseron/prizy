@@ -1060,10 +1060,10 @@ else
 fi
 
 log "An external database: what --db-* accept"
-for good_host in db.internal 10.0.0.5 fd00::5 my-db-1.example.com; do
+for good_host in db.internal 10.0.0.5 fd00::5 my-db-1.example.com db_primary.internal; do
     if validate_db_host "$good_host"; then pass "'$good_host' is a database host"; else fail "'$good_host' is a database host"; fi
 done
-for bad_host in "db.internal:5432" "-db" "db internal" "postgres://db" ""; do
+for bad_host in "db.internal:5432" "-db" "db internal" "postgres://db" "db..internal" ""; do
     if validate_db_host "$bad_host"; then fail "'$bad_host' is refused as a database host"; else pass "'$bad_host' is refused as a database host"; fi
 done
 for good_port in 5432 1 65535 06432; do
@@ -1075,24 +1075,38 @@ done
 for good_name in prizy prizy_app defaultdb _x; do
     if validate_db_identifier "$good_name"; then pass "$good_name is a database identifier"; else fail "$good_name is a database identifier"; fi
 done
+# SC2016: the literal $ is the point.
+# shellcheck disable=SC2016
 for bad_name in 1prizy prizy-app "pri zy" 'p$y' ""; do
     if validate_db_identifier "$bad_name"; then fail "'$bad_name' is refused as a database identifier"; else pass "'$bad_name' is refused as a database identifier"; fi
 done
 
+bad_db_rc=0
 bad_db_out="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
-    --db-host db.internal:5432 2>&1)" && bad_db_rc=0 || bad_db_rc=$?
+    --db-host db.internal:5432 2>&1)" || bad_db_rc=$?
 if [ "$bad_db_rc" -ne 0 ] && printf '%s' "$bad_db_out" | grep -qF 'ERROR: --db-host must be a hostname or an IP address, with no port'; then
     pass "a --db-host with a port in it is refused, saying where the port goes"
 else
     fail "a --db-host with a port in it is refused, saying where the port goes (exit $bad_db_rc: $bad_db_out)"
 fi
 
+for loopback in localhost 127.0.0.1 ::1; do
+    loop_rc=0
+    loop_out="$(bash "$INSTALL_SH" --dry-run --domain example.com --email ops@example.com --mail=log \
+        --source-path "$(dirname "$0")/.." --db-host "$loopback" 2>&1)" || loop_rc=$?
+    if [ "$loop_rc" -ne 0 ] && printf '%s' "$loop_out" | grep -qF "ERROR: the database host $loopback would be Prizy's own container"; then
+        pass "--db-host $loopback is refused: inside Docker it is the app's own container"
+    else
+        fail "--db-host $loopback is refused: inside Docker it is the app's own container (exit $loop_rc: $loop_out)"
+    fi
+done
+
 log "An external database: which one a run uses"
 DB_TMP="$(mktemp -d -p "$TMP")"
 touch "$DB_TMP/docker-compose.external-db.yml"
 
 # shellcheck disable=SC2030,SC2031
-if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0
+if ( SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0; DB_EXTERNAL=1
      collect_database_settings >/dev/null 2>&1
      [ "$DB_EXTERNAL" -eq 0 ] ); then
     pass "with no --db-host and no .env, the bundled database is used"
@@ -1140,6 +1154,26 @@ else
     fail "moving from the bundled database, the password defaults to the one prizy_app already had"
 fi
 
+# The installer's refusals tell an operator to write a password it cannot
+# carry (a `$`) into the .env by hand, and promise later runs leave it alone.
+# An unattended re-run must keep that promise, not stop for want of one.
+# SC2016: the literal $ is the point.
+# shellcheck disable=SC2016
+printf 'DB_HOST=10.0.0.5\nPRIZY_APP_DB_PASSWORD=pa$s-by-hand\n' > "$DB_TMP/.env"
+cp "$(dirname "$0")/../.env.production.example" "$DB_TMP/.env.production.example"
+hand_rc=0
+# shellcheck disable=SC2030,SC2031
+(
+    SOURCE_DIR="$DB_TMP"; OPT_YES=1; OPT_DRY_RUN=0
+    OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
+    OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0
+    collect_database_settings
+    write_env_file "$DB_TMP/.env" "$DB_TMP/.env.production.example"
+) >/dev/null 2>&1 || hand_rc=$?
+assert_eq "an unattended re-run keeps a hand-written password with a \$ in it" \
+    "0 10.0.0.5 pa\$s-by-hand" \
+    "$hand_rc $(env_value_of DB_HOST "$DB_TMP/.env") $(env_value_of PRIZY_APP_DB_PASSWORD "$DB_TMP/.env")"
+
 log "An external database: the .env and the compose command"
 EXT_TMP="$(mktemp -d -p "$TMP")"
 cp "$(dirname "$0")/../.env.production.example" "$EXT_TMP/.env.production.example"
@@ -1164,7 +1198,8 @@ assert_eq "a fresh external-database install writes the server, and the role's p
 assert_eq "an empty collected password leaves the .env's alone" "Ext-pass-5" \
     "$(env_value_of PRIZY_APP_DB_PASSWORD "$EXT_TMP/.env")"
 
-# shellcheck disable=SC2030,SC2031
+# SC2016: the literal $ is the point.
+# shellcheck disable=SC2030,SC2031,SC2016
 (
     OPT_DOMAIN="example.com"; OPT_EMAIL="ops@example.com"; OPT_MAIL="log"
     OPT_HTTP_PORT="80"; OPT_HTTPS_PORT="443"; OPT_WITH_REALTIME=0; OPT_DRY_RUN=0
@@ -2042,7 +2077,9 @@ case "\$*" in
     version*)                echo 27.3.1 ;;
     "compose version")       [ -z "\${STUB_NO_COMPOSE:-}" ] || exit 1 ;;
     *" build")               echo "VITE_REVERB_APP_KEY=\${VITE_REVERB_APP_KEY:-}" >> "$E2E_DIR/build-env" ;;
-    *" up -d --wait")        [ -z "\${STUB_UP_FAILS:-}" ] || exit 1 ;;
+    *" up -d --wait")        echo "\${DB_DATABASE:-unset} \${DB_USERNAME:-unset}" >> "$E2E_DIR/up-env"
+                             [ -z "\${STUB_UP_FAILS:-}" ] || exit 1 ;;
+    *" ps -a")               echo "migrate-1  Exited (1) 2 seconds ago" ;;
     *" logs "*" migrate")    echo "migrate-1  | The role prizy is a superuser." ;;
 esac
 exit 0
@@ -2262,23 +2299,35 @@ fi
 : > "$E2E_DIR/docker-calls"
 back_rc=0
 back_out="$(e2e_install "$move_root" -- --db-host postgres)" || back_rc=$?
-if [ "$back_rc" -eq 0 ] \
+if [ "$back_rc" -eq 0 ] && printf '%s' "$back_out" | grep -qF 'going back from 10.0.0.3 to the bundled database' \
     && [ "$(env_of DB_HOST "$move_root/source/.env") $(env_of DB_PORT "$move_root/source/.env") $(env_of DB_DATABASE "$move_root/source/.env") $(env_of DB_USERNAME "$move_root/source/.env") $(env_of PRIZY_APP_DB_PASSWORD "$move_root/source/.env")" = "postgres 5432 prizy prizy_app $move_pw" ] \
     && grep -qxF "$move_root/source|compose -f docker-compose.prod.yml up -d --wait" "$E2E_DIR/docker-calls"; then
-    pass "--db-host postgres goes back to the bundled database, password unchanged"
+    pass "--db-host postgres goes back to the bundled database, password unchanged, and says what that means"
 else
-    fail "--db-host postgres goes back to the bundled database, password unchanged (exit $back_rc: $back_out)"
+    fail "--db-host postgres goes back to the bundled database, password unchanged, and says what that means (exit $back_rc: $back_out)"
 fi
 
 # A stack that does not come up shows why: the migrate step's own lines, which
 # on an external database carry the check's refusal.
 fail_rc=0
 fail_out="$(e2e_install "$E2E_DIR/up-fails" STUB_UP_FAILS=1 PRIZY_SMTP_HOST=smtp.example.org)" || fail_rc=$?
-if [ "$fail_rc" -ne 0 ] && printf '%s' "$fail_out" | grep -qF 'The role prizy is a superuser.' \
+if [ "$fail_rc" -ne 0 ] && printf '%s' "$fail_out" | grep -qF 'migrate-1  Exited (1)' \
+    && printf '%s' "$fail_out" | grep -qF 'The role prizy is a superuser.' \
     && printf '%s' "$fail_out" | grep -qF 'ERROR: the stack did not start'; then
-    pass "a stack that does not start ends on the migrate step's last lines and an ERROR"
+    pass "a stack that does not start ends on each service's state, the migrate step's last lines and an ERROR"
 else
-    fail "a stack that does not start ends on the migrate step's last lines and an ERROR (exit $fail_rc: $fail_out)"
+    fail "a stack that does not start ends on each service's state, the migrate step's last lines and an ERROR (exit $fail_rc: $fail_out)"
+fi
+
+# Compose prefers the shell to the .env, so the installer must not hand it a
+# DB_DATABASE or DB_USERNAME the operator's shell happens to export.
+: > "$E2E_DIR/up-env"
+stray_rc=0
+stray_out="$(e2e_install "$E2E_DIR/stray-env" PRIZY_SMTP_HOST=smtp.example.org DB_DATABASE=stray DB_USERNAME=stray)" || stray_rc=$?
+if [ "$stray_rc" -eq 0 ] && [ "$(cat "$E2E_DIR/up-env")" = "unset unset" ]; then
+    pass "DB_* exported in the operator's shell never reach Compose"
+else
+    fail "DB_* exported in the operator's shell never reach Compose (exit $stray_rc; seen '$(cat "$E2E_DIR/up-env")': $stray_out)"
 fi
 
 # The README's one-liner, end to end and not dry: piped into bash in a

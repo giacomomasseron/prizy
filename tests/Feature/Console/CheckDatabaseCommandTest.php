@@ -32,12 +32,14 @@ function checkDatabaseRun(array $options = []): array
 afterEach(function (): void {
     DB::purge('check_superuser');
     DB::purge('check_nowhere');
+    DB::purge('check_wrong_password');
 });
 
 it('passes on the app role, which owns every table', function (): void {
     [$code, $output] = checkDatabaseRun();
 
     expect($code)->toBe(0)
+        ->and($output)->toContain('Database check passed: PostgreSQL 16')
         ->and($output)->toContain('role prizy_app (no superuser, no BYPASSRLS)')
         ->and($output)->not->toContain('owner of all 0 table(s)');
 });
@@ -62,7 +64,7 @@ it('refuses a table another role owns, naming it', function (): void {
     }
 
     expect($code)->toBe(1)
-        ->and($output)->toContain('1 table(s) in the public schema belong to another role than prizy_app')
+        ->and($output)->toContain('1 table(s) in the public schema belong to a role other than prizy_app')
         ->and($output)->toContain('check_database_foreign (owned by prizy)');
 });
 
@@ -72,5 +74,18 @@ it('says where it looked when the server cannot be reached', function (): void {
     ]);
 
     expect($code)->toBe(1)
-        ->and($output)->toContain('Cannot reach the database at 127.0.0.1:1, database prizy_test, as prizy_app');
+        ->and($output)->toContain('Could not connect to the database at 127.0.0.1:1, database prizy_test, as prizy_app');
+});
+
+it('gives up at once when the server refuses the password, rather than wait it out', function (): void {
+    $started = microtime(true);
+    [$code, $output] = checkDatabaseRun([
+        '--database' => checkDatabaseConnection('check_wrong_password', ['password' => 'not-the-password']),
+        '--wait'     => 60,
+    ]);
+
+    expect($code)->toBe(1)
+        ->and($output)->toContain('refused the connection')
+        ->and($output)->toContain('password authentication failed')
+        ->and(microtime(true) - $started)->toBeLessThan(5.0);
 });

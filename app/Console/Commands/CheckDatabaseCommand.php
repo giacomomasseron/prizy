@@ -27,9 +27,17 @@ final class CheckDatabaseCommand extends Command
         {--database= : The connection to check (default: the default connection)}
         {--wait=0 : Seconds to keep retrying while the server cannot be reached}';
 
-    protected $description = 'Check the database keeps workspaces apart: PostgreSQL 16+, a role that is no superuser, has no BYPASSRLS and owns every table.';
+    protected $description = 'Check the database suits Prizy: PostgreSQL 16+, and a role that is no superuser, has no BYPASSRLS and owns every table.';
 
     private const MIN_SERVER_VERSION = 160000;
+
+    /**
+     * Errors the server itself sent back: it is up, and waiting will not
+     * change its answer. Anything else (refused, unresolvable, timed out) may
+     * be a server still starting, or a container not created yet. A server
+     * set to answer in another language just gets the full wait.
+     */
+    private const REFUSALS = '/password authentication failed|no pg_hba\.conf entry|(database|role) "[^"]*" does not exist/';
 
     public function handle(): int
     {
@@ -53,8 +61,17 @@ final class CheckDatabaseCommand extends Command
         $server = $db->selectOne(
             "SELECT current_setting('server_version_num')::int AS number, current_setting('server_version') AS version",
         );
+        // Tables an extension owns (PostGIS's spatial_ref_sys) are not Prizy's
+        // and no migration touches them.
         $tables = $db->select(
-            "SELECT tablename, tableowner FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename",
+            "SELECT c.relname AS tablename, pg_get_userbyid(c.relowner) AS tableowner
+             FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+             WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p')
+               AND NOT EXISTS (
+                   SELECT 1 FROM pg_depend d
+                   WHERE d.classid = 'pg_class'::regclass AND d.objid = c.oid AND d.deptype = 'e'
+               )
+             ORDER BY c.relname",
         );
         $foreign = array_values(array_filter($tables, fn (object $table): bool => $table->tableowner !== $role->name));
 
@@ -75,9 +92,10 @@ final class CheckDatabaseCommand extends Command
         if ($foreign !== []) {
             $first = $foreign[0];
             $problems[] = sprintf(
-                '%d table(s) in the public schema belong to another role than %s, starting with %s (owned by %s). '
-                .'Only a table\'s owner can alter it, so the next migration would fail on it. '
-                .'Restore the data connected as %s with pg_restore --no-owner, or run ALTER TABLE ... OWNER TO %s for each.',
+                '%d table(s) in the public schema belong to a role other than %s, starting with %s (owned by %s). '
+                .'Only a table\'s owner can alter it, so a migration that changes one would fail. '
+                .'If they came from a restore, restore again connected as %s with pg_restore --no-owner, or run '
+                .'ALTER TABLE ... OWNER TO %s for each. If they are not Prizy\'s, move them out of the public schema.',
                 count($foreign), $role->name, $first->tablename, $first->tableowner, $role->name, $role->name,
             );
         }
@@ -89,15 +107,16 @@ final class CheckDatabaseCommand extends Command
             return self::FAILURE;
         }
 
+        $config = (array) config("database.connections.{$name}");
         $this->info(sprintf(
-            'The database keeps workspaces apart: PostgreSQL %s, role %s (no superuser, no BYPASSRLS), owner of all %d table(s).',
-            $server->version, $role->name, count($tables),
+            'Database check passed: PostgreSQL %s at %s:%s, role %s (no superuser, no BYPASSRLS), owner of all %d table(s).',
+            $server->version, $config['host'] ?? '?', $config['port'] ?? '?', $role->name, count($tables),
         ));
 
         return self::SUCCESS;
     }
 
-    /** The open connection, or null once $wait seconds pass without reaching the server. */
+    /** The open connection, or null when the server refuses it or $wait seconds pass without one. */
     private function connect(string $name, int $wait): ?ConnectionInterface
     {
         $config = (array) config("database.connections.{$name}");
@@ -117,8 +136,13 @@ final class CheckDatabaseCommand extends Command
             } catch (Throwable $e) {
                 DB::purge($name);
 
+                if (preg_match(self::REFUSALS, $e->getMessage()) === 1) {
+                    $this->error("The database at {$where} refused the connection: {$e->getMessage()}");
+
+                    return null;
+                }
                 if (microtime(true) >= $deadline) {
-                    $this->error("Cannot reach the database at {$where}: {$e->getMessage()}");
+                    $this->error("Could not connect to the database at {$where}: {$e->getMessage()}");
 
                     return null;
                 }
