@@ -56,6 +56,10 @@ x-app: &app
     # MissingAppKeyException — `up -d --wait` would return 0 on a fatally
     # misconfigured install.
     APP_KEY: ${APP_KEY:?APP_KEY is required}
+    # env_file hands every PHP role the whole .env, but only Caddy (the web
+    # service) uses this token, and it can rewrite the domain's DNS. Blanked
+    # here, so a compromised app process cannot read it.
+    CLOUDFLARE_API_TOKEN: ""
   volumes:
     - storage:/var/www/html/storage
 
@@ -126,12 +130,27 @@ services:
       redis:
         condition: service_healthy
 
+  # A CLOUDFLARE_API_TOKEN in .env switches Caddy to one wildcard certificate
+  # for every workspace subdomain (docker/prod/Caddyfile.cloudflare). Three
+  # settings below follow it, each through ${CLOUDFLARE_API_TOKEN:+...}, which
+  # is the text after `+` when the token is set and empty when it is not.
   web:
     build:
       context: .
       dockerfile: Dockerfile.prod
       target: web
-    image: prizy/web:${PRIZY_VERSION:-local}
+      # Selects the Caddy build with the DNS plugin; empty, the stock one
+      # (Dockerfile.prod reads it with :-stock).
+      args:
+        CADDY_DNS_PROVIDER: ${CLOUDFLARE_API_TOKEN:+cloudflare}
+    # The two builds get different tags, so the first `up` after adding the
+    # token builds the plugin image instead of starting the stock one, which
+    # cannot load Caddyfile.cloudflare. After that, each tag holds whatever
+    # was last built under it, which may be an older release: apply a token
+    # change with the installer or `up -d --build`, which rebuild the image.
+    image: prizy/web:${PRIZY_VERSION:-local}${CLOUDFLARE_API_TOKEN:+-cloudflare}
+    # The image's own command, with the Caddyfile chosen by the token.
+    command: ["caddy", "run", "--config", "/etc/caddy/Caddyfile${CLOUDFLARE_API_TOKEN:+.cloudflare}", "--adapter", "caddyfile"]
     restart: unless-stopped
     ports:
       # HTTP_BIND/HTTPS_BIND default to every interface (0.0.0.0); the test
@@ -157,9 +176,9 @@ services:
     # did not actually differ between those two states either (verified: both
     # adapted to the same global `internal` issuer), so the bare form is no
     # longer load-bearing here — it is kept because it is the correct shape
-    # for a variable no real deploy sets. The other
-    # two keep explicit `=` values; mixing forms in one `environment:` list
-    # is fine, only mixing list and mapping syntax is not.
+    # for a variable no real deploy sets. The others keep explicit `=`
+    # values; mixing forms in one `environment:` list is fine, only mixing
+    # list and mapping syntax is not.
     environment:
       - CADDY_SITE_ADDRESS=${CADDY_SITE_ADDRESS:-https://}
       # No fallback: an empty value would still need to become SOME string to
@@ -175,6 +194,10 @@ services:
       # purpose (see the note above this block), though omitted and empty
       # now behave the same either way; no real deploy sets this variable.
       - CADDY_TEST_ISSUER
+      # Read only by Caddyfile.cloudflare: the wildcard's domain, and the
+      # token Caddy writes the DNS challenge with. Stock Caddy ignores both.
+      - APP_BASE_DOMAIN=${APP_BASE_DOMAIN:-}
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN:-}
     volumes:
       # Losing this means re-issuing every workspace's certificate, and
       # Let's Encrypt rate-limits that.

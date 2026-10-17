@@ -1,0 +1,31 @@
+# What Caddy runs when .env has a CLOUDFLARE_API_TOKEN (docker-compose.prod.yml
+# picks this file then, and Dockerfile.prod builds Caddy with the plugin it
+# needs): everything in Caddyfile, plus one wildcard certificate for every
+# workspace subdomain.
+#
+# Without it, each {slug}.APP_BASE_DOMAIN gets its own certificate on first
+# visit: the first request waits for it, Let's Encrypt allows about 50 new
+# ones a week per registered domain (past that, Caddy falls back to ZeroSSL),
+# and every certificate is published in Certificate Transparency logs, which
+# then list every workspace's name. A wildcard can only be proven over DNS, so
+# Caddy writes the challenge's TXT record through the Cloudflare API with the
+# token, once now and again at each renewal.
+#
+# Caddy picks the most specific site, so {slug}.APP_BASE_DOMAIN lands here and
+# never reaches the on-demand ask. The base domain itself, nested subdomains
+# and custom domains still match the catch-all site in Caddyfile, gated by
+# AuthorizeTlsHost as before.
+import Caddyfile
+
+*.{$APP_BASE_DOMAIN} {
+	import app
+
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		# Find the zone and its nameservers through public resolvers, not the
+		# host's, which may know the domain from /etc/hosts or a local DNS
+		# server and send the lookup astray (the plugin's troubleshooting notes
+		# recommend this).
+		resolvers 1.1.1.1 1.0.0.1
+	}
+}
