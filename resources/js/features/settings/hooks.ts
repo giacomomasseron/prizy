@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 
 export type DigestFrequency = 'off' | 'daily' | 'weekly';
@@ -28,5 +28,29 @@ export function useUpdateHelpdeskEnabled() {
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['me'] });
         },
+    });
+}
+
+export interface WorkspaceSummary {
+    id: string;
+    name: string;
+    slug: string;
+    helpdesk_enabled: boolean;
+    member_count: number;
+    team_count: number;
+}
+
+/** The workspace's name and size, which the delete confirmation spells out. */
+export function useWorkspace() {
+    return useQuery({
+        queryKey: ['workspace'],
+        queryFn: () => api.get<WorkspaceSummary>('/workspace'),
+    });
+}
+
+/** Deletes the workspace for good; `confirm` is its name, typed by the owner. */
+export function useDeleteWorkspace() {
+    return useMutation({
+        mutationFn: (confirm: string) => api.del('/workspace', { confirm }),
     });
 }

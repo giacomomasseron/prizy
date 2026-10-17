@@ -87,8 +87,8 @@ export const api = {
     async getEnvelope<T>(path: string): Promise<{ data: T; meta?: { current_page: number; last_page: number }; links?: Record<string, string | null> }> {
         return await request('GET', path);
     },
-    async del(path: string): Promise<void> {
-        await request<void>('DELETE', path);
+    async del(path: string, body?: unknown): Promise<void> {
+        await request<void>('DELETE', path, body);
     },
     async page<T>(path: string): Promise<{ items: T[]; next: string | null }> {
         const env = await request<PageEnvelope<T>>('GET', path);

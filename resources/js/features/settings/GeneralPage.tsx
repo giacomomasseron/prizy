@@ -7,6 +7,7 @@ import { QueryState } from '../../components/ui/QueryState';
 import { FIELD_CLASSES } from '../../components/ui/Input';
 import { Switch } from '../../components/ui/Switch';
 import { sectionTitle } from '../issues/issueStyles';
+import { DeleteWorkspaceCard } from './DeleteWorkspaceCard';
 import { pageFrame, pageTitle, selectStyle, titleRow } from './settingsStyles';
 import type { DigestFrequency } from './hooks';
 import { useUpdateHelpdeskEnabled, useUpdateNotificationPreferences } from './hooks';
@@ -123,6 +124,7 @@ export default function GeneralPage() {
                         {exportError && <p style={errorText}>{exportError}</p>}
                     </section>
                 )}
+                {me.data?.admin_level === 'owner' && <DeleteWorkspaceCard />}
             </QueryState>
         </div>
     );

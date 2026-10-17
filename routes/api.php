@@ -94,6 +94,12 @@ Route::prefix('v1')->group(function (): void {
             Route::post('/auth/tokens', [TokenController::class, 'store'])->middleware('throttle:6,1');
             Route::get('/auth/tokens', [TokenController::class, 'index'])->middleware('throttle:30,1');
             Route::delete('/auth/tokens/{id}', [TokenController::class, 'destroy'])->middleware('throttle:30,1');
+
+            // Deleting the workspace takes a signed-in browser, never an API
+            // token: a leaked token must not be able to destroy everything.
+            // Owner only and the typed name are enforced in the use case.
+            Route::delete('/workspace', [WorkspaceController::class, 'destroy'])
+                ->middleware([VerifyCsrfToken::class, 'verified', 'throttle:6,1']);
         });
 
     // -----------------------------------------------------------------------
@@ -135,6 +141,7 @@ Route::prefix('v1')->group(function (): void {
         });
 
         Route::get('/members', [MemberController::class, 'index']);
+        Route::get('/workspace', [WorkspaceController::class, 'show']);
         // Workspace configuration (owner/admin, enforced in the use case).
         Route::patch('/workspace', [WorkspaceController::class, 'update'])->middleware('verified');
 
