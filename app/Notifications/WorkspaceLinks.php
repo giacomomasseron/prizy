@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Notifications;
 
+use App\Notifications\Concerns\EscapesMarkdown;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,6 +13,8 @@ use Illuminate\Notifications\Notification;
  */
 final class WorkspaceLinks extends Notification
 {
+    use EscapesMarkdown;
+
     /**
      * @param  list<array{name: string, url: string}>  $workspaces
      */
@@ -35,20 +38,5 @@ final class WorkspaceLinks extends Notification
         }
 
         return $mail->line("If you didn't ask for this, you can ignore this email.");
-    }
-
-    /**
-     * Mail lines are Markdown and workspace names are whatever their owners
-     * typed: escape what would turn a name into a link, emphasis, a heading or
-     * a list item in a Prizy-branded email.
-     */
-    private static function literal(string $text): string
-    {
-        // Not < or >: the mail template HTML-escapes those first, and a
-        // backslash before the entity would print a literal "&lt;".
-        $text = preg_replace('/([\\\\`*_\[\]()!#|~])/', '\\\\$1', $text);
-        $text = preg_replace('/^([-+])/', '\\\\$1', $text);
-
-        return preg_replace('/^(\d+)([.)])/', '$1\\\\$2', $text);
     }
 }
