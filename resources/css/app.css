@@ -72,6 +72,23 @@ html, body { background: var(--bg); color: var(--fg); }
 .login-input:focus { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); outline: 2px solid transparent; } /* the transparent outline shows in forced-colours mode */
 @media (max-width: 900px) { .login-aside { display: none; } }
 
+/* ── Setup v2 (sign-up = step 1, /setup = steps 2–3). The URL field is an input inside a bordered box, so the
+      box takes the input's focus look through :focus-within. ── */
+@keyframes setup-rise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes setup-pop  { from { opacity: 0; transform: scale(.8) rotate(-8deg) } to { opacity: 1; transform: none } }
+/* The dynamic viewport unit keeps the footer bar above Safari's toolbar; 100vh is the fallback. */
+.setup-frame { height: 100vh; height: 100dvh; }
+.setup-rise { animation: setup-rise .4s ease both; }
+.setup-pop  { animation: setup-pop .45s ease both; }
+@media (prefers-reduced-motion: reduce) { .setup-rise, .setup-pop { animation: none; } }
+.setup-field { border: var(--line) solid var(--field); transition: border-color .12s, box-shadow .12s; }
+.setup-field:focus-within { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); outline: 2px solid transparent; }
+.setup-field input { outline: none; }
+.setup-next { transition: transform .12s, box-shadow .12s, border-color .12s; border-color: var(--border); }
+.setup-next:hover { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); transform: translate(-1px, -1px); }
+@media (prefers-reduced-motion: reduce) { .setup-next:hover { transform: none; } }
+@media (max-width: 900px) { .setup-aside { display: none; } .setup-column { padding: 32px 16px !important; } }
+
 /* KB article editor preview ("As customers see it") — mirrors the public Help Center's article body
    (`article.kb` in resources/css/help.css) rule for rule, so the preview honours its promise;
    test/help-center-styles.test.ts holds the two in step. Typography and spacing only. */

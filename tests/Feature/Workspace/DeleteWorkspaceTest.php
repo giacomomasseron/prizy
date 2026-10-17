@@ -240,8 +240,9 @@ it('deletes a workspace full of data and leaves every other workspace as it was'
     expect(deletionTableCounts())->toBe($before);
 });
 
-it("shows any member the workspace's name, address and size", function (): void {
+it("shows any member the workspace's name, address, colour and size", function (): void {
     [$workspace, $member] = deletionWorld('member');
+    $workspace->forceFill(['color' => '#9b5bd6'])->save();
     User::factory()->for($workspace, 'workspace')->create();
     Team::factory()->for($workspace, 'workspace')->count(3)->create();
 
@@ -249,6 +250,7 @@ it("shows any member the workspace's name, address and size", function (): void 
         ->assertOk()
         ->assertJsonPath('data.name', 'Acme Corp')
         ->assertJsonPath('data.slug', 'acme')
+        ->assertJsonPath('data.color', '#9b5bd6')
         ->assertJsonPath('data.member_count', 2)
         ->assertJsonPath('data.team_count', 3);
 });

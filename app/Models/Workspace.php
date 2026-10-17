@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string      $slug          — used as subdomain (e.g. acme → acme.app.com)
  * @property string|null $custom_domain — optional CNAME
  * @property string|null $logo_url      — workspace logo URL
+ * @property string|null $color         — workspace mark colour (#rrggbb), picked at sign-up
  * @property string      $plan
  * @property bool        $helpdesk_enabled — workspace-level switch for the support module
  * @property string      $timezone
@@ -45,6 +46,7 @@ final class Workspace extends Tenant
         'slug',
         'custom_domain',
         'logo_url',
+        'color',
         'plan',
         'helpdesk_enabled',
         'timezone',

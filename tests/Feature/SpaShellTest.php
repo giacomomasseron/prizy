@@ -20,6 +20,22 @@ it('serves the SPA shell on the workspace host', function (): void {
     Workspace::forgetCurrent();
 });
 
+it('serves the SPA shell for /setup, where the login link from sign-up lands', function (): void {
+    $ws = Workspace::factory()->create();
+    $this->actingInWorkspace($ws);
+    $owner = User::factory()->for($ws, 'workspace')->create(['admin_level' => 'owner']);
+
+    $this->actingAs($owner)->get('/setup')->assertStatus(200)->assertSee('id="app"', false);
+
+    Workspace::forgetCurrent();
+});
+
+it('tells the sign-up page the base domain, so it can show the address as it is typed', function (): void {
+    config(['app.base_domain' => 'prizy.test']);
+
+    $this->get('/signup')->assertStatus(200)->assertSee('<meta name="prizy-base-domain" content="prizy.test">', false);
+});
+
 it('serves the SPA shell for the KB authoring routes (HC-4)', function (): void {
     // Cheap tripwire for the routes/web.php gap the kb-authoring e2e spec caught: router.tsx has
     // carried the /support/kb* client routes since Task 4, but nothing registered matching

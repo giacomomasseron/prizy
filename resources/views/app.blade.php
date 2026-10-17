@@ -6,6 +6,8 @@
     <title>{{ config('app.name', 'Prizy') }}</title>
     {{-- Where sign-up lives (APP_SIGNUP_HOST), for links to it from a workspace host. --}}
     <meta name="prizy-signup-url" content="{{ \App\Services\SignupHost::url() }}">
+    {{-- Workspaces live at {slug}.APP_BASE_DOMAIN: sign-up shows the address as it is typed. --}}
+    <meta name="prizy-base-domain" content="{{ config('app.base_domain') }}">
     <script>
     (function(){
         var t=null;

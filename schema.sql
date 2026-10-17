@@ -133,6 +133,7 @@ CREATE TABLE workspaces (
     slug                VARCHAR(63)     NOT NULL UNIQUE,     -- subdomain
     custom_domain       VARCHAR(253)    UNIQUE,              -- optional CNAME
     logo_url            VARCHAR(2048),                       -- workspace logo
+    color               VARCHAR(7),                          -- workspace mark colour (#rrggbb)
     plan                workspace_plan  NOT NULL DEFAULT 'starter',
     helpdesk_enabled    BOOLEAN         NOT NULL DEFAULT TRUE, -- support module switch
     timezone            VARCHAR(64)     NOT NULL DEFAULT 'UTC',

@@ -12,9 +12,10 @@ use RuntimeException;
 
 /**
  * Opens a LoginHandoff link on the workspace's own host: logs the user in and
- * lands them on the workspace. Anything wrong with the link — tampered,
- * expired, already used, or opened on another workspace's host (where the
- * user is not found) — lands on /login instead.
+ * lands them on /setup, the rest of setting up the workspace (a handoff is
+ * only ever made for its new owner, at sign-up or activation). Anything wrong
+ * with the link — tampered, expired, already used, or opened on another
+ * workspace's host (where the user is not found) — lands on /login instead.
  */
 final class LoginHandoffController extends Controller
 {
@@ -42,6 +43,6 @@ final class LoginHandoffController extends Controller
         // Rotate the session ID to prevent session-fixation attacks.
         $request->session()->regenerate();
 
-        return redirect('/');
+        return redirect('/setup');
     }
 }

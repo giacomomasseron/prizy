@@ -82,8 +82,8 @@ describe('V2-G3b: keyboard and screen-reader guards', () => {
         expect(offenders).toEqual([]);
     });
 
-    it('<main> only in the two page shells (the app layout and the auth column); every nav and aside is named or hidden', () => {
-        const SHELLS = ['components/AppLayout.tsx', 'auth/AuthChrome.tsx'];
+    it('<main> only in the page shells (the app layout, the auth column and the setup frame); every nav and aside is named or hidden', () => {
+        const SHELLS = ['components/AppLayout.tsx', 'auth/AuthChrome.tsx', 'features/setup/SetupFrame.tsx'];
         const offenders: string[] = [];
         for (const { rel, src } of files) {
             for (const t of tags(src, 'main|nav|aside')) {

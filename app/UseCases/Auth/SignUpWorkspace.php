@@ -17,6 +17,17 @@ use Throwable;
 
 final class SignUpWorkspace
 {
+    /** The workspace mark colours the sign-up page offers. */
+    public const COLORS = ['#5b57e0', '#3a8f4d', '#3f74d6', '#d9623a', '#9b5bd6', '#c96b8f'];
+
+    /**
+     * What the workspace will run. Only engineering turns the support side
+     * off; and it is what the owner works on, so it gives them the tracker,
+     * the support desk, or both (the setup page opens the desk for a
+     * support-only owner).
+     */
+    public const USAGES = ['both', 'engineering', 'support'];
+
     public function __construct(
         private readonly UserRepository $userRepository,
     ) {}
@@ -34,21 +45,26 @@ final class SignUpWorkspace
      * is created pending instead: no hostname reaches it until the owner clicks
      * the emailed link (MarkEmailVerified), which is when they get logged in.
      *
-     * @param  array<string, mixed>  $data  Validated input (workspace_name, slug, name, email, password)
+     * @param  array<string, mixed>  $data  Validated input (workspace_name, slug, name, email, password; color and usage optional)
      * @return array{workspace: Workspace, user: User, activation_required: bool, workspace_url: string, login_url: string|null}
      */
     public function handle(array $data): array
     {
         $pending = (bool) config('app.signup_requires_activation');
+        // Not given (an older client): the support side stays on, and the
+        // owner gets neither capability, as before there was a choice.
+        $usage = $data['usage'] ?? null;
 
-        [$workspace, $user] = DB::transaction(function () use ($data, $pending): array {
+        [$workspace, $user] = DB::transaction(function () use ($data, $pending, $usage): array {
             // Generate the UUID in PHP so the model has its key immediately;
             // Eloquent does not fetch the Postgres-generated UUID back for
             // non-incrementing models, so $workspace->id would be null otherwise.
             $attributes = [
-                'id'   => (string) Str::uuid(),
-                'name' => $data['workspace_name'],
-                'slug' => $data['slug'],
+                'id'               => (string) Str::uuid(),
+                'name'             => $data['workspace_name'],
+                'slug'             => $data['slug'],
+                'color'            => $data['color'] ?? null,
+                'helpdesk_enabled' => $usage !== 'engineering',
             ];
             if ($pending) {
                 // An explicit NULL overrides the column's DEFAULT now().
@@ -65,6 +81,8 @@ final class SignUpWorkspace
                 'email'         => $data['email'],
                 'password_hash' => Hash::make($data['password']),
                 'admin_level'   => 'owner',
+                'is_developer'  => in_array($usage, ['both', 'engineering'], true),
+                'is_agent'      => in_array($usage, ['both', 'support'], true),
             ]);
 
             return [$workspace, $user];

@@ -84,11 +84,11 @@ it('with activation off, sign-up logs nobody in on the sign-up host and returns 
     $this->assertGuest();
 });
 
-it('the login link logs the owner in on their workspace and opens it', function (): void {
+it('the login link logs the owner in on their workspace and opens the rest of its setup', function (): void {
     $url = handoffSignUp('acme', '198.51.100.61')->assertStatus(201)->json('login_url');
     $workspace = handoffWorkspace('acme');
 
-    expect(handoffLocation(handoffFollow($url, $workspace)))->toBe('https://acme.prizy.test');
+    expect(handoffLocation(handoffFollow($url, $workspace)))->toBe('https://acme.prizy.test/setup');
     $this->assertAuthenticatedAs(handoffOwner($workspace));
 });
 
@@ -145,7 +145,7 @@ it('a link with a bad signature logs nobody in, and does not use up the real one
     expect(handoffLocation(handoffFollow($forged, $workspace)))->toBe('https://acme.prizy.test/login');
     $this->assertGuest();
 
-    expect(handoffLocation(handoffFollow($url, $workspace)))->toBe('https://acme.prizy.test');
+    expect(handoffLocation(handoffFollow($url, $workspace)))->toBe('https://acme.prizy.test/setup');
     $this->assertAuthenticatedAs(handoffOwner($workspace));
 });
 
@@ -166,7 +166,7 @@ it('the click that activates a workspace logs its owner in there; a later click 
     $first = $this->get($verify);
     expect(handoffLocation($first))->toStartWith('https://acme.prizy.test/auth/handoff?');
 
-    expect(handoffLocation(handoffFollow($first->headers->get('Location'), $workspace->fresh())))->toBe('https://acme.prizy.test');
+    expect(handoffLocation(handoffFollow($first->headers->get('Location'), $workspace->fresh())))->toBe('https://acme.prizy.test/setup');
     $this->assertAuthenticatedAs($owner);
 
     auth()->guard('web')->logout();
