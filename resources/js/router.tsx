@@ -6,6 +6,7 @@ import { RootRedirect } from './components/RootRedirect';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import FindWorkspacePage from './auth/FindWorkspacePage';
+import SetupPage from './features/setup/SetupPage';
 import IssueListPage from './features/issues/IssueListPage';
 import BoardPage from './features/issues/BoardPage';
 import IssueDetailPage from './features/issues/IssueDetailPage';
@@ -66,6 +67,8 @@ export default function AppRouter() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/signup" element={<SignupPage />} />
             <Route path="/find" element={<FindWorkspacePage />} />
+            {/* Steps 2–3 of setting up a new workspace (sign-up was step 1): its own full-page frame, no app shell. */}
+            <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
             <Route element={<AuthedLayout />}>
                 <Route path="/" element={<RootRedirect />} />
                 {/* P7-B: the tracker user's home (homePathFor); `/` leads here */}

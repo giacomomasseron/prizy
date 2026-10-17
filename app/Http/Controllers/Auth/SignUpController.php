@@ -11,6 +11,7 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 final class SignUpController extends Controller
@@ -31,6 +32,8 @@ final class SignUpController extends Controller
             'name'           => ['required', 'string', 'max:255'],
             'email'          => ['required', 'email', 'max:255'],
             'password'       => ['required', 'string', Password::defaults()],
+            'color'          => ['nullable', 'string', Rule::in(SignUpWorkspace::COLORS)],
+            'usage'          => ['nullable', 'string', Rule::in(SignUpWorkspace::USAGES)],
         ]);
 
         // Counted after validation, so a taken or mistyped slug costs nothing

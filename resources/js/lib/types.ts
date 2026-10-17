@@ -124,6 +124,8 @@ export interface Me {
     is_developer: boolean;
     is_agent: boolean;
     email_digest_frequency: 'off' | 'daily' | 'weekly';
+    /** Present on /v1/me; null until the owner or member opens the verification link. */
+    email_verified_at?: string | null;
     /**
      * Workspace-level module switches. Present on /v1/me; the login, magic-link,
      * sign-up and accept-invite payloads are also typed Me and do NOT carry it,

@@ -35,6 +35,8 @@ export interface WorkspaceSummary {
     id: string;
     name: string;
     slug: string;
+    /** The mark colour picked at sign-up (#rrggbb), or null. */
+    color: string | null;
     helpdesk_enabled: boolean;
     member_count: number;
     team_count: number;

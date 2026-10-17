@@ -97,3 +97,52 @@ it('regenerates the session id on signup to prevent session fixation', function 
     // survive authentication (session fixation defence).
     expect(session()->getId())->not->toBe($preSignupId);
 });
+
+// The setup page's step 1 also picks the workspace mark's colour and what the
+// workspace will run; both are optional, so an older client still signs up.
+
+function signUpWith(string $slug, array $extra): Illuminate\Testing\TestResponse
+{
+    return test()->postJson('/workspaces', [
+        'workspace_name' => 'Northwind',
+        'slug'           => $slug,
+        'name'           => 'Maya',
+        'email'          => "maya@{$slug}.example",
+        'password'       => 'password123',
+        ...$extra,
+    ]);
+}
+
+it('keeps the picked mark colour, and none when nothing is picked', function (): void {
+    Notification::fake();
+
+    signUpWith('northwind', ['color' => '#3a8f4d'])->assertStatus(201)->assertJsonPath('workspace.color', '#3a8f4d');
+    signUpWith('southwind', [])->assertStatus(201);
+
+    expect(Workspace::where('slug', 'northwind')->value('color'))->toBe('#3a8f4d')
+        ->and(Workspace::where('slug', 'southwind')->value('color'))->toBeNull();
+});
+
+it('turns the support side off only for an engineering-only workspace, and gives the owner what it runs', function (?string $usage, bool $helpdesk, bool $developer, bool $agent): void {
+    Notification::fake();
+
+    signUpWith('northwind', $usage === null ? [] : ['usage' => $usage])
+        ->assertStatus(201)
+        ->assertJsonPath('user.is_developer', $developer)
+        ->assertJsonPath('user.is_agent', $agent);
+
+    expect(Workspace::where('slug', 'northwind')->value('helpdesk_enabled'))->toBe($helpdesk);
+})->with([
+    'both'        => ['both', true, true, true],
+    'engineering' => ['engineering', false, true, false],
+    'support'     => ['support', true, false, true],
+    'not given'   => [null, true, false, false],
+]);
+
+it('refuses a colour or a usage it does not offer', function (): void {
+    signUpWith('northwind', ['color' => '#000000', 'usage' => 'sales'])
+        ->assertStatus(422)
+        ->assertJsonValidationErrors(['color', 'usage']);
+
+    expect(Workspace::where('slug', 'northwind')->exists())->toBeFalse();
+});

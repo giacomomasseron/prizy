@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\LoginHandoffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MagicLinkController;
 use App\Http\Controllers\Auth\SignUpController;
+use App\Http\Controllers\Auth\SlugCheckController;
 use App\Http\Controllers\CaddyAskController;
 use App\Http\Controllers\CsatController;
 use App\Http\Controllers\HealthController;
@@ -33,6 +34,9 @@ Route::view('/find', 'app')->withoutMiddleware([NeedsTenant::class, EnsureValidT
 // workspace's host, so the owner's session starts there. It checks its own
 // signature, so a used or expired link lands on /login rather than a 403 page.
 Route::get('/auth/handoff', LoginHandoffController::class)->name('auth.handoff');
+// Where that link lands: inviting the team, then the workspace is ready (the
+// page checks the visitor is its owner; step 1 was sign-up itself).
+Route::view('/setup', 'app');
 Route::view('/board', 'app');
 Route::view('/issues/{issue}', 'app');
 Route::view('/teams', 'app');
@@ -82,6 +86,10 @@ Route::withoutMiddleware([NeedsTenant::class, EnsureValidTenantSession::class])-
     // Every attempt, mistakes included. SignUpController also caps the sign-ups
     // that pass validation (each emails whatever address it was given) per hour.
     Route::post('/workspaces', SignUpController::class)->middleware(['throttle:10,1']);
+
+    // The sign-up page asks as the person types (debounced). Its own key, like
+    // find-workspaces, so it never spends the sign-up route's count.
+    Route::get('/workspaces/slug-check', SlugCheckController::class)->middleware(['throttle:60,1,slug-check']);
 
     // Each request may email a list of workspace links, so keep it rare. Its
     // own key (the third argument): an unnamed throttle keys on the IP alone,
