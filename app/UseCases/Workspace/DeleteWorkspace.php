@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\UseCases\Workspace;
 
+use App\Jobs\PurgeWorkspace;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Notifications\WorkspaceDeleted;
 use App\Services\WorkspaceUrl;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -21,15 +21,18 @@ use function Illuminate\Support\defer;
  * (WorkspacePolicy::delete), and only once the actor has typed the workspace's
  * name, the same check the confirmation dialog makes.
  *
- * One DELETE: every table cascades from workspaces, directly or through a
- * parent. The foreign keys with no ON DELETE rule are deferred for it, because
- * the cascade can reach a user before the rows that name them (see the
- * 2026_10_17 migration), then checked before the transaction ends, when
- * nothing is left to name anyone.
+ * The request only closes the workspace: soft-deleted, it is gone from
+ * everything that finds a workspace (its hostnames, certificates, sign-in
+ * links, the scheduled commands), so every member is out at once.
+ * PurgeWorkspace then erases it on the queue. If that job cannot be queued, or
+ * never succeeds, the hourly workspaces:purge-deleted queues it again; the
+ * workspace stays closed meanwhile, so neither is the owner's error.
  *
- * Every owner is emailed after the response. Not a queued notification: queues
- * are tenant-aware, and the tenant is gone. A mail failure is only reported,
- * so it cannot turn a finished deletion into an error.
+ * Every owner is emailed after the response, not once the erasing is done: for
+ * them the workspace is gone already, and the email is how they learn in time
+ * that their account was used by someone else. Not a queued notification:
+ * queues are tenant-aware, and the tenant is closed. A mail failure is only
+ * reported, so it cannot turn a finished deletion into an error.
  */
 final class DeleteWorkspace
 {
@@ -59,11 +62,16 @@ final class DeleteWorkspace
             ->pluck('email')
             ->all();
 
-        DB::transaction(function () use ($workspace): void {
-            DB::statement('SET CONSTRAINTS ALL DEFERRED');
-            Workspace::withTrashed()->whereKey($workspace->id)->forceDelete();
-            DB::statement('SET CONSTRAINTS ALL IMMEDIATE');
-        });
+        $workspace->delete();
+
+        // On the sync queue (tests) the job runs right here, and as it is not
+        // tenant-aware, no workspace is current after it; on Redis this one
+        // stays current. Nothing below may depend on either.
+        try {
+            PurgeWorkspace::dispatch($workspace->id);
+        } catch (Throwable $e) {
+            report($e);
+        }
 
         defer(function () use ($owners, $notice): void {
             foreach ($owners as $email) {

@@ -2,17 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Jobs\PurgeWorkspace;
 use App\Models\Issue;
 use App\Models\Team;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Multitenancy\WorkspaceTenantFinder;
 use App\Notifications\WorkspaceDeleted;
 use App\UseCases\Tokens\CreatePersonalAccessToken;
 use Database\Seeders\SmokeSeeder;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Request;
 use Illuminate\Notifications\AnonymousNotifiable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\Concerns\InteractsWithTenant;
 
@@ -20,7 +26,9 @@ uses(RefreshDatabase::class);
 uses(InteractsWithTenant::class);
 
 // An owner deletes their workspace from Settings → General, after typing its
-// name. Everything in it goes at once, and every owner is told by email.
+// name. It closes at once, a queued job erases everything in it (the sync
+// queue runs that job inside the request here), and every owner is told by
+// email.
 
 beforeEach(function (): void {
     config(['app.url' => 'https://prizy.test', 'app.base_domain' => 'prizy.test']);
@@ -77,6 +85,43 @@ it('deletes the workspace with everything in it', function (): void {
         ->and(DB::table('issue_comments')->where('issue_id', $issue->id)->count())->toBe(0);
 });
 
+it('closes the workspace at once and leaves the erasing to a queued job', function (): void {
+    Queue::fake();
+    [$workspace, $owner] = deletionWorld();
+    $found = fn (): mixed => app(WorkspaceTenantFinder::class)->findForRequest(Request::create('https://acme.prizy.test/'));
+    expect($found())->not->toBeNull();
+
+    $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertNoContent();
+
+    Queue::assertPushedOn('purge', PurgeWorkspace::class, fn (PurgeWorkspace $job): bool => $job->workspaceId === $workspace->id);
+    Workspace::forgetCurrent();
+    expect($found())->toBeNull()
+        ->and(Workspace::onlyTrashed()->find($workspace->id))->not->toBeNull()
+        ->and(DB::table('users')->where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+it('erases only a workspace that was closed', function (): void {
+    [$workspace] = deletionWorld();
+    Workspace::forgetCurrent();
+
+    (new PurgeWorkspace($workspace->id))->handle();
+
+    expect(Workspace::query()->find($workspace->id))->not->toBeNull()
+        ->and(DB::table('users')->where('workspace_id', $workspace->id)->count())->toBe(1);
+});
+
+it('does nothing when the erasing runs again', function (): void {
+    [$workspace] = deletionWorld();
+    Workspace::forgetCurrent();
+    $workspace->delete();
+
+    (new PurgeWorkspace($workspace->id))->handle();
+    (new PurgeWorkspace($workspace->id))->handle();
+
+    expect(Workspace::withTrashed()->find($workspace->id))->toBeNull()
+        ->and(DB::table('users')->where('workspace_id', $workspace->id)->count())->toBe(0);
+});
+
 it('tells every owner, and nobody else, who deleted the workspace and when', function (): void {
     [$workspace, $owner] = deletionWorld();
     User::factory()->for($workspace, 'workspace')->create(['email' => 'co-owner@example.com', 'admin_level' => 'owner']);
@@ -90,7 +135,7 @@ it('tells every owner, and nobody else, who deleted the workspace and when', fun
         $sentTo[] = $to->routes['mail'];
         expect(implode(' ', $n->toMail($to)->introLines))
             ->toContain('Olive Owner (olive@example.com) deleted the Prizy workspace Acme Corp (acme.prizy.test) on 17 October 2026 at 09:30 UTC.')
-            ->toContain('its address is free again');
+            ->toContain('its address will be free again once that is done');
 
         return true;
     });
@@ -154,9 +199,12 @@ it('finishes the deletion when the email cannot be sent', function (): void {
 });
 
 // The deferred keys are checked before the transaction ends, not at COMMIT,
-// which a test never reaches: a reference from another workspace still fails
-// the deletion here, and leaves everything as it was.
-it('refuses, and keeps everything, while another workspace still names one of its users', function (): void {
+// which a test never reaches. A reference from another workspace fails the
+// erasing: the workspace stays closed with everything in it, the failure is
+// reported, and workspaces:purge-deleted tries again later. The owner, whose
+// workspace is closed either way, sees no error.
+it('keeps everything, closed, while another workspace still names one of its users', function (): void {
+    Exceptions::fake();
     [$workspace, $owner] = deletionWorld();
     $other = Workspace::factory()->create(['name' => 'Other', 'slug' => 'other']);
     $other->makeCurrent();
@@ -164,12 +212,13 @@ it('refuses, and keeps everything, while another workspace still names one of it
     Issue::factory()->for($other, 'workspace')->create(['team_id' => $team->id, 'created_by' => $owner->id]);
     $this->actingInWorkspace($workspace);
 
-    $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertStatus(500);
+    $this->actingAs($owner)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertNoContent();
 
     Workspace::forgetCurrent();
-    expect(Workspace::query()->find($workspace->id))->not->toBeNull()
+    expect(Workspace::query()->find($workspace->id))->toBeNull()
+        ->and(Workspace::onlyTrashed()->find($workspace->id))->not->toBeNull()
         ->and(DB::table('users')->where('id', $owner->id)->exists())->toBeTrue();
-    Notification::assertNothingSent();
+    Exceptions::assertReported(QueryException::class);
 });
 
 it('deletes a workspace full of data and leaves every other workspace as it was', function (): void {

@@ -45,7 +45,7 @@ final class WorkspaceController extends Controller
      * The typed name is checked in the use case, after the owner check, so a
      * non-owner is refused whatever they sent. The workspace and the caller's
      * session end together: invalidating the session signs the caller out
-     * without touching their user row, which the deletion has already removed.
+     * without touching their user row, which the queued erasing removes.
      */
     public function destroy(Request $request): Response
     {

@@ -385,3 +385,38 @@ it('accepting an expired invitation fails with 422', function (): void {
     $response->assertStatus(422);
     $this->assertDatabaseMissing('users', ['email' => 'expired@example.com']);
 });
+
+// ---------------------------------------------------------------------------
+// 11. Invitation to a deleted workspace → fails like an unknown token
+// ---------------------------------------------------------------------------
+it('accepting an invitation to a deleted workspace fails with 422', function (): void {
+    $workspace = Workspace::factory()->create();
+    $workspace->makeCurrent();
+    $owner = User::factory()->for($workspace, 'workspace')->create([
+        'admin_level'       => 'owner',
+        'email_verified_at' => now(),
+    ]);
+
+    $rawToken = Str::random(40);
+    Invitation::forceCreate([
+        'id'           => (string) Str::uuid(),
+        'workspace_id' => $workspace->id,
+        'email'        => 'too-late@example.com',
+        'admin_level'  => 'member',
+        'is_developer' => true,
+        'is_agent'     => false,
+        'token_hash'   => hash('sha256', $rawToken),
+        'invited_by'   => $owner->id,
+        'expires_at'   => now()->addDay(),
+    ]);
+    Workspace::forgetCurrent();
+    // Closed, as DeleteWorkspace leaves it until the queued erasing runs.
+    $workspace->delete();
+
+    $this->postJson("/invitations/{$rawToken}/accept", [
+        'name'     => 'Too Late',
+        'password' => 'password123',
+    ])->assertStatus(422)->assertJsonPath('errors.token.0', 'The invitation token is invalid.');
+
+    $this->assertDatabaseMissing('users', ['email' => 'too-late@example.com']);
+});

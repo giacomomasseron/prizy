@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
  * and the like, all pointing at users) are checked while that cascade is still
  * running: a user's row can be gone before the comments and articles that name
  * them, which go a step later, through their issue or category. Deferrable,
- * those checks wait until DeleteWorkspace asks for them, once nothing is left.
+ * those checks wait until PurgeWorkspace asks for them, once nothing is left.
  *
  * INITIALLY IMMEDIATE, so every other statement checks them exactly as before.
  */

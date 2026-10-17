@@ -236,6 +236,25 @@ services:
       retries: 3
       start_period: 20s
 
+  # The queue PurgeWorkspace runs on, alone: erasing a deleted workspace can
+  # take minutes, and on `worker` it would hold up every other job behind it.
+  # Idle otherwise. Same probe as `worker`, for the same reason.
+  purge-worker:
+    <<: *app
+    restart: unless-stopped
+    command: ["php", "artisan", "queue:work", "--queue=purge", "--max-time=3600", "--sleep=3"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q queue:work /proc/1/cmdline || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 20s
+
   scheduler:
     <<: *app
     restart: unless-stopped
