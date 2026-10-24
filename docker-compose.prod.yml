@@ -183,7 +183,9 @@ services:
       - CADDY_SITE_ADDRESS=${CADDY_SITE_ADDRESS:-https://}
       # Empty: Caddy faces visitors itself and believes no forwarded headers.
       # Behind another proxy, private_ranges, with CADDY_SITE_ADDRESS=:80 when
-      # that proxy terminates TLS. See docker/prod/Caddyfile.
+      # that proxy terminates TLS, and only if nothing but that proxy can
+      # reach Caddy: the ports below publish it on every interface by default.
+      # See docker/prod/Caddyfile.
       - CADDY_TRUSTED_PROXIES=${CADDY_TRUSTED_PROXIES:-}
       # No fallback: an empty value would still need to become SOME string to
       # flow through Caddy's `email` directive, and the only candidate that

@@ -28,6 +28,9 @@ FAILED=0
 # use Cloudflare's own tools often export this one: it would bring the whole
 # stack up in wildcard mode.
 unset CLOUDFLARE_API_TOKEN
+# Likewise: it would run every section behind a proxy Caddy trusts, which the
+# env-file edits in the proxy section below could not undo.
+unset CADDY_TRUSTED_PROXIES
 
 log()  { printf '\033[0;34m==>\033[0m %s\n' "$1"; }
 pass() { printf '  \033[0;32mok\033[0m   %s\n' "$1"; }
@@ -586,7 +589,9 @@ log "Behind another proxy, the visitor's address and HTTPS reach the app only on
 # private address, so curl stands in for that proxy. Two things the app does
 # with them are visible from outside: slug-check's rate limit counts per
 # address (60 a minute), and the SPA shell's asset URLs take the request's
-# scheme. Every address is from 203.0.113.0/24, kept for documentation.
+# scheme and host. A forwarded host is never believed, trusted proxy or not:
+# anything on that private network could send one. Every address is from
+# 203.0.113.0/24, kept for documentation.
 # The `|| true`s: these feed plain assignments, where a failed curl or an
 # empty grep would end the script under errexit instead of failing a check.
 slug_check_as() {
@@ -601,7 +606,7 @@ spend_slug_checks_as() {
     echo "$ok"
 }
 shell_asset_urls() {
-    { curl -s -H 'X-Forwarded-Proto: https' "$base/signup" | grep -o "https\?://localhost:${HTTP_PORT}/build/" | sort -u | tr '\n' ' '; } || true
+    { curl -s -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-Host: evil.example' "$base/signup" | grep -o "https\?://localhost:${HTTP_PORT}/build/" | sort -u | tr '\n' ' '; } || true
 }
 
 # The default: forged headers are overwritten, so every request counts
@@ -615,21 +620,22 @@ else
 fi
 assets_direct=$(shell_asset_urls)
 if [ "$assets_direct" = "http://localhost:${HTTP_PORT}/build/ " ]; then
-    pass "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-Proto is ignored: asset URLs stay http"
+    pass "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-Proto and -Host are ignored: asset URLs stay http on this host"
 else
-    fail "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-Proto is ignored (asset URLs: $assets_direct)"
+    fail "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-Proto and -Host are ignored (asset URLs: $assets_direct)"
 fi
 
 echo "CADDY_TRUSTED_PROXIES=private_ranges" >> "$ENV_FILE"
-compose up -d --force-recreate --no-deps web >/dev/null 2>&1
 web_proxied_ready=0
-for _ in $(seq 1 30); do
-    if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'web healthy')" -eq 1 ]; then
-        web_proxied_ready=1
-        break
-    fi
-    sleep 1
-done
+if compose up -d --force-recreate --no-deps web >/dev/null 2>&1; then
+    for _ in $(seq 1 30); do
+        if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'web healthy')" -eq 1 ]; then
+            web_proxied_ready=1
+            break
+        fi
+        sleep 1
+    done
+fi
 if [ "$web_proxied_ready" -eq 1 ]; then
     pass "web (Caddy) is healthy trusting the private network"
 else
@@ -646,9 +652,9 @@ else
 fi
 assets_proxied=$(shell_asset_urls)
 if [ "$assets_proxied" = "https://localhost:${HTTP_PORT}/build/ " ]; then
-    pass "with CADDY_TRUSTED_PROXIES=private_ranges, X-Forwarded-Proto: https makes asset URLs https"
+    pass "with CADDY_TRUSTED_PROXIES=private_ranges, X-Forwarded-Proto: https makes asset URLs https, and a forwarded host is still ignored"
 else
-    fail "with CADDY_TRUSTED_PROXIES=private_ranges, X-Forwarded-Proto: https makes asset URLs https (asset URLs: $assets_proxied)"
+    fail "with CADDY_TRUSTED_PROXIES=private_ranges, X-Forwarded-Proto: https makes asset URLs https, and a forwarded host is still ignored (asset URLs: $assets_proxied)"
 fi
 
 # Back to the installer's default; the next section recreates web from this file.
@@ -701,6 +707,14 @@ if grep -q '"endpoint":"http://127.0.0.1:2020/_caddy/ask"' <<<"$shipped_adapt"; 
     pass "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
 else
     fail "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
+fi
+# What a compose file that never passes CADDY_TRUSTED_PROXIES gets: the
+# Caddyfile's own default, which docker-compose.prod.yml never exercises (it
+# always passes the variable, set or empty). It must trust no proxy.
+if [ -n "$shipped_adapt" ] && ! grep -q '"ranges"' <<<"$shipped_adapt"; then
+    pass "the shipped Caddyfile (production shape) trusts no proxy's forwarded headers"
+else
+    fail "the shipped Caddyfile (production shape) trusts no proxy's forwarded headers"
 fi
 
 # The web image a Cloudflare API token selects: Caddy rebuilt with the DNS

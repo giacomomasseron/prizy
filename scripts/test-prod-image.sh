@@ -302,7 +302,12 @@ if [ "$(pg_as_app "$pg_app_pw" "SELECT current_user")" = "prizy_app" ]; then
 else
     fail "prizy_app logs in with PRIZY_APP_DB_PASSWORD"
 fi
-if [ -z "$(pg_as_app wrong-password "SELECT current_user")" ]; then
+# The refusal's own text: empty output alone would also come from a dead
+# container or a missing role. Captured first, since psql exits non-zero
+# here and pipefail would fail a pipeline into grep even on a match.
+wrong_pw_out=$(docker exec -e PGPASSWORD=wrong-password "$pg_cid" \
+    psql -h 127.0.0.1 -U prizy_app -d prizy -tAc "SELECT 1" 2>&1 || true)
+if grep -q 'password authentication failed for user "prizy_app"' <<<"$wrong_pw_out"; then
     pass "a wrong password is refused, even on loopback"
 else
     fail "a wrong password is refused, even on loopback"
