@@ -122,6 +122,24 @@ HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
         cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong
 
 # ---------------------------------------------------------------------------
+# postgres — PostgreSQL with the application's role script baked in.
+#
+# For hosts that cannot mount a file from this repository: Coolify, for one,
+# keeps the repository on the server only with "Preserve repository during
+# deployment" switched on. docker-compose.prod.yml mounts the same script into
+# the stock image instead. A missed mount does not heal: Docker mounts an
+# empty directory in the script's place, the first initialisation fails on
+# it, and every later start finds a data directory and skips the scripts, so
+# prizy_app is never created. Same major version as docker-compose.prod.yml.
+# ---------------------------------------------------------------------------
+FROM postgres:16 AS postgres
+COPY docker/prod/postgres-init.sh /docker-entrypoint-initdb.d/01-app-role.sh
+# Password checks on loopback too, as docker-compose.prod.yml sets for the
+# stock image (see the comment there): initdb's own pg_hba.conf trusts
+# 127.0.0.1 without one. A default, so a compose file that sets it still wins.
+ENV POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256"
+
+# ---------------------------------------------------------------------------
 # caddy — the Caddy the web stage starts from.
 #
 # Stock, unless CADDY_DNS_PROVIDER=cloudflare, which docker-compose.prod.yml

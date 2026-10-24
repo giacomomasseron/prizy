@@ -19,6 +19,19 @@
 		ask http://127.0.0.1:2020/_caddy/ask
 	}
 
+	# Whose X-Forwarded-For/-Proto/-Host to believe. Facing visitors directly,
+	# as every installer setup does, Caddy believes no one and overwrites them
+	# with what it sees itself; that is the default, an empty
+	# CADDY_TRUSTED_PROXIES. Behind another proxy (Traefik on Coolify, say) the
+	# peer is always that proxy, so overwriting them would hand the app the
+	# proxy's address for every visitor (one rate-limit count for everyone)
+	# and plain http for HTTPS requests (signed links stop verifying).
+	# CADDY_TRUSTED_PROXIES=private_ranges keeps what a proxy on the private
+	# network sends, which Laravel's TrustProxies (bootstrap/app.php) then reads.
+	servers {
+		trusted_proxies static {$CADDY_TRUSTED_PROXIES:}
+	}
+
 	# Test-only: substitute Caddy's own internal CA (self-signed, no network
 	# call) for real ACME issuance. `local_certs` is a bare global option,
 	# registered with Caddy's parseOptTrue — it takes NO arguments, and

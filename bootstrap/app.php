@@ -46,6 +46,12 @@ return Application::configure(basePath: dirname(__DIR__))
         //     X-Forwarded-Port — so trusting Laravel's default header set
         //     (which includes Prefix) lets a client-supplied X-Forwarded-Prefix
         //     through untouched from any trusted address.
+        //   - Behind another proxy that terminates TLS (Traefik on Coolify),
+        //     Caddy serves plain :80 and, with CADDY_TRUSTED_PROXIES=
+        //     private_ranges, keeps that proxy's X-Forwarded-For/-Host/-Proto
+        //     instead of overwriting them. REMOTE_ADDR is then the proxy's
+        //     private address, so there this middleware IS load-bearing: it
+        //     turns those headers into the visitor's address and https.
         //   - Scoped to loopback and the RFC1918 ranges the compose network
         //     uses, never '*' — but on a LAN install every client IS RFC1918,
         //     so every LAN user is a trusted address for this middleware's
