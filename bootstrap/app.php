@@ -46,14 +46,23 @@ return Application::configure(basePath: dirname(__DIR__))
         //     X-Forwarded-Port — so trusting Laravel's default header set
         //     (which includes Prefix) lets a client-supplied X-Forwarded-Prefix
         //     through untouched from any trusted address.
-        //   - Scoped to loopback and the RFC1918 ranges the compose network
-        //     uses, never '*' — but on a LAN install every client IS RFC1918,
-        //     so every LAN user is a trusted address for this middleware's
-        //     purposes. Trusting Prefix there lets any of them poison the
-        //     path of every generated and signed URL in a request they send —
-        //     including a magic-link or CSAT email addressed to someone else —
-        //     with a forged X-Forwarded-Prefix. Narrowed to only the three
-        //     headers Caddy actually sets and actually needs to be believed.
+        //   - Behind another proxy that terminates TLS (Traefik on Coolify),
+        //     Caddy serves plain :80 and, with CADDY_TRUSTED_PROXIES=
+        //     private_ranges, keeps the X-Forwarded-For/-Proto it is sent
+        //     instead of overwriting them. REMOTE_ADDR is then the proxy's
+        //     private address, so there this middleware IS load-bearing: it
+        //     turns those headers into the visitor's address and https.
+        //   - Scoped to loopback and the private ranges the compose network
+        //     uses (IPv6's too, as Caddy's private_ranges has them), never
+        //     '*' — but on a LAN install every client IS RFC1918, so every
+        //     LAN user is a trusted address for this middleware's purposes.
+        //     Trusting Prefix there lets any of them poison the path of every
+        //     generated and signed URL in a request they send — including a
+        //     magic-link or CSAT email addressed to someone else — with a
+        //     forged X-Forwarded-Prefix. Host does the same to the host, and
+        //     behind a trusted proxy anything on its private network can send
+        //     one. Neither is needed: Caddy and Traefik both pass the visitor's
+        //     own Host header through. So only For and Proto are believed.
         //
         // The Host header still cannot select a tenant regardless of trust:
         // Spatie resolves the tenant from the raw Host before this middleware
@@ -64,9 +73,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 '10.0.0.0/8',
                 '172.16.0.0/12',
                 '192.168.0.0/16',
+                '::1',
+                'fd00::/8',
             ],
             headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
                 | Request::HEADER_X_FORWARDED_PROTO,
         );
 

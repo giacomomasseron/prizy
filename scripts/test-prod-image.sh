@@ -10,6 +10,7 @@
 set -euo pipefail
 
 IMAGE="${IMAGE:-prizy/app:test}"
+PG_IMAGE="${PG_IMAGE:-prizy/postgres:test}"
 FAILED=0
 
 log()  { printf '\033[0;34m==>\033[0m %s\n' "$1"; }
@@ -261,6 +262,62 @@ else
     fail "the fpm pool answers /ping with pong"
 fi
 docker rm -f "$cid" >/dev/null 2>&1 || true
+
+log "The postgres image creates the application's role on a fresh volume"
+# For hosts that cannot mount docker/prod/postgres-init.sh from the repository
+# (Dockerfile.prod's postgres stage). Run with only what a compose file must
+# supply, no POSTGRES_INITDB_ARGS: the password check on loopback is the
+# image's own default, and without it the login below would pass with any
+# password, which is why a wrong one is tried too.
+pg_version_compose=$(sed -n 's/^ *image: postgres:\([0-9]*\)$/\1/p' docker-compose.prod.yml)
+pg_version_image=$(sed -n 's/^FROM postgres:\([0-9]*\) AS postgres$/\1/p' Dockerfile.prod)
+if [ -n "$pg_version_image" ] && [ "$pg_version_image" = "$pg_version_compose" ]; then
+    pass "the postgres stage runs the same major version as docker-compose.prod.yml (PostgreSQL $pg_version_image)"
+else
+    fail "the postgres stage runs the same major version as docker-compose.prod.yml (stage '$pg_version_image', compose '$pg_version_compose')"
+fi
+
+docker build -f Dockerfile.prod --target postgres -t "$PG_IMAGE" . >/dev/null
+pg_app_pw=$(openssl rand -hex 24)
+pg_cid=$(docker run -d -e POSTGRES_DB=prizy -e POSTGRES_USER=prizy \
+    -e POSTGRES_PASSWORD="$(openssl rand -hex 24)" -e PRIZY_APP_DB_PASSWORD="$pg_app_pw" "$PG_IMAGE")
+# Ready means it answers over TCP: during its first initialisation the image
+# listens on the socket only.
+pg_ready=0
+for _ in $(seq 1 60); do
+    if docker exec "$pg_cid" pg_isready -h 127.0.0.1 -U prizy -d prizy >/dev/null 2>&1; then
+        pg_ready=1
+        break
+    fi
+    sleep 1
+done
+if [ "$pg_ready" -eq 1 ]; then
+    pass "the postgres image initialises and accepts connections"
+else
+    fail "the postgres image initialises and accepts connections"
+fi
+pg_as_app() { docker exec -e PGPASSWORD="$1" "$pg_cid" psql -h 127.0.0.1 -U prizy_app -d prizy -tAc "$2" 2>/dev/null | tr -d '[:space:]'; }
+if [ "$(pg_as_app "$pg_app_pw" "SELECT current_user")" = "prizy_app" ]; then
+    pass "prizy_app logs in with PRIZY_APP_DB_PASSWORD"
+else
+    fail "prizy_app logs in with PRIZY_APP_DB_PASSWORD"
+fi
+# The refusal's own text: empty output alone would also come from a dead
+# container or a missing role. Captured first, since psql exits non-zero
+# here and pipefail would fail a pipeline into grep even on a match.
+wrong_pw_out=$(docker exec -e PGPASSWORD=wrong-password "$pg_cid" \
+    psql -h 127.0.0.1 -U prizy_app -d prizy -tAc "SELECT 1" 2>&1 || true)
+if grep -q 'password authentication failed for user "prizy_app"' <<<"$wrong_pw_out"; then
+    pass "a wrong password is refused, even on loopback"
+else
+    fail "a wrong password is refused, even on loopback"
+fi
+if [ "$(pg_as_app "$pg_app_pw" "SELECT rolsuper OR rolbypassrls FROM pg_roles WHERE rolname = current_user")" = "f" ]; then
+    pass "prizy_app is no superuser and has no BYPASSRLS, so row-level security applies to it"
+else
+    fail "prizy_app is no superuser and has no BYPASSRLS, so row-level security applies to it"
+fi
+docker rm -f -v "$pg_cid" >/dev/null 2>&1 || true
 
 if [ "$FAILED" -ne 0 ]; then
     printf '\n\033[0;31mProduction image smoke tests FAILED\033[0m\n'

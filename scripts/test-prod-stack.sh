@@ -28,6 +28,9 @@ FAILED=0
 # use Cloudflare's own tools often export this one: it would bring the whole
 # stack up in wildcard mode.
 unset CLOUDFLARE_API_TOKEN
+# Likewise: it would run every section behind a proxy Caddy trusts, which the
+# env-file edits in the proxy section below could not undo.
+unset CADDY_TRUSTED_PROXIES
 
 log()  { printf '\033[0;34m==>\033[0m %s\n' "$1"; }
 pass() { printf '  \033[0;32mok\033[0m   %s\n' "$1"; }
@@ -578,6 +581,85 @@ fi
 
 compose --profile realtime stop reverb >/dev/null 2>&1 || true
 
+log "Behind another proxy, the visitor's address and HTTPS reach the app only once Caddy trusts it"
+# Everything above runs Caddy as the installer does, facing visitors and
+# believing no forwarded headers. Behind Traefik (Coolify) the peer is always
+# that proxy, and CADDY_TRUSTED_PROXIES=private_ranges must pass its
+# X-Forwarded-For/-Proto on. Here the peer is the Docker bridge's gateway, a
+# private address, so curl stands in for that proxy. Two things the app does
+# with them are visible from outside: slug-check's rate limit counts per
+# address (60 a minute), and the SPA shell's asset URLs take the request's
+# scheme and host. A forwarded host is never believed, trusted proxy or not:
+# anything on that private network could send one. Every address is from
+# 203.0.113.0/24, kept for documentation.
+# The `|| true`s: these feed plain assignments, where a failed curl or an
+# empty grep would end the script under errexit instead of failing a check.
+slug_check_as() {
+    curl -s -o /dev/null -w '%{http_code}' -H "X-Forwarded-For: $1" "$base/workspaces/slug-check?slug=proxy-probe" || true
+}
+# Sixty requests as one address; prints how many were answered 200.
+spend_slug_checks_as() {
+    local ok=0
+    for _ in $(seq 1 60); do
+        [ "$(slug_check_as "$1")" = "200" ] && ok=$((ok + 1))
+    done
+    echo "$ok"
+}
+shell_asset_urls() {
+    { curl -s -H 'X-Forwarded-Proto: https' -H 'X-Forwarded-Host: evil.example' "$base/signup" | grep -o "https\?://localhost:${HTTP_PORT}/build/" | sort -u | tr '\n' ' '; } || true
+}
+
+# The default: forged headers are overwritten, so every request counts
+# against the one peer whatever address it names, and https is not believed.
+spent=$(spend_slug_checks_as 203.0.113.10)
+forged=$(slug_check_as 203.0.113.11)
+if [ "$spent" = "60" ] && [ "$forged" = "429" ]; then
+    pass "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-For is ignored: the 61st request is limited whatever address it names"
+else
+    fail "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-For is ignored (60 answered: $spent, then $forged)"
+fi
+assets_direct=$(shell_asset_urls)
+if [ "$assets_direct" = "http://localhost:${HTTP_PORT}/build/ " ]; then
+    pass "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-Proto and -Host are ignored: asset URLs stay http on this host"
+else
+    fail "without CADDY_TRUSTED_PROXIES, a forged X-Forwarded-Proto and -Host are ignored (asset URLs: $assets_direct)"
+fi
+
+echo "CADDY_TRUSTED_PROXIES=private_ranges" >> "$ENV_FILE"
+web_proxied_ready=0
+if compose up -d --force-recreate --no-deps web >/dev/null 2>&1; then
+    for _ in $(seq 1 30); do
+        if [ "$(compose ps --format '{{.Service}} {{.Health}}' | grep -cx 'web healthy')" -eq 1 ]; then
+            web_proxied_ready=1
+            break
+        fi
+        sleep 1
+    done
+fi
+if [ "$web_proxied_ready" -eq 1 ]; then
+    pass "web (Caddy) is healthy trusting the private network"
+else
+    fail "web (Caddy) is healthy trusting the private network"
+fi
+
+spent=$(spend_slug_checks_as 203.0.113.20)
+same_visitor=$(slug_check_as 203.0.113.20)
+other_visitor=$(slug_check_as 203.0.113.21)
+if [ "$spent" = "60" ] && [ "$same_visitor" = "429" ] && [ "$other_visitor" = "200" ]; then
+    pass "with CADDY_TRUSTED_PROXIES=private_ranges, the limit counts per forwarded address: one visitor is limited, the next is not"
+else
+    fail "with CADDY_TRUSTED_PROXIES=private_ranges, the limit counts per forwarded address (60 answered: $spent, same visitor: $same_visitor, other visitor: $other_visitor)"
+fi
+assets_proxied=$(shell_asset_urls)
+if [ "$assets_proxied" = "https://localhost:${HTTP_PORT}/build/ " ]; then
+    pass "with CADDY_TRUSTED_PROXIES=private_ranges, X-Forwarded-Proto: https makes asset URLs https, and a forwarded host is still ignored"
+else
+    fail "with CADDY_TRUSTED_PROXIES=private_ranges, X-Forwarded-Proto: https makes asset URLs https, and a forwarded host is still ignored (asset URLs: $assets_proxied)"
+fi
+
+# Back to the installer's default; the next section recreates web from this file.
+sed -i '/^CADDY_TRUSTED_PROXIES=/d' "$ENV_FILE"
+
 log "On-demand TLS actually activates, and still gates on a real workspace (C1)"
 # Everything above this point runs Caddy in CADDY_SITE_ADDRESS=:80 test mode,
 # which never touches TLS at all — that is exactly how the branch's headline
@@ -625,6 +707,14 @@ if grep -q '"endpoint":"http://127.0.0.1:2020/_caddy/ask"' <<<"$shipped_adapt"; 
     pass "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
 else
     fail "the shipped Caddyfile (production shape) gates issuance on the ask endpoint"
+fi
+# What a compose file that never passes CADDY_TRUSTED_PROXIES gets: the
+# Caddyfile's own default, which docker-compose.prod.yml never exercises (it
+# always passes the variable, set or empty). It must trust no proxy.
+if [ -n "$shipped_adapt" ] && ! grep -q '"ranges"' <<<"$shipped_adapt"; then
+    pass "the shipped Caddyfile (production shape) trusts no proxy's forwarded headers"
+else
+    fail "the shipped Caddyfile (production shape) trusts no proxy's forwarded headers"
 fi
 
 # The web image a Cloudflare API token selects: Caddy rebuilt with the DNS

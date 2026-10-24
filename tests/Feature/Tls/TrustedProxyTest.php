@@ -8,8 +8,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 uses(RefreshDatabase::class);
 
 // The Host header selects the tenant in this application, so X-Forwarded-Host
-// is a tenant-selection primitive. It must be honoured from the edge and
-// ignored from anywhere else.
+// is a tenant-selection primitive. It is ignored from everyone, the edge
+// included: Caddy and Traefik both pass the visitor's own Host header through.
 
 it('ignores a forwarded host from an untrusted client', function (): void {
     Workspace::factory()->create(['slug' => 'alpha']);
@@ -41,6 +41,20 @@ it('never lets a forwarded host select a tenant, even from the edge', function (
         ->get('http://ghost.localhost/login');
 
     expect($response->status())->not->toBe(200);
+});
+
+it('never builds links on a forwarded host, even from the edge', function (): void {
+    Workspace::factory()->create(['slug' => 'alpha']);
+
+    // Behind a proxy Caddy trusts (CADDY_TRUSTED_PROXIES), anything on that
+    // private network can send this header. Believed, it would put another
+    // host into the magic-link and CSAT emails a request sends to someone else.
+    $this->withServerVariables(['REMOTE_ADDR' => '127.0.0.1'])
+        ->withHeaders(['X-Forwarded-Host' => 'attacker.example'])
+        ->get('http://alpha.localhost/login');
+
+    expect(url('/login'))->toStartWith('http://alpha.localhost')
+        ->not->toContain('attacker.example');
 });
 
 it('honours the forwarded protocol from the edge', function (): void {
