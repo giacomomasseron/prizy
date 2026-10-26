@@ -11,6 +11,9 @@
 #
 # Usage: bash scripts/test-prod-stack.sh
 set -euo pipefail
+# With pipefail, `producer | grep -q` is a race: grep exits at its first match,
+# a producer still writing dies of SIGPIPE, and the pipeline fails although the
+# line was there. Checks below grep a captured string instead (<<<"$(…)").
 
 PROJECT="prizy-stacktest"
 HTTP_PORT="18080"
@@ -175,7 +178,7 @@ if [ "$ext_services_rc" -eq 0 ] && grep -qx migrate <<<"$ext_services" && ! grep
 else
     fail "docker-compose.external-db.yml switches the bundled postgres off, and nothing depends on it (exit $ext_services_rc: $ext_services)"
 fi
-if compose config --services | grep -qx postgres; then
+if grep -qx postgres <<<"$(compose config --services)"; then
     pass "without it, the bundled postgres runs"
 else
     fail "without it, the bundled postgres runs"
@@ -388,7 +391,7 @@ fi
 
 # A PHP file must never be served as text. If this returns the source of
 # index.php, the fastcgi wiring is wrong in the most dangerous way.
-if curl -s "$base/index.php" | grep -q '<?php'; then
+if grep -q '<?php' <<<"$(curl -s "$base/index.php")"; then
     fail "PHP source is not served as text"
 else
     pass "PHP source is not served as text"
@@ -399,7 +402,7 @@ fi
 # index.php actually ran: a statically served .php file would arrive as
 # application/octet-stream (nginx has no MIME mapping for .php), so an
 # html Content-Type is only possible if fpm executed and rendered it.
-if curl -s -I "$base/index.php" | grep -qi '^Content-Type: *text/html'; then
+if grep -qi '^Content-Type: *text/html' <<<"$(curl -s -I "$base/index.php")"; then
     pass "index.php is executed by fpm, not served statically (Content-Type: text/html)"
 else
     fail "index.php is executed by fpm, not served statically (Content-Type: text/html)"
@@ -478,7 +481,7 @@ for svc in worker purge-worker scheduler; do
     # ping. Assert it actually reports healthy — "not unhealthy" would also pass
     # for a container with no healthcheck at all, which is the configuration
     # that makes `up --wait` exit 1 on Compose 2.29.1.
-    if compose ps --format '{{.Service}} {{.Health}}' | grep -qx "$svc healthy"; then
+    if grep -qx "$svc healthy" <<<"$(compose ps --format '{{.Service}} {{.Health}}')"; then
         pass "$svc reports healthy on its own probe"
     else
         fail "$svc reports healthy on its own probe"
@@ -486,7 +489,7 @@ for svc in worker purge-worker scheduler; do
 done
 
 # Reverb is opt-in: absent unless the `realtime` profile is selected.
-if compose ps --format '{{.Service}}' | grep -q '^reverb$'; then
+if grep -q '^reverb$' <<<"$(compose ps --format '{{.Service}}')"; then
     fail "reverb does not start without its profile"
 else
     pass "reverb does not start without its profile"
@@ -511,8 +514,8 @@ if [ "$purged" -eq 1 ]; then
 else
     fail "a workspace deleted over an hour ago is erased"
 fi
-if compose logs purge-worker 2>/dev/null | grep -q 'PurgeWorkspace' \
-    && ! compose logs worker 2>/dev/null | grep -q 'PurgeWorkspace'; then
+if grep -q 'PurgeWorkspace' <<<"$(compose logs purge-worker 2>/dev/null)" \
+    && ! grep -q 'PurgeWorkspace' <<<"$(compose logs worker 2>/dev/null)"; then
     pass "the erasing ran on purge-worker, not on worker"
 else
     fail "the erasing ran on purge-worker, not on worker"
@@ -948,7 +951,7 @@ else
     fail "the stack comes up on the external database"
 fi
 if [ "$(compose_ext ps -a --format '{{.Service}} {{.Status}}' | grep -cE '^migrate Exited \(0\)')" -eq 1 ] \
-    && compose_ext logs --no-color migrate 2>/dev/null | grep -q 'Database check passed: PostgreSQL 16.* at extdb:5432, role prizy_app'; then
+    && grep -q 'Database check passed: PostgreSQL 16.* at extdb:5432, role prizy_app' <<<"$(compose_ext logs --no-color migrate 2>/dev/null)"; then
     pass "the migrate step checked the external database and migrated it"
 else
     fail "the migrate step checked the external database and migrated it"
