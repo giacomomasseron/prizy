@@ -49,6 +49,7 @@ use App\Http\Controllers\Api\V1\TodoController;
 use App\Http\Controllers\Api\V1\WorkspaceController;
 use App\Http\Controllers\Api\V1\WorkspaceMemberController;
 use App\Http\Controllers\GithubWebhookController;
+use App\Http\Middleware\EnsureTrackerEnabled;
 use App\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -120,26 +121,6 @@ Route::prefix('v1')->group(function (): void {
     ])->group(function (): void {
         Route::get('/me', MeController::class);
 
-        // The caller's own to-dos (PRD §3.2.10): tracker users only; another user's to-do answers 404.
-        Route::middleware('can:viewAny,App\\Models\\Issue')->group(function (): void {
-            Route::get('/me/todos', [TodoController::class, 'index']);
-            Route::post('/me/todos', [TodoController::class, 'store'])->middleware('verified');
-            // Before /me/todos/{todo}, or "done" would be read as a to-do id.
-            Route::delete('/me/todos/done', [TodoController::class, 'clearDone'])->middleware('verified');
-            Route::patch('/me/todos/{todo}', [TodoController::class, 'update'])->middleware('verified')->whereUuid('todo');
-            Route::delete('/me/todos/{todo}', [TodoController::class, 'destroy'])->middleware('verified')->whereUuid('todo');
-
-            // The caller's own day plan (the Today v2 design); an issue that is not on the plan answers 404.
-            Route::get('/me/plan', [PlanController::class, 'index']);
-            Route::get('/me/plan/suggestions', [PlanController::class, 'suggestions']);
-            Route::post('/me/plan', [PlanController::class, 'store'])->middleware('verified');
-            Route::put('/me/plan/capacity', [PlanController::class, 'capacity'])->middleware('verified');
-            Route::patch('/me/plan/{issue}', [PlanController::class, 'update'])->middleware('verified')->whereUuid('issue');
-            Route::delete('/me/plan/{issue}', [PlanController::class, 'destroy'])->middleware('verified')->whereUuid('issue');
-            Route::post('/me/plan/{issue}/done', [PlanController::class, 'done'])->middleware('verified')->whereUuid('issue');
-            Route::delete('/me/plan/{issue}/done', [PlanController::class, 'undo'])->middleware('verified')->whereUuid('issue');
-        });
-
         Route::get('/members', [MemberController::class, 'index']);
         Route::get('/workspace', [WorkspaceController::class, 'show']);
         // Workspace configuration (owner/admin, enforced in the use case).
@@ -157,8 +138,6 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/reports/overview', [ReportingController::class, 'overview']);
         Route::get('/reports/agents', [ReportingController::class, 'agents']);
         Route::get('/reports/sla', [ReportingController::class, 'sla']);
-        Route::get('/reports/tracker-overview', [ReportingController::class, 'trackerOverview']);
-        Route::get('/reports/cycles', [ReportingController::class, 'cycles']);
 
         Route::get('/tickets', [TicketController::class, 'index']);
         Route::get('/tickets/counts', [TicketController::class, 'counts']);
@@ -178,39 +157,6 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/report-views', [HelpdeskSavedReportController::class, 'index']);
         Route::post('/report-views', [HelpdeskSavedReportController::class, 'store'])->middleware('verified');
         Route::delete('/report-views/{reportView}', [HelpdeskSavedReportController::class, 'destroy'])->middleware('verified');
-
-        Route::get('/issues', [IssueController::class, 'index'])
-            ->middleware('can:viewAny,App\\Models\\Issue');
-        // Before /issues/{issue}, or "lookup" would be read as an issue id.
-        Route::get('/issues/lookup', [IssueLookupController::class, 'index'])
-            ->middleware('can:viewAny,App\\Models\\Issue');
-        Route::get('/issues/{issue}', [IssueController::class, 'show']);
-        Route::post('/issues', [IssueController::class, 'store'])
-            ->middleware(['verified', 'can:create,App\\Models\\Issue']);
-        Route::patch('/issues/{issue}', [IssueController::class, 'update'])->middleware('verified');
-        Route::put('/issues/{issue}/status', [IssueController::class, 'status'])->middleware('verified');
-        Route::put('/issues/{issue}/assignee', [IssueController::class, 'assignee'])->middleware('verified');
-        Route::post('/issues/{issue}/archive', [IssueController::class, 'archive'])->middleware('verified');
-        Route::post('/issues/{issue}/comments', [IssueCommentController::class, 'store'])->middleware('verified');
-        Route::get('/issues/{issue}/comments', [IssueCommentController::class, 'index']);
-        Route::post('/issues/{issue}/comments/{comment}/reactions', [IssueCommentReactionController::class, 'toggle'])->middleware('verified');
-        Route::get('/issues/{issue}/activities', [IssueActivityController::class, 'index']);
-        Route::post('/issues/{issue}/blockers', [IssueBlockerController::class, 'store'])->middleware('verified');
-        Route::delete('/issues/{issue}/blockers/{blockingIssue}', [IssueBlockerController::class, 'destroy'])->middleware('verified');
-        Route::post('/issues/{issue}/ticket-links', [IssueTicketLinkController::class, 'store'])->middleware('verified');
-        Route::get('/issues/{issue}/github-links', [IssueGithubLinkController::class, 'index']);
-        Route::post('/issues/{issue}/github-links', [IssueGithubLinkController::class, 'store'])->middleware('verified');
-        Route::delete('/issues/{issue}/github-links/{link}', [IssueGithubLinkController::class, 'destroy'])->middleware('verified');
-        Route::get('/issues/{issue}/labels', [IssueLabelController::class, 'index']);
-        Route::put('/issues/{issue}/labels', [IssueLabelController::class, 'update'])->middleware('verified');
-        Route::put('/issues/{issue}/star', [IssueStarController::class, 'star'])->middleware('verified');
-        Route::delete('/issues/{issue}/star', [IssueStarController::class, 'unstar'])->middleware('verified');
-
-        Route::get('/labels', [LabelController::class, 'index'])->middleware('can:viewAny,App\\Models\\Label');
-        Route::get('/labels/{label}', [LabelController::class, 'show']);
-        Route::post('/labels', [LabelController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Label']);
-        Route::patch('/labels/{label}', [LabelController::class, 'update'])->middleware('verified');
-        Route::delete('/labels/{label}', [LabelController::class, 'destroy'])->middleware('verified');
 
         Route::get('/business-hours', [BusinessHourScheduleController::class, 'index']);
         Route::get('/business-hours/{id}', [BusinessHourScheduleController::class, 'show']);
@@ -252,80 +198,145 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/kb/articles/{id}/translations/{locale}/status', [KbTranslationController::class, 'status'])->middleware('verified');
         Route::delete('/kb/articles/{id}/translations/{locale}', [KbTranslationController::class, 'destroy'])->middleware('verified');
 
-        Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
-        Route::get('/teams/{team}', [TeamController::class, 'show']);
-        Route::post('/teams', [TeamController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Team']);
-        Route::patch('/teams/{team}', [TeamController::class, 'update'])->middleware('verified');
-        Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
-        Route::get('/teams/{team}/members', [TeamMemberController::class, 'index']);
-        Route::post('/teams/{team}/members', [TeamMemberController::class, 'store'])->middleware('verified');
-        Route::patch('/teams/{team}/members/{user}', [TeamMemberController::class, 'updateRole'])->middleware('verified');
-        Route::delete('/teams/{team}/members/{user}', [TeamMemberController::class, 'destroy'])->middleware('verified');
+        // -------------------------------------------------------------------
+        // The issue tracker, and everything that only exists for it (to-dos,
+        // the day plan, notifications, search, the Slack and GitHub
+        // integrations). A workspace that has switched it off answers 403 on
+        // all of it, its owner included (EnsureTrackerEnabled).
+        // TrackerRoutesTest fails on a /v1 route nobody has filed in or out.
+        // -------------------------------------------------------------------
+        Route::middleware(EnsureTrackerEnabled::class.':403')->group(function (): void {
+            // The caller's own to-dos (PRD §3.2.10): tracker users only; another user's to-do answers 404.
+            Route::middleware('can:viewAny,App\\Models\\Issue')->group(function (): void {
+                Route::get('/me/todos', [TodoController::class, 'index']);
+                Route::post('/me/todos', [TodoController::class, 'store'])->middleware('verified');
+                // Before /me/todos/{todo}, or "done" would be read as a to-do id.
+                Route::delete('/me/todos/done', [TodoController::class, 'clearDone'])->middleware('verified');
+                Route::patch('/me/todos/{todo}', [TodoController::class, 'update'])->middleware('verified')->whereUuid('todo');
+                Route::delete('/me/todos/{todo}', [TodoController::class, 'destroy'])->middleware('verified')->whereUuid('todo');
 
-        Route::get('/projects', [ProjectController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
-        Route::get('/projects/{project}', [ProjectController::class, 'show']);
-        Route::post('/projects', [ProjectController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Project']);
-        Route::patch('/projects/{project}', [ProjectController::class, 'update'])->middleware('verified');
-        Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->middleware('verified');
+                // The caller's own day plan (the Today v2 design); an issue that is not on the plan answers 404.
+                Route::get('/me/plan', [PlanController::class, 'index']);
+                Route::get('/me/plan/suggestions', [PlanController::class, 'suggestions']);
+                Route::post('/me/plan', [PlanController::class, 'store'])->middleware('verified');
+                Route::put('/me/plan/capacity', [PlanController::class, 'capacity'])->middleware('verified');
+                Route::patch('/me/plan/{issue}', [PlanController::class, 'update'])->middleware('verified')->whereUuid('issue');
+                Route::delete('/me/plan/{issue}', [PlanController::class, 'destroy'])->middleware('verified')->whereUuid('issue');
+                Route::post('/me/plan/{issue}/done', [PlanController::class, 'done'])->middleware('verified')->whereUuid('issue');
+                Route::delete('/me/plan/{issue}/done', [PlanController::class, 'undo'])->middleware('verified')->whereUuid('issue');
+            });
 
-        // The project chat (PRD §3.2.11): tracker users read it; everyone but viewers posts; only authors edit or delete.
-        Route::middleware('can:viewAny,App\\Models\\Project')->group(function (): void {
-            Route::get('/projects/{project}/messages', [ProjectMessageController::class, 'index']);
-            Route::post('/projects/{project}/messages', [ProjectMessageController::class, 'store'])->middleware('verified');
-            Route::patch('/projects/{project}/messages/{message}', [ProjectMessageController::class, 'update'])->middleware('verified')->whereUuid('message');
-            Route::delete('/projects/{project}/messages/{message}', [ProjectMessageController::class, 'destroy'])->middleware('verified')->whereUuid('message');
+            Route::get('/reports/tracker-overview', [ReportingController::class, 'trackerOverview']);
+            Route::get('/reports/cycles', [ReportingController::class, 'cycles']);
+
+            Route::get('/issues', [IssueController::class, 'index'])
+                ->middleware('can:viewAny,App\\Models\\Issue');
+            // Before /issues/{issue}, or "lookup" would be read as an issue id.
+            Route::get('/issues/lookup', [IssueLookupController::class, 'index'])
+                ->middleware('can:viewAny,App\\Models\\Issue');
+            Route::get('/issues/{issue}', [IssueController::class, 'show']);
+            Route::post('/issues', [IssueController::class, 'store'])
+                ->middleware(['verified', 'can:create,App\\Models\\Issue']);
+            Route::patch('/issues/{issue}', [IssueController::class, 'update'])->middleware('verified');
+            Route::put('/issues/{issue}/status', [IssueController::class, 'status'])->middleware('verified');
+            Route::put('/issues/{issue}/assignee', [IssueController::class, 'assignee'])->middleware('verified');
+            Route::post('/issues/{issue}/archive', [IssueController::class, 'archive'])->middleware('verified');
+            Route::post('/issues/{issue}/comments', [IssueCommentController::class, 'store'])->middleware('verified');
+            Route::get('/issues/{issue}/comments', [IssueCommentController::class, 'index']);
+            Route::post('/issues/{issue}/comments/{comment}/reactions', [IssueCommentReactionController::class, 'toggle'])->middleware('verified');
+            Route::get('/issues/{issue}/activities', [IssueActivityController::class, 'index']);
+            Route::post('/issues/{issue}/blockers', [IssueBlockerController::class, 'store'])->middleware('verified');
+            Route::delete('/issues/{issue}/blockers/{blockingIssue}', [IssueBlockerController::class, 'destroy'])->middleware('verified');
+            Route::post('/issues/{issue}/ticket-links', [IssueTicketLinkController::class, 'store'])->middleware('verified');
+            Route::get('/issues/{issue}/github-links', [IssueGithubLinkController::class, 'index']);
+            Route::post('/issues/{issue}/github-links', [IssueGithubLinkController::class, 'store'])->middleware('verified');
+            Route::delete('/issues/{issue}/github-links/{link}', [IssueGithubLinkController::class, 'destroy'])->middleware('verified');
+            Route::get('/issues/{issue}/labels', [IssueLabelController::class, 'index']);
+            Route::put('/issues/{issue}/labels', [IssueLabelController::class, 'update'])->middleware('verified');
+            Route::put('/issues/{issue}/star', [IssueStarController::class, 'star'])->middleware('verified');
+            Route::delete('/issues/{issue}/star', [IssueStarController::class, 'unstar'])->middleware('verified');
+
+            Route::get('/labels', [LabelController::class, 'index'])->middleware('can:viewAny,App\\Models\\Label');
+            Route::get('/labels/{label}', [LabelController::class, 'show']);
+            Route::post('/labels', [LabelController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Label']);
+            Route::patch('/labels/{label}', [LabelController::class, 'update'])->middleware('verified');
+            Route::delete('/labels/{label}', [LabelController::class, 'destroy'])->middleware('verified');
+
+            Route::get('/teams', [TeamController::class, 'index'])->middleware('can:viewAny,App\\Models\\Team');
+            Route::get('/teams/{team}', [TeamController::class, 'show']);
+            Route::post('/teams', [TeamController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Team']);
+            Route::patch('/teams/{team}', [TeamController::class, 'update'])->middleware('verified');
+            Route::delete('/teams/{team}', [TeamController::class, 'destroy'])->middleware('verified');
+            Route::get('/teams/{team}/members', [TeamMemberController::class, 'index']);
+            Route::post('/teams/{team}/members', [TeamMemberController::class, 'store'])->middleware('verified');
+            Route::patch('/teams/{team}/members/{user}', [TeamMemberController::class, 'updateRole'])->middleware('verified');
+            Route::delete('/teams/{team}/members/{user}', [TeamMemberController::class, 'destroy'])->middleware('verified');
+
+            Route::get('/projects', [ProjectController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
+            Route::get('/projects/{project}', [ProjectController::class, 'show']);
+            Route::post('/projects', [ProjectController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Project']);
+            Route::patch('/projects/{project}', [ProjectController::class, 'update'])->middleware('verified');
+            Route::delete('/projects/{project}', [ProjectController::class, 'destroy'])->middleware('verified');
+
+            // The project chat (PRD §3.2.11): tracker users read it; everyone but viewers posts; only authors edit or delete.
+            Route::middleware('can:viewAny,App\\Models\\Project')->group(function (): void {
+                Route::get('/projects/{project}/messages', [ProjectMessageController::class, 'index']);
+                Route::post('/projects/{project}/messages', [ProjectMessageController::class, 'store'])->middleware('verified');
+                Route::patch('/projects/{project}/messages/{message}', [ProjectMessageController::class, 'update'])->middleware('verified')->whereUuid('message');
+                Route::delete('/projects/{project}/messages/{message}', [ProjectMessageController::class, 'destroy'])->middleware('verified')->whereUuid('message');
+            });
+
+            Route::get('/releases', [ReleaseController::class, 'index'])->middleware('can:viewAny,App\\Models\\Release');
+            Route::get('/releases/{release}', [ReleaseController::class, 'show']);
+            Route::post('/releases', [ReleaseController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Release']);
+            Route::patch('/releases/{release}', [ReleaseController::class, 'update'])->middleware('verified');
+            Route::delete('/releases/{release}', [ReleaseController::class, 'destroy'])->middleware('verified');
+            Route::post('/releases/{release}/ship', [ReleaseController::class, 'ship'])->middleware('verified');
+            Route::post('/releases/{release}/unship', [ReleaseController::class, 'unship'])->middleware('verified');
+
+            Route::get('/teams/{team}/cycles', [CycleController::class, 'index'])
+                ->middleware('can:viewAny,App\\Models\\Cycle');
+            Route::post('/teams/{team}/cycles', [CycleController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Cycle']);
+            Route::patch('/cycles/{cycle}', [CycleController::class, 'update'])->middleware('verified');
+            Route::delete('/cycles/{cycle}', [CycleController::class, 'destroy'])->middleware('verified');
+
+            Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index'])
+                ->middleware('can:viewAny,App\\Models\\Milestone');
+            Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Milestone']);
+            Route::patch('/milestones/{milestone}', [MilestoneController::class, 'update'])->middleware('verified');
+            Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->middleware('verified');
+
+            Route::get('/roadmap', [RoadmapController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
+
+            Route::get('/notifications', [NotificationController::class, 'index']);
+            Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+            Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
+            Route::get('/notifications/preferences', [NotificationController::class, 'preferences']);
+            Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
+            Route::get('/notifications/subscriptions', [NotificationController::class, 'subscriptions']);
+            Route::patch('/notifications/subscriptions', [NotificationController::class, 'updateSubscription']);
+            Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
+            Route::post('/notifications/{notification}/unread', [NotificationController::class, 'unread']);
+            Route::post('/notifications/{notification}/snooze', [NotificationController::class, 'snooze']);
+            Route::post('/notifications/{notification}/archive', [NotificationController::class, 'archive']);
+
+            Route::get('/saved-views', [SavedViewController::class, 'index'])->middleware('can:viewAny,App\\Models\\SavedView');
+            Route::get('/saved-views/{savedView}', [SavedViewController::class, 'show']);
+            Route::post('/saved-views', [SavedViewController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\SavedView']);
+            Route::patch('/saved-views/{savedView}', [SavedViewController::class, 'update'])->middleware('verified');
+            Route::delete('/saved-views/{savedView}', [SavedViewController::class, 'destroy'])->middleware('verified');
+
+            Route::get('/search/issues', [SearchController::class, 'issues']);
+            Route::get('/search', [SearchController::class, 'index']);
+
+            Route::get('/integrations/slack', [SlackIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\SlackIntegration');
+            Route::put('/integrations/slack', [SlackIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
+            Route::post('/integrations/slack/test', [SlackIntegrationController::class, 'test'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
+            Route::delete('/integrations/slack', [SlackIntegrationController::class, 'destroy'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
+
+            Route::get('/integrations/github', [GithubIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\GithubIntegration');
+            Route::put('/integrations/github', [GithubIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\GithubIntegration']);
+            Route::delete('/integrations/github', [GithubIntegrationController::class, 'destroy'])->middleware(['verified', 'can:update,App\\Models\\GithubIntegration']);
         });
-
-        Route::get('/releases', [ReleaseController::class, 'index'])->middleware('can:viewAny,App\\Models\\Release');
-        Route::get('/releases/{release}', [ReleaseController::class, 'show']);
-        Route::post('/releases', [ReleaseController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Release']);
-        Route::patch('/releases/{release}', [ReleaseController::class, 'update'])->middleware('verified');
-        Route::delete('/releases/{release}', [ReleaseController::class, 'destroy'])->middleware('verified');
-        Route::post('/releases/{release}/ship', [ReleaseController::class, 'ship'])->middleware('verified');
-        Route::post('/releases/{release}/unship', [ReleaseController::class, 'unship'])->middleware('verified');
-
-        Route::get('/teams/{team}/cycles', [CycleController::class, 'index'])
-            ->middleware('can:viewAny,App\\Models\\Cycle');
-        Route::post('/teams/{team}/cycles', [CycleController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Cycle']);
-        Route::patch('/cycles/{cycle}', [CycleController::class, 'update'])->middleware('verified');
-        Route::delete('/cycles/{cycle}', [CycleController::class, 'destroy'])->middleware('verified');
-
-        Route::get('/projects/{project}/milestones', [MilestoneController::class, 'index'])
-            ->middleware('can:viewAny,App\\Models\\Milestone');
-        Route::post('/projects/{project}/milestones', [MilestoneController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\Milestone']);
-        Route::patch('/milestones/{milestone}', [MilestoneController::class, 'update'])->middleware('verified');
-        Route::delete('/milestones/{milestone}', [MilestoneController::class, 'destroy'])->middleware('verified');
-
-        Route::get('/roadmap', [RoadmapController::class, 'index'])->middleware('can:viewAny,App\\Models\\Project');
-
-        Route::get('/notifications', [NotificationController::class, 'index']);
-        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-        Route::post('/notifications/read-all', [NotificationController::class, 'readAll']);
-        Route::get('/notifications/preferences', [NotificationController::class, 'preferences']);
-        Route::patch('/notifications/preferences', [NotificationController::class, 'updatePreferences']);
-        Route::get('/notifications/subscriptions', [NotificationController::class, 'subscriptions']);
-        Route::patch('/notifications/subscriptions', [NotificationController::class, 'updateSubscription']);
-        Route::post('/notifications/{notification}/read', [NotificationController::class, 'read']);
-        Route::post('/notifications/{notification}/unread', [NotificationController::class, 'unread']);
-        Route::post('/notifications/{notification}/snooze', [NotificationController::class, 'snooze']);
-        Route::post('/notifications/{notification}/archive', [NotificationController::class, 'archive']);
-
-        Route::get('/saved-views', [SavedViewController::class, 'index'])->middleware('can:viewAny,App\\Models\\SavedView');
-        Route::get('/saved-views/{savedView}', [SavedViewController::class, 'show']);
-        Route::post('/saved-views', [SavedViewController::class, 'store'])->middleware(['verified', 'can:create,App\\Models\\SavedView']);
-        Route::patch('/saved-views/{savedView}', [SavedViewController::class, 'update'])->middleware('verified');
-        Route::delete('/saved-views/{savedView}', [SavedViewController::class, 'destroy'])->middleware('verified');
-
-        Route::get('/search/issues', [SearchController::class, 'issues']);
-        Route::get('/search', [SearchController::class, 'index']);
-
-        Route::get('/integrations/slack', [SlackIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\SlackIntegration');
-        Route::put('/integrations/slack', [SlackIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
-        Route::post('/integrations/slack/test', [SlackIntegrationController::class, 'test'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
-        Route::delete('/integrations/slack', [SlackIntegrationController::class, 'destroy'])->middleware(['verified', 'can:update,App\\Models\\SlackIntegration']);
-
-        Route::get('/integrations/github', [GithubIntegrationController::class, 'show'])->middleware('can:viewAny,App\\Models\\GithubIntegration');
-        Route::put('/integrations/github', [GithubIntegrationController::class, 'update'])->middleware(['verified', 'can:update,App\\Models\\GithubIntegration']);
-        Route::delete('/integrations/github', [GithubIntegrationController::class, 'destroy'])->middleware(['verified', 'can:update,App\\Models\\GithubIntegration']);
     });
 });

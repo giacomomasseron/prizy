@@ -180,3 +180,24 @@ it('links a chat mention whose message was deleted to the inbox, not to a chat l
     });
 });
 
+
+// Every notification is about the tracker, so a workspace that has switched it
+// off would only be mailed links that answer 404.
+it('sends no digest from a workspace that has switched the tracker off', function (): void {
+    Notification::fake();
+    $ws = Workspace::factory()->create(['tracker_enabled' => false]);
+    $ws->makeCurrent();
+    $daily = User::factory()->for($ws, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now()]);
+    seedNotif($ws, $daily);
+    // Control: the same user in a workspace that runs the tracker does get one.
+    $other = Workspace::factory()->create();
+    $other->makeCurrent();
+    $control = User::factory()->for($other, 'workspace')->create(['email_digest_frequency' => 'daily', 'email_verified_at' => now()]);
+    seedNotif($other, $control);
+    Workspace::forgetCurrent();
+
+    $this->artisan('notifications:send-digests', ['--frequency' => 'daily'])->assertExitCode(0);
+
+    Notification::assertNotSentTo($daily, NotificationDigest::class);
+    Notification::assertSentTo($control, NotificationDigest::class);
+});

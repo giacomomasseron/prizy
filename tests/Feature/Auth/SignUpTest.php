@@ -123,7 +123,7 @@ it('keeps the picked mark colour, and none when nothing is picked', function ():
         ->and(Workspace::where('slug', 'southwind')->value('color'))->toBeNull();
 });
 
-it('turns the support side off only for an engineering-only workspace, and gives the owner what it runs', function (?string $usage, bool $helpdesk, bool $developer, bool $agent): void {
+it('runs only the modules the workspace chose, and gives the owner what it runs', function (?string $usage, bool $helpdesk, bool $tracker, bool $developer, bool $agent): void {
     Notification::fake();
 
     signUpWith('northwind', $usage === null ? [] : ['usage' => $usage])
@@ -131,12 +131,14 @@ it('turns the support side off only for an engineering-only workspace, and gives
         ->assertJsonPath('user.is_developer', $developer)
         ->assertJsonPath('user.is_agent', $agent);
 
-    expect(Workspace::where('slug', 'northwind')->value('helpdesk_enabled'))->toBe($helpdesk);
+    $workspace = Workspace::where('slug', 'northwind')->firstOrFail();
+    expect($workspace->helpdesk_enabled)->toBe($helpdesk)
+        ->and($workspace->tracker_enabled)->toBe($tracker);
 })->with([
-    'both'        => ['both', true, true, true],
-    'engineering' => ['engineering', false, true, false],
-    'support'     => ['support', true, false, true],
-    'not given'   => [null, true, false, false],
+    'both'        => ['both', true, true, true, true],
+    'engineering' => ['engineering', false, true, true, false],
+    'support'     => ['support', true, false, false, true],
+    'not given'   => [null, true, true, false, false],
 ]);
 
 it('refuses a colour or a usage it does not offer', function (): void {

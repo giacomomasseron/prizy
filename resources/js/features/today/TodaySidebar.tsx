@@ -1,6 +1,6 @@
 import type { CSSProperties } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { canDevelop as canDevelopFor, canUseTracker } from '../../auth/capabilities';
+import { canDevelop as canDevelopFor, canUseTracker, trackerEnabled } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { BrandMark } from '../../components/ui/BrandMark';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
@@ -47,9 +47,9 @@ export function TodaySidebar({ onHide }: { onHide: () => void }) {
     const tracker = canUseTracker(me.data);
     const { openCreate } = useIssueDrawers();
     const plan = usePlan(tracker);
-    const unread = useUnreadCount();
+    const unread = useUnreadCount(trackerEnabled(me.data));
     const projects = useMyProjects({ enabled: tracker });
-    const teams = useTeams({ mine: true });
+    const teams = useTeams({ mine: true, enabled: trackerEnabled(me.data) });
 
     const items = plan.data?.items ?? [];
     const unreadCount = unread.data?.count ?? 0;

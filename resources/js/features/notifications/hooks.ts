@@ -21,12 +21,14 @@ export function useNotifications(category = 'all', unreadOnly = false, enabled =
     });
 }
 
-export function useUnreadCount() {
+/** `enabled`: false where the workspace may have switched the tracker off, whose notifications go with it (403). */
+export function useUnreadCount(enabled = true) {
     return useQuery({
         queryKey: ['notifications', 'unread-count'],
         queryFn: () => api.get<{ count: number }>('/notifications/unread-count'),
         refetchInterval: 300_000,
         refetchOnWindowFocus: true,
+        enabled,
     });
 }
 

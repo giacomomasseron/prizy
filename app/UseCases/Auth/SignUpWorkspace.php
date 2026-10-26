@@ -21,10 +21,11 @@ final class SignUpWorkspace
     public const COLORS = ['#5b57e0', '#3a8f4d', '#3f74d6', '#d9623a', '#9b5bd6', '#c96b8f'];
 
     /**
-     * What the workspace will run. Only engineering turns the support side
-     * off; and it is what the owner works on, so it gives them the tracker,
-     * the support desk, or both (the setup page opens the desk for a
-     * support-only owner).
+     * What the workspace will run: engineering turns the support side off,
+     * support turns the tracker off, both keeps both. It is also what the
+     * owner works on, so it gives them the tracker, the support desk, or both
+     * (the setup page opens the desk for a support-only owner). Either module
+     * can be switched back on later, under Settings → General.
      */
     public const USAGES = ['both', 'engineering', 'support'];
 
@@ -51,8 +52,8 @@ final class SignUpWorkspace
     public function handle(array $data): array
     {
         $pending = (bool) config('app.signup_requires_activation');
-        // Not given (an older client): the support side stays on, and the
-        // owner gets neither capability, as before there was a choice.
+        // Not given (an older client): both modules stay on, and the owner
+        // gets neither capability, as before there was a choice.
         $usage = $data['usage'] ?? null;
 
         [$workspace, $user] = DB::transaction(function () use ($data, $pending, $usage): array {
@@ -65,6 +66,7 @@ final class SignUpWorkspace
                 'slug'             => $data['slug'],
                 'color'            => $data['color'] ?? null,
                 'helpdesk_enabled' => $usage !== 'engineering',
+                'tracker_enabled'  => $usage !== 'support',
             ];
             if ($pending) {
                 // An explicit NULL overrides the column's DEFAULT now().

@@ -21,6 +21,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property string|null $color         — workspace mark colour (#rrggbb), picked at sign-up
  * @property string      $plan
  * @property bool        $helpdesk_enabled — workspace-level switch for the support module
+ * @property bool        $tracker_enabled  — workspace-level switch for the issue tracker
  * @property string      $timezone
  * @property string      $locale
  * @property \Illuminate\Support\Carbon|null $activated_at — null while a sign-up awaits its owner's email confirmation
@@ -49,12 +50,14 @@ final class Workspace extends Tenant
         'color',
         'plan',
         'helpdesk_enabled',
+        'tracker_enabled',
         'timezone',
         'locale',
     ];
 
     protected $casts = [
         'helpdesk_enabled' => 'boolean',
+        'tracker_enabled' => 'boolean',
         'activated_at' => 'datetime',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',

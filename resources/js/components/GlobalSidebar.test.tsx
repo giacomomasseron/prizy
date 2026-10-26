@@ -258,3 +258,28 @@ describe('Today v2: the Today count', () => {
         expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/me/plan'))).toBe(false);
     });
 });
+
+describe('a workspace with the tracker switched off', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('offers the desk alone, and asks for nothing of the tracker — the owner included', async () => {
+        const fetchMock = vi.fn(async (url: string) => {
+            if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: 'owner', is_developer: true, is_agent: true, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true, tracker_enabled: false } } });
+            return j({ data: [], links: { next: null } });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><GlobalSidebar onCollapse={() => {}} /></MemoryRouter></QueryClientProvider>);
+
+        // The desk rows resolve with /me: anchor on one before asserting what is absent.
+        expect(await screen.findByRole('link', { name: /Support inbox/ })).toHaveAttribute('href', '/support');
+        expect(screen.queryByRole('link', { name: /Today/ })).toBeNull();
+        expect(screen.queryByRole('link', { name: 'Inbox' })).toBeNull();
+        expect(screen.queryByRole('link', { name: /My Issues/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Workspace' })).toBeNull();
+        expect(screen.queryByText('My Teams')).toBeNull();
+        expect(screen.queryByRole('button', { name: /New issue/ })).toBeNull();
+        const asked = fetchMock.mock.calls.map(([url]) => String(url));
+        expect(asked.filter((u) => /\/(issues|teams|unread-count|me\/plan)/.test(u))).toEqual([]);
+    });
+});

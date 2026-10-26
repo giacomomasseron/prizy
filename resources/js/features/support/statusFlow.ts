@@ -17,6 +17,8 @@ export function nextStatus(status: TicketStatus): TicketStatus {
 export interface Macro {
     label: string;
     text: string;
+    /** Tells the customer about the engineering team: not offered in a workspace that has switched the tracker off. */
+    tracker?: boolean;
 }
 
 // Client-side canned inserts — appended to the draft, no backend.
@@ -28,6 +30,7 @@ export const MACROS: Macro[] = [
     {
         label: 'Escalate to eng',
         text: 'Thanks for your patience — I’ve escalated this to our engineering team and will update you as soon as I hear back.',
+        tracker: true,
     },
     {
         label: 'Close as solved',

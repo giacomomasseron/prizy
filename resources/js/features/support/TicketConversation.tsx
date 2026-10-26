@@ -9,7 +9,7 @@ import type { TicketDetail, TicketMessage } from '../../lib/types';
 import { TicketComposer } from './TicketComposer';
 import { TicketStatusLabel, TicketStatusMenu } from './TicketStatusMenu';
 import { useMe } from '../../auth/useAuth';
-import { canWriteHelpdesk } from '../../auth/capabilities';
+import { canWriteHelpdesk, trackerEnabled } from '../../auth/capabilities';
 import { paneHeader, paneTitle, tint } from './supportStyles';
 import { ink } from '../../lib/ink';
 import { issueRef } from '../issues/issueMeta';
@@ -53,7 +53,8 @@ export function TicketConversation({ ticketId }: { ticketId: string | undefined 
 
 function TicketBody({ t }: { t: TicketDetail }) {
     const linked = t.linked_issues[0];
-    const canWrite = canWriteHelpdesk(useMe().data); // a viewer reads the thread: no status menu, no composer
+    const me = useMe().data;
+    const canWrite = canWriteHelpdesk(me); // a viewer reads the thread: no status menu, no composer
     return (
         <>
             <header style={paneHeader}>
@@ -76,7 +77,7 @@ function TicketBody({ t }: { t: TicketDetail }) {
                     {t.messages.map((m) => <MessageRow key={m.id} m={m} />)}
                 </div>
             </div>
-            {canWrite && <TicketComposer ticket={t} />}
+            {canWrite && <TicketComposer ticket={t} tracker={trackerEnabled(me)} />}
         </>
     );
 }

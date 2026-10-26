@@ -151,3 +151,19 @@ it('stores a long PR title (300 chars) without 500', function (): void {
     expect(strlen($link->refresh()->title))->toBe(300);
     Workspace::forgetCurrent();
 });
+
+it('leaves the issue and its link as they are when the workspace has switched the tracker off', function (): void {
+    [$ws, $integration, $issue, $link, $secret] = ghWebhookSetup(moveOnMerge: true);
+    $ws->update(['tracker_enabled' => false]);
+
+    ghPost($integration->webhook_token, [
+        'action' => 'closed',
+        'pull_request' => ['merged' => true, 'number' => 7, 'title' => 'Fix it', 'html_url' => 'https://github.com/acme/app/pull/7'],
+        'repository' => ['full_name' => 'acme/app'],
+    ], $secret)->assertNoContent();
+
+    $ws->makeCurrent();
+    expect($issue->refresh()->status)->toBe('in_progress')
+        ->and($link->refresh()->state)->toBe('open');
+    Workspace::forgetCurrent();
+});

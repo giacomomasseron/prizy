@@ -24,7 +24,9 @@ final class SendNotificationDigests extends Command
         /** @var string $frequency */
         $frequency = $this->option('frequency');
 
-        Workspace::all()->each(function (Workspace $workspace) use ($frequency, $preferences): void {
+        // Every notification is about the tracker (an issue, a project chat), so
+        // a workspace that has switched it off is sent none: its links would 404.
+        Workspace::query()->where('tracker_enabled', true)->get()->each(function (Workspace $workspace) use ($frequency, $preferences): void {
             $workspace->makeCurrent();
 
             try {

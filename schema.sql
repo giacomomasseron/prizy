@@ -136,12 +136,15 @@ CREATE TABLE workspaces (
     color               VARCHAR(7),                          -- workspace mark colour (#rrggbb)
     plan                workspace_plan  NOT NULL DEFAULT 'starter',
     helpdesk_enabled    BOOLEAN         NOT NULL DEFAULT TRUE, -- support module switch
+    tracker_enabled     BOOLEAN         NOT NULL DEFAULT TRUE, -- issue tracker module switch
     timezone            VARCHAR(64)     NOT NULL DEFAULT 'UTC',
     locale              VARCHAR(10)     NOT NULL DEFAULT 'en',
     activated_at        TIMESTAMPTZ     DEFAULT now(),       -- NULL = pending owner confirmation
     created_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
     updated_at          TIMESTAMPTZ     NOT NULL DEFAULT now(),
-    deleted_at          TIMESTAMPTZ
+    deleted_at          TIMESTAMPTZ,
+    -- A workspace with both modules off would have nothing left to open.
+    CONSTRAINT workspaces_one_module_on CHECK (tracker_enabled OR helpdesk_enabled)
 );
 
 CREATE INDEX workspaces_pending_created_at_idx ON workspaces (created_at) WHERE activated_at IS NULL;

@@ -216,6 +216,61 @@ describe('GeneralPage (support module switch)', () => {
     });
 });
 
+describe('GeneralPage (tracker module switch)', () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+
+    function stub(level: string, modules: { helpdesk_enabled: boolean; tracker_enabled: boolean }) {
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            calls.push({ url, init });
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (url.includes('/v1/me')) return j({ data: { ...me, admin_level: level, workspace: modules } });
+            if (url.includes('/v1/workspace')) return j({ data: { id: 'w', name: 'W', slug: 'w', ...modules } });
+            return j({ data: {} });
+        }));
+    }
+
+    beforeEach(() => { calls.length = 0; });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('shows an owner both modules, each with its own switch', async () => {
+        stub('owner', { helpdesk_enabled: true, tracker_enabled: true });
+        renderPage();
+        const tracker = await screen.findByRole('switch', { name: 'Issue tracker module' });
+        expect(tracker).toHaveAttribute('aria-checked', 'true');
+        expect(tracker.previousElementSibling?.textContent).toBe('On');
+        expect(screen.getByRole('switch', { name: 'Support module' })).toHaveAttribute('aria-checked', 'true');
+        expect(screen.getByText(/closes issues, projects, cycles, the roadmap, releases and analytics/)).toBeInTheDocument();
+    });
+
+    it('patches only the tracker switch when it is turned off', async () => {
+        stub('owner', { helpdesk_enabled: true, tracker_enabled: true });
+        renderPage();
+        await userEvent.click(await screen.findByRole('switch', { name: 'Issue tracker module' }));
+
+        const patch = calls.find((c) => c.url.includes('/v1/workspace') && c.init?.method === 'PATCH');
+        expect(JSON.parse(String(patch?.init?.body))).toEqual({ tracker_enabled: false });
+    });
+
+    it('keeps the last module that is on from being switched off', async () => {
+        stub('admin', { helpdesk_enabled: true, tracker_enabled: false });
+        renderPage();
+        const support = await screen.findByRole('switch', { name: 'Support module' });
+        expect(support).toBeDisabled();
+        expect(support).toHaveAttribute('title', 'Keep at least one module on');
+        const tracker = screen.getByRole('switch', { name: 'Issue tracker module' });
+        expect(tracker).toHaveAttribute('aria-checked', 'false');
+        expect(tracker).toBeEnabled();
+    });
+
+    it('drops the email digest, which only ever gathers the tracker\'s notifications', async () => {
+        stub('owner', { helpdesk_enabled: true, tracker_enabled: false });
+        renderPage();
+        await screen.findByRole('switch', { name: 'Issue tracker module' });
+        expect(screen.queryByRole('group', { name: 'Email digest frequency' })).toBeNull();
+        expect(screen.getByText(/^Workspace-wide preferences\./).textContent).not.toContain('email digest');
+    });
+});
+
 describe('GeneralPage (v2 look)', () => {
     beforeEach(() => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {

@@ -60,7 +60,8 @@ final class GithubWebhookHandler
         $title = isset($pr['title']) ? (string) $pr['title'] : null;
 
         $workspace = Workspace::find($integration->workspace_id);
-        if ($workspace === null) {
+        // A workspace that has switched the tracker off keeps its issues as they are.
+        if ($workspace === null || ! $workspace->tracker_enabled) {
             return 'ignored';
         }
 

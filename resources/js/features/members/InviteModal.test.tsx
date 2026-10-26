@@ -154,4 +154,26 @@ describe('InviteModal', () => {
         expect(screen.getByRole('button', { name: 'Cancel' }).style.borderRadius).toBe('var(--radius-pill)');
         expect(screen.getByRole('button', { name: /send invite/i }).className).toContain('bg-fg');
     });
+
+    it('offers no Developer capability where the workspace has switched the tracker off', async () => {
+        const user = userEvent.setup();
+        const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+            if (url.includes('/v1/me')) {
+                return new Response(JSON.stringify({ data: { id: 'u1', workspace_id: 'w1', name: 'A', email: 'a@x.co', admin_level: 'owner', is_developer: true, is_agent: true, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true, tracker_enabled: false } } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            return new Response(JSON.stringify({ invitation: { id: 'i', ...JSON.parse(String(init?.body ?? '{}')) } }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        renderModal();
+
+        await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Developer' })).toBeNull());
+        await user.type(screen.getByLabelText(/email address/i), 'sam@example.com');
+        await user.click(screen.getByRole('checkbox', { name: 'Agent' }));
+        await user.click(screen.getByRole('button', { name: /send invite/i }));
+
+        await waitFor(() => {
+            const sent = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+            expect(JSON.parse(String(sent?.[1]?.body))).toMatchObject({ email: 'sam@example.com', is_developer: false, is_agent: true });
+        });
+    });
 });

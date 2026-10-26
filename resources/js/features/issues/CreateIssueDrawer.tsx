@@ -12,6 +12,7 @@ import { useProjects } from '../projects/hooks';
 import { useReleases } from '../releases/hooks';
 import { useMembers } from '../members/hooks';
 import { useLabels } from '../labels/hooks';
+import { trackerEnabled } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { useCreateIssue } from './hooks';
 import { PRIORITY_LABELS, STATUS_LABELS } from './issueMeta';
@@ -57,7 +58,9 @@ function projectSwatch(color: string) {
 }
 
 export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
-    const teams = useTeams();
+    const me = useMe().data;
+    // Mounted on every page: a workspace that has switched the tracker off answers 403 here.
+    const teams = useTeams({ enabled: trackerEnabled(me) });
     const projects = useProjects(undefined, { enabled: open });
     // Non-paginated api.get (an array directly, not `{ items }`) — matches how the Project
     // chip's list-hook fetch is gated to only while the drawer is open.
@@ -65,7 +68,6 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const members = useMembers();
     const labels = useLabels({ enabled: open });
     const createIssue = useCreateIssue();
-    const me = useMe().data;
     const meId = me?.id;
 
     const [teamId, setTeamId] = useState<string | null>(null);

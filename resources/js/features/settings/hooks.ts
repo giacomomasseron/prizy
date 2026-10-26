@@ -15,18 +15,20 @@ export function useUpdateNotificationPreferences() {
     });
 }
 
+export type ModuleSwitches = { helpdesk_enabled?: boolean; tracker_enabled?: boolean };
+
 /**
- * Workspace-level module switch. Invalidates `me` because that payload carries
- * the switch the navigation reads — without it the desk rows would linger until
- * the next reload.
+ * Workspace-level module switches: send only the one that changes. Invalidates `me` because that payload carries
+ * the switches the navigation reads — without it the rows of a module switched off would linger until the next reload.
  */
-export function useUpdateHelpdeskEnabled() {
+export function useUpdateModules() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (helpdesk_enabled: boolean) =>
-            api.patch<{ id: string; name: string; slug: string; helpdesk_enabled: boolean }>('/workspace', { helpdesk_enabled }),
+        mutationFn: (change: ModuleSwitches) =>
+            api.patch<{ id: string; name: string; slug: string; helpdesk_enabled: boolean; tracker_enabled: boolean }>('/workspace', change),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: ['me'] });
+            qc.invalidateQueries({ queryKey: ['workspace'] });
         },
     });
 }
@@ -38,6 +40,7 @@ export interface WorkspaceSummary {
     /** The mark colour picked at sign-up (#rrggbb), or null. */
     color: string | null;
     helpdesk_enabled: boolean;
+    tracker_enabled: boolean;
     member_count: number;
     team_count: number;
 }

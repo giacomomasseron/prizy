@@ -14,7 +14,7 @@ import { SlaSection } from './SlaSection';
 import { ReportingSidebar } from './ReportingSidebar';
 import { RangeToggle } from './RangeToggle';
 import { useMe } from '../../auth/useAuth';
-import { canWriteHelpdesk } from '../../auth/capabilities';
+import { canWriteHelpdesk, trackerEnabled } from '../../auth/capabilities';
 
 export default function ReportingLayout() {
     const [range, setRange] = useState<ReportRange>('7d');
@@ -26,7 +26,8 @@ export default function ReportingLayout() {
     const savedReportsQ = useSavedReports();
     const createReport = useCreateSavedReport();
     const deleteReport = useDeleteSavedReport();
-    const canWrite = canWriteHelpdesk(useMe().data); // saved reports are shared: a viewer opens them, nothing more
+    const me = useMe().data;
+    const canWrite = canWriteHelpdesk(me); // saved reports are shared: a viewer opens them, nothing more
     const sectionLabel = REPORT_SECTIONS.find((s) => s.key === section)?.label ?? 'Overview';
 
     const cached = section === 'overview' ? q.data : section === 'agents' ? agentsQ.data : slaQ.data;
@@ -70,7 +71,7 @@ export default function ReportingLayout() {
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,minmax(0,1fr))', gap: 12 }}>
                                         {KPI_META.map((m) => <KpiCard key={m.key} meta={m} kpi={report.kpis[m.key]} series={report.sparklines?.[m.key]} />)}
                                     </div>
-                                    {section === 'overview' ? <OverviewSection report={report} /> : section === 'agents' ? <AgentsSection range={range} /> : <SlaSection range={range} />}
+                                    {section === 'overview' ? <OverviewSection report={report} tracker={trackerEnabled(me)} /> : section === 'agents' ? <AgentsSection range={range} /> : <SlaSection range={range} />}
                                 </>
                             )}
                         </QueryState>

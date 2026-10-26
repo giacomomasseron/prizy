@@ -4,29 +4,29 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import SettingsLayout, { RequireManage, StubPage } from './SettingsLayout';
 
-function makeMe(adminLevel: string, isAgent = false, helpdeskEnabled = true) {
+function makeMe(adminLevel: string, isAgent = false, helpdeskEnabled = true, trackerEnabled = true) {
     return {
         id: 'u1', workspace_id: 'w1', name: 'Alice', email: 'a@x.co',
         admin_level: adminLevel, is_developer: false, is_agent: isAgent,
         email_digest_frequency: 'off' as const,
-        workspace: { helpdesk_enabled: helpdeskEnabled },
+        workspace: { helpdesk_enabled: helpdeskEnabled, tracker_enabled: trackerEnabled },
     };
 }
 
-function stubFetch(adminLevel: string, isAgent = false, helpdeskEnabled = true) {
+function stubFetch(adminLevel: string, isAgent = false, helpdeskEnabled = true, trackerEnabled = true) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         const j = (b: unknown, s = 200) =>
             new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
         // /workspace/members must match before /me (substring overlap)
         if ((url as string).includes('/workspace/members')) return j({ data: [{ id: 'u1', name: 'Alice', email: 'a@x.co', admin_level: 'owner', is_developer: false, is_agent: false, status: 'active', teams: [] }] });
-        if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel, isAgent, helpdeskEnabled) });
+        if ((url as string).includes('/me')) return j({ data: makeMe(adminLevel, isAgent, helpdeskEnabled, trackerEnabled) });
         return j({ data: {} });
     }));
 }
 
-function renderLayout(adminLevel: string, initialPath = '/settings/general', isAgent = false, helpdeskEnabled = true) {
+function renderLayout(adminLevel: string, initialPath = '/settings/general', isAgent = false, helpdeskEnabled = true, trackerEnabled = true) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    stubFetch(adminLevel, isAgent, helpdeskEnabled);
+    stubFetch(adminLevel, isAgent, helpdeskEnabled, trackerEnabled);
     return render(
         <QueryClientProvider client={qc}>
             <MemoryRouter initialEntries={[initialPath]}>
@@ -89,6 +89,18 @@ describe('SettingsLayout', () => {
         expect(await screen.findByRole('link', { name: 'Integrations' })).toBeInTheDocument();
         expect(screen.queryByRole('link', { name: 'Business hours' })).toBeNull();
         expect(screen.queryByRole('link', { name: 'SLA policies' })).toBeNull();
+    });
+
+    it('drops the tracker\'s settings, and asks nothing of it, when the workspace has the tracker off', async () => {
+        renderLayout('owner', '/settings/general', true, true, false);
+        // Anchor on another /me-gated row, so this cannot pass on the loading render.
+        expect(await screen.findByRole('link', { name: 'Business hours' })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /members/i })).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: /Teams/ })).toBeNull();
+        expect(screen.queryByRole('link', { name: 'Labels' })).toBeNull();
+        expect(screen.queryByRole('link', { name: 'Integrations' })).toBeNull();
+        const urls = vi.mocked(fetch).mock.calls.map(c => String(c[0]));
+        expect(urls.some(u => u.includes('/teams'))).toBe(false);
     });
 
     it('v2: the back button is an outlined pill that clears the collapsed-sidebar button', async () => {

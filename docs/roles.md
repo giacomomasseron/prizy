@@ -34,11 +34,17 @@ use macros, and write Knowledge Base articles. This is the Zendesk-style surface
 A developer (without `is_agent`) has no access to the issue tracker beyond seeing
 issues linked to tickets they can reach.
 
-## The workspace switch (`workspaces.helpdesk_enabled`)
+## The workspace switches (`workspaces.helpdesk_enabled`, `workspaces.tracker_enabled`)
 
-Above both axes sits one workspace-level switch: a workspace can turn the
-Support module off entirely. It defaults to on, and an owner or admin flips it
-under Settings → General → Modules (`PATCH /v1/workspace`).
+Above both axes sit two workspace-level switches, one per module: a workspace
+can turn the Support module or the Issue Tracker off entirely. Both default to
+on, sign-up turns one off when the workspace is created for the other alone
+("Engineering" or "Support"), and an owner or admin flips them under Settings →
+General → Modules (`PATCH /v1/workspace`). At least one stays on: the endpoint
+refuses to switch off the last one, and the table refuses it too
+(`workspaces_one_module_on`).
+
+### Support (`helpdesk_enabled`)
 
 While it is off, nobody is an agent: `User::canWorkHelpdesk()` requires the
 `is_agent` capability **and** the switch, every support use case goes through
@@ -46,8 +52,19 @@ While it is off, nobody is an agent: `User::canWorkHelpdesk()` requires the
 customer portal and the agent desk answer 404. Nothing is deleted — every
 ticket, contact and article is where you left it when the switch goes back on.
 
-The Issue Tracker has no equivalent switch: it is gated per user by
-`is_developer` alone.
+### Issue Tracker (`tracker_enabled`)
+
+While it is off, nobody can use the tracker, the owner included. It is closed
+on the routes rather than use case by use case, because the tracker's policies
+hand an owner everything (`Gate::before`): every tracker API route sits behind
+`EnsureTrackerEnabled` and answers 403, and every tracker page answers 404
+(`TrackerRoutesTest` fails on an API route nobody has filed as the tracker's or
+not). Everything that only exists for the tracker goes with it: to-dos and the
+day plan, notifications and their email digest, search, and the Slack and GitHub
+integrations. So does the bridge, from the support side: a ticket lists no linked
+issues, and customers are no longer told their request went to engineering.
+Nothing is deleted — every issue, project and cycle is where you left it when
+the switch goes back on.
 
 ## Putting the two axes together
 

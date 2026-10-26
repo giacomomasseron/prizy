@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react';
+import { trackerEnabled } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
@@ -61,6 +62,8 @@ export default function MembersPage() {
     const confirm = useConfirm();
 
     const isOwner = me.data?.admin_level === 'owner';
+    // With the tracker switched off, being a developer gives nobody anything: the capability is kept, not offered.
+    const tracker = trackerEnabled(me.data);
     const rows = members.data ?? [];
 
     // Stats
@@ -69,9 +72,9 @@ export default function MembersPage() {
     const devs = rows.filter(r => r.is_developer).length;
     const agents = rows.filter(r => r.is_agent).length;
 
-    // No-access banner: show when any active member-level user has no capabilities
+    // No-access banner: show when any active member-level user has no capability the workspace runs
     const showNoAccess = rows.some(
-        r => r.status === 'active' && r.admin_level === 'member' && !r.is_developer && !r.is_agent,
+        r => r.status === 'active' && r.admin_level === 'member' && !(tracker && r.is_developer) && !r.is_agent,
     );
 
     // Level menu items (filtered by isOwner)
@@ -133,7 +136,7 @@ export default function MembersPage() {
                             { label: 'Developers',     value: devs,   testid: 'stat-devs'  },
                             { label: 'Agents',         value: agents, testid: 'stat-agents' },
                         ] as const
-                    ).map(stat => (
+                    ).filter(stat => tracker || stat.testid !== 'stat-devs').map(stat => (
                         <div key={stat.label} style={statCard}>
                             <div style={statLabel}>{stat.label}</div>
                             <div data-testid={stat.testid} style={statValue}>{stat.value}</div>
@@ -261,7 +264,7 @@ export default function MembersPage() {
                                 <div style={{ display: 'flex', gap: 6, minWidth: 0 }}>
                                     {!isInvited ? (
                                         <>
-                                            <button
+                                            {tracker && <button
                                                 type="button"
                                                 data-testid={`cap-developer-${row.email}`}
                                                 aria-label="Developer"
@@ -280,7 +283,7 @@ export default function MembersPage() {
                                             >
                                                 <span style={capDot} aria-hidden="true" />
                                                 Dev
-                                            </button>
+                                            </button>}
                                             <button
                                                 type="button"
                                                 aria-label="Agent"
@@ -303,10 +306,10 @@ export default function MembersPage() {
                                         </>
                                     ) : (
                                         <>
-                                            <span style={{ ...(row.is_developer ? devOnStyle : capOff), cursor: 'default' }}>
+                                            {tracker && <span style={{ ...(row.is_developer ? devOnStyle : capOff), cursor: 'default' }}>
                                                 <span style={capDot} aria-hidden="true" />
                                                 Dev
-                                            </span>
+                                            </span>}
                                             <span style={{ ...(row.is_agent ? agentOnStyle : capOff), cursor: 'default' }}>
                                                 <span style={capDot} aria-hidden="true" />
                                                 Agent

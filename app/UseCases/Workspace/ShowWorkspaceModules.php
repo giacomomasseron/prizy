@@ -6,6 +6,7 @@ namespace App\UseCases\Workspace;
 
 use App\Models\User;
 use App\Services\HelpdeskAccess;
+use App\Services\TrackerAccess;
 
 /**
  * The workspace-level module switches, for the actor's own workspace.
@@ -15,9 +16,12 @@ use App\Services\HelpdeskAccess;
  */
 final class ShowWorkspaceModules
 {
-    /** @return array{helpdesk_enabled: bool} */
+    /** @return array{helpdesk_enabled: bool, tracker_enabled: bool} */
     public function handle(User $actor): array
     {
-        return ['helpdesk_enabled' => HelpdeskAccess::enabledFor($actor->workspace_id)];
+        return [
+            'helpdesk_enabled' => HelpdeskAccess::enabledFor($actor->workspace_id),
+            'tracker_enabled'  => TrackerAccess::enabledFor($actor->workspace_id),
+        ];
     }
 }
