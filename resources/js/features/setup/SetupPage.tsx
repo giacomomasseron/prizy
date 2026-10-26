@@ -5,7 +5,7 @@ import { ApiError } from '../../lib/apiClient';
 import { Avatar } from '../../components/ui/Avatar';
 import { Button } from '../../components/ui/Button';
 import { QueryState } from '../../components/ui/QueryState';
-import { canWorkHelpdesk } from '../../auth/capabilities';
+import { canUseTracker, canWorkHelpdesk, homePathFor, trackerEnabled } from '../../auth/capabilities';
 import { sessionPost, useLogout, useMe } from '../../auth/useAuth';
 import { useWorkspace } from '../settings/hooks';
 import { SETUP_GUIDE_URL, SetupFrame, type SetupStep } from './SetupFrame';
@@ -22,9 +22,9 @@ const ROLE_LABELS: Record<Role, string> = { admin: 'Admin', member: 'Member · e
 const SENT_ROLE_LABELS: Record<Role, string> = { admin: 'Admin', member: 'Member', agent: 'Support agent', guest: 'Guest' };
 
 /** What each role is in the app: an admin level and the tracker / support desk capabilities. */
-function invitationFor(role: Role, helpdesk: boolean) {
+function invitationFor(role: Role, helpdesk: boolean, tracker: boolean) {
     switch (role) {
-        case 'admin': return { admin_level: 'admin' as const, is_developer: true, is_agent: helpdesk };
+        case 'admin': return { admin_level: 'admin' as const, is_developer: tracker, is_agent: helpdesk };
         case 'agent': return { admin_level: 'member' as const, is_developer: false, is_agent: true };
         case 'guest': return { admin_level: 'viewer' as const, is_developer: true, is_agent: false };
         default: return { admin_level: 'member' as const, is_developer: true, is_agent: false };
@@ -73,9 +73,12 @@ export default function SetupPage() {
     const logout = useLogout();
 
     const helpdesk = me?.workspace?.helpdesk_enabled === true;
+    const tracker = trackerEnabled(me);
     const verified = !!me?.email_verified_at;
-    // A support-only owner works on the desk; everyone else starts on Today.
-    const destination = canWorkHelpdesk(me) && !me?.is_developer ? '/support' : '/today';
+    // A support-only owner works on the desk; everyone else starts where they belong (Today, with the tracker on).
+    const destination = canWorkHelpdesk(me) && !(me?.is_developer && canUseTracker(me)) ? '/support' : homePathFor(me);
+    // What a new row starts as: an engineering member, or an agent where there is no tracker to join.
+    const newRole: Role = tracker ? 'member' : 'agent';
 
     const nextId = useRef(4);
     const inputs = useRef(new Map<number, HTMLInputElement>());
@@ -91,10 +94,11 @@ export default function SetupPage() {
     const [sent, setSent] = useState<Sent[]>([]);
     const [resend, setResend] = useState<'idle' | 'sending' | 'sent' | 'failed'>('idle');
 
-    // Without the support side there is no one to invite as an agent.
+    // Without the support side there is no one to invite as an agent; without the tracker, no member or guest of it.
     useEffect(() => {
         if (me && !helpdesk) setRows((rs) => rs.map((r) => (r.role === 'agent' ? { ...r, role: 'member' } : r)));
-    }, [me, helpdesk]);
+        if (me && !tracker) setRows((rs) => rs.map((r) => (r.role === 'member' || r.role === 'guest' ? { ...r, role: 'agent' } : r)));
+    }, [me, helpdesk, tracker]);
 
     // A new row, or the neighbour of a removed one, takes the focus once it is drawn.
     useEffect(() => {
@@ -122,7 +126,8 @@ export default function SetupPage() {
     if (me.admin_level !== 'owner') return <Navigate to="/" replace />;
 
     const name = workspace?.name ?? '';
-    const roles = (Object.keys(ROLE_LABELS) as Role[]).filter((r) => helpdesk || r !== 'agent');
+    const roles = (Object.keys(ROLE_LABELS) as Role[])
+        .filter((r) => (helpdesk || r !== 'agent') && (tracker || (r !== 'member' && r !== 'guest')));
     const valid = uniqueValid(rows);
     const canSend = verified && valid.length > 0;
 
@@ -131,7 +136,7 @@ export default function SetupPage() {
     }
     function addRow() {
         const id = nextId.current++;
-        setRows((rs) => [...rs, { id, email: '', role: 'member' }]);
+        setRows((rs) => [...rs, { id, email: '', role: newRole }]);
         setFocusRow(id);
     }
     function removeRow(id: number) {
@@ -141,7 +146,7 @@ export default function SetupPage() {
             setFocusRow((rows[i + 1] ?? rows[i - 1]).id);
         } else {
             const fresh = nextId.current++;
-            setRows([{ id: fresh, email: '', role: 'member' }]);
+            setRows([{ id: fresh, email: '', role: newRole }]);
             setFocusRow(fresh);
         }
     }
@@ -160,7 +165,7 @@ export default function SetupPage() {
             for (const p of parts) {
                 if (have.has(p.toLowerCase())) continue;
                 have.add(p.toLowerCase());
-                fresh.push({ id: nextId.current++, email: p, role: 'member' });
+                fresh.push({ id: nextId.current++, email: p, role: newRole });
             }
             return [...rs.filter((r) => r.email.trim()), ...fresh];
         });
@@ -175,7 +180,7 @@ export default function SetupPage() {
         for (const row of valid) {
             const email = row.email.trim();
             try {
-                await sessionPost('/invitations', { email, ...invitationFor(row.role, helpdesk) });
+                await sessionPost('/invitations', { email, ...invitationFor(row.role, helpdesk, tracker) });
                 delivered.push({ email, role: row.role });
             } catch (err) {
                 errors.set(row.id, inviteError(err));
@@ -197,7 +202,7 @@ export default function SetupPage() {
         if (left.length) {
             setRows(left);
         } else {
-            setRows([{ id: nextId.current++, email: '', role: 'member' }]);
+            setRows([{ id: nextId.current++, email: '', role: newRole }]);
             setStep(3);
         }
     }

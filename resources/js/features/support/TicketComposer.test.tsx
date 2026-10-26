@@ -147,4 +147,14 @@ describe('TicketComposer', () => {
         render(<TicketComposer ticket={ticket()} />);
         expect(screen.getByTestId('composer-box').className).toBe('has-[textarea:focus]:outline-2 has-[textarea:focus]:outline-fg has-[textarea:focus]:outline-offset-2');
     });
+
+    it('offers no "Escalate to eng" reply where the workspace has switched the tracker off', () => {
+        const { unmount } = render(<TicketComposer ticket={ticket()} />);
+        expect(screen.getByRole('button', { name: 'Escalate to eng' })).toBeInTheDocument();
+        unmount();
+
+        render(<TicketComposer ticket={ticket()} tracker={false} />);
+        expect(screen.getByRole('button', { name: '⚡ Ask for details' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Escalate to eng' })).toBeNull();
+    });
 });

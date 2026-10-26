@@ -3,6 +3,8 @@ import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Modal } from '../../components/ui/Modal';
 import { Switch } from '../../components/ui/Switch';
+import { trackerEnabled } from '../../auth/capabilities';
+import { useMe } from '../../auth/useAuth';
 import { chipClasses, chipStyle } from '../issues/issueStyles';
 import { alertBox, fieldLabel, modalBody, modalFooter, modalHeader, modalSub, modalTitle } from '../settings/settingsStyles';
 import { LEVELS } from './levels';
@@ -42,9 +44,12 @@ export function InviteModal({ open, onClose }: Props) {
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
     const invite = useInviteMember();
+    // With the tracker switched off there is nothing to be a developer of: the capability is not offered.
+    const tracker = trackerEnabled(useMe().data);
+    const developer = tracker && isDeveloper;
 
-    const showNoAccess = level === 'member' && !isDeveloper && !isAgent;
-    const disabled = !email || (level === 'member' && !isDeveloper && !isAgent);
+    const showNoAccess = level === 'member' && !developer && !isAgent;
+    const disabled = !email || (level === 'member' && !developer && !isAgent);
 
     function reset() {
         setEmail('');
@@ -62,7 +67,7 @@ export function InviteModal({ open, onClose }: Props) {
     function handleSend() {
         setErrorMsg(null);
         invite.mutate(
-            { email, admin_level: level, is_developer: isDeveloper, is_agent: isAgent },
+            { email, admin_level: level, is_developer: developer, is_agent: isAgent },
             {
                 onSuccess: () => { reset(); onClose(); },
                 onError: (err: unknown) => {
@@ -125,13 +130,15 @@ export function InviteModal({ open, onClose }: Props) {
                 <div>
                     <div style={fieldLabel}>Capabilities</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                        <div style={capRow(isDeveloper)}>
-                            <div style={{ flex: 1 }}>
-                                <div style={capTitle}>Developer</div>
-                                <div style={capDesc}>Access to Issues, Projects, Roadmap</div>
+                        {tracker && (
+                            <div style={capRow(isDeveloper)}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={capTitle}>Developer</div>
+                                    <div style={capDesc}>Access to Issues, Projects, Roadmap</div>
+                                </div>
+                                <Switch checked={isDeveloper} onChange={setIsDeveloper} ariaLabel="Developer" />
                             </div>
-                            <Switch checked={isDeveloper} onChange={setIsDeveloper} ariaLabel="Developer" />
-                        </div>
+                        )}
                         <div style={capRow(isAgent)}>
                             <div style={{ flex: 1 }}>
                                 <div style={capTitle}>Agent</div>

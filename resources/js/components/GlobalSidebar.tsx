@@ -1,6 +1,6 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import { canDevelop as canDevelopFor, canUseTracker, canWorkHelpdesk } from '../auth/capabilities';
+import { canDevelop as canDevelopFor, canUseTracker, canWorkHelpdesk, trackerEnabled } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
@@ -26,13 +26,15 @@ const box = (c: string): CSSProperties => ({ width: 12, height: 12, borderRadius
 export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const me = useMe();
     const showTracker = canUseTracker(me.data);
+    // Notifications are all about the tracker: a workspace that switched it off has no inbox.
+    const showInbox = trackerEnabled(me.data);
     const canDevelop = canDevelopFor(me.data);
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues({}, { enabled: showTracker });
-    const unread = useUnreadCount();
+    const unread = useUnreadCount(!!me.data && showInbox);
     const plan = usePlan(showTracker);
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
-    const teams = useTeams({ mine: true });
+    const teams = useTeams({ mine: true, enabled: showTracker });
 
     const [workspaceOpen, setWorkspaceOpen] = useState(() => persistedBool('prizy-nav-workspace', true));
     const [teamsOpen, setTeamsOpen] = useState(() => persistedBool('prizy-nav-teams', true));
@@ -96,10 +98,12 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         </button>
                     )}
                     {/* Inbox → notifications (design folds this into the Support bridge with the ◔ glyph) */}
-                    <NavLink to="/notifications" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)} aria-label="Inbox">
-                        <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Inbox</span>
-                        {unreadCount > 0 && <span data-testid="inbox-badge" style={hiBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
-                    </NavLink>
+                    {showInbox && (
+                        <NavLink to="/notifications" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)} aria-label="Inbox">
+                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Inbox</span>
+                            {unreadCount > 0 && <span data-testid="inbox-badge" style={hiBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+                        </NavLink>
+                    )}
                     {/* Support inbox → agent desk (design: outlined-square glyph + "Agent" badge); agent-gated so non-agents get no dead /support link */}
                     {canWorkHelpdesk(me.data) && (
                         <>

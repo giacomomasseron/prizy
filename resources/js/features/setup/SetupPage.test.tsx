@@ -9,7 +9,7 @@ import SetupPage from './SetupPage';
 type Me = {
     id: string; workspace_id: string; name: string; email: string; admin_level: string;
     is_developer: boolean; is_agent: boolean; email_digest_frequency: string;
-    email_verified_at: string | null; workspace: { helpdesk_enabled: boolean };
+    email_verified_at: string | null; workspace: { helpdesk_enabled: boolean; tracker_enabled?: boolean };
 };
 
 const owner: Me = {
@@ -100,6 +100,43 @@ it('offers no support agent role when the workspace runs engineering only', asyn
 
     await waitFor(() => expect(roleSelect(3).value).toBe('member'));
     expect(within(roleSelect(1)).queryByRole('option', { name: 'Support agent' })).toBeNull();
+});
+
+const supportOnly: Partial<Me> = { is_developer: false, is_agent: true, workspace: { helpdesk_enabled: true, tracker_enabled: false } };
+
+it('offers only the admin and support agent roles when the workspace runs support only', async () => {
+    stubFetch(supportOnly);
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+
+    await waitFor(() => expect(roleSelect(2).value).toBe('agent'));
+    expect(within(roleSelect(1)).getAllByRole('option').map((o) => o.textContent)).toEqual(['Admin', 'Support agent']);
+    fireEvent.click(screen.getByRole('button', { name: '+ Add another' }));
+    expect(roleSelect(4).value).toBe('agent');
+});
+
+it('invites to a support-only workspace with the desk alone, an admin included', async () => {
+    stubFetch(supportOnly);
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+    fireEvent.change(emailInput(1), { target: { value: 'ada@acme.co' } });
+    fireEvent.change(emailInput(2), { target: { value: 'sam@acme.co' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Send 2 invites →' }));
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Acme is ready' })).toBeInTheDocument();
+    expect(invites).toEqual([
+        { email: 'ada@acme.co', admin_level: 'admin', is_developer: false, is_agent: true },
+        { email: 'sam@acme.co', admin_level: 'member', is_developer: false, is_agent: true },
+    ]);
+});
+
+it('opens a support-only workspace on the desk even for an owner who is also a developer', async () => {
+    stubFetch({ ...supportOnly, is_developer: true });
+    renderSetup();
+    await screen.findByText('Step 2 of 3');
+    fireEvent.click(screen.getByRole('button', { name: 'Finish later' }));
+    expect(await screen.findByText('support desk')).toBeInTheDocument();
 });
 
 it('counts the addresses ready, marks a malformed one, and adds a row on Enter in the last', async () => {

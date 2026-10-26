@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { trackerEnabled } from '../../auth/capabilities';
+import { useMe } from '../../auth/useAuth';
 import { useSearch } from './hooks';
 import { filterCommands } from './commands';
 import { StatusIcon } from '../../components/ui/StatusIcon';
@@ -64,7 +66,9 @@ export default function CommandPalette() {
         }
     }, [open]);
 
-    const search = useSearch(debounced);
+    // Search and most commands lead into the tracker; a workspace that has switched it off keeps only the rest.
+    const tracker = trackerEnabled(useMe().data);
+    const search = useSearch(debounced, tracker);
 
     function go(to: string) {
         setOpen(false);
@@ -73,7 +77,7 @@ export default function CommandPalette() {
 
     const rows: Row[] = useMemo(() => {
         const out: Row[] = [];
-        for (const c of filterCommands(q)) {
+        for (const c of filterCommands(q, tracker)) {
             out.push({ key: `cmd:${c.id}`, label: c.label, hint: 'Action', onActivate: () => { setOpen(false); c.run(navigate); } });
         }
         const data = search.data;
@@ -99,12 +103,12 @@ export default function CommandPalette() {
         for (const t of data?.teams ?? []) {
             out.push({ key: `team:${t.id}`, label: t.name, hint: 'Team', onActivate: () => go(`/teams/${t.id}`) });
         }
-        if (q.trim() !== '') {
+        if (tracker && q.trim() !== '') {
             out.push({ key: 'see-all', label: `See all results for "${q.trim()}"`, hint: '', onActivate: () => go(`/search?q=${encodeURIComponent(q.trim())}`) });
         }
         return out;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, search.data]);
+    }, [q, search.data, tracker]);
 
     useEffect(() => setActive(0), [rows.length]);
 
@@ -178,7 +182,7 @@ export default function CommandPalette() {
                 </ul>
                 {/* Outside the listbox (a listbox holds options only), and always rendered so a screen reader announces the text when it appears. */}
                 <div role="status" style={rows.length === 0 ? { padding: '0 22px 22px', textAlign: 'center', color: 'var(--fg3)', fontSize: 13 } : undefined}>{rows.length === 0 ? 'No results.' : ''}</div>
-                <div style={{ borderTop: '1px solid var(--border)' }}>
+                {tracker && <div style={{ borderTop: '1px solid var(--border)' }}>
                     <button
                         type="button"
                         onClick={() => go(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : '/search')}
@@ -188,7 +192,7 @@ export default function CommandPalette() {
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>⌕ Advanced search</span>
                         <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>filters, sort &amp; save</span>
                     </button>
-                </div>
+                </div>}
             </div>
         </div>
     );

@@ -43,6 +43,7 @@ import KbLibraryPage from './features/kb/KbLibraryPage';
 import KbArticleEditorPage from './features/kb/KbArticleEditorPage';
 import { RequireAgent } from './auth/RequireAgent';
 import { RequireDeveloper } from './auth/RequireDeveloper';
+import { RequireTracker } from './auth/RequireTracker';
 
 function RequireAuth({ children }: { children: ReactElement }) {
     const me = useMe();
@@ -75,8 +76,8 @@ export default function AppRouter() {
                 <Route path="/today" element={<RequireDeveloper><TodayPage /></RequireDeveloper>} />
                 <Route path="/issues" element={<RequireDeveloper><IssueListPage /></RequireDeveloper>} />
                 <Route path="/board" element={<RequireDeveloper><BoardPage /></RequireDeveloper>} />
-                {/* NOT wrapped — ticket→issue bridge */}
-                <Route path="/issues/:id" element={<IssueDetailPage />} />
+                {/* Not RequireDeveloper — the ticket→issue bridge opens it for agents too */}
+                <Route path="/issues/:id" element={<RequireTracker><IssueDetailPage /></RequireTracker>} />
                 <Route path="/teams" element={<RequireDeveloper><TeamsPage /></RequireDeveloper>} />
                 <Route path="/teams/:id" element={<RequireDeveloper><TeamDetailPage /></RequireDeveloper>} />
                 <Route path="/teams/:id/cycles" element={<RequireDeveloper><CyclesPage /></RequireDeveloper>} />
@@ -93,16 +94,16 @@ export default function AppRouter() {
                 <Route path="/analytics" element={<RequireDeveloper><AnalyticsLayout /></RequireDeveloper>} />
                 <Route path="/releases" element={<RequireDeveloper><ReleasesPage /></RequireDeveloper>} />
                 <Route path="/releases/:id" element={<RequireDeveloper><ReleaseDetailPage /></RequireDeveloper>} />
-                <Route path="/notifications" element={<NotificationsPage />} />
+                <Route path="/notifications" element={<RequireTracker><NotificationsPage /></RequireTracker>} />
                 <Route path="/settings" element={<SettingsLayout />}>
                     <Route index element={<Navigate to="members" replace />} />
                     <Route path="members" element={<RequireManage><MembersPage /></RequireManage>} />
-                    <Route path="teams" element={<RequireManage><TeamsSettingsPage /></RequireManage>} />
+                    <Route path="teams" element={<RequireManage><RequireTracker><TeamsSettingsPage /></RequireTracker></RequireManage>} />
                     <Route path="general" element={<GeneralPage />} />
-                    <Route path="labels" element={<LabelsSettingsPage />} />
+                    <Route path="labels" element={<RequireTracker><LabelsSettingsPage /></RequireTracker>} />
                     <Route path="business-hours" element={<RequireAgent><BusinessHoursSettingsPage /></RequireAgent>} />
                     <Route path="sla-policies" element={<RequireAgent><SlaPoliciesSettingsPage /></RequireAgent>} />
-                    <Route path="integrations" element={<RequireManage><IntegrationsSettingsPage /></RequireManage>} />
+                    <Route path="integrations" element={<RequireManage><RequireTracker><IntegrationsSettingsPage /></RequireTracker></RequireManage>} />
                     <Route path="billing" element={<StubPage title="Billing" />} />
                     <Route path="audit" element={<StubPage title="Audit log" />} />
                 </Route>

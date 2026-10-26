@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canDevelop, canUseTracker, canWorkHelpdesk, canWriteHelpdesk, homePathFor } from './capabilities';
+import { canDevelop, canUseTracker, canWorkHelpdesk, canWriteHelpdesk, homePathFor, trackerEnabled } from './capabilities';
 import type { Me } from '../lib/types';
 
 const me = (over: Partial<Me>): Me => ({
@@ -47,4 +47,20 @@ describe('homePathFor', () => {
     it('sends a no-capability member to settings', () => expect(homePathFor(me({}))).toBe('/settings'));
     it('sends an agent to settings when the helpdesk is off, not to a desk that 404s', () => expect(homePathFor(me({ is_agent: true, workspace: { helpdesk_enabled: false } }))).toBe('/settings'));
     it('prefers Today for a dev+agent user', () => expect(homePathFor(me({ is_developer: true, is_agent: true }))).toBe('/today'));
+});
+
+describe('the tracker switch', () => {
+    const off = { helpdesk_enabled: true, tracker_enabled: false };
+
+    it('is on unless the workspace says off: the tracker ran before there was a switch', () => {
+        expect(trackerEnabled(me({}))).toBe(true);
+        expect(trackerEnabled(me({ workspace: { helpdesk_enabled: true, tracker_enabled: true } }))).toBe(true);
+        expect(trackerEnabled(me({ workspace: off }))).toBe(false);
+    });
+    it('closes the tracker to the owner too (the switch sits in front of the owner bypass)', () => {
+        expect(canUseTracker(me({ admin_level: 'owner', is_developer: true, workspace: off }))).toBe(false);
+        expect(canDevelop(me({ admin_level: 'owner', workspace: off }))).toBe(false);
+    });
+    it('closes it to a developer', () => expect(canUseTracker(me({ is_developer: true, workspace: off }))).toBe(false));
+    it('sends the owner of a support-only workspace to the desk', () => expect(homePathFor(me({ admin_level: 'owner', is_agent: true, workspace: off }))).toBe('/support'));
 });

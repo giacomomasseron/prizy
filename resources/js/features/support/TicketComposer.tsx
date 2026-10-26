@@ -9,12 +9,14 @@ import type { TicketDetail } from '../../lib/types';
 
 type Tab = 'public' | 'note';
 
-export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
+/** `tracker`: whether the workspace runs the tracker. Without it, no reply tells the customer about an engineering team. */
+export function TicketComposer({ ticket, tracker = true }: { ticket: TicketDetail; tracker?: boolean }) {
     const [tab, setTab] = useState<Tab>('public');
     const [draft, setDraft] = useState('');
     const [error, setError] = useState<string | null>(null);
     const post = usePostTicketMessage(ticket.id);
     const changeStatus = useChangeTicketStatus(ticket.id);
+    const macros = tracker ? MACROS : MACROS.filter((m) => !m.tracker);
 
     const isNote = tab === 'note';
     const pending = post.isPending || changeStatus.isPending;
@@ -65,7 +67,7 @@ export function TicketComposer({ ticket }: { ticket: TicketDetail }) {
                 </div>
 
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
-                    {MACROS.map((m) => (
+                    {macros.map((m) => (
                         <button key={m.label} type="button" onClick={() => addMacro(m.text)} className={SMALL_PILL_CLASSES} style={smallPill}>
                             {m.label}
                         </button>

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactElement } from 'react';
 import { Navigate, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useMe } from '../../auth/useAuth';
-import { canDevelop as canDevelopFor, canWorkHelpdesk } from '../../auth/capabilities';
+import { canDevelop as canDevelopFor, canWorkHelpdesk, trackerEnabled } from '../../auth/capabilities';
 import { useWorkspaceMembers } from '../members/workspaceHooks';
 import { useTeams } from '../teams/hooks';
 import { ThemeToggle } from '../../components/ui/ThemeToggle';
@@ -71,9 +71,11 @@ export default function SettingsLayout() {
     const canDevelop = canDevelopFor(me.data);
     // Both rows link to pages a workspace with the module switched off answers 404 on.
     const isAgent = canWorkHelpdesk(me.data);
+    // So do Teams and Integrations (Slack and GitHub both post the tracker's issues) with the tracker off.
+    const tracker = trackerEnabled(me.data);
     const members = useWorkspaceMembers({ enabled: canManage });
     const memberCount = members.data?.length;
-    const teams = useTeams({ enabled: canManage });
+    const teams = useTeams({ enabled: canManage && tracker });
     const teamCount = teams.data?.items.length;
 
     function navItem(to: string, label: string, icon: IconKind, count?: number) {
@@ -112,9 +114,9 @@ export default function SettingsLayout() {
                 <nav aria-label="Settings" style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '2px 8px' }}>
                     {navItem('/settings/general', 'General', 'general')}
                     {canManage && navItem('/settings/members', 'Members', 'members', memberCount)}
-                    {canManage && navItem('/settings/teams', 'Teams', 'teams', teamCount)}
+                    {canManage && tracker && navItem('/settings/teams', 'Teams', 'teams', teamCount)}
                     {canDevelop && navItem('/settings/labels', 'Labels', 'labels')}
-                    {canManage && navItem('/settings/integrations', 'Integrations', 'integrations')}
+                    {canManage && tracker && navItem('/settings/integrations', 'Integrations', 'integrations')}
                     {isAgent && navItem('/settings/business-hours', 'Business hours', 'hours')}
                     {isAgent && navItem('/settings/sla-policies', 'SLA policies', 'sla')}
                     {/* Disabled stubs */}

@@ -27,8 +27,10 @@ final class WorkspaceController extends Controller
 
     public function update(Request $request): JsonResponse
     {
+        // Either switch, or both; an empty request changes nothing and is refused.
         $data = $request->validate([
-            'helpdesk_enabled' => ['required', 'boolean'],
+            'helpdesk_enabled' => ['required_without:tracker_enabled', 'boolean'],
+            'tracker_enabled'  => ['required_without:helpdesk_enabled', 'boolean'],
         ]);
 
         $workspace = $this->updateWorkspaceSettings->handle($request->user(), $data);
@@ -38,6 +40,7 @@ final class WorkspaceController extends Controller
             'name'             => $workspace->name,
             'slug'             => $workspace->slug,
             'helpdesk_enabled' => $workspace->helpdesk_enabled,
+            'tracker_enabled'  => $workspace->tracker_enabled,
         ]]);
     }
 

@@ -47,4 +47,11 @@ describe('OverviewSection', () => {
         expect(volume.closest('[style*="border-radius: var(--radius-card)"]')).not.toBeNull();
         expect(screen.getByText('↩ PRZ-ISSUE-').style.borderRadius).toBe('var(--radius-pill)');
     });
+
+    it('shows no escalations where the workspace has switched the tracker off: there is nothing to link them to', () => {
+        render(<MemoryRouter><OverviewSection report={report} tracker={false} /></MemoryRouter>);
+        expect(screen.getByText('Tickets by status')).toBeInTheDocument();
+        expect(screen.queryByText('Escalations to engineering')).toBeNull();
+        expect(screen.queryByRole('link', { name: /Escalated one/ })).toBeNull();
+    });
 });

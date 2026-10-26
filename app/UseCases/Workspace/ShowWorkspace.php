@@ -17,7 +17,7 @@ use App\Models\Workspace;
 final class ShowWorkspace
 {
     /**
-     * @return array{id: string, name: string, slug: string, color: string|null, helpdesk_enabled: bool, member_count: int, team_count: int}
+     * @return array{id: string, name: string, slug: string, color: string|null, helpdesk_enabled: bool, tracker_enabled: bool, member_count: int, team_count: int}
      */
     public function handle(User $actor): array
     {
@@ -30,6 +30,7 @@ final class ShowWorkspace
             'slug'             => $workspace->slug,
             'color'            => $workspace->color,
             'helpdesk_enabled' => $workspace->helpdesk_enabled,
+            'tracker_enabled'  => $workspace->tracker_enabled,
             'member_count'     => User::query()->where('workspace_id', $workspace->id)->count(),
             'team_count'       => Team::query()->where('workspace_id', $workspace->id)->count(),
         ];

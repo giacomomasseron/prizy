@@ -22,7 +22,7 @@ function makeMember(overrides?: Partial<WorkspaceMember>): WorkspaceMember {
     };
 }
 
-function makeMe(adminLevel = 'owner') {
+function makeMe(adminLevel = 'owner', trackerEnabled = true) {
     return {
         id: 'u1',
         workspace_id: 'w1',
@@ -32,6 +32,7 @@ function makeMe(adminLevel = 'owner') {
         is_developer: false,
         is_agent: false,
         email_digest_frequency: 'off' as const,
+        workspace: { helpdesk_enabled: true, tracker_enabled: trackerEnabled },
     };
 }
 
@@ -39,13 +40,13 @@ function j(b: unknown, s = 200) {
     return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
 }
 
-function stubFetch(members: WorkspaceMember[], meAdminLevel = 'owner') {
+function stubFetch(members: WorkspaceMember[], meAdminLevel = 'owner', trackerEnabled = true) {
     vi.stubGlobal(
         'fetch',
         vi.fn(async (url: string, init?: RequestInit) => {
             // /workspace/members must come before /me (substring overlap: '/workspace/members' contains '/me')
             if (url.includes('/workspace/members')) return j({ data: members });
-            if (url.includes('/me')) return j({ data: makeMe(meAdminLevel) });
+            if (url.includes('/me')) return j({ data: makeMe(meAdminLevel, trackerEnabled) });
             if (url.includes('/members/') && init?.method === 'PATCH') return j({ data: members[0] ?? {} });
             if (url.includes('/members/') && init?.method === 'DELETE') return new Response(null, { status: 204 });
             if (url.includes('/invitations/') && init?.method === 'DELETE') return new Response(null, { status: 204 });
@@ -54,8 +55,8 @@ function stubFetch(members: WorkspaceMember[], meAdminLevel = 'owner') {
     );
 }
 
-function renderPage(members: WorkspaceMember[], meAdminLevel = 'owner') {
-    stubFetch(members, meAdminLevel);
+function renderPage(members: WorkspaceMember[], meAdminLevel = 'owner', trackerEnabled = true) {
+    stubFetch(members, meAdminLevel, trackerEnabled);
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <QueryClientProvider client={qc}>
@@ -333,5 +334,19 @@ describe('MembersPage', () => {
         expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load members.");
         expect(screen.queryByTestId('members-table')).toBeNull();
         expect(screen.queryByTestId('stat-total')).toBeNull();
+    });
+
+    it('offers no Developer capability, and counts nobody as one, where the workspace has switched the tracker off', async () => {
+        const members = [
+            makeMember({ id: 'u1', name: 'Alice', email: 'alice@x.co' }),
+            makeMember({ id: 'u3', name: 'Dana', email: 'dana@x.co', admin_level: 'member', is_developer: true }),
+        ];
+        renderPage(members, 'owner', false);
+        expect(await screen.findByText('Dana')).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByTestId('cap-developer-dana@x.co')).toBeNull());
+        expect(screen.getAllByRole('button', { name: 'Agent' }).length).toBeGreaterThan(0);
+        expect(screen.queryByTestId('stat-devs')).toBeNull();
+        // A member who is only a developer reaches nothing here.
+        expect(screen.getByText(/no access to any module/i)).toBeInTheDocument();
     });
 });

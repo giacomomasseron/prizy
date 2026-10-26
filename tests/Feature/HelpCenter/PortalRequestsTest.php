@@ -494,6 +494,22 @@ it('shows the engineering escalation card when the ticket is linked to an issue'
     Workspace::forgetCurrent();
 });
 
+// A workspace that has switched the tracker off has no engineering team to point
+// at: neither the timeline line nor the card may promise one.
+it('says nothing about engineering when the workspace has switched the tracker off', function (): void {
+    $ws = portalWorld();
+    $contact = portalContact($ws);
+    $ticket = portalReqTicket($ws, $contact, ['status' => 'open']);
+    portalEscalate($ws, $ticket);
+    $ws->update(['tracker_enabled' => false]);
+
+    $this->actingAs($contact, 'contact')->get(route('help.request', $ticket))->assertOk()
+        ->assertDontSee('Escalated to our engineering team')
+        ->assertDontSee('no action needed from you');
+
+    Workspace::forgetCurrent();
+});
+
 it('403s before validating the vote on a non-solved own ticket, ordering the status gate before validation', function (): void {
     $ws = portalWorld();
     $contact = portalContact($ws);

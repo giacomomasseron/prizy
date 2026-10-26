@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Models\Ticket;
 use App\Repositories\KbRepository;
 use App\Repositories\PortalTicketRepository;
+use App\Services\TrackerAccess;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
@@ -33,7 +34,8 @@ final class ShowOwnTicket
             'conversation' => $this->tickets->conversation($ticket),
             'statusLabel' => PortalTicketRepository::STATUS_LABELS[$ticket->status] ?? $ticket->status,
             'relatedArticles' => $this->kb->relatedByText($ticket->subject, 3),
-            'hasEscalation' => $ticket->issueTicketLinks()->exists(),
+            // The "with our engineering team" card: only while the tracker runs.
+            'hasEscalation' => TrackerAccess::enabledFor($ticket->workspace_id) && $ticket->issueTicketLinks()->exists(),
         ];
     }
 }

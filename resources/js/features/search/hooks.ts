@@ -2,12 +2,13 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/apiClient';
 import type { Issue, SearchResults } from '../../lib/types';
 
-export function useSearch(q: string) {
+/** `enabled`: false in a workspace that has switched the tracker off, where search (issues, projects, teams) is closed. */
+export function useSearch(q: string, enabled = true) {
     const term = q.trim();
     return useQuery({
         queryKey: ['search', term],
         queryFn: () => api.get<SearchResults>(`/search?q=${encodeURIComponent(term)}`),
-        enabled: term.length >= 1,
+        enabled: enabled && term.length >= 1,
     });
 }
 

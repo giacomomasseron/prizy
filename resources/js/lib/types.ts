@@ -129,9 +129,10 @@ export interface Me {
     /**
      * Workspace-level module switches. Present on /v1/me; the login, magic-link,
      * sign-up and accept-invite payloads are also typed Me and do NOT carry it,
-     * so every reader must treat it as possibly absent.
+     * so every reader must treat it as possibly absent. tracker_enabled is
+     * optional too: absent counts as on (trackerEnabled() in auth/capabilities).
      */
-    workspace?: { helpdesk_enabled: boolean };
+    workspace?: { helpdesk_enabled: boolean; tracker_enabled?: boolean };
 }
 
 export type ProjectStatus = 'planning' | 'in_progress' | 'paused' | 'completed' | 'cancelled';

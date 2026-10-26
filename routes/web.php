@@ -16,14 +16,13 @@ use App\Http\Controllers\MemberController;
 use App\Http\Controllers\PortalAuthController;
 use App\Http\Controllers\PortalController;
 use App\Http\Middleware\EnsureHelpdeskEnabled;
+use App\Http\Middleware\EnsureTrackerEnabled;
 use App\Services\KbSlug;
 use Illuminate\Support\Facades\Route;
 use Spatie\Multitenancy\Http\Middleware\EnsureValidTenantSession;
 use Spatie\Multitenancy\Http\Middleware\NeedsTenant;
 
 Route::view('/', 'app');
-Route::view('/today', 'app');
-Route::view('/issues', 'app');
 // Login must stay reachable even with a stale/mismatched session (that's exactly
 // when you need it) — exempt it from EnsureValidTenantSession (keep NeedsTenant so
 // the workspace still resolves; the login handler regenerates the session anyway).
@@ -37,33 +36,39 @@ Route::get('/auth/handoff', LoginHandoffController::class)->name('auth.handoff')
 // Where that link lands: inviting the team, then the workspace is ready (the
 // page checks the visitor is its owner; step 1 was sign-up itself).
 Route::view('/setup', 'app');
-Route::view('/board', 'app');
-Route::view('/issues/{issue}', 'app');
-Route::view('/teams', 'app');
-Route::view('/teams/{team}', 'app');
-Route::view('/teams/{team}/cycles', 'app');
-Route::view('/projects', 'app');
-Route::view('/projects/{project}', 'app');
-Route::view('/projects/{project}/{view}', 'app');
-Route::view('/labels', 'app');
-Route::view('/roadmap', 'app');
-Route::view('/analytics', 'app');
-Route::view('/releases', 'app');
-Route::view('/releases/{release}', 'app');
-Route::view('/notifications', 'app');
 Route::view('/settings', 'app');
 Route::view('/settings/members', 'app');
-Route::view('/settings/teams', 'app');
 Route::view('/settings/general', 'app');
-Route::view('/settings/labels', 'app');
 Route::view('/settings/business-hours', 'app')->middleware(EnsureHelpdeskEnabled::class);
 Route::view('/settings/sla-policies', 'app')->middleware(EnsureHelpdeskEnabled::class);
 Route::view('/settings/billing', 'app');
 Route::view('/settings/audit', 'app');
-Route::view('/settings/integrations', 'app');
-Route::view('/search', 'app');
-Route::view('/integrations', 'app');
-Route::view('/create', 'app');
+// The tracker's pages, and the ones that only exist for it. A workspace that
+// has switched the tracker off answers 404 on them (EnsureTrackerEnabled).
+Route::middleware(EnsureTrackerEnabled::class)->group(function (): void {
+    Route::view('/today', 'app');
+    Route::view('/issues', 'app');
+    Route::view('/board', 'app');
+    Route::view('/issues/{issue}', 'app');
+    Route::view('/teams', 'app');
+    Route::view('/teams/{team}', 'app');
+    Route::view('/teams/{team}/cycles', 'app');
+    Route::view('/projects', 'app');
+    Route::view('/projects/{project}', 'app');
+    Route::view('/projects/{project}/{view}', 'app');
+    Route::view('/labels', 'app');
+    Route::view('/roadmap', 'app');
+    Route::view('/analytics', 'app');
+    Route::view('/releases', 'app');
+    Route::view('/releases/{release}', 'app');
+    Route::view('/notifications', 'app');
+    Route::view('/settings/teams', 'app');
+    Route::view('/settings/labels', 'app');
+    Route::view('/settings/integrations', 'app');
+    Route::view('/search', 'app');
+    Route::view('/integrations', 'app');
+    Route::view('/create', 'app');
+});
 Route::middleware(EnsureHelpdeskEnabled::class)->group(function (): void {
     Route::view('/support', 'app');
     Route::view('/support/tickets/{ticket}', 'app');

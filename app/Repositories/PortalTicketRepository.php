@@ -6,6 +6,7 @@ namespace App\Repositories;
 
 use App\Models\Contact;
 use App\Models\Ticket;
+use App\Services\TrackerAccess;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -127,7 +128,8 @@ final class PortalTicketRepository
             ];
         }
         $items[] = ['kind' => 'event', 'at' => $ticket->created_at, 'icon' => '✓', 'label' => 'Request received'];
-        $escalatedAt = $ticket->issueTicketLinks()->min('created_at');
+        // Only while the tracker runs: a workspace that switched it off has no engineering team to point at.
+        $escalatedAt = TrackerAccess::enabledFor($ticket->workspace_id) ? $ticket->issueTicketLinks()->min('created_at') : null;
         if ($escalatedAt !== null) {
             $items[] = ['kind' => 'event', 'at' => Carbon::parse($escalatedAt), 'icon' => '↗', 'label' => 'Escalated to our engineering team'];
         }

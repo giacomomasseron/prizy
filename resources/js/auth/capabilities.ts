@@ -1,8 +1,18 @@
 import type { Me } from '../lib/types';
 
-/** Tracker access: is_developer OR owner (owner bypasses every policy via Gate::before). */
+/**
+ * Is the tracker switched on for the user's workspace? Mirrors EnsureTrackerEnabled, which closes it for everyone,
+ * the owner included. Gates what exists only for the tracker, for every member: notifications, search, the bridge.
+ * Only an explicit `false` turns it off: only /v1/me carries the switch, the tracker ran before there was one, and
+ * everything inside the app shell renders after `me` has loaded (RequireAuth).
+ */
+export function trackerEnabled(me: Me | undefined): boolean {
+    return me?.workspace?.tracker_enabled !== false;
+}
+
+/** Tracker access: the workspace switch, then is_developer OR owner (owner bypasses every policy via Gate::before). */
 export function canUseTracker(me: Me | undefined): boolean {
-    return !!me && (me.is_developer || me.admin_level === 'owner');
+    return !!me && trackerEnabled(me) && (me.is_developer || me.admin_level === 'owner');
 }
 
 /**
