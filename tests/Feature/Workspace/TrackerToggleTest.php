@@ -218,6 +218,8 @@ it('drops the linked issues from tickets and the report when the tracker is off'
     $ticket = Ticket::forceCreate([
         'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'requester_id' => $contact->id,
         'subject' => 'Export is empty', 'status' => 'open', 'priority' => 'normal', 'channel' => 'email',
+        // Inside the report's window: it compares at whole seconds, so a ticket made this second can miss "now".
+        'created_at' => now()->subDay(),
     ]);
     DB::table('issue_ticket_links')->insert(['issue_id' => $issue->id, 'ticket_id' => $ticket->id, 'created_by' => $agent->id]);
 
