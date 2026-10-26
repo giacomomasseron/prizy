@@ -58,8 +58,8 @@ While it is off, nobody can use the tracker, the owner included. It is closed
 on the routes rather than use case by use case, because the tracker's policies
 hand an owner everything (`Gate::before`): every tracker API route sits behind
 `EnsureTrackerEnabled` and answers 403, and every tracker page answers 404
-(`TrackerRoutesTest` fails on an API route nobody has filed as the tracker's or
-not). Everything that only exists for the tracker goes with it: to-dos and the
+(`TrackerRoutesTest` fails on an API route or a page nobody has filed as the
+tracker's or not). Everything that only exists for the tracker goes with it: to-dos and the
 day plan, notifications and their email digest, search, and the Slack and GitHub
 integrations. So does the bridge, from the support side: a ticket lists no linked
 issues, and customers are no longer told their request went to engineering.

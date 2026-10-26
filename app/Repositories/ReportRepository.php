@@ -9,6 +9,7 @@ use App\Models\TicketMessage;
 use App\Models\User;
 use App\Services\ReportBuckets;
 use App\Services\SlaCalculator;
+use App\Services\TrackerAccess;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\DB;
 
@@ -44,8 +45,10 @@ final class ReportRepository
         $escBase = fn () => Ticket::query()->where('workspace_id', $workspaceId)
             ->where('created_at', '>=', $curStart)->where('created_at', '<', $now)
             ->whereHas('issueTicketLinks');
-        $escCount = $escBase()->count();
-        $recent = $escBase()->with(['linkedIssues' => fn ($q) => $q->orderBy('issue_ticket_links.created_at')])
+        // Escalations go to the tracker: a workspace that has switched it off reports none, as its tickets list no linked issues.
+        $tracker = TrackerAccess::enabledFor($workspaceId);
+        $escCount = $tracker ? $escBase()->count() : 0;
+        $recent = ! $tracker ? [] : $escBase()->with(['linkedIssues' => fn ($q) => $q->orderBy('issue_ticket_links.created_at')])
             ->orderByDesc('created_at')->limit(5)->get()
             ->map(fn (Ticket $t) => [
                 'ticket_id' => $t->id,

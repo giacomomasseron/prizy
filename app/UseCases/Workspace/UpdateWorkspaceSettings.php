@@ -6,6 +6,7 @@ namespace App\UseCases\Workspace;
 
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\ValidationException;
 
@@ -24,31 +25,34 @@ use Illuminate\Validation\ValidationException;
  *
  * At least one of the two modules stays on: a workspace with neither would
  * have nothing left to open. The table refuses it too (workspaces_one_module_on);
- * this is where the person switching gets told why.
+ * this is where the person switching gets told why. The row is locked while it
+ * is checked, so two admins switching off one module each cannot both pass.
  */
 final class UpdateWorkspaceSettings
 {
     /** @param array{helpdesk_enabled?: bool, tracker_enabled?: bool} $data Validated input */
     public function handle(User $actor, array $data): Workspace
     {
-        /** @var Workspace $workspace */
-        $workspace = Workspace::query()->findOrFail($actor->workspace_id);
+        return DB::transaction(function () use ($actor, $data): Workspace {
+            /** @var Workspace $workspace */
+            $workspace = Workspace::query()->lockForUpdate()->findOrFail($actor->workspace_id);
 
-        abort_unless(Gate::forUser($actor)->allows('updateSettings', $workspace), 403);
+            abort_unless(Gate::forUser($actor)->allows('updateSettings', $workspace), 403);
 
-        $workspace->fill($data);
+            $workspace->fill($data);
 
-        if (! $workspace->helpdesk_enabled && ! $workspace->tracker_enabled) {
-            // Named after the switch this request turned off, so the message lands on it.
-            $field = ($data['tracker_enabled'] ?? null) === false ? 'tracker_enabled' : 'helpdesk_enabled';
+            if (! $workspace->helpdesk_enabled && ! $workspace->tracker_enabled) {
+                // Named after the switch this request turned off, so the message lands on it.
+                $field = array_key_exists('tracker_enabled', $data) && ! $data['tracker_enabled'] ? 'tracker_enabled' : 'helpdesk_enabled';
 
-            throw ValidationException::withMessages([
-                $field => 'Keep at least one module on: a workspace needs the issue tracker or the support desk.',
-            ]);
-        }
+                throw ValidationException::withMessages([
+                    $field => 'Keep at least one module on: a workspace needs the issue tracker or the support desk.',
+                ]);
+            }
 
-        $workspace->save();
+            $workspace->save();
 
-        return $workspace;
+            return $workspace;
+        });
     }
 }

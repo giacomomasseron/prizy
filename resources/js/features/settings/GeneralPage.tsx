@@ -126,7 +126,9 @@ export default function GeneralPage() {
         try {
             await updateModules.mutateAsync(change);
         } catch (err) {
-            setModuleError(err instanceof ApiError ? err.detail : 'Failed to save.');
+            // A refusal ("keep at least one module on") says why in its field errors; detail only says it was invalid.
+            const reason = err instanceof ApiError ? (Object.values(err.errors ?? {})[0]?.[0] ?? err.detail) : null;
+            setModuleError(reason ?? 'Failed to save.');
         }
     }
 

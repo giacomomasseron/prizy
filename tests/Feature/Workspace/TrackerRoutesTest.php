@@ -127,3 +127,50 @@ it('leaves every other route outside it', function (): void {
     expect(count($other))->toBeGreaterThan(40)
         ->and($closed)->toBe([]);
 });
+
+/** @return array<string, bool> Every SPA page shell by uri => whether it is the tracker's (see resources/js/router.tsx) */
+function trackerRoutesPageFiling(): array
+{
+    $tracker = [
+        'today', 'issues', 'board', 'issues/{issue}', 'teams', 'teams/{team}', 'teams/{team}/cycles',
+        'projects', 'projects/{project}', 'projects/{project}/{view}', 'labels', 'roadmap', 'analytics',
+        'releases', 'releases/{release}', 'notifications', 'settings/teams', 'settings/labels',
+        'settings/integrations', 'search', 'integrations', 'create',
+    ];
+    $other = [
+        '/', 'login', 'signup', 'find', 'setup', 'settings', 'settings/members', 'settings/general',
+        'settings/business-hours', 'settings/sla-policies', 'settings/billing', 'settings/audit',
+        'support', 'support/tickets/{ticket}', 'support/reporting', 'support/kb', 'support/kb/new',
+        'support/kb/articles/{article}',
+    ];
+
+    return array_fill_keys($tracker, true) + array_fill_keys($other, false);
+}
+
+// The same for the pages: each shell the SPA is served from is filed, and the
+// tracker's answer 404 through the switch (the 404 form, no parameter).
+it('files every page shell as the tracker\'s or not, and puts the tracker\'s behind the switch', function (): void {
+    $filing = trackerRoutesPageFiling();
+    $unfiled = [];
+    $wrong = [];
+    $pages = 0;
+    foreach (Route::getRoutes()->getRoutes() as $route) {
+        if (($route->defaults['view'] ?? null) !== 'app') {
+            continue;
+        }
+        $pages++;
+        $tracker = $filing[$route->uri()] ?? null;
+        if ($tracker === null) {
+            $unfiled[] = $route->uri();
+            continue;
+        }
+        $guard = trackerRoutesGuard($route);
+        if ($tracker ? $guard !== EnsureTrackerEnabled::class : $guard !== null) {
+            $wrong[] = $route->uri().' ('.($guard ?? 'no switch').')';
+        }
+    }
+
+    expect($pages)->toBe(count($filing))
+        ->and($unfiled)->toBe([])
+        ->and($wrong)->toBe([]);
+});

@@ -42,7 +42,7 @@ it('serves the tracker to a developer while it is on', function (string $endpoin
     [$token] = trackerToggleWorld();
 
     $this->withToken($token)->getJson($endpoint)->assertOk();
-})->with(['/v1/issues', '/v1/projects', '/v1/me/plan', '/v1/notifications/unread-count']);
+})->with(['/v1/issues', '/v1/projects', '/v1/me/todos', '/v1/notifications/unread-count']);
 
 // One endpoint per area. TrackerRoutesTest proves every route carries the
 // switch; this proves the switch closes what it sits on. The owner is the case
@@ -190,6 +190,7 @@ it('refuses to switch off the last module that is on', function (array $workspac
     'the tracker, with support already off' => [['helpdeskEnabled' => false], ['tracker_enabled' => false], 'tracker_enabled'],
     'support, with the tracker already off' => [['trackerEnabled' => false], ['helpdesk_enabled' => false], 'helpdesk_enabled'],
     'both at once' => [[], ['tracker_enabled' => false, 'helpdesk_enabled' => false], 'tracker_enabled'],
+    'the tracker, sent as "0"' => [['helpdeskEnabled' => false], ['tracker_enabled' => '0'], 'tracker_enabled'],
 ]);
 
 // Every other writer meets the same rule in the table.
@@ -209,7 +210,7 @@ it('reports the switch on the authenticated user payload and the workspace', fun
 
 // The bridge needs both sides. With the tracker off a ticket points at no issue:
 // the desk would otherwise link to a page that answers 404.
-it('drops the linked issues from a ticket when the tracker is off', function (): void {
+it('drops the linked issues from tickets and the report when the tracker is off', function (): void {
     [$token, $ws, $agent] = trackerToggleWorld(['admin_level' => 'owner', 'is_agent' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $agent->id]);
@@ -223,6 +224,9 @@ it('drops the linked issues from a ticket when the tracker is off', function ():
     // Control: the link is there while the tracker runs.
     $this->withToken($token)->getJson("/v1/tickets/{$ticket->id}")->assertOk()
         ->assertJsonPath('data.linked_issues.0.id', $issue->id);
+    $this->withToken($token)->getJson('/v1/reports/overview')->assertOk()
+        ->assertJsonPath('data.escalations.count', 1)
+        ->assertJsonPath('data.escalations.recent.0.issue_id', $issue->id);
 
     $ws->update(['tracker_enabled' => false]);
 
@@ -230,4 +234,7 @@ it('drops the linked issues from a ticket when the tracker is off', function ():
         ->assertJsonPath('data.linked_issues', []);
     $this->withToken($token)->getJson('/v1/tickets')->assertOk()
         ->assertJsonPath('data.0.linked_issues', []);
+    $this->withToken($token)->getJson('/v1/reports/overview')->assertOk()
+        ->assertJsonPath('data.escalations.count', 0)
+        ->assertJsonPath('data.escalations.recent', []);
 });

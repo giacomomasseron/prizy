@@ -262,6 +262,22 @@ describe('GeneralPage (tracker module switch)', () => {
         expect(tracker).toBeEnabled();
     });
 
+    it('says why the server refused a switch, not just that the data was invalid', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            const j = (b: unknown, s = 200) => new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (init?.method === 'PATCH') {
+                return j({ title: 'Unprocessable Content', detail: 'The given data was invalid.', errors: { tracker_enabled: ['Keep at least one module on: a workspace needs the issue tracker or the support desk.'] } }, 422);
+            }
+            if (url.includes('/v1/me')) return j({ data: { ...me, admin_level: 'owner', workspace: { helpdesk_enabled: true, tracker_enabled: true } } });
+            return j({ data: { id: 'w', name: 'W', slug: 'w', helpdesk_enabled: true, tracker_enabled: true } });
+        }));
+        renderPage();
+        await userEvent.click(await screen.findByRole('switch', { name: 'Issue tracker module' }));
+
+        expect(await screen.findByText(/Keep at least one module on/)).toBeInTheDocument();
+        expect(screen.queryByText('The given data was invalid.')).toBeNull();
+    });
+
     it('drops the email digest, which only ever gathers the tracker\'s notifications', async () => {
         stub('owner', { helpdesk_enabled: true, tracker_enabled: false });
         renderPage();
