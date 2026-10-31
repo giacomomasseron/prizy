@@ -3,6 +3,7 @@ import { ApiError } from '../lib/apiClient';
 import { Button } from '../components/ui/Button';
 import { AuthFrame } from './AuthChrome';
 import { AUTH_LINK_CLASSES, authError, authInput, authLabel, authLead, authTitle } from './authStyles';
+import { signupUrl } from './signupUrl';
 import { sessionPost } from './useAuth';
 
 /**
@@ -61,7 +62,7 @@ export default function FindWorkspacePage() {
                 <Button type="submit" disabled={submitting} style={{ width: '100%', height: 50, fontSize: 16, marginTop: 6 }}>Email me my workspaces</Button>
             </form>
             <p style={{ margin: '28px 0 0', textAlign: 'center', color: 'var(--fg2)', fontSize: 15 }}>
-                New to Prizy? <a href="/signup" className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</a>
+                New to Prizy? <a href={signupUrl('/')} className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</a>
             </p>
         </AuthFrame>
     );

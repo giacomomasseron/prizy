@@ -49,8 +49,17 @@ it('lets Caddy issue the sign-up host a certificate', function (): void {
     $this->get('/_caddy/ask?domain=signup.prizy.test')->assertOk();
 });
 
-it('sends the sign-up host root to the sign-up page', function (): void {
-    $this->get('https://signup.prizy.test/')->assertRedirect('https://signup.prizy.test/signup');
+it('serves the sign-up page at the sign-up host root, ready for the form to post', function (): void {
+    $this->get('https://signup.prizy.test/')
+        ->assertOk()
+        ->assertSee('id="app"', false)
+        ->assertCookie('XSRF-TOKEN', null, false);
+});
+
+it('serves the sign-up page at the base domain root when there is no sign-up host', function (): void {
+    config(['app.signup_host' => null]);
+
+    $this->get('https://prizy.test/')->assertOk()->assertSee('id="app"', false);
 });
 
 it('sends any other workspace page on the sign-up host to find-your-workspace', function (): void {

@@ -64,7 +64,7 @@ export default function LoginPage() {
 
                     <p style={{ margin: '28px 0 0', textAlign: 'center', color: 'var(--fg2)', fontSize: 15 }}>
                         {/* Sign-up lives on its own host (signup.prizy.dev), not this workspace's. */}
-                        New to Prizy? <a href={signupUrl('/signup')} className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</a>
+                        New to Prizy? <a href={signupUrl('/')} className={AUTH_LINK_CLASSES} style={{ fontWeight: 700 }}>Create a workspace</a>
                     </p>
                 </AuthColumn>
             </section>

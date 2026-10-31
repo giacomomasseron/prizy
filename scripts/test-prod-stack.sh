@@ -356,12 +356,11 @@ fi
 
 # /up is a framework-level route and proves only that Laravel can answer a
 # health check, not that the application actually boots and routes a real
-# page. The bare root ("/") is NOT that proof on this host: it carries
-# NeedsTenant with no exemption, and WorkspaceTenantFinder deliberately
-# returns no tenant when the request Host equals APP_BASE_DOMAIN (localhost
-# here) — so "/" only redirects to /signup on the landlord domain. /health and
-# /signup are both landlord-reachable and between them prove the app boots,
-# routes to a controller, and renders a view.
+# page. WorkspaceTenantFinder deliberately returns no tenant when the request
+# Host equals APP_BASE_DOMAIN (localhost here), so "/" reaches the sign-up page
+# through the NoCurrentTenant renderer, not a route. /health and /signup are
+# both landlord-reachable and between them prove the app boots, routes to a
+# controller, and renders a view.
 if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/health")" = "200" ]; then
     pass "/health returns 200 (the app boots and routes to a controller)"
 else
@@ -371,6 +370,11 @@ if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/signup")" = "200" ]; then
     pass "/signup returns 200 (the SPA shell renders on the landlord host)"
 else
     fail "/signup returns 200 (the SPA shell renders on the landlord host)"
+fi
+if [ "$(curl -s -o /dev/null -w '%{http_code}' "$base/")" = "200" ]; then
+    pass "/ returns 200 (the sign-up page is the landlord host's root)"
+else
+    fail "/ returns 200 (the sign-up page is the landlord host's root)"
 fi
 
 # Prove manifest/asset parity between the two images: pull a real hashed

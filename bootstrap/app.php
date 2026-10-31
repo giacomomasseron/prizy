@@ -102,19 +102,25 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // A host with no workspace behind it — the sign-up host, a mistyped or
         // still-pending workspace, a bare domain — answers with a way forward
-        // instead of a 500. Registered before the Problem Details renderer,
-        // which would otherwise claim v1/* first (in practice auth, sorted
-        // ahead of NeedsTenant there, answers a guest 401 before this).
-        // Routine (typos, bots probing subdomains), so not worth a log line.
+        // instead of a 500: the sign-up host's root IS the sign-up page, served
+        // here because "/" belongs to the tenant routes (this response still
+        // leaves through the web group, so it gets its CSRF cookie), and
+        // anything else goes to find-your-workspace. Registered before the
+        // Problem Details renderer, which would otherwise claim v1/* first
+        // (in practice auth, sorted ahead of NeedsTenant there, answers a guest
+        // 401 before this). Routine (typos, bots probing subdomains), so not
+        // worth a log line.
         $exceptions->dontReport(NoCurrentTenant::class);
         $exceptions->render(function (NoCurrentTenant $e, Request $request) {
             if (! $request->isMethodSafe() || $request->expectsJson() || $request->is('v1/*')) {
                 return response()->json(['message' => 'Not Found'], 404);
             }
 
-            $onSignupHost = $request->getHost() === SignupHost::host();
+            if ($request->getHost() === SignupHost::host() && $request->path() === '/') {
+                return response()->view('app');
+            }
 
-            return redirect()->away(SignupHost::url($onSignupHost && $request->path() === '/' ? '/signup' : '/find'));
+            return redirect()->away(SignupHost::url('/find'));
         });
 
         // RFC 7807 Problem Details for the v1 API surface.

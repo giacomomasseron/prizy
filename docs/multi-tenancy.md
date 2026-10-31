@@ -242,7 +242,7 @@ from the start.
 
 ### The sign-up host
 
-Sign-up (`/signup`) and "find your workspace" (`/find`) live on a host that is never a
+Sign-up (the root, `/`) and "find your workspace" (`/find`) live on a host that is never a
 workspace: `APP_SIGNUP_HOST` (`signup.prizy.dev` on the cloud, whose bare domain is the
 marketing website), or `APP_BASE_DOMAIN` itself when that is unset, as on a self-hosted
 install. The SPA learns it from the `prizy-signup-url` meta tag.
@@ -251,9 +251,10 @@ Cookies are per host, so signing up there logs nobody in. Sign-up instead return
 two-minute `login_url` on the new workspace's host (`LoginHandoff`, opened at `/auth/handoff`);
 with activation on, the click that activates the workspace gets one instead.
 
-A request that resolves to no workspace (`NoCurrentTenant`) is not an error: a page on the
-sign-up host goes to `/signup` (the root) or `/find` (anything else), a page on any other host
-goes to the sign-up host's `/find`, and a JSON request or a form post gets a 404.
+A request that resolves to no workspace (`NoCurrentTenant`) is not an error: the sign-up host's
+root serves the sign-up page, any other page on it goes to `/find`, a page on any other host
+goes to the sign-up host's `/find`, and a JSON request or a form post gets a 404. `/signup`
+still answers, and the SPA moves it to the root on the sign-up host.
 
 ---
 

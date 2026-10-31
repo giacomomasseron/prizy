@@ -64,5 +64,5 @@ it('says the email could not be sent when the server fails', async () => {
 
 it('points newcomers to sign-up', () => {
     render(<FindWorkspacePage />);
-    expect(screen.getByRole('link', { name: 'Create a workspace' })).toHaveAttribute('href', '/signup');
+    expect(screen.getByRole('link', { name: 'Create a workspace' })).toHaveAttribute('href', '/');
 });
