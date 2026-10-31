@@ -6,6 +6,7 @@ import { RootRedirect } from './components/RootRedirect';
 import LoginPage from './auth/LoginPage';
 import SignupPage from './auth/SignupPage';
 import FindWorkspacePage from './auth/FindWorkspacePage';
+import { onSignupHost } from './auth/signupUrl';
 import SetupPage from './features/setup/SetupPage';
 import IssueListPage from './features/issues/IssueListPage';
 import BoardPage from './features/issues/BoardPage';
@@ -63,10 +64,15 @@ function AuthedLayout() {
 }
 
 export default function AppRouter() {
+    // The sign-up host is no workspace: its root is the sign-up page, and that
+    // is its one address, so older /signup links land there.
+    const signupHost = onSignupHost();
+
     return (
         <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
+            {signupHost && <Route path="/" element={<SignupPage />} />}
+            <Route path="/signup" element={signupHost ? <Navigate to="/" replace /> : <SignupPage />} />
             <Route path="/find" element={<FindWorkspacePage />} />
             {/* Steps 2–3 of setting up a new workspace (sign-up was step 1): its own full-page frame, no app shell. */}
             <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />

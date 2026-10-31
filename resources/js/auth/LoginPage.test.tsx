@@ -34,7 +34,7 @@ it('points "Create a workspace" at the sign-up host, which may not be this one',
     document.head.append(meta);
     try {
         renderLogin();
-        expect(screen.getByRole('link', { name: /Create a workspace/i })).toHaveAttribute('href', 'https://signup.prizy.dev/signup');
+        expect(screen.getByRole('link', { name: /Create a workspace/i })).toHaveAttribute('href', 'https://signup.prizy.dev/');
     } finally {
         meta.remove();
     }
