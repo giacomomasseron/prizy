@@ -17,6 +17,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      mailpit:
+        condition: service_started
     env_file: .env
 
   postgres:
@@ -45,6 +47,14 @@ services:
     container_name: prizy-redis
     ports:
       - "6380:6379"
+
+  # Catches development email, inbox at http://localhost:8025. Used once .env
+  # has MAIL_MAILER=smtp, MAIL_HOST=mailpit and MAIL_PORT=1025.
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    container_name: prizy-mailpit
+    ports:
+      - "8025:8025"
 
   reverb:
     image: prizy/app:dev
