@@ -11,19 +11,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor, ?string $frequency, array $preferences = [])
+ * @method void run(User $actor, ?string $frequency, array $preferences = [])
  */
 final class UpdateNotificationPreferences extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationRepository $notifications;
-
-    private readonly NotificationPreferenceRepository $preferences;
+    public function __construct(
+        private readonly NotificationRepository $notifications,
+        private readonly NotificationPreferenceRepository $preferences,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->notifications = app(NotificationRepository::class);
-        $this->preferences = app(NotificationPreferenceRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

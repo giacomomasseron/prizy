@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Pagination\CursorPaginator;
 
 /**
- * @method static CursorPaginator run(string $issueId, int $limit)
+ * @method CursorPaginator run(string $issueId, int $limit)
  */
 final class ListIssueActivities extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueActivityRepository $activities;
+    public function __construct(private readonly IssueActivityRepository $activities) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->activities = app(IssueActivityRepository::class);
-
         return $this->execute(...$arguments);
     }
 

@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static Notification run(User $actor, string $id)
+ * @method Notification run(User $actor, string $id)
  */
 final class ToggleNotificationArchive extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationRepository $notifications;
+    public function __construct(private readonly NotificationRepository $notifications) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->notifications = app(NotificationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

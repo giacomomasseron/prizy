@@ -19,6 +19,8 @@ final class SignUpController extends Controller
     /** Per address, per hour: each sign-up sends a verification email. */
     private const SIGNUPS_PER_HOUR = 10;
 
+    public function __construct(private readonly SignUpWorkspace $signUpWorkspace) {}
+
     public function __invoke(Request $request): JsonResponse
     {
         $data = $request->validate([
@@ -40,7 +42,7 @@ final class SignUpController extends Controller
         }
         RateLimiter::hit($key, 3600);
 
-        $result = SignUpWorkspace::run($data);
+        $result = $this->signUpWorkspace->run($data);
 
         // Nobody is logged in here any more (the owner logs in on their
         // workspace's host through login_url), but rotating the session ID

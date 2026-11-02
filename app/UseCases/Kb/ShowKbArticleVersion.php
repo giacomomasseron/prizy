@@ -16,25 +16,19 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static array run(User $actor, string $articleId, string $versionId)
+ * @method array run(User $actor, string $articleId, string $versionId)
  */
 final class ShowKbArticleVersion extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbVersionRepository $versions;
-
-    private readonly MarkdownRenderer $markdown;
-
-    private readonly KbDiffer $differ;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbVersionRepository $versions,
+        private readonly MarkdownRenderer $markdown,
+        private readonly KbDiffer $differ,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->versions = app(KbVersionRepository::class);
-        $this->markdown = app(MarkdownRenderer::class);
-        $this->differ = app(KbDiffer::class);
-
         return $this->execute(...$arguments);
     }
 

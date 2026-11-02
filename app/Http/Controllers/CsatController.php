@@ -10,6 +10,8 @@ use Illuminate\Http\Response;
 
 final class CsatController extends Controller
 {
+    public function __construct(private readonly RecordCsatResponse $recordCsatResponse) {}
+
     public function respond(Request $request, string $ticket, string $rating): Response
     {
         // Manual signature check instead of the 'signed' middleware so
@@ -18,7 +20,7 @@ final class CsatController extends Controller
             return response()->view('csat.expired', [], 403);
         }
 
-        $model = RecordCsatResponse::run($ticket, $rating);
+        $model = $this->recordCsatResponse->run($ticket, $rating);
 
         return response()->view('csat.thanks', [
             'rating' => $model->csat_rating,

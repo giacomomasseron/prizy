@@ -14,16 +14,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * Take an issue off the actor's day plan (the Today v2 design). An issue that is not on the plan → 404.
  *
- * @method static void run(User $actor, string $issueId)
+ * @method void run(User $actor, string $issueId)
  */
 final class RemoveFromPlan extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserPlanItemRepository $items;
+    public function __construct(private readonly UserPlanItemRepository $items) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

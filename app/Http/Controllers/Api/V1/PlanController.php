@@ -28,9 +28,21 @@ use Illuminate\Support\Facades\Gate;
 /** /v1/me/plan — the caller's own day plan (the Today v2 design). Tracker users only (the route gate). */
 final class PlanController extends Controller
 {
+    public function __construct(
+        private readonly ShowPlan $showPlan,
+        private readonly SuggestForPlan $suggestForPlan,
+        private readonly AddToPlan $addToPlan,
+        private readonly UpdatePlanItem $updatePlanItem,
+        private readonly RemoveFromPlan $removeFromPlan,
+        private readonly FindIssue $findIssue,
+        private readonly CompletePlanItem $completePlanItem,
+        private readonly UndoPlanItem $undoPlanItem,
+        private readonly SetFocusCapacity $setFocusCapacity,
+    ) {}
+
     public function index(PlanDayRequest $request): JsonResponse
     {
-        $plan = ShowPlan::run($request->user(), $request->dayStart());
+        $plan = $this->showPlan->run($request->user(), $request->dayStart());
 
         return response()->json(['data' => [
             'capacity_minutes' => $plan['capacity_minutes'],
@@ -41,26 +53,26 @@ final class PlanController extends Controller
 
     public function suggestions(PlanDayRequest $request): JsonResponse
     {
-        return PlanSuggestionResource::collection(SuggestForPlan::run($request->user(), $request->dayStart()))->response();
+        return PlanSuggestionResource::collection($this->suggestForPlan->run($request->user(), $request->dayStart()))->response();
     }
 
     public function store(AddToPlanRequest $request): JsonResponse
     {
-        $added = AddToPlan::run($request->user(), (string) $request->validated('issue_id'), $request->minutes());
+        $added = $this->addToPlan->run($request->user(), (string) $request->validated('issue_id'), $request->minutes());
 
         return PlanItemResource::make(['item' => $added['item'], 'signals' => null])->response()->setStatusCode($added['created'] ? 201 : 200);
     }
 
     public function update(UpdatePlanItemRequest $request, string $issue): JsonResponse
     {
-        $item = UpdatePlanItem::run($request->user(), $issue, $request->changes());
+        $item = $this->updatePlanItem->run($request->user(), $issue, $request->changes());
 
         return PlanItemResource::make(['item' => $item, 'signals' => null])->response();
     }
 
     public function destroy(Request $request, string $issue): Response
     {
-        RemoveFromPlan::run($request->user(), $issue);
+        $this->removeFromPlan->run($request->user(), $issue);
 
         return response()->noContent();
     }
@@ -68,20 +80,20 @@ final class PlanController extends Controller
     /** Done completes the issue itself, so it needs the right to change it (viewers → 403). */
     public function done(Request $request, string $issue): JsonResponse
     {
-        Gate::authorize('update', FindIssue::run($issue));
+        Gate::authorize('update', $this->findIssue->run($issue));
 
-        return PlanItemResource::make(['item' => CompletePlanItem::run($request->user(), $issue), 'signals' => null])->response();
+        return PlanItemResource::make(['item' => $this->completePlanItem->run($request->user(), $issue), 'signals' => null])->response();
     }
 
     public function undo(Request $request, string $issue): JsonResponse
     {
-        Gate::authorize('update', FindIssue::run($issue));
+        Gate::authorize('update', $this->findIssue->run($issue));
 
-        return PlanItemResource::make(['item' => UndoPlanItem::run($request->user(), $issue), 'signals' => null])->response();
+        return PlanItemResource::make(['item' => $this->undoPlanItem->run($request->user(), $issue), 'signals' => null])->response();
     }
 
     public function capacity(SetFocusCapacityRequest $request): JsonResponse
     {
-        return response()->json(['data' => ['capacity_minutes' => SetFocusCapacity::run($request->user(), (int) $request->validated('minutes'))]]);
+        return response()->json(['data' => ['capacity_minutes' => $this->setFocusCapacity->run($request->user(), (int) $request->validated('minutes'))]]);
     }
 }

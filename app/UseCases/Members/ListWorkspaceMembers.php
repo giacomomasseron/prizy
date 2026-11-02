@@ -11,7 +11,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static array run(User $actor)
+ * @method array run(User $actor)
  */
 final class ListWorkspaceMembers extends BaseUseCase implements UseCaseInterface
 {

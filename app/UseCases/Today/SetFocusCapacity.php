@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 /**
  * The actor's daily focus capacity on Today (the Today v2 design), in minutes: 3 to 9 hours, validated upstream.
  *
- * @method static int run(User $actor, int $minutes)
+ * @method int run(User $actor, int $minutes)
  */
 final class SetFocusCapacity extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserRepository $users;
+    public function __construct(private readonly UserRepository $users) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->users = app(UserRepository::class);
-
         return $this->execute(...$arguments);
     }
 

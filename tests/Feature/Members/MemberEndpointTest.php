@@ -17,7 +17,7 @@ function memberWorld(): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
     return [$token, $ws, $user];
 }
 

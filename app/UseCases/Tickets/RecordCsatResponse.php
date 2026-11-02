@@ -19,18 +19,16 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * ticket, rating, and expiry). Ratings are last-write-wins while the link is
  * valid; csat_responded_at records only the FIRST response.
  *
- * @method static Ticket run(string $ticketId, string $rating)
+ * @method Ticket run(string $ticketId, string $rating)
  */
 final class RecordCsatResponse extends BaseUseCase implements UseCaseInterface
 {
     private const RATINGS = ['up' => 'thumbs_up', 'down' => 'thumbs_down'];
 
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

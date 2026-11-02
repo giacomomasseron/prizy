@@ -16,13 +16,15 @@ use Illuminate\Http\Response;
  */
 final class CaddyAskController extends Controller
 {
+    public function __construct(private readonly AuthorizeTlsHost $authorizeTlsHost) {}
+
     public function __invoke(Request $request): Response
     {
         $domain = $request->query('domain');
 
         // Not a cast: `?domain[]=a` yields an array, and casting it to string
         // raises an error that would surface as a 500.
-        abort_unless(is_string($domain) && AuthorizeTlsHost::run($domain), 404);
+        abort_unless(is_string($domain) && $this->authorizeTlsHost->run($domain), 404);
 
         // Caddy itself accepts any 2xx (modules/caddytls/ondemand.go rejects
         // only status < 200 or > 299); the explicit 200 here is to satisfy

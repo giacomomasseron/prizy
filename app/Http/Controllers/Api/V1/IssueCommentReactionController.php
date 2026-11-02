@@ -14,12 +14,17 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueCommentReactionController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly ToggleIssueCommentReaction $toggleIssueCommentReaction,
+    ) {}
+
     public function toggle(ReactionRequest $request, string $issue, string $comment): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
-        $updated = ToggleIssueCommentReaction::run($request->user(), $model, $comment, $request->validated()['emoji']);
+        $updated = $this->toggleIssueCommentReaction->run($request->user(), $model, $comment, $request->validated()['emoji']);
 
         return IssueCommentResource::make($updated)->response();
     }

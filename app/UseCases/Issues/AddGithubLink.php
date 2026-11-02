@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static IssueGithubLink run(User $actor, string $issueId, string $url)
+ * @method IssueGithubLink run(User $actor, string $issueId, string $url)
  */
 final class AddGithubLink extends BaseUseCase implements UseCaseInterface
 {
-    private readonly GithubLinkRepository $links;
+    public function __construct(private readonly GithubLinkRepository $links) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->links = app(GithubLinkRepository::class);
-
         return $this->execute(...$arguments);
     }
 

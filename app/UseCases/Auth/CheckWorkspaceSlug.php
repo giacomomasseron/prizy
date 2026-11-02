@@ -13,7 +13,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * Counted the way sign-up's unique rule counts: a workspace awaiting
  * activation, or deleted and not yet erased, still holds its slug.
  *
- * @method static bool run(string $slug)
+ * @method bool run(string $slug)
  */
 final class CheckWorkspaceSlug extends BaseUseCase implements UseCaseInterface
 {

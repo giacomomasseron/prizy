@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static Label run(User $actor, array $data)
+ * @method Label run(User $actor, array $data)
  */
 final class CreateLabel extends BaseUseCase implements UseCaseInterface
 {
-    private readonly LabelRepository $labels;
+    public function __construct(private readonly LabelRepository $labels) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->labels = app(LabelRepository::class);
-
         return $this->execute(...$arguments);
     }
 

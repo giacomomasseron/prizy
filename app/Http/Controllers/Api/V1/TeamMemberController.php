@@ -17,40 +17,48 @@ use Illuminate\Validation\Rule;
 
 final class TeamMemberController extends Controller
 {
+    public function __construct(
+        private readonly FindTeam $findTeam,
+        private readonly ListTeamMembers $listTeamMembers,
+        private readonly AddTeamMember $addTeamMember,
+        private readonly SetTeamMemberRole $setTeamMemberRole,
+        private readonly RemoveTeamMember $removeTeamMember,
+    ) {}
+
     public function index(Request $request, string $team): JsonResponse
     {
-        $model = FindTeam::run($team);
+        $model = $this->findTeam->run($team);
         Gate::authorize('update', $model);
 
-        return response()->json(['data' => ListTeamMembers::run($model)]);
+        return response()->json(['data' => $this->listTeamMembers->run($model)]);
     }
 
     public function store(Request $request, string $team): JsonResponse
     {
-        $model = FindTeam::run($team);
+        $model = $this->findTeam->run($team);
         Gate::authorize('update', $model);
         $data = $request->validate([
             'user_id' => ['required', 'string'],
             'role'    => ['sometimes', Rule::in(['lead', 'member'])],
         ]);
 
-        return response()->json(['data' => AddTeamMember::run($request->user(), $model, $data)], 201);
+        return response()->json(['data' => $this->addTeamMember->run($request->user(), $model, $data)], 201);
     }
 
     public function updateRole(Request $request, string $team, string $user): JsonResponse
     {
-        $model = FindTeam::run($team);
+        $model = $this->findTeam->run($team);
         Gate::authorize('update', $model);
         $data = $request->validate(['role' => ['required', Rule::in(['lead', 'member'])]]);
 
-        return response()->json(['data' => SetTeamMemberRole::run($request->user(), $model, $user, $data['role'])]);
+        return response()->json(['data' => $this->setTeamMemberRole->run($request->user(), $model, $user, $data['role'])]);
     }
 
     public function destroy(Request $request, string $team, string $user): Response
     {
-        $model = FindTeam::run($team);
+        $model = $this->findTeam->run($team);
         Gate::authorize('update', $model);
-        RemoveTeamMember::run($request->user(), $model, $user);
+        $this->removeTeamMember->run($request->user(), $model, $user);
 
         return response()->noContent();
     }

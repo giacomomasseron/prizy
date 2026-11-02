@@ -19,6 +19,8 @@ use RuntimeException;
  */
 final class LoginHandoffController extends Controller
 {
+    public function __construct(private readonly ConsumeMagicLink $consumeMagicLink) {}
+
     public function __invoke(Request $request): RedirectResponse
     {
         $nonce = $request->query('nonce');
@@ -29,7 +31,7 @@ final class LoginHandoffController extends Controller
         }
 
         try {
-            ConsumeMagicLink::run($nonce, $userId);
+            $this->consumeMagicLink->run($nonce, $userId);
         } catch (RuntimeException) {
             // Used, expired, or not a user of this workspace. Anything else
             // (the database down) is a real error and goes to the handler.

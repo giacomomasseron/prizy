@@ -14,16 +14,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static Ticket run(User $actor, string $ticketId, ?string $assigneeId)
+ * @method Ticket run(User $actor, string $ticketId, ?string $assigneeId)
  */
 final class AssignTicket extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

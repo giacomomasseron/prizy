@@ -26,7 +26,7 @@ it('transitions status, logs activity, and broadcasts', function (): void {
     $team  = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->status('todo')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    TransitionIssueStatus::run($actor, ['issue_id' => $issue->id, 'status' => 'in_progress']);
+    app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $issue->id, 'status' => 'in_progress']);
 
     $this->assertDatabaseHas('issues', ['id' => $issue->id, 'status' => 'in_progress']);
     $this->assertDatabaseHas('issue_activities', ['issue_id' => $issue->id, 'type' => 'status_changed', 'from_value' => 'todo', 'to_value' => 'in_progress']);
@@ -42,7 +42,7 @@ it('rejects a no-op transition', function (): void {
     $team  = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->status('todo')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    expect(fn () => TransitionIssueStatus::run($actor, ['issue_id' => $issue->id, 'status' => 'todo']))
+    expect(fn () => app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $issue->id, 'status' => 'todo']))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -55,7 +55,7 @@ it('rejects an invalid status value', function (): void {
     $team  = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->status('todo')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    expect(fn () => TransitionIssueStatus::run($actor, ['issue_id' => $issue->id, 'status' => 'flying']))
+    expect(fn () => app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $issue->id, 'status' => 'flying']))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -72,7 +72,7 @@ it('resolves blockers when transitioning to done', function (): void {
     $blocked  = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
     app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
 
-    TransitionIssueStatus::run($actor, ['issue_id' => $blocking->id, 'status' => 'done']);
+    app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $blocking->id, 'status' => 'done']);
 
     $this->assertDatabaseMissing('issue_blockers', ['blocking_issue_id' => $blocking->id, 'blocked_issue_id' => $blocked->id]);
     $this->assertDatabaseHas('notifications', ['user_id' => $assignee->id, 'type' => 'issue_unblocked', 'subject_id' => $blocked->id]);

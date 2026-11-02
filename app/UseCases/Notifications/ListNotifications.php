@@ -14,22 +14,18 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Pagination\CursorPaginator;
 
 /**
- * @method static CursorPaginator run(User $actor, bool $unreadOnly, int $limit, string $category = 'all')
+ * @method CursorPaginator run(User $actor, bool $unreadOnly, int $limit, string $category = 'all')
  */
 final class ListNotifications extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationRepository $notifications;
-
-    private readonly IssueRepository $issues;
-
-    private readonly ProjectMessageRepository $messages;
+    public function __construct(
+        private readonly NotificationRepository $notifications,
+        private readonly IssueRepository $issues,
+        private readonly ProjectMessageRepository $messages,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->notifications = app(NotificationRepository::class);
-        $this->issues = app(IssueRepository::class);
-        $this->messages = app(ProjectMessageRepository::class);
-
         return $this->execute(...$arguments);
     }
 

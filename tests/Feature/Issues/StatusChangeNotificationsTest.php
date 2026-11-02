@@ -34,7 +34,7 @@ it('notifies the assignee and a prior commenter, but not the actor, with issue_s
     ]);
     IssueComment::create(['id' => (string) Str::uuid(), 'issue_id' => $issue->id, 'user_id' => $priorCommenter->id, 'body' => 'earlier remark']);
 
-    TransitionIssueStatus::run($actor, ['issue_id' => $issue->id, 'status' => 'in_progress']);
+    app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $issue->id, 'status' => 'in_progress']);
 
     $this->assertDatabaseHas('notifications', [
         'user_id' => $assignee->id, 'type' => 'issue_status_changed', 'actor_id' => $actor->id,
@@ -60,7 +60,7 @@ it('does not notify anyone when the issue has no assignee or prior commenters', 
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->status('todo')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    TransitionIssueStatus::run($actor, ['issue_id' => $issue->id, 'status' => 'in_review']);
+    app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $issue->id, 'status' => 'in_review']);
 
     $this->assertDatabaseMissing('notifications', ['subject_id' => $issue->id]);
     Event::assertNotDispatched(NotificationCreated::class);

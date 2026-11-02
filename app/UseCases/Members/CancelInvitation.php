@@ -10,7 +10,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor, string $invitationId)
+ * @method void run(User $actor, string $invitationId)
  */
 final class CancelInvitation extends BaseUseCase implements UseCaseInterface
 {

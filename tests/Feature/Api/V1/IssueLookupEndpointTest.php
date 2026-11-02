@@ -23,7 +23,7 @@ function lookupWorld(array $userAttrs = ['is_developer' => true]): array
     $make = fn (array $attrs = []): Issue => Issue::factory()->for($ws, 'workspace')
         ->create(array_merge(['team_id' => $team->id, 'created_by' => $user->id], $attrs));
 
-    return ['token' => CreatePersonalAccessToken::run($user, 't', null)['token'], 'make' => $make, 'workspace' => $ws];
+    return ['token' => app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'], 'make' => $make, 'workspace' => $ws];
 }
 
 /** @return list<string> the titles in a lookup response, in order */

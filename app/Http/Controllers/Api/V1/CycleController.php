@@ -21,13 +21,22 @@ use Illuminate\Support\Facades\Gate;
 
 final class CycleController extends Controller
 {
+    public function __construct(
+        private readonly FindTeam $findTeam,
+        private readonly ListCycles $listCycles,
+        private readonly CreateCycle $createCycle,
+        private readonly FindCycle $findCycle,
+        private readonly UpdateCycle $updateCycle,
+        private readonly DeleteCycle $deleteCycle,
+    ) {}
+
     public function index(Request $request, string $team): JsonResponse
     {
-        $teamModel = FindTeam::run($team);
+        $teamModel = $this->findTeam->run($team);
         Gate::authorize('view', $teamModel);
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
 
-        return CycleResource::collection(ListCycles::run($team, $limit))->response();
+        return CycleResource::collection($this->listCycles->run($team, $limit))->response();
     }
 
     public function store(StoreCycleRequest $request, string $team): JsonResponse
@@ -35,30 +44,30 @@ final class CycleController extends Controller
         // Class-level `create,Cycle` authz is enforced by route middleware (see routes),
         // NOT here — referencing Cycle::class in the controller would be a deptrac
         // Controller→Entity violation. We only resolve the parent team + check `view`.
-        $teamModel = FindTeam::run($team);
+        $teamModel = $this->findTeam->run($team);
         Gate::authorize('view', $teamModel);
 
-        $model = CreateCycle::run($request->user(), array_merge($request->validated(), ['team_id' => $team]));
+        $model = $this->createCycle->run($request->user(), array_merge($request->validated(), ['team_id' => $team]));
 
         return CycleResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(UpdateCycleRequest $request, string $cycle): JsonResponse
     {
-        $existing = FindCycle::run($cycle);
+        $existing = $this->findCycle->run($cycle);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateCycle::run($request->user(), array_merge($request->validated(), ['cycle_id' => $cycle]));
+        $updated = $this->updateCycle->run($request->user(), array_merge($request->validated(), ['cycle_id' => $cycle]));
 
         return CycleResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $cycle): Response
     {
-        $model = FindCycle::run($cycle);
+        $model = $this->findCycle->run($cycle);
         Gate::authorize('delete', $model);
 
-        DeleteCycle::run($request->user(), ['cycle_id' => $cycle]);
+        $this->deleteCycle->run($request->user(), ['cycle_id' => $cycle]);
 
         return response()->noContent();
     }

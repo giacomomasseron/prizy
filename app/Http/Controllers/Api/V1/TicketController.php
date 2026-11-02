@@ -22,28 +22,37 @@ use Illuminate\Http\Request;
 
 final class TicketController extends Controller
 {
+    public function __construct(
+        private readonly ListTickets $listTickets,
+        private readonly CountTickets $countTickets,
+        private readonly CreateTicket $createTicket,
+        private readonly FindTicket $findTicket,
+        private readonly ChangeTicketStatus $changeTicketStatus,
+        private readonly AssignTicket $assignTicket,
+    ) {}
+
     public function index(ListTicketsRequest $request): JsonResponse
     {
-        $tickets = ListTickets::run($request->user(), $request->filters(), $request->sort(), $request->limit());
+        $tickets = $this->listTickets->run($request->user(), $request->filters(), $request->sort(), $request->limit());
 
         return TicketResource::collection($tickets)->response();
     }
 
     public function counts(Request $request): JsonResponse
     {
-        return response()->json(['data' => CountTickets::run($request->user())]);
+        return response()->json(['data' => $this->countTickets->run($request->user())]);
     }
 
     public function store(StoreTicketRequest $request): JsonResponse
     {
-        $ticket = CreateTicket::run($request->user(), $request->validated());
+        $ticket = $this->createTicket->run($request->user(), $request->validated());
 
         return (new TicketResource($ticket))->response()->setStatusCode(201);
     }
 
     public function show(Request $request, string $ticket): JsonResponse
     {
-        $model = FindTicket::run($request->user(), $ticket);
+        $model = $this->findTicket->run($request->user(), $ticket);
 
         $history = $model->requester
             ? $model->requester->tickets()->where('id', '!=', $model->id)->orderByDesc('updated_at')->limit(6)
@@ -64,7 +73,7 @@ final class TicketController extends Controller
 
     public function update(PatchTicketRequest $request, string $ticket): JsonResponse
     {
-        $model = ChangeTicketStatus::run(
+        $model = $this->changeTicketStatus->run(
             $request->user(),
             $ticket,
             (string) $request->validated('status'),
@@ -75,7 +84,7 @@ final class TicketController extends Controller
 
     public function assignee(AssignTicketRequest $request, string $ticket): JsonResponse
     {
-        $model = AssignTicket::run(
+        $model = $this->assignTicket->run(
             $request->user(),
             $ticket,
             $request->validated('assignee_id'),

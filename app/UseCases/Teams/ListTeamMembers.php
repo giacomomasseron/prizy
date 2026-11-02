@@ -9,7 +9,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static array run(Team $team)
+ * @method array run(Team $team)
  */
 final class ListTeamMembers extends BaseUseCase implements UseCaseInterface
 {

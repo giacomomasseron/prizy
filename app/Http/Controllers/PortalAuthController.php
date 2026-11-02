@@ -14,6 +14,11 @@ use Symfony\Component\HttpFoundation\Response;
 
 final class PortalAuthController extends Controller
 {
+    public function __construct(
+        private readonly RequestPortalLoginLink $requestPortalLoginLink,
+        private readonly ConsumePortalLoginLink $consumePortalLoginLink,
+    ) {}
+
     public function showLogin(): View|RedirectResponse
     {
         if (Auth::guard('contact')->check()) {
@@ -29,7 +34,7 @@ final class PortalAuthController extends Controller
         // back) rather than reach the (string) cast, which would 500 and
         // puncture the anti-enumeration guarantee below.
         $data = $request->validate(['email' => ['required', 'string', 'email']]);
-        RequestPortalLoginLink::run($data['email']);
+        $this->requestPortalLoginLink->run($data['email']);
 
         // Identical response whether or not the contact exists (anti-enumeration).
         return view('help.login', ['sent' => true]);
@@ -40,7 +45,7 @@ final class PortalAuthController extends Controller
         if (! $request->hasValidSignature()) {
             return response()->view('help.link-expired', [], 403);
         }
-        $model = ConsumePortalLoginLink::run($nonce, $contact);
+        $model = $this->consumePortalLoginLink->run($nonce, $contact);
         if ($model === null) {
             return response()->view('help.link-expired', [], 403);
         }

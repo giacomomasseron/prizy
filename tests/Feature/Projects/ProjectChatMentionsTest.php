@@ -38,7 +38,7 @@ function mentionWorld(): array
         'leon' => $make('Leon King'),
         'sam' => $make('Sam Agent', ['is_developer' => false, 'is_agent' => true]),
         'project' => Project::factory()->for($ws, 'workspace')->create(['created_by' => $author->id, 'name' => 'Unified Inbox']),
-        'token' => fn (User $user): string => CreatePersonalAccessToken::run($user, 't', null)['token'],
+        'token' => fn (User $user): string => app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'],
     ];
 }
 

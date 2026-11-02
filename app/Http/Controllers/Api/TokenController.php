@@ -20,6 +20,11 @@ use Illuminate\Http\Request;
  */
 final class TokenController extends Controller
 {
+    public function __construct(
+        private readonly CreatePersonalAccessToken $createPersonalAccessToken,
+        private readonly RevokeToken $revokeToken,
+    ) {}
+
     /**
      * Create a new personal access token.
      *
@@ -32,7 +37,7 @@ final class TokenController extends Controller
             'expires_at' => ['nullable', 'date', 'after:now'],
         ]);
 
-        $result = CreatePersonalAccessToken::run(
+        $result = $this->createPersonalAccessToken->run(
             $request->user(),
             $data['name'],
             isset($data['expires_at']) ? now()->parse($data['expires_at']) : null,
@@ -66,7 +71,7 @@ final class TokenController extends Controller
      */
     public function destroy(Request $request, string $id): JsonResponse
     {
-        RevokeToken::run($request->user(), $id);
+        $this->revokeToken->run($request->user(), $id);
 
         return response()->json(['message' => 'Token revoked.']);
     }

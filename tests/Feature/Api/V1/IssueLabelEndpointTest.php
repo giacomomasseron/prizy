@@ -24,7 +24,7 @@ it('sets (replaces) and lists the labels on an issue', function (): void {
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
     $l1 = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Bug', 'color' => '#ff0000']);
     $l2 = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'UI', 'color' => '#00ff00']);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->putJson("/v1/issues/{$issue->id}/labels", ['label_ids' => [$l1->id, $l2->id]])->assertStatus(200);
     $this->assertDatabaseHas('issue_labels', ['issue_id' => $issue->id, 'label_id' => $l1->id]);
@@ -49,7 +49,7 @@ it('rejects a label id from another workspace (422)', function (): void {
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->putJson("/v1/issues/{$issue->id}/labels", ['label_ids' => [$labelB->id]])->assertStatus(422);
 
@@ -64,7 +64,7 @@ it('rejects two labels from the same group and leaves the issue unchanged', func
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
     $bug = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Bug',     'color' => '#ff0000', 'group' => 'Type']);
     $feat = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Feature', 'color' => '#00ff00', 'group' => 'Type']);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->putJson("/v1/issues/{$issue->id}/labels", ['label_ids' => [$bug->id, $feat->id]])
         ->assertStatus(422)->assertJsonValidationErrorFor('label_ids');
@@ -81,7 +81,7 @@ it('allows one-per-group plus ungrouped labels', function (): void {
     $type = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Bug',      'color' => '#ff0000', 'group' => 'Type']);
     $sev = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Sev1',     'color' => '#e0894a', 'group' => 'Severity']);
     $free = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'needs-qa', 'color' => '#5b8def', 'group' => null]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->putJson("/v1/issues/{$issue->id}/labels", ['label_ids' => [$type->id, $sev->id, $free->id]])
         ->assertStatus(200)->assertJsonCount(3, 'data');
@@ -95,7 +95,7 @@ it('logs a label_added activity when a label is added', function (): void {
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
     $label = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Bug', 'color' => '#ff0000']);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->putJson("/v1/issues/{$issue->id}/labels", ['label_ids' => [$label->id]])
         ->assertStatus(200);
@@ -114,7 +114,7 @@ it('logs a label_removed activity when a label is removed, and none for unchange
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
     $label = Label::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Bug', 'color' => '#ff0000']);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     // start with the label applied
     $this->withToken($token)->putJson("/v1/issues/{$issue->id}/labels", ['label_ids' => [$label->id]])->assertStatus(200);

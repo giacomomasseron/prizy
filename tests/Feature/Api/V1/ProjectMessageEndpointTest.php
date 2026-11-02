@@ -27,7 +27,7 @@ function chatWorld(array $userAttrs = ['is_developer' => true]): array
     $issue = fn (array $attrs = []): Issue => Issue::factory()->for($ws, 'workspace')
         ->create(array_merge(['team_id' => $team->id, 'created_by' => $user->id, 'project_id' => $project->id], $attrs));
 
-    return ['token' => CreatePersonalAccessToken::run($user, 't', null)['token'], 'user' => $user, 'workspace' => $ws, 'project' => $project, 'issue' => $issue];
+    return ['token' => app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'], 'user' => $user, 'workspace' => $ws, 'project' => $project, 'issue' => $issue];
 }
 
 /** A message written straight to the table (the current workspace fills workspace_id). */
@@ -135,7 +135,7 @@ it('lets only the author edit or delete a message: 403 for anyone else, the owne
     ['user' => $author, 'project' => $project, 'workspace' => $ws] = chatWorld();
     $message = chatRow($project, $author, 'Mine');
     $owner = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner']);
-    $ownerToken = CreatePersonalAccessToken::run($owner, 't', null)['token'];
+    $ownerToken = app(CreatePersonalAccessToken::class)->run($owner, 't', null)['token'];
     $url = "/v1/projects/{$project->id}/messages/{$message->id}";
 
     $this->withToken($ownerToken)->patchJson($url, ['body' => 'Not yours'])->assertStatus(403);

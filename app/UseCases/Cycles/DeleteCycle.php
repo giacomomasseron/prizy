@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(User $actor, array $data)
+ * @method void run(User $actor, array $data)
  */
 final class DeleteCycle extends BaseUseCase implements UseCaseInterface
 {
-    private readonly CycleRepository $cycles;
+    public function __construct(private readonly CycleRepository $cycles) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->cycles = app(CycleRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
  * the RequestMagicLink precedent). Cache::pull in ConsumePortalLoginLink
  * enforces single use.
  *
- * @method static void run(string $email)
+ * @method void run(string $email)
  */
 final class RequestPortalLoginLink extends BaseUseCase implements UseCaseInterface
 {

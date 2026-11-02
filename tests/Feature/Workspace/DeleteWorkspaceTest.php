@@ -173,7 +173,7 @@ it('refuses a request with no confirmation', function (): void {
 
 it("refuses an API token, even the owner's", function (): void {
     [$workspace, $owner] = deletionWorld();
-    $token = CreatePersonalAccessToken::run($owner, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($owner, 't', null)['token'];
 
     $this->withToken($token)->deleteJson('/v1/workspace', ['confirm' => 'Acme Corp'])->assertUnauthorized();
 

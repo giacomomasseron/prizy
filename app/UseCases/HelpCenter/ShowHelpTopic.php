@@ -17,19 +17,17 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * Public help-center read — no actor: the pages are unauthenticated (CSAT precedent).
  *
- * @method static array run(string $categorySlug, string $lang = KbLocales::SOURCE)
+ * @method array run(string $categorySlug, string $lang = KbLocales::SOURCE)
  */
 final class ShowHelpTopic extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbRepository $kb;
-
-    private readonly KbTranslationRepository $translations;
+    public function __construct(
+        private readonly KbRepository $kb,
+        private readonly KbTranslationRepository $translations,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbRepository::class);
-        $this->translations = app(KbTranslationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

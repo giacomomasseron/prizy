@@ -33,7 +33,7 @@ it('adds a blocker edge and logs activity on the blocked issue', function (): vo
     $b = $make();
     $d = $make();
 
-    AddIssueBlocker::run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]);
+    app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]);
 
     $this->assertDatabaseHas('issue_blockers', ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]);
     $this->assertDatabaseHas('issue_activities', ['issue_id' => $d->id, 'type' => 'blocker_added', 'to_value' => $b->id]);
@@ -45,7 +45,7 @@ it('rejects a self-block', function (): void {
     [$ws, $actor, $make] = blockerWorld();
     $a = $make();
 
-    expect(fn () => AddIssueBlocker::run($actor, ['blocking_issue_id' => $a->id, 'blocked_issue_id' => $a->id]))
+    expect(fn () => app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $a->id, 'blocked_issue_id' => $a->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -57,7 +57,7 @@ it('rejects a duplicate edge', function (): void {
     $d = $make();
     app(IssueBlockerRepository::class)->create($b->id, $d->id, $actor->id);
 
-    expect(fn () => AddIssueBlocker::run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]))
+    expect(fn () => app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -68,9 +68,9 @@ it('rejects an edge touching a done or cancelled issue', function (): void {
     $done = $make('done');
     $open = $make();
 
-    expect(fn () => AddIssueBlocker::run($actor, ['blocking_issue_id' => $done->id, 'blocked_issue_id' => $open->id]))
+    expect(fn () => app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $done->id, 'blocked_issue_id' => $open->id]))
         ->toThrow(ValidationException::class);
-    expect(fn () => AddIssueBlocker::run($actor, ['blocking_issue_id' => $open->id, 'blocked_issue_id' => $done->id]))
+    expect(fn () => app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $open->id, 'blocked_issue_id' => $done->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -82,7 +82,7 @@ it('rejects a direct cycle (B blocks D, then D blocks B)', function (): void {
     $d = $make();
     app(IssueBlockerRepository::class)->create($b->id, $d->id, $actor->id); // B blocks D
 
-    expect(fn () => AddIssueBlocker::run($actor, ['blocking_issue_id' => $d->id, 'blocked_issue_id' => $b->id]))
+    expect(fn () => app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $d->id, 'blocked_issue_id' => $b->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -97,7 +97,7 @@ it('rejects a transitive cycle (A->B->C then C->A)', function (): void {
     app(IssueBlockerRepository::class)->create($b->id, $c->id, $actor->id); // B blocks C
 
     // Adding C blocks A closes the loop A->B->C->A.
-    expect(fn () => AddIssueBlocker::run($actor, ['blocking_issue_id' => $c->id, 'blocked_issue_id' => $a->id]))
+    expect(fn () => app(AddIssueBlocker::class)->run($actor, ['blocking_issue_id' => $c->id, 'blocked_issue_id' => $a->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();

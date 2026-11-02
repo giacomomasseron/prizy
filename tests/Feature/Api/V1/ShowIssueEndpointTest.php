@@ -20,7 +20,7 @@ it('shows a single issue', function (): void {
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id, 'title' => 'Z']);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson("/v1/issues/{$issue->id}");
 
@@ -33,7 +33,7 @@ it('returns 404 problem+json for a missing/cross-workspace issue', function (): 
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson('/v1/issues/' . Str::uuid());
 
@@ -54,7 +54,7 @@ it('GET /v1/issues/{id} embeds assignee {id,name} for an assigned issue', functi
         'created_by'  => $user->id,
         'assignee_id' => $assignee->id,
     ]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson("/v1/issues/{$issue->id}");
 

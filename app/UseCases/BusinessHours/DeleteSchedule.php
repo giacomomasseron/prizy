@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor, string $id)
+ * @method void run(User $actor, string $id)
  */
 final class DeleteSchedule extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ScheduleRepository $schedules;
+    public function __construct(private readonly ScheduleRepository $schedules) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->schedules = app(ScheduleRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

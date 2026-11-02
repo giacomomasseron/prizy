@@ -14,13 +14,18 @@ use Illuminate\Http\Request;
 
 final class ContactController extends Controller
 {
+    public function __construct(
+        private readonly ListContacts $listContacts,
+        private readonly CreateContact $createContact,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        return ContactResource::collection(ListContacts::run($request->user()))->response();
+        return ContactResource::collection($this->listContacts->run($request->user()))->response();
     }
 
     public function store(ContactRequest $request): JsonResponse
     {
-        return ContactResource::make(CreateContact::run($request->user(), $request->validated()))->response()->setStatusCode(201);
+        return ContactResource::make($this->createContact->run($request->user(), $request->validated()))->response()->setStatusCode(201);
     }
 }

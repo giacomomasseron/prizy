@@ -16,14 +16,20 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueBlockerController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly AddIssueBlocker $addIssueBlocker,
+        private readonly RemoveIssueBlocker $removeIssueBlocker,
+    ) {}
+
     public function store(AddBlockerRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
         $blockingId = (string) $request->validated('blocking_issue_id');
 
-        AddIssueBlocker::run($request->user(), [
+        $this->addIssueBlocker->run($request->user(), [
             'blocking_issue_id' => $blockingId,
             'blocked_issue_id'  => $issue,
         ]);
@@ -33,10 +39,10 @@ final class IssueBlockerController extends Controller
 
     public function destroy(Request $request, string $issue, string $blockingIssue): Response
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        RemoveIssueBlocker::run($request->user(), [
+        $this->removeIssueBlocker->run($request->user(), [
             'blocking_issue_id' => $blockingIssue,
             'blocked_issue_id'  => $issue,
         ]);

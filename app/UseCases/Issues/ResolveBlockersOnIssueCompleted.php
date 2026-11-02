@@ -15,22 +15,19 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static array run(Issue $completed, ?string $actorId = null)
+ * @method array run(Issue $completed, ?string $actorId = null)
  */
 final class ResolveBlockersOnIssueCompleted extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueRepository $issues;
-
-    private readonly IssueBlockerRepository $blockers;
-
-    private readonly IssueActivityRepository $activities;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueBlockerRepository $blockers,
+        private readonly IssueActivityRepository $activities,
+        private readonly NotificationDispatcher $notificationDispatcher,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->blockers = app(IssueBlockerRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -66,7 +63,7 @@ final class ResolveBlockersOnIssueCompleted extends BaseUseCase implements UseCa
                 if ($blocked !== null && $blocked->assignee_id !== null && $blocked->assignee_id !== $actorId) {
                     $events[] = new IssueUnblocked($blocked, $blocked->assignee_id);
 
-                    $notification = NotificationDispatcher::run($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title, $blocked->team_id, $blocked->project_id);
+                    $notification = $this->notificationDispatcher->run($blocked->assignee_id, 'issue_unblocked', 'issue', $blocked->id, $actorId, $blocked->title, $blocked->team_id, $blocked->project_id);
                     if ($notification !== null) {
                         $events[] = new NotificationCreated($blocked->assignee_id, $notification->id, 'issue_unblocked');
                     }

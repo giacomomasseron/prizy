@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static array run(User $actor, string $range)
+ * @method array run(User $actor, string $range)
  */
 final class TrackerOverviewReport extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TrackerReportRepository $reports;
+    public function __construct(private readonly TrackerReportRepository $reports) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->reports = app(TrackerReportRepository::class);
-
         return $this->execute(...$arguments);
     }
 

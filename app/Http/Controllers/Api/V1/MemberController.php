@@ -11,9 +11,11 @@ use Illuminate\Http\Request;
 
 final class MemberController extends Controller
 {
+    public function __construct(private readonly ListMembers $listMembers) {}
+
     public function index(Request $request): JsonResponse
     {
-        $members = ListMembers::run($request->user());
+        $members = $this->listMembers->run($request->user());
 
         return response()->json([
             'data' => $members->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'is_agent' => $u->is_agent])->values(),

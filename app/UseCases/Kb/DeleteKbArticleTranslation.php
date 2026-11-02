@@ -13,19 +13,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor, string $articleId, string $locale)
+ * @method void run(User $actor, string $articleId, string $locale)
  */
 final class DeleteKbArticleTranslation extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbTranslationRepository $translations;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbTranslationRepository $translations,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->translations = app(KbTranslationRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

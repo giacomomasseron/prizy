@@ -13,19 +13,17 @@ use Illuminate\Database\Eloquent\Collection;
 /**
  * The issue picker's lookup (PRD §3.2.1): issues by `PRZ-` reference or by title.
  *
- * @method static Collection run(string $q)
+ * @method Collection run(string $q)
  */
 final class LookupIssues extends BaseUseCase implements UseCaseInterface
 {
     /** The picker shows at most this many issues. */
     public const LIMIT = 8;
 
-    private readonly IssueRepository $issues;
+    public function __construct(private readonly IssueRepository $issues) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-
         return $this->execute(...$arguments);
     }
 

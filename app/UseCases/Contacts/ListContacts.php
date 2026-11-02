@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ListContacts extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ContactRepository $contacts;
+    public function __construct(private readonly ContactRepository $contacts) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->contacts = app(ContactRepository::class);
-
         return $this->execute(...$arguments);
     }
 

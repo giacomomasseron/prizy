@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static Release run(string $id, bool $withDetail = false)
+ * @method Release run(string $id, bool $withDetail = false)
  */
 final class FindRelease extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ReleaseRepository $releases;
+    public function __construct(private readonly ReleaseRepository $releases) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->releases = app(ReleaseRepository::class);
-
         return $this->execute(...$arguments);
     }
 

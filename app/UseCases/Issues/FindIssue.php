@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static Issue run(string $id)
+ * @method Issue run(string $id)
  */
 final class FindIssue extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueRepository $issues;
+    public function __construct(private readonly IssueRepository $issues) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-
         return $this->execute(...$arguments);
     }
 

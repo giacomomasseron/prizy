@@ -18,9 +18,17 @@ use Illuminate\Support\Facades\Gate;
 
 final class WorkspaceMemberController extends Controller
 {
+    public function __construct(
+        private readonly ListWorkspaceMembers $listWorkspaceMembers,
+        private readonly FindMember $findMember,
+        private readonly UpdateMember $updateMember,
+        private readonly RemoveMember $removeMember,
+        private readonly CancelInvitation $cancelInvitation,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $result = ListWorkspaceMembers::run($request->user());
+        $result = $this->listWorkspaceMembers->run($request->user());
 
         $rows = collect()
             ->concat($result['members'])
@@ -33,7 +41,7 @@ final class WorkspaceMemberController extends Controller
 
     public function update(Request $request, string $user): JsonResponse
     {
-        $model = FindMember::run($user);
+        $model = $this->findMember->run($user);
 
         Gate::authorize('update', $model);
 
@@ -43,25 +51,25 @@ final class WorkspaceMemberController extends Controller
             'is_agent'     => ['sometimes', 'boolean'],
         ]);
 
-        $updated = UpdateMember::run($request->user(), $model, $data);
+        $updated = $this->updateMember->run($request->user(), $model, $data);
 
         return response()->json(['data' => (new WorkspaceMemberResource($updated))->toArray($request)]);
     }
 
     public function destroy(Request $request, string $user): Response
     {
-        $model = FindMember::run($user);
+        $model = $this->findMember->run($user);
 
         Gate::authorize('delete', $model);
 
-        RemoveMember::run($request->user(), $model);
+        $this->removeMember->run($request->user(), $model);
 
         return response()->noContent();
     }
 
     public function destroyInvitation(Request $request, string $invitation): Response
     {
-        CancelInvitation::run($request->user(), $invitation);
+        $this->cancelInvitation->run($request->user(), $invitation);
 
         return response()->noContent();
     }

@@ -19,17 +19,25 @@ use Illuminate\Http\Response;
 
 final class KbTranslationController extends Controller
 {
+    public function __construct(
+        private readonly ListKbArticleTranslations $listKbArticleTranslations,
+        private readonly ShowKbArticleTranslation $showKbArticleTranslation,
+        private readonly UpsertKbArticleTranslation $upsertKbArticleTranslation,
+        private readonly ChangeKbTranslationStatus $changeKbTranslationStatus,
+        private readonly DeleteKbArticleTranslation $deleteKbArticleTranslation,
+    ) {}
+
     public function index(Request $request, string $id): JsonResponse
     {
         // The use case already returns the exact payload shape; a JsonResource
         // would only re-wrap a plain array.
-        return response()->json(['data' => ListKbArticleTranslations::run($request->user(), $id)]);
+        return response()->json(['data' => $this->listKbArticleTranslations->run($request->user(), $id)]);
     }
 
     public function show(Request $request, string $id, string $locale): JsonResponse
     {
         return KbArticleTranslationResource::make(
-            ShowKbArticleTranslation::run($request->user(), $id, $locale)
+            $this->showKbArticleTranslation->run($request->user(), $id, $locale)
         )->response();
     }
 
@@ -40,20 +48,20 @@ final class KbTranslationController extends Controller
         // PUT is idempotent create-or-update here — the caller never needs to
         // distinguish the two — so the status code is pinned to 200 either way.
         return KbArticleTranslationResource::make(
-            UpsertKbArticleTranslation::run($request->user(), $id, $locale, $request->validated())
+            $this->upsertKbArticleTranslation->run($request->user(), $id, $locale, $request->validated())
         )->response()->setStatusCode(200);
     }
 
     public function status(KbTranslationStatusRequest $request, string $id, string $locale): JsonResponse
     {
         return KbArticleTranslationResource::make(
-            ChangeKbTranslationStatus::run($request->user(), $id, $locale, $request->validated('status'))
+            $this->changeKbTranslationStatus->run($request->user(), $id, $locale, $request->validated('status'))
         )->response();
     }
 
     public function destroy(Request $request, string $id, string $locale): Response
     {
-        DeleteKbArticleTranslation::run($request->user(), $id, $locale);
+        $this->deleteKbArticleTranslation->run($request->user(), $id, $locale);
 
         return response()->noContent();
     }

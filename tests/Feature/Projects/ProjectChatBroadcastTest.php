@@ -83,7 +83,7 @@ it('sends a deleted message as its id', function (): void {
 
 it('fires each event once its write is saved: post, edit, delete', function (): void {
     ['user' => $user, 'project' => $project] = chatChannelWorld();
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
     Event::fake([ProjectMessagePosted::class, ProjectMessageEdited::class, ProjectMessageDeleted::class]);
     $url = "/v1/projects/{$project->id}/messages";
 
@@ -104,7 +104,7 @@ it('fires nothing for a write that is refused', function (): void {
     ['workspace' => $ws, 'user' => $author, 'project' => $project] = chatChannelWorld();
     $message = ProjectMessage::forceCreate(['project_id' => $project->id, 'user_id' => $author->id, 'body' => 'Mine']);
     $other = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $otherToken = CreatePersonalAccessToken::run($other, 't', null)['token'];
+    $otherToken = app(CreatePersonalAccessToken::class)->run($other, 't', null)['token'];
     Event::fake([ProjectMessagePosted::class, ProjectMessageEdited::class, ProjectMessageDeleted::class]);
     $url = "/v1/projects/{$project->id}/messages";
 

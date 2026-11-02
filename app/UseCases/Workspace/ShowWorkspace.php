@@ -16,7 +16,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * anything is lost. Nothing here is hidden from any member, so any member may
  * read it.
  *
- * @method static array run(User $actor)
+ * @method array run(User $actor)
  */
 final class ShowWorkspace extends BaseUseCase implements UseCaseInterface
 {

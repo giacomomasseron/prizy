@@ -36,7 +36,7 @@ use function Illuminate\Support\defer;
  * queues are tenant-aware, and the tenant is closed. A mail failure is only
  * reported, so it cannot turn a finished deletion into an error.
  *
- * @method static void run(User $actor, string $confirmation)
+ * @method void run(User $actor, string $confirmation)
  */
 final class DeleteWorkspace extends BaseUseCase implements UseCaseInterface
 {

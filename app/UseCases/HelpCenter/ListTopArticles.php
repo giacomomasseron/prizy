@@ -13,16 +13,14 @@ use Illuminate\Database\Eloquent\Collection;
 /**
  * Public read: the most-viewed published articles, eager-loaded for URL building.
  *
- * @method static Collection run(int $limit = 4)
+ * @method Collection run(int $limit = 4)
  */
 final class ListTopArticles extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbRepository $kb;
+    public function __construct(private readonly KbRepository $kb) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbRepository::class);
-
         return $this->execute(...$arguments);
     }
 

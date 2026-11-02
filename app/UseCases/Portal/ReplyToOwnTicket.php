@@ -16,19 +16,17 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(Contact $actor, string $ticketId, string $body)
+ * @method void run(Contact $actor, string $ticketId, string $body)
  */
 final class ReplyToOwnTicket extends BaseUseCase implements UseCaseInterface
 {
     /** Statuses a contact reply reopens (mirrors the "awaiting you"/"solved" vocabulary). */
     private const REOPENS = ['pending', 'on_hold', 'solved', 'closed'];
 
-    private readonly PortalTicketRepository $tickets;
+    public function __construct(private readonly PortalTicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(PortalTicketRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

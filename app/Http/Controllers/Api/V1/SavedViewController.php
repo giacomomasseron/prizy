@@ -20,16 +20,24 @@ use Illuminate\Support\Facades\Gate;
 
 final class SavedViewController extends Controller
 {
+    public function __construct(
+        private readonly ListSavedViews $listSavedViews,
+        private readonly FindSavedView $findSavedView,
+        private readonly CreateSavedView $createSavedView,
+        private readonly UpdateSavedView $updateSavedView,
+        private readonly DeleteSavedView $deleteSavedView,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
 
-        return SavedViewResource::collection(ListSavedViews::run($limit))->response();
+        return SavedViewResource::collection($this->listSavedViews->run($limit))->response();
     }
 
     public function show(Request $request, string $savedView): JsonResponse
     {
-        $model = FindSavedView::run($savedView);
+        $model = $this->findSavedView->run($savedView);
         Gate::authorize('view', $model);
 
         return SavedViewResource::make($model)->response();
@@ -37,27 +45,27 @@ final class SavedViewController extends Controller
 
     public function store(StoreSavedViewRequest $request): JsonResponse
     {
-        $model = CreateSavedView::run($request->user(), $request->validated());
+        $model = $this->createSavedView->run($request->user(), $request->validated());
 
         return SavedViewResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(UpdateSavedViewRequest $request, string $savedView): JsonResponse
     {
-        $existing = FindSavedView::run($savedView);
+        $existing = $this->findSavedView->run($savedView);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateSavedView::run($request->user(), array_merge($request->validated(), ['saved_view_id' => $savedView]));
+        $updated = $this->updateSavedView->run($request->user(), array_merge($request->validated(), ['saved_view_id' => $savedView]));
 
         return SavedViewResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $savedView): Response
     {
-        $model = FindSavedView::run($savedView);
+        $model = $this->findSavedView->run($savedView);
         Gate::authorize('delete', $model);
 
-        DeleteSavedView::run($request->user(), ['saved_view_id' => $savedView]);
+        $this->deleteSavedView->run($request->user(), ['saved_view_id' => $savedView]);
 
         return response()->noContent();
     }

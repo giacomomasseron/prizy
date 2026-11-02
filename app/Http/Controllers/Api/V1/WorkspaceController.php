@@ -14,9 +14,15 @@ use Illuminate\Http\Response;
 
 final class WorkspaceController extends Controller
 {
+    public function __construct(
+        private readonly ShowWorkspace $showWorkspace,
+        private readonly UpdateWorkspaceSettings $updateWorkspaceSettings,
+        private readonly DeleteWorkspace $deleteWorkspace,
+    ) {}
+
     public function show(Request $request): JsonResponse
     {
-        return response()->json(['data' => ShowWorkspace::run($request->user())]);
+        return response()->json(['data' => $this->showWorkspace->run($request->user())]);
     }
 
     public function update(Request $request): JsonResponse
@@ -27,7 +33,7 @@ final class WorkspaceController extends Controller
             'tracker_enabled'  => ['required_without:helpdesk_enabled', 'boolean'],
         ]);
 
-        $workspace = UpdateWorkspaceSettings::run($request->user(), $data);
+        $workspace = $this->updateWorkspaceSettings->run($request->user(), $data);
 
         return response()->json(['data' => [
             'id'               => $workspace->id,
@@ -48,7 +54,7 @@ final class WorkspaceController extends Controller
     {
         $confirm = $request->input('confirm');
 
-        DeleteWorkspace::run($request->user(), is_string($confirm) ? $confirm : '');
+        $this->deleteWorkspace->run($request->user(), is_string($confirm) ? $confirm : '');
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();

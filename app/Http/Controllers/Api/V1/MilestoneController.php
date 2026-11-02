@@ -21,13 +21,22 @@ use Illuminate\Support\Facades\Gate;
 
 final class MilestoneController extends Controller
 {
+    public function __construct(
+        private readonly FindProject $findProject,
+        private readonly ListMilestones $listMilestones,
+        private readonly CreateMilestone $createMilestone,
+        private readonly FindMilestone $findMilestone,
+        private readonly UpdateMilestone $updateMilestone,
+        private readonly DeleteMilestone $deleteMilestone,
+    ) {}
+
     public function index(Request $request, string $project): JsonResponse
     {
-        $projectModel = FindProject::run($project);
+        $projectModel = $this->findProject->run($project);
         Gate::authorize('view', $projectModel);
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
 
-        return MilestoneResource::collection(ListMilestones::run($project, $limit))->response();
+        return MilestoneResource::collection($this->listMilestones->run($project, $limit))->response();
     }
 
     public function store(StoreMilestoneRequest $request, string $project): JsonResponse
@@ -35,30 +44,30 @@ final class MilestoneController extends Controller
         // Class-level `create,Milestone` authz is enforced by route middleware (see routes),
         // NOT here — referencing Milestone::class in the controller would be a deptrac
         // Controller→Entity violation. We only resolve the parent project + check `view`.
-        $projectModel = FindProject::run($project);
+        $projectModel = $this->findProject->run($project);
         Gate::authorize('view', $projectModel);
 
-        $model = CreateMilestone::run($request->user(), array_merge($request->validated(), ['project_id' => $project]));
+        $model = $this->createMilestone->run($request->user(), array_merge($request->validated(), ['project_id' => $project]));
 
         return MilestoneResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(UpdateMilestoneRequest $request, string $milestone): JsonResponse
     {
-        $existing = FindMilestone::run($milestone);
+        $existing = $this->findMilestone->run($milestone);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateMilestone::run($request->user(), array_merge($request->validated(), ['milestone_id' => $milestone]));
+        $updated = $this->updateMilestone->run($request->user(), array_merge($request->validated(), ['milestone_id' => $milestone]));
 
         return MilestoneResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $milestone): Response
     {
-        $model = FindMilestone::run($milestone);
+        $model = $this->findMilestone->run($milestone);
         Gate::authorize('delete', $model);
 
-        DeleteMilestone::run($request->user(), ['milestone_id' => $milestone]);
+        $this->deleteMilestone->run($request->user(), ['milestone_id' => $milestone]);
 
         return response()->noContent();
     }

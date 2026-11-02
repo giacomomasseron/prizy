@@ -14,13 +14,18 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueActivityController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly ListIssueActivities $listIssueActivities,
+    ) {}
+
     public function index(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
-        $page = ListIssueActivities::run($issue, $limit);
+        $page = $this->listIssueActivities->run($issue, $limit);
 
         return IssueActivityResource::collection($page)->response();
     }

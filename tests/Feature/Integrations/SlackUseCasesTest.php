@@ -26,13 +26,13 @@ it('configures then reads back the integration, keeping the url when omitted', f
     $ws->makeCurrent();
     $actor = slackActor($ws);
 
-    ConfigureSlackIntegration::run($actor, 'https://hooks.slack.com/services/A', ['created'], true);
-    $kept = ConfigureSlackIntegration::run($actor, null, ['created', 'assigned'], false);
+    app(ConfigureSlackIntegration::class)->run($actor, 'https://hooks.slack.com/services/A', ['created'], true);
+    $kept = app(ConfigureSlackIntegration::class)->run($actor, null, ['created', 'assigned'], false);
 
     expect($kept->webhook_url)->toBe('https://hooks.slack.com/services/A')
         ->and($kept->events)->toBe(['created', 'assigned'])
         ->and($kept->is_active)->toBeFalse()
-        ->and(GetSlackIntegration::run($actor)->id)->toBe($kept->id);
+        ->and(app(GetSlackIntegration::class)->run($actor)->id)->toBe($kept->id);
 
     Workspace::forgetCurrent();
 });
@@ -42,9 +42,9 @@ it('dispatches a test message when configured', function (): void {
     $ws = Workspace::factory()->create();
     $ws->makeCurrent();
     $actor = slackActor($ws);
-    ConfigureSlackIntegration::run($actor, 'https://hooks.slack.com/services/A', ['created'], true);
+    app(ConfigureSlackIntegration::class)->run($actor, 'https://hooks.slack.com/services/A', ['created'], true);
 
-    SendTestSlackMessage::run($actor);
+    app(SendTestSlackMessage::class)->run($actor);
     Queue::assertPushed(SendSlackMessage::class);
 
     Workspace::forgetCurrent();
@@ -55,7 +55,7 @@ it('rejects a test when no url is configured', function (): void {
     $ws->makeCurrent();
     $actor = slackActor($ws);
 
-    expect(fn () => SendTestSlackMessage::run($actor))->toThrow(ValidationException::class);
+    expect(fn () => app(SendTestSlackMessage::class)->run($actor))->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
 });

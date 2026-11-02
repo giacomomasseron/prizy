@@ -17,7 +17,7 @@ it('defaults email_digest_frequency to off and returns it from /v1/me', function
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
     expect($user->email_digest_frequency)->toBe('off');
 
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
     $this->withToken($token)->getJson('/v1/me')
         ->assertStatus(200)
         ->assertJsonPath('data.email_digest_frequency', 'off');

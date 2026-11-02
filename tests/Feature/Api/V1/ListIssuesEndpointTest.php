@@ -23,7 +23,7 @@ function apiWorld(array $userAttrs = []): array
         $userAttrs,
     ));
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 'test', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 'test', null)['token'];
     $make = fn (array $a = []): Issue => Issue::factory()->for($ws, 'workspace')
         ->create(array_merge(['team_id' => $team->id, 'created_by' => $user->id], $a));
 

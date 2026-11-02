@@ -14,16 +14,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * Delete one of the actor's to-dos straight away (PRD §3.2.10). Another user's to-do → 404.
  *
- * @method static void run(User $actor, string $id)
+ * @method void run(User $actor, string $id)
  */
 final class DeleteTodo extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserTodoRepository $todos;
+    public function __construct(private readonly UserTodoRepository $todos) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->todos = app(UserTodoRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

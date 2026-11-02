@@ -16,14 +16,21 @@ use Illuminate\Http\Response;
 
 final class SlackIntegrationController extends Controller
 {
+    public function __construct(
+        private readonly GetSlackIntegration $getSlackIntegration,
+        private readonly ConfigureSlackIntegration $configureSlackIntegration,
+        private readonly SendTestSlackMessage $sendTestSlackMessage,
+        private readonly DisconnectSlackIntegration $disconnectSlackIntegration,
+    ) {}
+
     public function show(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->present(GetSlackIntegration::run($request->user()))]);
+        return response()->json(['data' => $this->present($this->getSlackIntegration->run($request->user()))]);
     }
 
     public function update(UpdateSlackIntegrationRequest $request): JsonResponse
     {
-        $integration = ConfigureSlackIntegration::run(
+        $integration = $this->configureSlackIntegration->run(
             $request->user(),
             $request->input('webhook_url'),
             $request->validated('events'),
@@ -35,7 +42,7 @@ final class SlackIntegrationController extends Controller
 
     public function test(Request $request): JsonResponse
     {
-        SendTestSlackMessage::run($request->user());
+        $this->sendTestSlackMessage->run($request->user());
 
         // 202 with a JSON body (the apiClient only treats 204 as empty; a bare 202 would break `res.json()`).
         return response()->json(['data' => ['status' => 'queued']], 202);
@@ -43,7 +50,7 @@ final class SlackIntegrationController extends Controller
 
     public function destroy(Request $request): Response
     {
-        DisconnectSlackIntegration::run($request->user());
+        $this->disconnectSlackIntegration->run($request->user());
 
         return response()->noContent();
     }

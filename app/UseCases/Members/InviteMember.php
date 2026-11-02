@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * invited. (Owners, admins, and viewers are exempt from the capability
  * requirement — they derive access from admin_level alone.)
  *
- * @method static Invitation run(User $inviter, array $data)
+ * @method Invitation run(User $inviter, array $data)
  */
 final class InviteMember extends BaseUseCase implements UseCaseInterface
 {

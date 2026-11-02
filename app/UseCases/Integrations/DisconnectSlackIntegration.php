@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor)
+ * @method void run(User $actor)
  */
 final class DisconnectSlackIntegration extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SlackIntegrationRepository $repo;
+    public function __construct(private readonly SlackIntegrationRepository $repo) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->repo = app(SlackIntegrationRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

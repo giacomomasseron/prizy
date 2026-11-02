@@ -18,16 +18,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * Delete one of the actor's own chat messages (PRD §3.2.11): a soft delete — gone from the chat for everyone.
  * Someone else's message → 403, admins and the owner included; a deleted one or another project's → 404.
  *
- * @method static ProjectMessage run(User $actor, Project $project, string $messageId)
+ * @method ProjectMessage run(User $actor, Project $project, string $messageId)
  */
 final class DeleteProjectMessage extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ProjectMessageRepository $messages;
+    public function __construct(private readonly ProjectMessageRepository $messages) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->messages = app(ProjectMessageRepository::class);
-
         return $this->execute(...$arguments);
     }
 

@@ -25,18 +25,16 @@ use Illuminate\Validation\ValidationException;
  * most one CSAT ask per ticket" semantics, not a bug. This does NOT change
  * the reporting denominator (csatRate divides by csat_responded_at).
  *
- * @method static void run(Contact $actor, string $ticketId, string $vote)
+ * @method void run(Contact $actor, string $ticketId, string $vote)
  */
 final class RatePortalTicket extends BaseUseCase implements UseCaseInterface
 {
     private const RATINGS = ['up' => 'thumbs_up', 'down' => 'thumbs_down'];
 
-    private readonly PortalTicketRepository $tickets;
+    public function __construct(private readonly PortalTicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(PortalTicketRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

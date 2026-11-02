@@ -27,19 +27,17 @@ use Illuminate\Validation\ValidationException;
  * there, soft-deleted, holding the workspace's unique email, and restoring it
  * reconnects what they wrote. Name, password and role come from this invitation.
  *
- * @method static User run(string $token, array $userData)
+ * @method User run(string $token, array $userData)
  */
 final class AcceptInvite extends BaseUseCase implements UseCaseInterface
 {
-    private readonly OpenInvitation $openInvitation;
-
-    private readonly UserRepository $userRepository;
+    public function __construct(
+        private readonly OpenInvitation $openInvitation,
+        private readonly UserRepository $userRepository,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->openInvitation = app(OpenInvitation::class);
-        $this->userRepository = app(UserRepository::class);
-
         return $this->execute(...$arguments);
     }
 

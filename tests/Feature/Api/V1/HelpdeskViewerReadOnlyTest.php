@@ -54,7 +54,7 @@ function viewerRoWorld(string $adminLevel): array
     $user = User::factory()->for($ws, 'workspace')->create([
         'is_agent' => true, 'admin_level' => $adminLevel, 'email_verified_at' => now(),
     ]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $catA = KbCategory::forceCreate([
         'id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'name' => 'Getting started', 'slug' => 'getting-started',

@@ -18,21 +18,20 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * @method static Issue run(User $actor, array $data)
+ * @method Issue run(User $actor, array $data)
  */
 final class CreateIssue extends BaseUseCase implements UseCaseInterface
 {
     use ValidatesWorkspaceReferences;
 
-    private readonly IssueRepository $issues;
-
-    private readonly IssueActivityRepository $activities;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueActivityRepository $activities,
+        private readonly NotificationDispatcher $notificationDispatcher,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -69,7 +68,7 @@ final class CreateIssue extends BaseUseCase implements UseCaseInterface
             $this->activities->log($issue->id, $actor->id, 'created', null, $issue->title);
 
             if ($issue->assignee_id !== null && $issue->assignee_id !== $actor->id) {
-                $notification = NotificationDispatcher::run($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title, $issue->team_id, $issue->project_id);
+                $notification = $this->notificationDispatcher->run($issue->assignee_id, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title, $issue->team_id, $issue->project_id);
                 if ($notification !== null) {
                     $notificationEvent = new NotificationCreated($issue->assignee_id, $notification->id, 'issue_assigned');
                 }

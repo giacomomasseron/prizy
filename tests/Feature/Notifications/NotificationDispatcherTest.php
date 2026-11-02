@@ -30,7 +30,7 @@ it('creates a notification and returns it when the recipient has default (in_app
     [$recipient, $actor] = dispatcherWorld();
     $subjectId = (string) Str::uuid();
 
-    $notification = NotificationDispatcher::run(
+    $notification = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_assigned', 'issue', $subjectId, $actor->id, 'Ship it',
     );
 
@@ -50,7 +50,7 @@ it('skips creation and returns null when the recipient has turned the in_app pre
     [$recipient, $actor] = dispatcherWorld();
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, 'assign', 'in_app', false);
 
-    $result = NotificationDispatcher::run(
+    $result = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_assigned', 'issue', (string) Str::uuid(), $actor->id, 'Ship it',
     );
 
@@ -64,7 +64,7 @@ it('still creates other event types when only one event category is muted', func
     [$recipient, $actor] = dispatcherWorld();
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, 'assign', 'in_app', false);
 
-    $notification = NotificationDispatcher::run(
+    $notification = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_mentioned', 'issue', (string) Str::uuid(), $actor->id, 'hey @you',
     );
 
@@ -78,7 +78,7 @@ it('maps each issue_* type to the correct event category and respects that categ
     [$recipient, $actor] = dispatcherWorld();
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, $eventCategory, 'in_app', false);
 
-    $result = NotificationDispatcher::run(
+    $result = app(NotificationDispatcher::class)->run(
         $recipient->id, $type, 'issue', (string) Str::uuid(), $actor->id, null,
     );
 
@@ -97,7 +97,7 @@ it('maps each issue_* type to the correct event category and respects that categ
 it('defaults to creating when the type has no known event-category mapping', function (): void {
     [$recipient, $actor] = dispatcherWorld();
 
-    $notification = NotificationDispatcher::run(
+    $notification = app(NotificationDispatcher::class)->run(
         $recipient->id, 'some_unmapped_type', 'issue', (string) Str::uuid(), $actor->id, null,
     );
 
@@ -113,7 +113,7 @@ it('skips creation and returns null when the recipient has a team-level "off" su
     $projectId = (string) Str::uuid();
     app(NotificationSubscriptionRepository::class)->setSubscription($recipient->id, 'team', $teamId, 'off');
 
-    $result = NotificationDispatcher::run(
+    $result = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_commented', 'issue', (string) Str::uuid(), $actor->id, 'hi', $teamId, $projectId,
     );
 
@@ -128,7 +128,7 @@ it('creates on issue_mentioned but skips other issue_* types for a "mentions"-le
     $teamId = (string) Str::uuid();
     app(NotificationSubscriptionRepository::class)->setSubscription($recipient->id, 'team', $teamId, 'mentions');
 
-    $result = NotificationDispatcher::run(
+    $result = app(NotificationDispatcher::class)->run(
         $recipient->id, $type, 'issue', (string) Str::uuid(), $actor->id, 'hi', $teamId, null,
     );
 
@@ -153,7 +153,7 @@ it('creates when the subscription level is "all"', function (): void {
     $teamId = (string) Str::uuid();
     app(NotificationSubscriptionRepository::class)->setSubscription($recipient->id, 'team', $teamId, 'all');
 
-    $notification = NotificationDispatcher::run(
+    $notification = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_commented', 'issue', (string) Str::uuid(), $actor->id, 'hi', $teamId, null,
     );
 
@@ -167,7 +167,7 @@ it('creates when there is no subscription row at all (default "all")', function 
     [$recipient, $actor] = dispatcherWorld();
     $teamId = (string) Str::uuid();
 
-    $notification = NotificationDispatcher::run(
+    $notification = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_commented', 'issue', (string) Str::uuid(), $actor->id, 'hi', $teamId, null,
     );
 
@@ -185,7 +185,7 @@ it('lets a project-level "off" subscription override a team-level "all" subscrip
     $subs->setSubscription($recipient->id, 'team', $teamId, 'all');
     $subs->setSubscription($recipient->id, 'project', $projectId, 'off');
 
-    $result = NotificationDispatcher::run(
+    $result = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_commented', 'issue', (string) Str::uuid(), $actor->id, 'hi', $teamId, $projectId,
     );
 
@@ -201,7 +201,7 @@ it('still applies the in_app preference gate after the subscription gate passes'
     app(NotificationSubscriptionRepository::class)->setSubscription($recipient->id, 'team', $teamId, 'all');
     app(NotificationPreferenceRepository::class)->setPreference($recipient->id, 'comment', 'in_app', false);
 
-    $result = NotificationDispatcher::run(
+    $result = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_commented', 'issue', (string) Str::uuid(), $actor->id, 'hi', $teamId, null,
     );
 
@@ -216,7 +216,7 @@ it('does not apply the subscription gate when teamId is not passed (backward com
 
     // No teamId passed at all — subscription gate must be skipped entirely,
     // even for a subject type of "issue".
-    $notification = NotificationDispatcher::run(
+    $notification = app(NotificationDispatcher::class)->run(
         $recipient->id, 'issue_commented', 'issue', (string) Str::uuid(), $actor->id, 'hi',
     );
 

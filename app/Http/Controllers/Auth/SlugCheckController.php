@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 
 final class SlugCheckController extends Controller
 {
+    public function __construct(private readonly CheckWorkspaceSlug $checkWorkspaceSlug) {}
+
     /**
      * Whether ?slug= can be a new workspace's address, as the person types
      * it. It tells no more than sign-up itself does when a slug is taken.
@@ -21,7 +23,7 @@ final class SlugCheckController extends Controller
         $slug = $request->query('slug');
         $problem = WorkspaceSlug::problem($slug);
 
-        if ($problem === null && is_string($slug) && CheckWorkspaceSlug::run($slug)) {
+        if ($problem === null && is_string($slug) && $this->checkWorkspaceSlug->run($slug)) {
             $problem = 'taken';
         }
 

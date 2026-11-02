@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ShowKbLibrary extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
+    public function __construct(private readonly KbAuthoringRepository $kb) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-
         return $this->execute(...$arguments);
     }
 

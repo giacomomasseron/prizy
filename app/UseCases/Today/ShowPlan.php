@@ -15,16 +15,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * The actor's day plan (the Today v2 design): the open items in their order, each with its tag and reason; the items
  * whose issue was completed since the start of the actor's day; and the daily focus capacity.
  *
- * @method static array run(User $actor, CarbonImmutable $dayStart)
+ * @method array run(User $actor, CarbonImmutable $dayStart)
  */
 final class ShowPlan extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserPlanItemRepository $items;
+    public function __construct(
+        private readonly UserPlanItemRepository $items,
+        private readonly PlanSignalsFor $planSignalsFor,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -35,7 +36,7 @@ final class ShowPlan extends BaseUseCase implements UseCaseInterface
     private function execute(User $actor, CarbonImmutable $dayStart): array
     {
         $open = $this->items->openItems($actor->id);
-        $signals = PlanSignalsFor::run($actor, $open->pluck('issue'), $dayStart->format('Y-m-d'));
+        $signals = $this->planSignalsFor->run($actor, $open->pluck('issue'), $dayStart->format('Y-m-d'));
 
         return [
             'capacity_minutes' => (int) $actor->daily_focus_minutes,

@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static KbCategory run(User $actor, string $id, string $direction)
+ * @method KbCategory run(User $actor, string $id, string $direction)
  */
 final class MoveKbCategory extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
+    public function __construct(private readonly KbAuthoringRepository $kb) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-
         return $this->execute(...$arguments);
     }
 

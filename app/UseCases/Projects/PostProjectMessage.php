@@ -20,19 +20,18 @@ use Illuminate\Validation\ValidationException;
  * must be a live issue of the workspace (another workspace's or a deleted one → 422). Once the message is saved it
  * goes out on the project's channel, and the people it mentions are notified.
  *
- * @method static ProjectMessage run(User $actor, Project $project, string $body, array $issueIds)
+ * @method ProjectMessage run(User $actor, Project $project, string $body, array $issueIds)
  */
 final class PostProjectMessage extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ProjectMessageRepository $messages;
-
-    private readonly IssueRepository $issues;
+    public function __construct(
+        private readonly ProjectMessageRepository $messages,
+        private readonly IssueRepository $issues,
+        private readonly NotifyChatMentions $notifyChatMentions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->messages = app(ProjectMessageRepository::class);
-        $this->issues = app(IssueRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -46,7 +45,7 @@ final class PostProjectMessage extends BaseUseCase implements UseCaseInterface
         $events = [];
         $message = DB::transaction(function () use ($actor, $project, $body, $issueIds, &$events): ProjectMessage {
             $message = $this->messages->create($project->id, $actor->id, $body, $issueIds);
-            $events = NotifyChatMentions::run($actor, $project, $message);
+            $events = $this->notifyChatMentions->run($actor, $project, $message);
 
             return $message;
         });

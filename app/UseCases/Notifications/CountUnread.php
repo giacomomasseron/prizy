@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static int run(User $actor)
+ * @method int run(User $actor)
  */
 final class CountUnread extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationRepository $notifications;
+    public function __construct(private readonly NotificationRepository $notifications) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->notifications = app(NotificationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

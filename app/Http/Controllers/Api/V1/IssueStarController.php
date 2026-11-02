@@ -15,12 +15,18 @@ use Illuminate\Support\Facades\Gate;
 /** PUT / DELETE /v1/issues/{issue}/star — the caller's personal star (PRD §3.2.9). Anyone who can view the issue. */
 final class IssueStarController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly StarIssue $starIssue,
+        private readonly UnstarIssue $unstarIssue,
+    ) {}
+
     public function star(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
-        $starredAt = StarIssue::run($request->user(), $model);
+        $starredAt = $this->starIssue->run($request->user(), $model);
 
         return response()->json(['data' => [
             'issue_id' => $model->id,
@@ -31,10 +37,10 @@ final class IssueStarController extends Controller
 
     public function unstar(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
-        UnstarIssue::run($request->user(), $model);
+        $this->unstarIssue->run($request->user(), $model);
 
         return response()->json(['data' => [
             'issue_id' => $model->id,

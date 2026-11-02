@@ -27,22 +27,18 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * alongside its other domain events. This keeps broadcasts from firing for
  * rows that get rolled back.
  *
- * @method static ?Notification run(string $recipientId, string $type, string $subjectType, string $subjectId, ?string $actorId = null, ?string $body = null, ?string $teamId = null, ?string $projectId = null)
+ * @method ?Notification run(string $recipientId, string $type, string $subjectType, string $subjectId, ?string $actorId = null, ?string $body = null, ?string $teamId = null, ?string $projectId = null)
  */
 final class NotificationDispatcher extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationRepository $notifications;
-
-    private readonly NotificationPreferenceRepository $preferences;
-
-    private readonly NotificationSubscriptionRepository $subscriptions;
+    public function __construct(
+        private readonly NotificationRepository $notifications,
+        private readonly NotificationPreferenceRepository $preferences,
+        private readonly NotificationSubscriptionRepository $subscriptions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->notifications = app(NotificationRepository::class);
-        $this->preferences = app(NotificationPreferenceRepository::class);
-        $this->subscriptions = app(NotificationSubscriptionRepository::class);
-
         return $this->execute(...$arguments);
     }
 

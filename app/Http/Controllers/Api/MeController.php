@@ -17,6 +17,8 @@ use Illuminate\Http\Request;
  */
 final class MeController extends Controller
 {
+    public function __construct(private readonly ShowWorkspaceModules $showWorkspaceModules) {}
+
     public function __invoke(Request $request): JsonResponse
     {
         $user = $request->user();
@@ -38,7 +40,7 @@ final class MeController extends Controller
                 'created_at',
             ]) + [
                 // Module switches the SPA needs before it renders navigation.
-                'workspace' => ShowWorkspaceModules::run($user),
+                'workspace' => $this->showWorkspaceModules->run($user),
             ],
         ]);
     }

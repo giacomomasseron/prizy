@@ -18,29 +18,37 @@ use Illuminate\Http\Response;
 
 final class SlaPolicyController extends Controller
 {
+    public function __construct(
+        private readonly ListSlaPolicies $listSlaPolicies,
+        private readonly FindSlaPolicy $findSlaPolicy,
+        private readonly CreateSlaPolicy $createSlaPolicy,
+        private readonly UpdateSlaPolicy $updateSlaPolicy,
+        private readonly DeleteSlaPolicy $deleteSlaPolicy,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        return SlaPolicyResource::collection(ListSlaPolicies::run($request->user()))->response();
+        return SlaPolicyResource::collection($this->listSlaPolicies->run($request->user()))->response();
     }
 
     public function show(Request $request, string $id): JsonResponse
     {
-        return SlaPolicyResource::make(FindSlaPolicy::run($request->user(), $id))->response();
+        return SlaPolicyResource::make($this->findSlaPolicy->run($request->user(), $id))->response();
     }
 
     public function store(SlaPolicyRequest $request): JsonResponse
     {
-        return SlaPolicyResource::make(CreateSlaPolicy::run($request->user(), $request->validated()))->response()->setStatusCode(201);
+        return SlaPolicyResource::make($this->createSlaPolicy->run($request->user(), $request->validated()))->response()->setStatusCode(201);
     }
 
     public function update(SlaPolicyRequest $request, string $id): JsonResponse
     {
-        return SlaPolicyResource::make(UpdateSlaPolicy::run($request->user(), $id, $request->validated()))->response();
+        return SlaPolicyResource::make($this->updateSlaPolicy->run($request->user(), $id, $request->validated()))->response();
     }
 
     public function destroy(Request $request, string $id): Response
     {
-        DeleteSlaPolicy::run($request->user(), $id);
+        $this->deleteSlaPolicy->run($request->user(), $id);
 
         return response()->noContent();
     }

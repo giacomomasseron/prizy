@@ -18,7 +18,7 @@ function contactCreateWorld(array $userAttrs = ['is_agent' => true]): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $userAttrs));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $user];
 }
@@ -42,7 +42,7 @@ it('rejects a duplicate email within the workspace (422) but allows it in anothe
     $other = Workspace::factory()->create();
     $other->makeCurrent();
     $u2 = User::factory()->for($other, 'workspace')->create(['is_agent' => true, 'email_verified_at' => now()]);
-    $t2 = CreatePersonalAccessToken::run($u2, 't', null)['token'];
+    $t2 = app(CreatePersonalAccessToken::class)->run($u2, 't', null)['token'];
     // The dual auth:token,web stack runs EnsureValidTenantSession, which binds the
     // PHP session to the FIRST tenant it sees and 401s on a later mismatch (session
     // fixation guard — see TenantSessionMiddlewareTest). The Pest test client's

@@ -30,7 +30,7 @@ use Illuminate\Validation\ValidationException;
  * this is where the person switching gets told why. The row is locked while it
  * is checked, so two admins switching off one module each cannot both pass.
  *
- * @method static Workspace run(User $actor, array $data)
+ * @method Workspace run(User $actor, array $data)
  */
 final class UpdateWorkspaceSettings extends BaseUseCase implements UseCaseInterface
 {

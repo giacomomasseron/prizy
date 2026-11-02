@@ -23,7 +23,7 @@ function wsMembersWorld(string $level = 'owner'): array
         'admin_level' => $level,
         'is_developer' => true,
     ]);
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     return [$token, $ws, $actor];
 }
 

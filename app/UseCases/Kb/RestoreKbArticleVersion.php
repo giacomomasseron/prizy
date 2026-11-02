@@ -19,19 +19,17 @@ use Illuminate\Validation\ValidationException;
  * records the result as a NEW version. History is append-only: the version
  * being restored is never moved, rewritten or deleted.
  *
- * @method static KbArticle run(User $actor, string $articleId, string $versionId)
+ * @method KbArticle run(User $actor, string $articleId, string $versionId)
  */
 final class RestoreKbArticleVersion extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbVersionRepository $versions;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbVersionRepository $versions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->versions = app(KbVersionRepository::class);
-
         return $this->execute(...$arguments);
     }
 

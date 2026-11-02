@@ -9,7 +9,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static User run(User $actor, User $target, array $data)
+ * @method User run(User $actor, User $target, array $data)
  */
 final class UpdateMember extends BaseUseCase implements UseCaseInterface
 {

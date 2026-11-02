@@ -20,7 +20,7 @@ function searchWorld(): array
     test()->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner', 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     return [$token, $actor, $ws, $team];
 }
 

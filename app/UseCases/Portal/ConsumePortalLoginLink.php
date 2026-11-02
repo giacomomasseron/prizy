@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Cache;
  * deletes it) and must match the contact id in the (already signature-checked)
  * URL. Returns the contact to log in, or null (expired/mismatched/foreign).
  *
- * @method static ?Contact run(string $nonce, string $contactId)
+ * @method ?Contact run(string $nonce, string $contactId)
  */
 final class ConsumePortalLoginLink extends BaseUseCase implements UseCaseInterface
 {

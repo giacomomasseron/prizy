@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor, string $scopeType, string $scopeId, string $level)
+ * @method void run(User $actor, string $scopeType, string $scopeId, string $level)
  */
 final class SetNotificationSubscription extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationSubscriptionRepository $subscriptions;
+    public function __construct(private readonly NotificationSubscriptionRepository $subscriptions) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->subscriptions = app(NotificationSubscriptionRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

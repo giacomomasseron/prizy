@@ -33,7 +33,7 @@ it('updates changed fields and logs one activity per change', function (): void 
     Event::fake([IssueUpdated::class]);
     [$ws, $actor, $issue] = seedIssue();
 
-    UpdateIssue::run($actor, [
+    app(UpdateIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'title' => 'New title', 'priority' => 'high',
     ]);
 
@@ -49,7 +49,7 @@ it('writes no activity for a field set to its current value', function (): void 
     Event::fake([IssueUpdated::class]);
     [$ws, $actor, $issue] = seedIssue();
 
-    UpdateIssue::run($actor, ['issue_id' => $issue->id, 'title' => 'Old']);
+    app(UpdateIssue::class)->run($actor, ['issue_id' => $issue->id, 'title' => 'Old']);
 
     $this->assertDatabaseMissing('issue_activities', ['issue_id' => $issue->id, 'type' => 'title_changed']);
 
@@ -59,7 +59,7 @@ it('writes no activity for a field set to its current value', function (): void 
 it('rejects setting an issue as its own parent', function (): void {
     [$ws, $actor, $issue] = seedIssue();
 
-    expect(fn () => UpdateIssue::run($actor, ['issue_id' => $issue->id, 'parent_issue_id' => $issue->id]))
+    expect(fn () => app(UpdateIssue::class)->run($actor, ['issue_id' => $issue->id, 'parent_issue_id' => $issue->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -73,7 +73,7 @@ it('rejects updating an issue from another workspace', function (): void {
     $this->actingInWorkspace($wsB);
     $actorB = User::factory()->for($wsB, 'workspace')->create();
 
-    expect(fn () => UpdateIssue::run($actorB, ['issue_id' => $issueA->id, 'title' => 'hack']))
+    expect(fn () => app(UpdateIssue::class)->run($actorB, ['issue_id' => $issueA->id, 'title' => 'hack']))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();

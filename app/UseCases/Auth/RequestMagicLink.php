@@ -23,7 +23,7 @@ use Illuminate\Support\Str;
  * this use case returns silently — it must NOT signal whether the address is
  * registered (anti-enumeration).
  *
- * @method static void run(string $email)
+ * @method void run(string $email)
  */
 final class RequestMagicLink extends BaseUseCase implements UseCaseInterface
 {

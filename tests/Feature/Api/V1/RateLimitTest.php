@@ -22,7 +22,7 @@ function throttleToken(): string
         'admin_level' => 'member',
     ]);
 
-    return CreatePersonalAccessToken::run($user, 't', null)['token'];
+    return app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 }
 
 it('throttles writes at 60/min with an RFC 7807 429 carrying Retry-After', function (): void {

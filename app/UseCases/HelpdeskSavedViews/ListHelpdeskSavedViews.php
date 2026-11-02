@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ListHelpdeskSavedViews extends BaseUseCase implements UseCaseInterface
 {
-    private readonly HelpdeskSavedViewRepository $views;
+    public function __construct(private readonly HelpdeskSavedViewRepository $views) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->views = app(HelpdeskSavedViewRepository::class);
-
         return $this->execute(...$arguments);
     }
 

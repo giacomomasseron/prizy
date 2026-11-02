@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Pagination\CursorPaginator;
 
 /**
- * @method static CursorPaginator run(array $filters, int $limit, ?string $userId = null)
+ * @method CursorPaginator run(array $filters, int $limit, ?string $userId = null)
  */
 final class ListProjects extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ProjectRepository $projects;
+    public function __construct(private readonly ProjectRepository $projects) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->projects = app(ProjectRepository::class);
-
         return $this->execute(...$arguments);
     }
 

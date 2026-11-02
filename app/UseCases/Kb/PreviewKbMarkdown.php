@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static string run(User $actor, string $body)
+ * @method string run(User $actor, string $body)
  */
 final class PreviewKbMarkdown extends BaseUseCase implements UseCaseInterface
 {
-    private readonly MarkdownRenderer $markdown;
+    public function __construct(private readonly MarkdownRenderer $markdown) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->markdown = app(MarkdownRenderer::class);
-
         return $this->execute(...$arguments);
     }
 

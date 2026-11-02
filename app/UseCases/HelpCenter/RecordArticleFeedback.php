@@ -13,18 +13,16 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * Public help-center read — no actor: the pages are unauthenticated (CSAT precedent).
  *
- * @method static bool run(string $articleId, mixed $vote)
+ * @method bool run(string $articleId, mixed $vote)
  */
 final class RecordArticleFeedback extends BaseUseCase implements UseCaseInterface
 {
     private const VALID_VOTES = ['up', 'down'];
 
-    private readonly KbRepository $kb;
+    public function __construct(private readonly KbRepository $kb) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbRepository::class);
-
         return $this->execute(...$arguments);
     }
 

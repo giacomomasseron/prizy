@@ -15,19 +15,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static KbArticle run(User $actor, string $id, array $data)
+ * @method KbArticle run(User $actor, string $id, array $data)
  */
 final class UpdateKbArticle extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbVersionRepository $versions;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbVersionRepository $versions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->versions = app(KbVersionRepository::class);
-
         return $this->execute(...$arguments);
     }
 

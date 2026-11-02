@@ -24,7 +24,7 @@ it('adds a comment and broadcasts IssueCommented', function (): void {
     $team  = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    $comment = AddCommentToIssue::run($actor, [
+    $comment = app(AddCommentToIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'body' => 'Looks good', 'is_internal' => true,
     ]);
 
@@ -42,7 +42,7 @@ it('rejects commenting on an issue from another workspace', function (): void {
     $this->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create();
 
-    expect(fn () => AddCommentToIssue::run($actor, ['issue_id' => (string) \Illuminate\Support\Str::uuid(), 'body' => 'x']))
+    expect(fn () => app(AddCommentToIssue::class)->run($actor, ['issue_id' => (string) \Illuminate\Support\Str::uuid(), 'body' => 'x']))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();

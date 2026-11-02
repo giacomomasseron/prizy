@@ -14,16 +14,14 @@ use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static Project run(User $actor, array $data)
+ * @method Project run(User $actor, array $data)
  */
 final class UpdateProject extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ProjectRepository $projects;
+    public function __construct(private readonly ProjectRepository $projects) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->projects = app(ProjectRepository::class);
-
         return $this->execute(...$arguments);
     }
 

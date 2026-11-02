@@ -18,16 +18,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * touches Notification — a contact solving their own ticket is not the same
  * trust signal as an agent closing it out.
  *
- * @method static void run(Contact $actor, string $ticketId)
+ * @method void run(Contact $actor, string $ticketId)
  */
 final class SolveOwnTicket extends BaseUseCase implements UseCaseInterface
 {
-    private readonly PortalTicketRepository $tickets;
+    public function __construct(private readonly PortalTicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(PortalTicketRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

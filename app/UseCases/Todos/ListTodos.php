@@ -14,16 +14,14 @@ use Illuminate\Support\Collection;
 /**
  * The actor's own to-dos (PRD §3.2.10): the open ones in their order, then the done ones, newest first.
  *
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ListTodos extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserTodoRepository $todos;
+    public function __construct(private readonly UserTodoRepository $todos) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->todos = app(UserTodoRepository::class);
-
         return $this->execute(...$arguments);
     }
 

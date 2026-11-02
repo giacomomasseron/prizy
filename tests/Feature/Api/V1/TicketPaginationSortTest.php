@@ -22,7 +22,7 @@ function ticketPageWorld(): array
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['is_agent' => true, 'email_verified_at' => now()]);
 
-    return [CreatePersonalAccessToken::run($user, 't', null)['token'], $ws];
+    return [app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'], $ws];
 }
 
 function ticketPageTicket(Workspace $ws, array $attrs): Ticket
@@ -132,6 +132,6 @@ it('rejects an invalid sort or limit (422) and forbids a non-agent (403)', funct
     $this->withToken($token)->getJson('/v1/tickets?sort=nope')->assertStatus(422);
     $this->withToken($token)->getJson('/v1/tickets?limit=999')->assertStatus(422);
     $na = User::factory()->for($ws, 'workspace')->create(['is_agent' => false, 'admin_level' => 'owner', 'email_verified_at' => now()]);
-    $t = CreatePersonalAccessToken::run($na, 't', null)['token'];
+    $t = app(CreatePersonalAccessToken::class)->run($na, 't', null)['token'];
     $this->withToken($t)->getJson('/v1/tickets')->assertStatus(403);
 });

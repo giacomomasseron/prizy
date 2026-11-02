@@ -14,19 +14,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static KbArticleTranslation run(User $actor, string $articleId, string $locale, array $data)
+ * @method KbArticleTranslation run(User $actor, string $articleId, string $locale, array $data)
  */
 final class UpsertKbArticleTranslation extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbTranslationRepository $translations;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbTranslationRepository $translations,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->translations = app(KbTranslationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

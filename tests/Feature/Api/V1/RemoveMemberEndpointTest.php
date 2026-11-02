@@ -25,7 +25,7 @@ function removeWorld(string $actorLevel, string $targetLevel): array
     $target = User::factory()->for($ws, 'workspace')->create([
         'email_verified_at' => now(), 'admin_level' => $targetLevel,
     ]);
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     return [$token, $actor, $target, $ws];
 }
 
@@ -91,7 +91,7 @@ it('returns 404 for user in another workspace', function (): void {
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner', 'is_developer' => true]);
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     $ws2 = Workspace::factory()->create();
     $ws2->makeCurrent();
     $other = User::factory()->for($ws2, 'workspace')->create(['email_verified_at' => now()]);
@@ -104,7 +104,7 @@ it('owner can cancel a pending invitation', function (): void {
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner', 'is_developer' => true]);
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     $inv = Invitation::forceCreate([
         'id' => (string) Str::uuid(), 'workspace_id' => $ws->id,
         'email' => 'cancel@example.com', 'admin_level' => 'member',
@@ -122,7 +122,7 @@ it('returns 404 for invitation belonging to another workspace and row survives',
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $actor = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'owner', 'is_developer' => true]);
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
 
     // Foreign workspace invitation (RLS-context sandwich)
     $ws2 = Workspace::factory()->create();

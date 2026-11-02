@@ -16,19 +16,17 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\URL;
 
 /**
- * @method static Ticket run(User $actor, string $ticketId, string $status)
+ * @method Ticket run(User $actor, string $ticketId, string $status)
  */
 final class ChangeTicketStatus extends BaseUseCase implements UseCaseInterface
 {
     /** @var list<string> */
     private const CLOSED_STATUSES = ['solved', 'closed'];
 
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

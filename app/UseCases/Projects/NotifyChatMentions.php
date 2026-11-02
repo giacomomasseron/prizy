@@ -20,19 +20,18 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * anyone who can't open the project (no tracker access), and — after an edit — anyone already notified for this
  * message. Runs inside the caller's transaction; returns the NotificationCreated events to fire after commit.
  *
- * @method static array run(User $actor, Project $project, ProjectMessage $message)
+ * @method array run(User $actor, Project $project, ProjectMessage $message)
  */
 final class NotifyChatMentions extends BaseUseCase implements UseCaseInterface
 {
-    private readonly NotificationRecipients $recipients;
-
-    private readonly NotificationRepository $notifications;
+    public function __construct(
+        private readonly NotificationRecipients $recipients,
+        private readonly NotificationRepository $notifications,
+        private readonly NotificationDispatcher $notificationDispatcher,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->recipients = app(NotificationRecipients::class);
-        $this->notifications = app(NotificationRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -57,7 +56,7 @@ final class NotifyChatMentions extends BaseUseCase implements UseCaseInterface
             if (! in_array($userId, $trackerIds, true) || in_array($userId, $already, true)) {
                 continue;
             }
-            $notification = NotificationDispatcher::run($userId, 'project_mentioned', 'project_message', $message->id, $actor->id, $excerpt, $project->team_id, $project->id);
+            $notification = $this->notificationDispatcher->run($userId, 'project_mentioned', 'project_message', $message->id, $actor->id, $excerpt, $project->team_id, $project->id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'project_mentioned');
             }

@@ -13,9 +13,9 @@ final class PrunePendingWorkspacesCommand extends Command
 
     protected $description = 'Delete workspaces whose owner never confirmed the sign-up within 24 hours.';
 
-    public function handle(): int
+    public function handle(PrunePendingWorkspaces $prunePendingWorkspaces): int
     {
-        $count = PrunePendingWorkspaces::run();
+        $count = $prunePendingWorkspaces->run();
         $this->info("Deleted {$count} pending workspace(s).");
 
         return self::SUCCESS;

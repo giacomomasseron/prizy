@@ -29,6 +29,16 @@ final class PortalController extends Controller
     /** @var list<string> */
     private const FILTERS = ['all', 'open', 'solved'];
 
+    public function __construct(
+        private readonly ListOwnTickets $listOwnTickets,
+        private readonly ShowOwnTicket $showOwnTicket,
+        private readonly ReplyToOwnTicket $replyToOwnTicket,
+        private readonly SolveOwnTicket $solveOwnTicket,
+        private readonly RatePortalTicket $ratePortalTicket,
+        private readonly ListTopArticles $listTopArticles,
+        private readonly SubmitPortalRequest $submitPortalRequest,
+    ) {}
+
     public function requests(Request $request): View
     {
         // Guard against array input (e.g. `f[]=x`) reaching a string
@@ -42,7 +52,7 @@ final class PortalController extends Controller
         $q = $request->query('q');
         $q = is_string($q) ? $q : '';
 
-        return view('help.requests', ListOwnTickets::run(Auth::guard('contact')->user(), $filter, $q) + [
+        return view('help.requests', $this->listOwnTickets->run(Auth::guard('contact')->user(), $filter, $q) + [
             'filter' => $filter,
             'q' => $q,
         ]);
@@ -50,7 +60,7 @@ final class PortalController extends Controller
 
     public function show(string $ticket): View
     {
-        return view('help.request', ShowOwnTicket::run(Auth::guard('contact')->user(), $ticket));
+        return view('help.request', $this->showOwnTicket->run(Auth::guard('contact')->user(), $ticket));
     }
 
     public function reply(Request $request, string $ticket): RedirectResponse
@@ -61,14 +71,14 @@ final class PortalController extends Controller
         $body = $request->input('body');
         $body = is_string($body) ? $body : '';
 
-        ReplyToOwnTicket::run(Auth::guard('contact')->user(), $ticket, $body);
+        $this->replyToOwnTicket->run(Auth::guard('contact')->user(), $ticket, $body);
 
         return redirect()->route('help.request', $ticket);
     }
 
     public function solve(string $ticket): RedirectResponse
     {
-        SolveOwnTicket::run(Auth::guard('contact')->user(), $ticket);
+        $this->solveOwnTicket->run(Auth::guard('contact')->user(), $ticket);
 
         return redirect()->route('help.request', $ticket);
     }
@@ -78,19 +88,19 @@ final class PortalController extends Controller
         $vote = $request->input('vote');
         $vote = is_string($vote) ? $vote : '';
 
-        RatePortalTicket::run(Auth::guard('contact')->user(), $ticket, $vote);
+        $this->ratePortalTicket->run(Auth::guard('contact')->user(), $ticket, $vote);
 
         return redirect()->route('help.request', $ticket);
     }
 
     public function new(): View
     {
-        return view('help.new', ['selfHelp' => ListTopArticles::run()]);
+        return view('help.new', ['selfHelp' => $this->listTopArticles->run()]);
     }
 
     public function store(SubmitPortalRequestRequest $request): RedirectResponse
     {
-        $ticket = SubmitPortalRequest::run(
+        $ticket = $this->submitPortalRequest->run(
             Auth::guard('contact')->user(),
             $request->validated(),
         );

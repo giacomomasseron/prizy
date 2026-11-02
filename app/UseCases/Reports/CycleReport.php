@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static array run(User $actor, string $teamId, ?string $cycleId)
+ * @method array run(User $actor, string $teamId, ?string $cycleId)
  */
 final class CycleReport extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TrackerReportRepository $reports;
+    public function __construct(private readonly TrackerReportRepository $reports) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->reports = app(TrackerReportRepository::class);
-
         return $this->execute(...$arguments);
     }
 

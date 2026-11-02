@@ -15,19 +15,17 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Collection;
 
 /**
- * @method static array run(Contact $actor, string $ticketId)
+ * @method array run(Contact $actor, string $ticketId)
  */
 final class ShowOwnTicket extends BaseUseCase implements UseCaseInterface
 {
-    private readonly PortalTicketRepository $tickets;
-
-    private readonly KbRepository $kb;
+    public function __construct(
+        private readonly PortalTicketRepository $tickets,
+        private readonly KbRepository $kb,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(PortalTicketRepository::class);
-        $this->kb = app(KbRepository::class);
-
         return $this->execute(...$arguments);
     }
 

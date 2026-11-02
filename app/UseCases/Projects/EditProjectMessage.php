@@ -22,19 +22,18 @@ use Illuminate\Validation\ValidationException;
  * newly mentioned are notified. Someone else's message → 403, admins and the owner included (a rule of its own: the
  * owner's Gate::before bypass does not reach it). A deleted message, or one from another project → 404.
  *
- * @method static ProjectMessage run(User $actor, Project $project, string $messageId, string $body, ?array $issueIds)
+ * @method ProjectMessage run(User $actor, Project $project, string $messageId, string $body, ?array $issueIds)
  */
 final class EditProjectMessage extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ProjectMessageRepository $messages;
-
-    private readonly IssueRepository $issues;
+    public function __construct(
+        private readonly ProjectMessageRepository $messages,
+        private readonly IssueRepository $issues,
+        private readonly NotifyChatMentions $notifyChatMentions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->messages = app(ProjectMessageRepository::class);
-        $this->issues = app(IssueRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -55,7 +54,7 @@ final class EditProjectMessage extends BaseUseCase implements UseCaseInterface
         $events = [];
         $edited = DB::transaction(function () use ($actor, $project, $message, $body, $issueIds, &$events): ProjectMessage {
             $edited = $this->messages->edit($message, $body, $issueIds);
-            $events = NotifyChatMentions::run($actor, $project, $edited);
+            $events = $this->notifyChatMentions->run($actor, $project, $edited);
 
             return $edited;
         });

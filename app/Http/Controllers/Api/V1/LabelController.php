@@ -20,16 +20,24 @@ use Illuminate\Support\Facades\Gate;
 
 final class LabelController extends Controller
 {
+    public function __construct(
+        private readonly ListLabels $listLabels,
+        private readonly FindLabel $findLabel,
+        private readonly CreateLabel $createLabel,
+        private readonly UpdateLabel $updateLabel,
+        private readonly DeleteLabel $deleteLabel,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
 
-        return LabelResource::collection(ListLabels::run($limit))->response();
+        return LabelResource::collection($this->listLabels->run($limit))->response();
     }
 
     public function show(Request $request, string $label): JsonResponse
     {
-        $model = FindLabel::run($label);
+        $model = $this->findLabel->run($label);
         Gate::authorize('view', $model);
 
         return LabelResource::make($model)->response();
@@ -37,27 +45,27 @@ final class LabelController extends Controller
 
     public function store(StoreLabelRequest $request): JsonResponse
     {
-        $model = CreateLabel::run($request->user(), $request->validated());
+        $model = $this->createLabel->run($request->user(), $request->validated());
 
         return LabelResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(UpdateLabelRequest $request, string $label): JsonResponse
     {
-        $existing = FindLabel::run($label);
+        $existing = $this->findLabel->run($label);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateLabel::run($request->user(), array_merge($request->validated(), ['label_id' => $label]));
+        $updated = $this->updateLabel->run($request->user(), array_merge($request->validated(), ['label_id' => $label]));
 
         return LabelResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $label): Response
     {
-        $model = FindLabel::run($label);
+        $model = $this->findLabel->run($label);
         Gate::authorize('delete', $model);
 
-        DeleteLabel::run($request->user(), ['label_id' => $label]);
+        $this->deleteLabel->run($request->user(), ['label_id' => $label]);
 
         return response()->noContent();
     }

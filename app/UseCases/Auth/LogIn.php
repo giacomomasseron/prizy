@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static User run(string $email, string $password)
+ * @method User run(string $email, string $password)
  */
 final class LogIn extends BaseUseCase implements UseCaseInterface
 {

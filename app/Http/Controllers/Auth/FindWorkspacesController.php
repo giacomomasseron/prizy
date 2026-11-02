@@ -11,6 +11,8 @@ use Illuminate\Http\Request;
 
 final class FindWorkspacesController extends Controller
 {
+    public function __construct(private readonly SendWorkspaceLinks $sendWorkspaceLinks) {}
+
     /**
      * Email the address the login link of every workspace it belongs to.
      * Always the same 202, so the answer never says whether it has any.
@@ -21,7 +23,7 @@ final class FindWorkspacesController extends Controller
             'email' => ['required', 'string', 'email', 'max:255'],
         ]);
 
-        SendWorkspaceLinks::run($data['email']);
+        $this->sendWorkspaceLinks->run($data['email']);
 
         return response()->json(
             ['message' => "If that address belongs to any workspace, we've emailed you the links."],

@@ -14,19 +14,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * @method static IssueComment run(User $actor, Issue $issue, string $commentId, string $emoji)
+ * @method IssueComment run(User $actor, Issue $issue, string $commentId, string $emoji)
  */
 final class ToggleIssueCommentReaction extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueCommentRepository $comments;
-
-    private readonly IssueCommentReactionRepository $reactions;
+    public function __construct(
+        private readonly IssueCommentRepository $comments,
+        private readonly IssueCommentReactionRepository $reactions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->comments = app(IssueCommentRepository::class);
-        $this->reactions = app(IssueCommentReactionRepository::class);
-
         return $this->execute(...$arguments);
     }
 

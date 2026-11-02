@@ -11,8 +11,10 @@ use Illuminate\Http\JsonResponse;
 
 final class RoadmapController extends Controller
 {
+    public function __construct(private readonly ListRoadmap $listRoadmap) {}
+
     public function index(): JsonResponse
     {
-        return RoadmapProjectResource::collection(ListRoadmap::run())->response();
+        return RoadmapProjectResource::collection($this->listRoadmap->run())->response();
     }
 }

@@ -10,7 +10,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * @method static array run(User $actor, Team $team, string $userId, string $role)
+ * @method array run(User $actor, Team $team, string $userId, string $role)
  */
 final class SetTeamMemberRole extends BaseUseCase implements UseCaseInterface
 {

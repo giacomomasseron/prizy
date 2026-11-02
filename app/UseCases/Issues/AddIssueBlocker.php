@@ -15,24 +15,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static IssueBlocker run(User $actor, array $data)
+ * @method IssueBlocker run(User $actor, array $data)
  */
 final class AddIssueBlocker extends BaseUseCase implements UseCaseInterface
 {
     private const CLOSED = ['done', 'cancelled'];
 
-    private readonly IssueRepository $issues;
-
-    private readonly IssueBlockerRepository $blockers;
-
-    private readonly IssueActivityRepository $activities;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueBlockerRepository $blockers,
+        private readonly IssueActivityRepository $activities,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->blockers = app(IssueBlockerRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-
         return $this->execute(...$arguments);
     }
 

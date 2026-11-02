@@ -23,7 +23,7 @@ function milestoneWorld(): array
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $project = Project::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id, 'name' => 'P', 'created_by' => $user->id]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $project];
 }
@@ -49,7 +49,7 @@ it('forbids a viewer from creating a milestone (403)', function (): void {
     $user    = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'admin_level' => 'viewer', 'is_developer' => false]);
     $team    = Team::factory()->for($ws, 'workspace')->create();
     $project = Project::forceCreate(['id' => (string) Str::uuid(), 'workspace_id' => $ws->id, 'team_id' => $team->id, 'name' => 'P', 'created_by' => $user->id]);
-    $token   = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token   = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->postJson("/v1/projects/{$project->id}/milestones", ['name' => 'M', 'target_date' => '2026-03-01'])->assertStatus(403);
 

@@ -20,7 +20,7 @@ function completedAtWorld(): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
     $team = Team::factory()->for($ws, 'workspace')->create();
 
     return [$token, $ws, $team];

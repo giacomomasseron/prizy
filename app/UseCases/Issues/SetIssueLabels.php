@@ -14,19 +14,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(User $actor, array $data)
+ * @method void run(User $actor, array $data)
  */
 final class SetIssueLabels extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueLabelRepository $issueLabels;
-
-    private readonly IssueActivityRepository $activities;
+    public function __construct(
+        private readonly IssueLabelRepository $issueLabels,
+        private readonly IssueActivityRepository $activities,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issueLabels = app(IssueLabelRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

@@ -28,8 +28,8 @@ function starredListWorld(): array
     $make = fn (array $attrs): Issue => Issue::factory()->for($ws, 'workspace')->create(array_merge(['team_id' => $team->id, 'created_by' => $userA->id], $attrs));
 
     return [
-        'a' => CreatePersonalAccessToken::run($userA, 't', null)['token'],
-        'b' => CreatePersonalAccessToken::run($userB, 't', null)['token'],
+        'a' => app(CreatePersonalAccessToken::class)->run($userA, 't', null)['token'],
+        'b' => app(CreatePersonalAccessToken::class)->run($userB, 't', null)['token'],
         'todo' => $make(['status' => 'todo', 'title' => 'Todo one']),
         'done' => $make(['status' => 'done', 'title' => 'Done one']),
         'archived' => $make(['status' => 'todo', 'title' => 'Archived one', 'archived_at' => now()]),

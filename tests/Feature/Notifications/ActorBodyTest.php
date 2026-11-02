@@ -30,7 +30,7 @@ it('records the actor and issue title when creating an issue with an assignee', 
     $assignee = User::factory()->for($ws, 'workspace')->create();
     $team = Team::factory()->for($ws, 'workspace')->create();
 
-    $issue = CreateIssue::run($actor, [
+    $issue = app(CreateIssue::class)->run($actor, [
         'team_id' => $team->id, 'title' => 'Ship the enrichment task', 'assignee_id' => $assignee->id,
     ]);
 
@@ -56,7 +56,7 @@ it('records the assigner and issue title when assigning an existing issue', func
         'team_id' => $team->id, 'created_by' => $actor->id, 'title' => 'Fix the flaky test',
     ]);
 
-    AssignIssue::run($actor, ['issue_id' => $issue->id, 'assignee_id' => $assignee->id]);
+    app(AssignIssue::class)->run($actor, ['issue_id' => $issue->id, 'assignee_id' => $assignee->id]);
 
     $this->assertDatabaseHas('notifications', [
         'user_id' => $assignee->id,
@@ -82,7 +82,7 @@ it('records the completing actor and blocked issue title when a status transitio
     ]);
     app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
 
-    TransitionIssueStatus::run($actor, ['issue_id' => $blocking->id, 'status' => 'done']);
+    app(TransitionIssueStatus::class)->run($actor, ['issue_id' => $blocking->id, 'status' => 'done']);
 
     $this->assertDatabaseHas('notifications', [
         'user_id' => $assignee->id,

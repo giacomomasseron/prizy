@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * The WorkspaceScope global scope ensures only users in the current
  * workspace are returned; a cross-workspace ID yields a 404.
  *
- * @method static User run(string $id)
+ * @method User run(string $id)
  */
 final class FindMember extends BaseUseCase implements UseCaseInterface
 {
