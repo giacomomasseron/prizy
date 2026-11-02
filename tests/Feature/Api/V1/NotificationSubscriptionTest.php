@@ -27,7 +27,7 @@ it('returns the acting user subscription rows', function (): void {
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $team = Team::factory()->create();
     addUserToTeamForSubscriptionTest($user, $team);
@@ -51,7 +51,7 @@ it('upserts a subscription via PATCH and reflects the new level on GET', functio
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $team = Team::factory()->create();
     addUserToTeamForSubscriptionTest($user, $team);
@@ -93,7 +93,7 @@ it('rejects an invalid scope_type, level, or scope_id with a 422', function (): 
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $team = Team::factory()->create();
 
@@ -124,7 +124,7 @@ it('does not return another user subscriptions', function (): void {
 
     $userA = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
     $userB = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $tokenA = CreatePersonalAccessToken::run($userA, 't', null)['token'];
+    $tokenA = app(CreatePersonalAccessToken::class)->run($userA, 't', null)['token'];
 
     $team = Team::factory()->create();
     addUserToTeamForSubscriptionTest($userA, $team);

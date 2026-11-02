@@ -47,7 +47,7 @@ it('drops the completed issue as a blocker and notifies a now-fully-unblocked as
     $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
     app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
 
-    $result = ResolveBlockersOnIssueCompleted::run($blocking);
+    $result = app(ResolveBlockersOnIssueCompleted::class)->run($blocking);
 
     expect($result['unblocked'])->toBe([$blocked->id]);
     $this->assertDatabaseMissing('issue_blockers', ['blocking_issue_id' => $blocking->id, 'blocked_issue_id' => $blocked->id]);
@@ -73,7 +73,7 @@ it('does not notify when the newly-unblocked issue is assigned to the actor who 
     $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $actor->id]);
     app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
 
-    $result = ResolveBlockersOnIssueCompleted::run($blocking, $actor->id);
+    $result = app(ResolveBlockersOnIssueCompleted::class)->run($blocking, $actor->id);
 
     expect($result['unblocked'])->toBe([$blocked->id]);
     $this->assertDatabaseMissing('notifications', ['user_id' => $actor->id, 'type' => 'issue_unblocked', 'subject_id' => $blocked->id]);
@@ -97,7 +97,7 @@ it('still notifies when the newly-unblocked issue is assigned to a different use
     $blocked = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id]);
     app(IssueBlockerRepository::class)->create($blocking->id, $blocked->id, $actor->id);
 
-    $result = ResolveBlockersOnIssueCompleted::run($blocking, $actor->id);
+    $result = app(ResolveBlockersOnIssueCompleted::class)->run($blocking, $actor->id);
 
     expect($result['unblocked'])->toBe([$blocked->id]);
     $this->assertDatabaseHas('notifications', ['user_id' => $assignee->id, 'type' => 'issue_unblocked', 'subject_id' => $blocked->id]);
@@ -120,7 +120,7 @@ it('does not notify when the blocked issue still has another blocker', function 
     app(IssueBlockerRepository::class)->create($done->id, $blocked->id, $actor->id);
     app(IssueBlockerRepository::class)->create($other->id, $blocked->id, $actor->id);
 
-    $result = ResolveBlockersOnIssueCompleted::run($done);
+    $result = app(ResolveBlockersOnIssueCompleted::class)->run($done);
 
     expect($result['unblocked'])->toBe([]);
     $this->assertDatabaseHas('issue_activities', ['issue_id' => $blocked->id, 'type' => 'blocker_resolved']);

@@ -20,18 +20,26 @@ use Illuminate\Support\Facades\Gate;
 
 final class ProjectController extends Controller
 {
+    public function __construct(
+        private readonly ListProjects $listProjects,
+        private readonly FindProject $findProject,
+        private readonly CreateProject $createProject,
+        private readonly UpdateProject $updateProject,
+        private readonly DeleteProject $deleteProject,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
         /** @var array<string, string> $filters */
         $filters = array_intersect_key((array) $request->query('filter', []), array_flip(['status', 'team_id', 'mine']));
 
-        return ProjectResource::collection(ListProjects::run($filters, $limit, $request->user()?->id))->response();
+        return ProjectResource::collection($this->listProjects->run($filters, $limit, $request->user()?->id))->response();
     }
 
     public function show(Request $request, string $project): JsonResponse
     {
-        $model = FindProject::run($project);
+        $model = $this->findProject->run($project);
         Gate::authorize('view', $model);
 
         $model->loadMissing('lead')
@@ -42,27 +50,27 @@ final class ProjectController extends Controller
 
     public function store(StoreProjectRequest $request): JsonResponse
     {
-        $model = CreateProject::run($request->user(), $request->validated());
+        $model = $this->createProject->run($request->user(), $request->validated());
 
         return ProjectResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(UpdateProjectRequest $request, string $project): JsonResponse
     {
-        $existing = FindProject::run($project);
+        $existing = $this->findProject->run($project);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateProject::run($request->user(), array_merge($request->validated(), ['project_id' => $project]));
+        $updated = $this->updateProject->run($request->user(), array_merge($request->validated(), ['project_id' => $project]));
 
         return ProjectResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $project): Response
     {
-        $model = FindProject::run($project);
+        $model = $this->findProject->run($project);
         Gate::authorize('delete', $model);
 
-        DeleteProject::run($request->user(), ['project_id' => $project]);
+        $this->deleteProject->run($request->user(), ['project_id' => $project]);
 
         return response()->noContent();
     }

@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static Milestone run(User $actor, array $data)
+ * @method Milestone run(User $actor, array $data)
  */
 final class CreateMilestone extends BaseUseCase implements UseCaseInterface
 {
-    private readonly MilestoneRepository $milestones;
+    public function __construct(private readonly MilestoneRepository $milestones) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->milestones = app(MilestoneRepository::class);
-
         return $this->execute(...$arguments);
     }
 

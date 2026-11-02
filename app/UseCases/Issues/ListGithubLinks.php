@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor, string $issueId)
+ * @method Collection run(User $actor, string $issueId)
  */
 final class ListGithubLinks extends BaseUseCase implements UseCaseInterface
 {
-    private readonly GithubLinkRepository $links;
+    public function __construct(private readonly GithubLinkRepository $links) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->links = app(GithubLinkRepository::class);
-
         return $this->execute(...$arguments);
     }
 

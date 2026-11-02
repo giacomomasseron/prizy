@@ -15,7 +15,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * Controller -> UseCase only: a controller calling KbLocales directly would be a
  * Controller -> Service edge (the HC-5 RESERVED_HELP_SLUGS ruling).
  *
- * @method static string run(?string $requested, ?string $acceptLanguage = null)
+ * @method string run(?string $requested, ?string $acceptLanguage = null)
  */
 final class ResolveHelpLocale extends BaseUseCase implements UseCaseInterface
 {

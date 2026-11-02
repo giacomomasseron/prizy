@@ -15,7 +15,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * or it failed every attempt. A workspace closed more recently is left to the
  * job queued with it.
  *
- * @method static int run()
+ * @method int run()
  */
 final class PurgeDeletedWorkspaces extends BaseUseCase implements UseCaseInterface
 {

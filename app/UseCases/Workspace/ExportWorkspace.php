@@ -15,16 +15,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * owner check is the one gate Gate::before cannot decide (it IS that check),
  * and no policy exists for it — mirroring the helpdesk-config gating pattern.
  *
- * @method static array run(User $actor)
+ * @method array run(User $actor)
  */
 final class ExportWorkspace extends BaseUseCase implements UseCaseInterface
 {
-    private readonly WorkspaceExportBuilder $builder;
+    public function __construct(private readonly WorkspaceExportBuilder $builder) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->builder = app(WorkspaceExportBuilder::class);
-
         return $this->execute(...$arguments);
     }
 

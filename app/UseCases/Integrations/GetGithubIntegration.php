@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static ?GithubIntegration run(User $actor)
+ * @method ?GithubIntegration run(User $actor)
  */
 final class GetGithubIntegration extends BaseUseCase implements UseCaseInterface
 {
-    private readonly GithubIntegrationRepository $repo;
+    public function __construct(private readonly GithubIntegrationRepository $repo) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->repo = app(GithubIntegrationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

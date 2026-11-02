@@ -21,7 +21,7 @@ function bhWorld(array $userAttrs = ['is_agent' => true]): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $userAttrs));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $user];
 }
@@ -96,7 +96,7 @@ it('forbids a non-agent from show/update/delete (403)', function (): void {
     $id = $this->withToken($agentToken)->postJson('/v1/business-hours', bhPayload())->json('data.id');
 
     $nonAgent = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => false, 'admin_level' => 'owner']);
-    $nonAgentToken = CreatePersonalAccessToken::run($nonAgent, 't', null)['token'];
+    $nonAgentToken = app(CreatePersonalAccessToken::class)->run($nonAgent, 't', null)['token'];
 
     $this->withToken($nonAgentToken)->getJson("/v1/business-hours/{$id}")->assertStatus(403);
     $this->withToken($nonAgentToken)->patchJson("/v1/business-hours/{$id}", bhPayload())->assertStatus(403);

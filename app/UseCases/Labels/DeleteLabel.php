@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(User $actor, array $data)
+ * @method void run(User $actor, array $data)
  */
 final class DeleteLabel extends BaseUseCase implements UseCaseInterface
 {
-    private readonly LabelRepository $labels;
+    public function __construct(private readonly LabelRepository $labels) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->labels = app(LabelRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

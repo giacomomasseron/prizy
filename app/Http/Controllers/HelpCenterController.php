@@ -17,6 +17,15 @@ use Illuminate\View\View;
 
 final class HelpCenterController extends Controller
 {
+    public function __construct(
+        private readonly ResolveHelpLocale $resolveHelpLocale,
+        private readonly ShowHelpHome $showHelpHome,
+        private readonly ShowHelpTopic $showHelpTopic,
+        private readonly ShowHelpArticle $showHelpArticle,
+        private readonly SearchHelpArticles $searchHelpArticles,
+        private readonly RecordArticleFeedback $recordArticleFeedback,
+    ) {}
+
     /**
      * ?lang wins; Accept-Language only seeds the choice when no parameter is
      * present. A non-string value (?lang[]=fr) is treated as absent — casting an
@@ -26,7 +35,7 @@ final class HelpCenterController extends Controller
     {
         $raw = $request->query('lang');
 
-        return ResolveHelpLocale::run(is_string($raw) ? $raw : null, $request->headers->get('accept-language'));
+        return $this->resolveHelpLocale->run(is_string($raw) ? $raw : null, $request->headers->get('accept-language'));
     }
 
     public function home(Request $request): View
@@ -36,20 +45,20 @@ final class HelpCenterController extends Controller
         // `?Contact $contact` parameter is where that type belongs.
         // helpRoute/helpRouteParams let the shared layout's switcher rebuild THIS
         // page's URL in another language.
-        return view('help.home', ShowHelpHome::run(Auth::guard('contact')->user(), $this->lang($request))
+        return view('help.home', $this->showHelpHome->run(Auth::guard('contact')->user(), $this->lang($request))
             + ['helpRoute' => 'help.home', 'helpRouteParams' => []]);
     }
 
     public function topic(Request $request, string $category): View
     {
-        return view('help.topic', ShowHelpTopic::run($category, $this->lang($request))
+        return view('help.topic', $this->showHelpTopic->run($category, $this->lang($request))
             + ['helpRoute' => 'help.topic', 'helpRouteParams' => [$category]]);
     }
 
     public function article(Request $request, string $category, string $section, string $article): View|RedirectResponse
     {
         $lang = $this->lang($request);
-        $data = ShowHelpArticle::run($category, $section, $article, $lang);
+        $data = $this->showHelpArticle->run($category, $section, $article, $lang);
         if (isset($data['redirect'])) {
             return redirect($data['redirect']);
         }
@@ -72,7 +81,7 @@ final class HelpCenterController extends Controller
         // page's URL in another language, carrying the query along.
         return view('help.search', [
             'q' => $q,
-            'results' => SearchHelpArticles::run($q, $lang),
+            'results' => $this->searchHelpArticles->run($q, $lang),
             'lang' => $lang,
             'helpRoute' => 'help.search',
             'helpRouteParams' => ['q' => $q],
@@ -81,7 +90,7 @@ final class HelpCenterController extends Controller
 
     public function feedback(Request $request, string $article): RedirectResponse
     {
-        $recorded = RecordArticleFeedback::run($article, $request->input('vote'));
+        $recorded = $this->recordArticleFeedback->run($article, $request->input('vote'));
 
         // Referer, not back(): back() re-derives from the session's "previous URL"
         // which these public/unauthenticated requests don't reliably carry.

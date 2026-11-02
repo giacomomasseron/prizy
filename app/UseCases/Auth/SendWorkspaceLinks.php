@@ -25,7 +25,7 @@ use function Illuminate\Support\defer;
  * reported, so a match looks like a miss in both time and status. Not a queued
  * notification: queues are tenant-aware here, and there is no tenant.
  *
- * @method static void run(string $email)
+ * @method void run(string $email)
  */
 final class SendWorkspaceLinks extends BaseUseCase implements UseCaseInterface
 {

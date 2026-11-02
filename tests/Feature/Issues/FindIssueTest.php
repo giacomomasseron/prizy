@@ -22,7 +22,7 @@ it('returns an issue in the current workspace', function (): void {
     $user = User::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
 
-    expect(FindIssue::run($issue->id)->id)->toBe($issue->id);
+    expect(app(FindIssue::class)->run($issue->id)->id)->toBe($issue->id);
 
     Workspace::forgetCurrent();
 });
@@ -31,5 +31,5 @@ it('throws ModelNotFound for a missing or cross-workspace id', function (): void
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
 
-    FindIssue::run((string) Str::uuid());
+    app(FindIssue::class)->run((string) Str::uuid());
 })->throws(ModelNotFoundException::class);

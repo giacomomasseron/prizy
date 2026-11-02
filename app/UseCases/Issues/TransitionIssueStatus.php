@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static Issue run(User $actor, array $data)
+ * @method Issue run(User $actor, array $data)
  */
 final class TransitionIssueStatus extends BaseUseCase implements UseCaseInterface
 {
@@ -36,18 +36,16 @@ final class TransitionIssueStatus extends BaseUseCase implements UseCaseInterfac
         'cancelled' => 'Cancelled',
     ];
 
-    private readonly IssueRepository $issues;
-
-    private readonly IssueActivityRepository $activities;
-
-    private readonly NotificationRecipients $recipients;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueActivityRepository $activities,
+        private readonly NotificationRecipients $recipients,
+        private readonly ResolveBlockersOnIssueCompleted $resolveBlockersOnIssueCompleted,
+        private readonly NotificationDispatcher $notificationDispatcher,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-        $this->recipients = app(NotificationRecipients::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -82,7 +80,7 @@ final class TransitionIssueStatus extends BaseUseCase implements UseCaseInterfac
             $this->activities->log($issue->id, $actor->id, 'status_changed', $from, $to);
 
             if (in_array($to, self::CLOSED, true)) {
-                $postCommitEvents = ResolveBlockersOnIssueCompleted::run($issue, $actor->id)['events'];
+                $postCommitEvents = $this->resolveBlockersOnIssueCompleted->run($issue, $actor->id)['events'];
             }
 
             $postCommitEvents = [...$postCommitEvents, ...$this->notifyParticipants($issue, $actor, $to)];
@@ -104,7 +102,7 @@ final class TransitionIssueStatus extends BaseUseCase implements UseCaseInterfac
         $events = [];
 
         foreach ($this->recipients->participants($issue, $actor->id) as $userId) {
-            $notification = NotificationDispatcher::run($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label, $issue->team_id, $issue->project_id);
+            $notification = $this->notificationDispatcher->run($userId, 'issue_status_changed', 'issue', $issue->id, $actor->id, '→ '.$label, $issue->team_id, $issue->project_id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'issue_status_changed');
             }

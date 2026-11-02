@@ -18,16 +18,17 @@ use Illuminate\Validation\ValidationException;
  * the normal status change. Only while the issue is still done and the plan completed it; otherwise 422. The caller
  * has checked the actor may change the issue. An issue that is not on the plan → 404.
  *
- * @method static UserPlanItem run(User $actor, string $issueId)
+ * @method UserPlanItem run(User $actor, string $issueId)
  */
 final class UndoPlanItem extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserPlanItemRepository $items;
+    public function __construct(
+        private readonly UserPlanItemRepository $items,
+        private readonly TransitionIssueStatus $transitionIssueStatus,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -42,7 +43,7 @@ final class UndoPlanItem extends BaseUseCase implements UseCaseInterface
             throw ValidationException::withMessages(['status' => ['There is nothing to undo.']]);
         }
 
-        TransitionIssueStatus::run($actor, ['issue_id' => $issueId, 'status' => $to]);
+        $this->transitionIssueStatus->run($actor, ['issue_id' => $issueId, 'status' => $to]);
         $item->previous_status = null;
 
         return $this->items->save($item);

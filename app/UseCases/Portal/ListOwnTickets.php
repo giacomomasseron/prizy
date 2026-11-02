@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static array run(Contact $actor, string $filter, string $q)
+ * @method array run(Contact $actor, string $filter, string $q)
  */
 final class ListOwnTickets extends BaseUseCase implements UseCaseInterface
 {
-    private readonly PortalTicketRepository $tickets;
+    public function __construct(private readonly PortalTicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(PortalTicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

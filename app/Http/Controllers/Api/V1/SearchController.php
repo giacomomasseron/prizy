@@ -14,6 +14,11 @@ use Illuminate\Http\Request;
 
 final class SearchController extends Controller
 {
+    public function __construct(
+        private readonly SearchIssues $searchIssues,
+        private readonly SearchWorkspace $searchWorkspace,
+    ) {}
+
     public function issues(SearchIssuesRequest $request): JsonResponse
     {
         /** @var array<string, string> $filter */
@@ -22,7 +27,7 @@ final class SearchController extends Controller
         $sort   = (string) $request->validated('sort', 'updated');
         $page   = (int) $request->validated('page', 1);
 
-        $paginator = SearchIssues::run($request->user(), $q, $filter, $sort, $page);
+        $paginator = $this->searchIssues->run($request->user(), $q, $filter, $sort, $page);
 
         return IssueResource::collection($paginator)->response();
     }
@@ -30,7 +35,7 @@ final class SearchController extends Controller
     public function index(Request $request): JsonResponse
     {
         $q      = (string) $request->query('q', '');
-        $groups = SearchWorkspace::run($request->user(), $q);
+        $groups = $this->searchWorkspace->run($request->user(), $q);
 
         return response()->json([
             'data' => [

@@ -30,7 +30,7 @@ it('lists comments for an issue, cursor-paginated', function (): void {
         ]);
     }
 
-    $page = ListIssueComments::run($issue->id, 2);
+    $page = app(ListIssueComments::class)->run($issue->id, 2);
     expect($page->count())->toBe(2);
     expect($page->hasMorePages())->toBeTrue();
 
@@ -48,7 +48,7 @@ it('lists activities for an issue', function (): void {
         'id' => (string) Str::uuid(), 'issue_id' => $issue->id, 'user_id' => $user->id, 'type' => 'created',
     ]);
 
-    $page = ListIssueActivities::run($issue->id, 25);
+    $page = app(ListIssueActivities::class)->run($issue->id, 25);
     expect($page->count())->toBe(1);
 
     Workspace::forgetCurrent();

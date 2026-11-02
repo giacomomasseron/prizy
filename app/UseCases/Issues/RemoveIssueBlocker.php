@@ -14,22 +14,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(User $actor, array $data)
+ * @method void run(User $actor, array $data)
  */
 final class RemoveIssueBlocker extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueRepository $issues;
-
-    private readonly IssueBlockerRepository $blockers;
-
-    private readonly IssueActivityRepository $activities;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueBlockerRepository $blockers,
+        private readonly IssueActivityRepository $activities,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->blockers = app(IssueBlockerRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

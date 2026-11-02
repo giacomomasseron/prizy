@@ -35,7 +35,7 @@ it('notifies the assignee and a prior commenter, but not the actor, with issue_c
     ]);
     IssueComment::create(['id' => (string) Str::uuid(), 'issue_id' => $issue->id, 'user_id' => $priorCommenter->id, 'body' => 'earlier remark']);
 
-    $comment = AddCommentToIssue::run($actor, [
+    $comment = app(AddCommentToIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'body' => 'Some update here', 'is_internal' => false,
     ]);
 
@@ -64,7 +64,7 @@ it('notifies an @-mentioned member with issue_mentioned', function (): void {
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    AddCommentToIssue::run($actor, [
+    app(AddCommentToIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'body' => 'cc @Jane Doe please check', 'is_internal' => false,
     ]);
 
@@ -87,7 +87,7 @@ it('notifies a mentioned participant only once, as a mention, not also as a comm
         'team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id,
     ]);
 
-    AddCommentToIssue::run($actor, [
+    app(AddCommentToIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'body' => 'cc @Jane Doe, can you take a look?', 'is_internal' => false,
     ]);
 
@@ -108,7 +108,7 @@ it('excludes a self-mention from notifications', function (): void {
         'team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id,
     ]);
 
-    AddCommentToIssue::run($actor, [
+    app(AddCommentToIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'body' => 'noting this for myself @Jane Doe', 'is_internal' => false,
     ]);
 
@@ -129,7 +129,7 @@ it('still notifies participants for an internal comment', function (): void {
         'team_id' => $team->id, 'created_by' => $actor->id, 'assignee_id' => $assignee->id,
     ]);
 
-    AddCommentToIssue::run($actor, [
+    app(AddCommentToIssue::class)->run($actor, [
         'issue_id' => $issue->id, 'body' => 'internal note', 'is_internal' => true,
     ]);
 
@@ -151,7 +151,7 @@ it('truncates a long comment body to a 140-char excerpt with an ellipsis', funct
     $body = str_repeat('a', 200);
     $expectedExcerpt = str_repeat('a', 140).'…';
 
-    AddCommentToIssue::run($actor, ['issue_id' => $issue->id, 'body' => $body, 'is_internal' => false]);
+    app(AddCommentToIssue::class)->run($actor, ['issue_id' => $issue->id, 'body' => $body, 'is_internal' => false]);
 
     $this->assertDatabaseHas('notifications', [
         'user_id' => $assignee->id, 'type' => 'issue_commented', 'actor_id' => $actor->id,

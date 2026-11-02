@@ -16,21 +16,27 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueLabelController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly ListIssueLabels $listIssueLabels,
+        private readonly SetIssueLabels $setIssueLabels,
+    ) {}
+
     public function index(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
-        return LabelResource::collection(ListIssueLabels::run($issue))->response();
+        return LabelResource::collection($this->listIssueLabels->run($issue))->response();
     }
 
     public function update(SetIssueLabelsRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        SetIssueLabels::run($request->user(), array_merge($request->validated(), ['issue_id' => $issue]));
+        $this->setIssueLabels->run($request->user(), array_merge($request->validated(), ['issue_id' => $issue]));
 
-        return LabelResource::collection(ListIssueLabels::run($issue))->response();
+        return LabelResource::collection($this->listIssueLabels->run($issue))->response();
     }
 }

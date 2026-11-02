@@ -21,14 +21,23 @@ use Illuminate\Support\Facades\Gate;
 
 final class ReleaseController extends Controller
 {
+    public function __construct(
+        private readonly ListReleases $listReleases,
+        private readonly FindRelease $findRelease,
+        private readonly CreateRelease $createRelease,
+        private readonly UpdateRelease $updateRelease,
+        private readonly DeleteRelease $deleteRelease,
+        private readonly ShipRelease $shipRelease,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        return ReleaseResource::collection(ListReleases::run($request->user()->workspace_id))->response();
+        return ReleaseResource::collection($this->listReleases->run($request->user()->workspace_id))->response();
     }
 
     public function show(Request $request, string $release): JsonResponse
     {
-        $model = FindRelease::run($release, withDetail: true);
+        $model = $this->findRelease->run($release, withDetail: true);
         Gate::authorize('view', $model);
 
         return ReleaseResource::make($model)->response();
@@ -36,44 +45,44 @@ final class ReleaseController extends Controller
 
     public function store(StoreReleaseRequest $request): JsonResponse
     {
-        $model = CreateRelease::run($request->user(), $request->validated());
+        $model = $this->createRelease->run($request->user(), $request->validated());
 
         return ReleaseResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(PatchReleaseRequest $request, string $release): JsonResponse
     {
-        $existing = FindRelease::run($release);
+        $existing = $this->findRelease->run($release);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateRelease::run($existing, $request->validated());
+        $updated = $this->updateRelease->run($existing, $request->validated());
 
         return ReleaseResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $release): Response
     {
-        $model = FindRelease::run($release);
+        $model = $this->findRelease->run($release);
         Gate::authorize('delete', $model);
 
-        DeleteRelease::run($model);
+        $this->deleteRelease->run($model);
 
         return response()->noContent();
     }
 
     public function ship(Request $request, string $release): JsonResponse
     {
-        $model = FindRelease::run($release);
+        $model = $this->findRelease->run($release);
         Gate::authorize('update', $model);
 
-        return ReleaseResource::make(ShipRelease::run($model, true))->response();
+        return ReleaseResource::make($this->shipRelease->run($model, true))->response();
     }
 
     public function unship(Request $request, string $release): JsonResponse
     {
-        $model = FindRelease::run($release);
+        $model = $this->findRelease->run($release);
         Gate::authorize('update', $model);
 
-        return ReleaseResource::make(ShipRelease::run($model, false))->response();
+        return ReleaseResource::make($this->shipRelease->run($model, false))->response();
     }
 }

@@ -22,7 +22,7 @@ function savedViewWorld(array $attrs = []): array
         ['email_verified_at' => now(), 'is_developer' => true, 'admin_level' => 'member'],
         $attrs,
     ));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $user];
 }
@@ -65,12 +65,12 @@ it('lets the creator or an admin edit/delete but forbids another non-admin devel
 
     // Another developer (not creator, not admin) → 403 on update/delete.
     $otherDev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true, 'admin_level' => 'member']);
-    $otherToken = CreatePersonalAccessToken::run($otherDev, 't', null)['token'];
+    $otherToken = app(CreatePersonalAccessToken::class)->run($otherDev, 't', null)['token'];
     $this->withToken($otherToken)->patchJson("/v1/saved-views/{$view->id}", ['name' => 'Nope'])->assertStatus(403);
 
     // An admin (not the creator) → allowed.
     $admin = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => false, 'admin_level' => 'admin']);
-    $adminToken = CreatePersonalAccessToken::run($admin, 't', null)['token'];
+    $adminToken = app(CreatePersonalAccessToken::class)->run($admin, 't', null)['token'];
     $this->withToken($adminToken)->patchJson("/v1/saved-views/{$view->id}", ['name' => 'AdminEdit'])->assertStatus(200);
 
     Workspace::forgetCurrent();

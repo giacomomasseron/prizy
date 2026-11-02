@@ -18,33 +18,41 @@ use Illuminate\Http\Response;
 
 final class BusinessHourScheduleController extends Controller
 {
+    public function __construct(
+        private readonly ListSchedules $listSchedules,
+        private readonly FindSchedule $findSchedule,
+        private readonly CreateSchedule $createSchedule,
+        private readonly UpdateSchedule $updateSchedule,
+        private readonly DeleteSchedule $deleteSchedule,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        return ScheduleResource::collection(ListSchedules::run($request->user()))->response();
+        return ScheduleResource::collection($this->listSchedules->run($request->user()))->response();
     }
 
     public function show(Request $request, string $id): JsonResponse
     {
-        return ScheduleResource::make(FindSchedule::run($request->user(), $id))->response();
+        return ScheduleResource::make($this->findSchedule->run($request->user(), $id))->response();
     }
 
     public function store(ScheduleRequest $request): JsonResponse
     {
-        $schedule = CreateSchedule::run($request->user(), $request->scheduleData());
+        $schedule = $this->createSchedule->run($request->user(), $request->scheduleData());
 
         return ScheduleResource::make($schedule)->response()->setStatusCode(201);
     }
 
     public function update(ScheduleRequest $request, string $id): JsonResponse
     {
-        $schedule = UpdateSchedule::run($request->user(), $id, $request->scheduleData());
+        $schedule = $this->updateSchedule->run($request->user(), $id, $request->scheduleData());
 
         return ScheduleResource::make($schedule)->response();
     }
 
     public function destroy(Request $request, string $id): Response
     {
-        DeleteSchedule::run($request->user(), $id);
+        $this->deleteSchedule->run($request->user(), $id);
 
         return response()->noContent();
     }

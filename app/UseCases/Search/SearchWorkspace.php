@@ -13,22 +13,18 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static array run(User $actor, string $q)
+ * @method array run(User $actor, string $q)
  */
 final class SearchWorkspace extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SearchRepository $search;
-
-    private readonly ProjectRepository $projects;
-
-    private readonly TeamRepository $teams;
+    public function __construct(
+        private readonly SearchRepository $search,
+        private readonly ProjectRepository $projects,
+        private readonly TeamRepository $teams,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->search = app(SearchRepository::class);
-        $this->projects = app(ProjectRepository::class);
-        $this->teams = app(TeamRepository::class);
-
         return $this->execute(...$arguments);
     }
 

@@ -24,7 +24,7 @@ function labelWorld(array $userAttrs = []): array
         ['email_verified_at' => now(), 'is_developer' => true, 'admin_level' => 'member'],
         $userAttrs,
     ));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws];
 }

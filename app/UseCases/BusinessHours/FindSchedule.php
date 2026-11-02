@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static BusinessHourSchedule run(User $actor, string $id)
+ * @method BusinessHourSchedule run(User $actor, string $id)
  */
 final class FindSchedule extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ScheduleRepository $schedules;
+    public function __construct(private readonly ScheduleRepository $schedules) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->schedules = app(ScheduleRepository::class);
-
         return $this->execute(...$arguments);
     }
 

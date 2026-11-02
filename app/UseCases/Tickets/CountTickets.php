@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static array run(User $actor)
+ * @method array run(User $actor)
  */
 final class CountTickets extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static Cycle run(string $id)
+ * @method Cycle run(string $id)
  */
 final class FindCycle extends BaseUseCase implements UseCaseInterface
 {
-    private readonly CycleRepository $cycles;
+    public function __construct(private readonly CycleRepository $cycles) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->cycles = app(CycleRepository::class);
-
         return $this->execute(...$arguments);
     }
 

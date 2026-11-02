@@ -86,7 +86,7 @@ it('attributes the version to the acting agent, not the article’s original aut
 
     // A DIFFERENT agent, in the same workspace, makes the edit.
     $editor = User::factory()->for($ws, 'workspace')->create(['is_agent' => true, 'email_verified_at' => now()]);
-    $editorToken = CreatePersonalAccessToken::run($editor, 't', null)['token'];
+    $editorToken = app(CreatePersonalAccessToken::class)->run($editor, 't', null)['token'];
 
     $this->withToken($editorToken)->patchJson("/v1/kb/articles/{$art->id}", ['body' => 'Second.'])->assertStatus(200);
 

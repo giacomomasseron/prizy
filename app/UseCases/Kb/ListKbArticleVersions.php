@@ -15,19 +15,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor, string $articleId)
+ * @method Collection run(User $actor, string $articleId)
  */
 final class ListKbArticleVersions extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbVersionRepository $versions;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbVersionRepository $versions,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->versions = app(KbVersionRepository::class);
-
         return $this->execute(...$arguments);
     }
 

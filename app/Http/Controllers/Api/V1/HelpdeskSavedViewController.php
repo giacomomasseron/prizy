@@ -16,19 +16,25 @@ use Illuminate\Http\Response;
 
 final class HelpdeskSavedViewController extends Controller
 {
+    public function __construct(
+        private readonly ListHelpdeskSavedViews $listHelpdeskSavedViews,
+        private readonly CreateHelpdeskSavedView $createHelpdeskSavedView,
+        private readonly DeleteHelpdeskSavedView $deleteHelpdeskSavedView,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        return HelpdeskSavedViewResource::collection(ListHelpdeskSavedViews::run($request->user()))->response();
+        return HelpdeskSavedViewResource::collection($this->listHelpdeskSavedViews->run($request->user()))->response();
     }
 
     public function store(HelpdeskSavedViewRequest $request): JsonResponse
     {
-        return HelpdeskSavedViewResource::make(CreateHelpdeskSavedView::run($request->user(), $request->validated()))->response()->setStatusCode(201);
+        return HelpdeskSavedViewResource::make($this->createHelpdeskSavedView->run($request->user(), $request->validated()))->response()->setStatusCode(201);
     }
 
     public function destroy(Request $request, string $ticketView): Response
     {
-        DeleteHelpdeskSavedView::run($request->user(), $ticketView);
+        $this->deleteHelpdeskSavedView->run($request->user(), $ticketView);
 
         return response()->noContent();
     }

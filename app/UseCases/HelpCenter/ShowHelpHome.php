@@ -21,22 +21,18 @@ use Illuminate\Database\Eloquent\Collection;
  * precedent), but a signed-in contact additionally sees their 3 most recent
  * requests, so $contact is an optional add-on rather than a required actor.
  *
- * @method static array run(?Contact $contact = null, string $lang = KbLocales::SOURCE)
+ * @method array run(?Contact $contact = null, string $lang = KbLocales::SOURCE)
  */
 final class ShowHelpHome extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbRepository $kb;
-
-    private readonly PortalTicketRepository $portalTickets;
-
-    private readonly KbTranslationRepository $translations;
+    public function __construct(
+        private readonly KbRepository $kb,
+        private readonly PortalTicketRepository $portalTickets,
+        private readonly KbTranslationRepository $translations,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbRepository::class);
-        $this->portalTickets = app(PortalTicketRepository::class);
-        $this->translations = app(KbTranslationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

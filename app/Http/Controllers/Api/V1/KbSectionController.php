@@ -19,30 +19,38 @@ use Illuminate\Http\Response;
 
 final class KbSectionController extends Controller
 {
+    public function __construct(
+        private readonly CreateKbSection $createKbSection,
+        private readonly UpdateKbSection $updateKbSection,
+        private readonly DeleteKbSection $deleteKbSection,
+        private readonly MoveKbSection $moveKbSection,
+        private readonly ArchiveKbArticlesUnder $archiveKbArticlesUnder,
+    ) {}
+
     public function store(KbSectionRequest $request): JsonResponse
     {
-        return KbSectionResource::make(CreateKbSection::run($request->user(), $request->validated()))->response()->setStatusCode(201);
+        return KbSectionResource::make($this->createKbSection->run($request->user(), $request->validated()))->response()->setStatusCode(201);
     }
 
     public function update(KbSectionRequest $request, string $id): JsonResponse
     {
-        return KbSectionResource::make(UpdateKbSection::run($request->user(), $id, $request->validated()))->response();
+        return KbSectionResource::make($this->updateKbSection->run($request->user(), $id, $request->validated()))->response();
     }
 
     public function destroy(Request $request, string $id): Response
     {
-        DeleteKbSection::run($request->user(), $id);
+        $this->deleteKbSection->run($request->user(), $id);
 
         return response()->noContent();
     }
 
     public function move(KbMoveRequest $request, string $id): JsonResponse
     {
-        return KbSectionResource::make(MoveKbSection::run($request->user(), $id, $request->validated('direction')))->response();
+        return KbSectionResource::make($this->moveKbSection->run($request->user(), $id, $request->validated('direction')))->response();
     }
 
     public function archiveArticles(Request $request, string $id): JsonResponse
     {
-        return response()->json(['data' => ['archived' => ArchiveKbArticlesUnder::run($request->user(), 'section', $id)]]);
+        return response()->json(['data' => ['archived' => $this->archiveKbArticlesUnder->run($request->user(), 'section', $id)]]);
     }
 }

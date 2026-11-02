@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  * Returns the plaintext token exactly ONCE — it is never stored and cannot be
  * retrieved again. Only the SHA-256 hash is persisted in token_hash.
  *
- * @method static array run(User $user, string $name, ?Carbon $expiresAt = null)
+ * @method array run(User $user, string $name, ?Carbon $expiresAt = null)
  */
 final class CreatePersonalAccessToken extends BaseUseCase implements UseCaseInterface
 {

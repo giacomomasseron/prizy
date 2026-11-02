@@ -15,19 +15,17 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static KbArticleTranslation run(User $actor, string $articleId, string $locale, string $status)
+ * @method KbArticleTranslation run(User $actor, string $articleId, string $locale, string $status)
  */
 final class ChangeKbTranslationStatus extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbAuthoringRepository $kb;
-
-    private readonly KbTranslationRepository $translations;
+    public function __construct(
+        private readonly KbAuthoringRepository $kb,
+        private readonly KbTranslationRepository $translations,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbAuthoringRepository::class);
-        $this->translations = app(KbTranslationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

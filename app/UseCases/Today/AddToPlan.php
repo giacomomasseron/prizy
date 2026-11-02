@@ -17,22 +17,20 @@ use Illuminate\Validation\ValidationException;
  * Put an issue on the end of the actor's day plan (the Today v2 design). It must be a live, open, unarchived issue of
  * the workspace; an issue already on the plan comes back unchanged. The time defaults to an hour a story point.
  *
- * @method static array run(User $actor, string $issueId, ?int $minutes)
+ * @method array run(User $actor, string $issueId, ?int $minutes)
  */
 final class AddToPlan extends BaseUseCase implements UseCaseInterface
 {
     /** The most open issues a plan holds. */
     public const MAX_OPEN = 20;
 
-    private readonly UserPlanItemRepository $items;
-
-    private readonly IssueRepository $issues;
+    public function __construct(
+        private readonly UserPlanItemRepository $items,
+        private readonly IssueRepository $issues,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-        $this->issues = app(IssueRepository::class);
-
         return $this->execute(...$arguments);
     }
 

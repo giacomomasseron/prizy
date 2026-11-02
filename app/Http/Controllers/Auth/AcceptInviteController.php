@@ -21,9 +21,14 @@ use Illuminate\Validation\Rules\Password;
  */
 final class AcceptInviteController extends Controller
 {
+    public function __construct(
+        private readonly ShowInvitation $showInvitation,
+        private readonly AcceptInvite $acceptInvite,
+    ) {}
+
     public function show(string $token): JsonResponse
     {
-        return response()->json(ShowInvitation::run($token));
+        return response()->json($this->showInvitation->run($token));
     }
 
     public function store(Request $request, string $token): JsonResponse
@@ -33,7 +38,7 @@ final class AcceptInviteController extends Controller
             'password' => ['required', 'string', Password::defaults()],
         ]);
 
-        $user = AcceptInvite::run($token, $data);
+        $user = $this->acceptInvite->run($token, $data);
 
         // Rotate the session ID after the invite is accepted to prevent
         // session fixation (the invitee now holds an authenticated session).

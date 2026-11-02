@@ -24,7 +24,7 @@ function trackerToggleWorld(array $userAttrs = ['is_developer' => true], bool $t
     $ws = Workspace::factory()->create(['tracker_enabled' => $trackerEnabled, 'helpdesk_enabled' => $helpdeskEnabled]);
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $userAttrs));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $user];
 }

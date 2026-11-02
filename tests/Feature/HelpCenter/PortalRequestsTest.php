@@ -86,7 +86,7 @@ function portalAgentToken(Workspace $ws): string
 {
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true]);
 
-    return CreatePersonalAccessToken::run($user, 't', null)['token'];
+    return app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 }
 
 it('lists only the contact\'s own tickets with filters, counts, and search', function (): void {

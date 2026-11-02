@@ -10,7 +10,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ListMembers extends BaseUseCase implements UseCaseInterface
 {

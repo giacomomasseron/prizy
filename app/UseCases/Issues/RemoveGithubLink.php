@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static void run(User $actor, string $issueId, string $linkId)
+ * @method void run(User $actor, string $issueId, string $linkId)
  */
 final class RemoveGithubLink extends BaseUseCase implements UseCaseInterface
 {
-    private readonly GithubLinkRepository $links;
+    public function __construct(private readonly GithubLinkRepository $links) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->links = app(GithubLinkRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

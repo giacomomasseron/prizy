@@ -16,16 +16,14 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 /**
- * @method static TicketMessage run(User $actor, string $ticketId, string $body, bool $internal)
+ * @method TicketMessage run(User $actor, string $ticketId, string $body, bool $internal)
  */
 final class PostTicketMessage extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

@@ -17,19 +17,17 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static Ticket run(User $actor, array $data)
+ * @method Ticket run(User $actor, array $data)
  */
 final class CreateTicket extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TicketRepository $tickets;
-
-    private readonly ContactRepository $contacts;
+    public function __construct(
+        private readonly TicketRepository $tickets,
+        private readonly ContactRepository $contacts,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-        $this->contacts = app(ContactRepository::class);
-
         return $this->execute(...$arguments);
     }
 

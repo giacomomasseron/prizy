@@ -21,7 +21,7 @@ function teamMembersWorld(string $actorLevel = 'admin'): array
         'email_verified_at' => now(), 'admin_level' => $actorLevel, 'is_developer' => true,
     ]);
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     return [$token, $actor, $ws, $team];
 }
 

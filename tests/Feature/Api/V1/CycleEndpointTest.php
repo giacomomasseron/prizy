@@ -24,7 +24,7 @@ function cycleWorld(array $userAttrs = []): array
         $userAttrs,
     ));
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $team];
 }

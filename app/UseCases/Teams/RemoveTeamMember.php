@@ -10,7 +10,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * @method static void run(User $actor, Team $team, string $userId)
+ * @method void run(User $actor, Team $team, string $userId)
  */
 final class RemoveTeamMember extends BaseUseCase implements UseCaseInterface
 {

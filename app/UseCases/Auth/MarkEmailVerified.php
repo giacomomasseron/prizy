@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\DB;
  * RLS policy is permissive when app.current_workspace_id GUC is null/empty, so
  * User::find() returns the row regardless of which workspace the user belongs to.
  *
- * @method static ?string run(string $id, string $hash)
+ * @method ?string run(string $id, string $hash)
  */
 final class MarkEmailVerified extends BaseUseCase implements UseCaseInterface
 {

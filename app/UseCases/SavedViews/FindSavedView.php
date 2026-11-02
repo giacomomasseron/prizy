@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static SavedView run(string $id)
+ * @method SavedView run(string $id)
  */
 final class FindSavedView extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SavedViewRepository $views;
+    public function __construct(private readonly SavedViewRepository $views) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->views = app(SavedViewRepository::class);
-
         return $this->execute(...$arguments);
     }
 

@@ -25,7 +25,7 @@ function todoWorld(array $userAttrs = ['is_developer' => true]): array
     $issue = fn (array $attrs = []): Issue => Issue::factory()->for($ws, 'workspace')
         ->create(array_merge(['team_id' => $team->id, 'created_by' => $user->id], $attrs));
 
-    return ['token' => CreatePersonalAccessToken::run($user, 't', null)['token'], 'user' => $user, 'workspace' => $ws, 'issue' => $issue];
+    return ['token' => app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'], 'user' => $user, 'workspace' => $ws, 'issue' => $issue];
 }
 
 /** A to-do written straight to the table (the current workspace fills workspace_id). */

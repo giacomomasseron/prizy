@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(User $actor, array $data)
+ * @method void run(User $actor, array $data)
  */
 final class DeleteTeam extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TeamRepository $teams;
+    public function __construct(private readonly TeamRepository $teams) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->teams = app(TeamRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

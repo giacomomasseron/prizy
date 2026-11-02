@@ -19,16 +19,14 @@ use Illuminate\Support\Str;
  * requester field to spoof. This is the contact-actored analog of the
  * agent-gated CreateTicket (no is_agent gate; the `contact` guard is the gate).
  *
- * @method static Ticket run(Contact $actor, array $data)
+ * @method Ticket run(Contact $actor, array $data)
  */
 final class SubmitPortalRequest extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

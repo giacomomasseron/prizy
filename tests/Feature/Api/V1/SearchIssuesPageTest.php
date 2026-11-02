@@ -18,7 +18,7 @@ it('returns a paged, filtered issue list', function (): void {
     test()->actingInWorkspace($ws);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $done = Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment done', 'status' => 'done', 'created_by' => $user->id]);
     Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment todo', 'status' => 'todo', 'created_by' => $user->id]);
@@ -36,7 +36,7 @@ it('excludes archived issues by default', function (): void {
     test()->actingInWorkspace($ws);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment archived', 'archived_at' => now(), 'created_by' => $user->id]);
 
@@ -50,7 +50,7 @@ it('rejects a bad status filter with 422', function (): void {
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson('/v1/search/issues?q=x&filter[status]=nonsense');
     Workspace::forgetCurrent();

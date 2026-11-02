@@ -16,6 +16,8 @@ use Illuminate\Http\Request;
  */
 final class MemberController extends Controller
 {
+    public function __construct(private readonly InviteMember $inviteMember) {}
+
     /**
      * Send a workspace invitation to the given email with the specified role.
      */
@@ -28,7 +30,7 @@ final class MemberController extends Controller
             'is_agent'     => ['boolean'],
         ]);
 
-        $invitation = InviteMember::run($request->user(), $data);
+        $invitation = $this->inviteMember->run($request->user(), $data);
 
         return response()->json([
             'invitation' => $invitation->only([

@@ -29,7 +29,7 @@ function commentWorld(): array
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $issue];
 }
@@ -61,7 +61,7 @@ it('lists activities including the created event', function (): void {
     $this->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $created = $this->withToken($token)->postJson('/v1/issues', ['team_id' => $team->id, 'title' => 'A'])->json('data.id');
 

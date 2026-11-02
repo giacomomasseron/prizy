@@ -31,7 +31,7 @@ it('dispatches a Slack job with the issue title + deep link on a subscribed, act
     Queue::fake();
     [$ws, $user, $issue] = slackSetup(['status_changed'], true);
 
-    TransitionIssueStatus::run($user, ['issue_id' => $issue->id, 'status' => 'done']);
+    app(TransitionIssueStatus::class)->run($user, ['issue_id' => $issue->id, 'status' => 'done']);
 
     Queue::assertPushed(SendSlackMessage::class, function ($job) use ($ws) {
         $text = (fn () => $this->text)->call($job); // read private prop
@@ -44,13 +44,13 @@ it('dispatches a Slack job with the issue title + deep link on a subscribed, act
 it('does not dispatch when inactive, unsubscribed, or unconfigured', function (): void {
     Queue::fake();
     [$ws, $user, $issue] = slackSetup(['status_changed'], false); // inactive
-    TransitionIssueStatus::run($user, ['issue_id' => $issue->id, 'status' => 'done']);
+    app(TransitionIssueStatus::class)->run($user, ['issue_id' => $issue->id, 'status' => 'done']);
     Queue::assertNotPushed(SendSlackMessage::class);
     Workspace::forgetCurrent();
 
     Queue::fake();
     [$ws2, $user2, $issue2] = slackSetup(['created'], true); // status_changed NOT subscribed
-    TransitionIssueStatus::run($user2, ['issue_id' => $issue2->id, 'status' => 'done']);
+    app(TransitionIssueStatus::class)->run($user2, ['issue_id' => $issue2->id, 'status' => 'done']);
     Queue::assertNotPushed(SendSlackMessage::class);
     Workspace::forgetCurrent();
 });
@@ -63,7 +63,7 @@ it('does not dispatch (and does not break the transition) when no integration is
     $user = User::factory()->for($ws, 'workspace')->create(['admin_level' => 'admin']);
     $issue = App\Models\Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'No slack', 'status' => 'todo', 'created_by' => $user->id]);
 
-    $updated = TransitionIssueStatus::run($user, ['issue_id' => $issue->id, 'status' => 'done']);
+    $updated = app(TransitionIssueStatus::class)->run($user, ['issue_id' => $issue->id, 'status' => 'done']);
 
     expect($updated->status)->toBe('done'); // transition succeeded
     Queue::assertNotPushed(SendSlackMessage::class);

@@ -20,17 +20,25 @@ use Illuminate\Support\Facades\Gate;
 
 final class TeamController extends Controller
 {
+    public function __construct(
+        private readonly ListTeams $listTeams,
+        private readonly FindTeam $findTeam,
+        private readonly CreateTeam $createTeam,
+        private readonly UpdateTeam $updateTeam,
+        private readonly DeleteTeam $deleteTeam,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
         $memberUserId = $request->boolean('mine') ? $request->user()->id : null;
 
-        return TeamResource::collection(ListTeams::run($limit, $memberUserId))->response();
+        return TeamResource::collection($this->listTeams->run($limit, $memberUserId))->response();
     }
 
     public function show(Request $request, string $team): JsonResponse
     {
-        $model = FindTeam::run($team);
+        $model = $this->findTeam->run($team);
         Gate::authorize('view', $model);
 
         return TeamResource::make($model)->response();
@@ -38,27 +46,27 @@ final class TeamController extends Controller
 
     public function store(StoreTeamRequest $request): JsonResponse
     {
-        $model = CreateTeam::run($request->user(), $request->validated());
+        $model = $this->createTeam->run($request->user(), $request->validated());
 
         return TeamResource::make($model)->response()->setStatusCode(201);
     }
 
     public function update(UpdateTeamRequest $request, string $team): JsonResponse
     {
-        $existing = FindTeam::run($team);
+        $existing = $this->findTeam->run($team);
         Gate::authorize('update', $existing);
 
-        $updated = UpdateTeam::run($request->user(), array_merge($request->validated(), ['team_id' => $team]));
+        $updated = $this->updateTeam->run($request->user(), array_merge($request->validated(), ['team_id' => $team]));
 
         return TeamResource::make($updated)->response();
     }
 
     public function destroy(Request $request, string $team): Response
     {
-        $model = FindTeam::run($team);
+        $model = $this->findTeam->run($team);
         Gate::authorize('delete', $model);
 
-        DeleteTeam::run($request->user(), ['team_id' => $team]);
+        $this->deleteTeam->run($request->user(), ['team_id' => $team]);
 
         return response()->noContent();
     }

@@ -19,29 +19,37 @@ use Illuminate\Http\JsonResponse;
 
 final class ReportingController extends Controller
 {
+    public function __construct(
+        private readonly OverviewReport $overviewReport,
+        private readonly AgentsReport $agentsReport,
+        private readonly SlaReport $slaReport,
+        private readonly TrackerOverviewReport $trackerOverviewReport,
+        private readonly CycleReport $cycleReport,
+    ) {}
+
     public function overview(OverviewReportRequest $request): JsonResponse
     {
-        return response()->json(['data' => OverviewReport::run($request->user(), $request->range())]);
+        return response()->json(['data' => $this->overviewReport->run($request->user(), $request->range())]);
     }
 
     public function agents(AgentsReportRequest $request): JsonResponse
     {
-        return response()->json(['data' => AgentsReport::run($request->user(), $request->range())]);
+        return response()->json(['data' => $this->agentsReport->run($request->user(), $request->range())]);
     }
 
     public function sla(SlaReportRequest $request): JsonResponse
     {
-        return response()->json(['data' => SlaReport::run($request->user(), $request->range())]);
+        return response()->json(['data' => $this->slaReport->run($request->user(), $request->range())]);
     }
 
     public function trackerOverview(TrackerOverviewRequest $request): JsonResponse
     {
-        return response()->json(['data' => TrackerOverviewReport::run($request->user(), $request->range())]);
+        return response()->json(['data' => $this->trackerOverviewReport->run($request->user(), $request->range())]);
     }
 
     public function cycles(CycleReportRequest $request): JsonResponse
     {
-        return response()->json(['data' => CycleReport::run(
+        return response()->json(['data' => $this->cycleReport->run(
             $request->user(),
             (string) $request->validated('team_id'),
             $request->validated('cycle_id'),

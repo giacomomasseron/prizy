@@ -36,7 +36,7 @@ function myProjectsWorld(): array
         $attrs,
     ));
 
-    return ['token' => CreatePersonalAccessToken::run($user, 't', null)['token'], 'user' => $user, 'other' => $other, 'project' => $project, 'issue' => $issue];
+    return ['token' => app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'], 'user' => $user, 'other' => $other, 'project' => $project, 'issue' => $issue];
 }
 
 /** @return list<string> */

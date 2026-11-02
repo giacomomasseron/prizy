@@ -11,9 +11,11 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 final class ExportController extends Controller
 {
+    public function __construct(private readonly ExportWorkspace $exportWorkspace) {}
+
     public function download(Request $request): BinaryFileResponse
     {
-        $export = ExportWorkspace::run($request->user());
+        $export = $this->exportWorkspace->run($request->user());
 
         $response = response()->download($export['path'], $export['filename'], [
             'Content-Type' => 'application/zip',

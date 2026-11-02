@@ -17,7 +17,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * on their plan, ranked by their plan signals — the score, then the priority, then the longest untouched — with the
  * time each would start with on the plan.
  *
- * @method static array run(User $actor, CarbonImmutable $dayStart)
+ * @method array run(User $actor, CarbonImmutable $dayStart)
  */
 final class SuggestForPlan extends BaseUseCase implements UseCaseInterface
 {
@@ -26,12 +26,13 @@ final class SuggestForPlan extends BaseUseCase implements UseCaseInterface
 
     private const PRIORITY_RANK = ['urgent' => 0, 'high' => 1, 'medium' => 2, 'low' => 3, 'no_priority' => 4];
 
-    private readonly UserPlanItemRepository $items;
+    public function __construct(
+        private readonly UserPlanItemRepository $items,
+        private readonly PlanSignalsFor $planSignalsFor,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -39,7 +40,7 @@ final class SuggestForPlan extends BaseUseCase implements UseCaseInterface
     private function execute(User $actor, CarbonImmutable $dayStart): array
     {
         $pool = $this->items->suggestionPool($actor->id);
-        $signals = PlanSignalsFor::run($actor, $pool, $dayStart->format('Y-m-d'));
+        $signals = $this->planSignalsFor->run($actor, $pool, $dayStart->format('Y-m-d'));
 
         return $pool
             ->sort(fn (Issue $a, Issue $b): int => [$signals[$b->id]['score'], self::PRIORITY_RANK[$a->priority] ?? 5, $a->updated_at?->getTimestamp() ?? 0, $a->id]

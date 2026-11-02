@@ -32,7 +32,7 @@ function embedWorld(): array
         'admin_level'       => 'member',
     ]);
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 'embed-test', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 'embed-test', null)['token'];
 
     return [$token, $team, $user, $ws];
 }

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "00164af83ef7ece866b5e9342432ea91",
+    "content-hash": "617cf957d5bb73a9b9cc1415d5aad79d",
     "packages": [
         {
             "name": "brick/math",
@@ -1113,16 +1113,16 @@
         },
         {
             "name": "giacomomasseron/php-clean-architecture",
-            "version": "v2.0.2",
+            "version": "v2.1.1",
             "source": {
                 "type": "git",
                 "url": "https://github.com/giacomomasseron/php-clean-architecture.git",
-                "reference": "0002888b63027e7330c098fbc17d0961e278e039"
+                "reference": "812af8a012a72e2387c398e891310573611b811d"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/giacomomasseron/php-clean-architecture/zipball/0002888b63027e7330c098fbc17d0961e278e039",
-                "reference": "0002888b63027e7330c098fbc17d0961e278e039",
+                "url": "https://api.github.com/repos/giacomomasseron/php-clean-architecture/zipball/812af8a012a72e2387c398e891310573611b811d",
+                "reference": "812af8a012a72e2387c398e891310573611b811d",
                 "shasum": ""
             },
             "require": {
@@ -1176,7 +1176,7 @@
             ],
             "support": {
                 "issues": "https://github.com/giacomomasseron/php-clean-architecture/issues",
-                "source": "https://github.com/giacomomasseron/php-clean-architecture/tree/v2.0.2"
+                "source": "https://github.com/giacomomasseron/php-clean-architecture/tree/v2.1.1"
             },
             "funding": [
                 {
@@ -1184,7 +1184,8 @@
                     "type": "github"
                 }
             ],
-            "time": "2026-09-25T03:31:48+00:00"
+            "time": "2026-11-02T20:35:34+00:00",
+            "published-time": "2026-11-02T20:48:22+00:00"
         },
         {
             "name": "graham-campbell/result-type",
@@ -12245,5 +12246,5 @@
         "php": "^8.3"
     },
     "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "plugin-api-version": "2.11.0"
 }

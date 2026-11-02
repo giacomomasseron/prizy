@@ -28,6 +28,20 @@ final class NotificationController extends Controller
 {
     private const CATEGORIES = ['all', 'mention', 'assign', 'support', 'snoozed', 'archived'];
 
+    public function __construct(
+        private readonly ListNotifications $listNotifications,
+        private readonly CountUnread $countUnread,
+        private readonly MarkNotificationRead $markNotificationRead,
+        private readonly MarkNotificationUnread $markNotificationUnread,
+        private readonly ToggleNotificationSnooze $toggleNotificationSnooze,
+        private readonly ToggleNotificationArchive $toggleNotificationArchive,
+        private readonly MarkAllNotificationsRead $markAllNotificationsRead,
+        private readonly GetNotificationPreferences $getNotificationPreferences,
+        private readonly UpdateNotificationPreferences $updateNotificationPreferences,
+        private readonly GetNotificationSubscriptions $getNotificationSubscriptions,
+        private readonly SetNotificationSubscription $setNotificationSubscription,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -40,57 +54,57 @@ final class NotificationController extends Controller
         $category = is_string($filter['category'] ?? null) ? $filter['category'] : 'all';
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
 
-        return NotificationResource::collection(ListNotifications::run($request->user(), $unreadOnly, $limit, $category))->response();
+        return NotificationResource::collection($this->listNotifications->run($request->user(), $unreadOnly, $limit, $category))->response();
     }
 
     public function unreadCount(Request $request): JsonResponse
     {
-        return response()->json(['data' => ['count' => CountUnread::run($request->user())]]);
+        return response()->json(['data' => ['count' => $this->countUnread->run($request->user())]]);
     }
 
     public function read(Request $request, string $notification): JsonResponse
     {
-        $model = MarkNotificationRead::run($request->user(), $notification);
+        $model = $this->markNotificationRead->run($request->user(), $notification);
 
         return NotificationResource::make($model)->response();
     }
 
     public function unread(Request $request, string $notification): JsonResponse
     {
-        $model = MarkNotificationUnread::run($request->user(), $notification);
+        $model = $this->markNotificationUnread->run($request->user(), $notification);
 
         return NotificationResource::make($model)->response();
     }
 
     public function snooze(Request $request, string $notification): JsonResponse
     {
-        $model = ToggleNotificationSnooze::run($request->user(), $notification);
+        $model = $this->toggleNotificationSnooze->run($request->user(), $notification);
 
         return NotificationResource::make($model)->response();
     }
 
     public function archive(Request $request, string $notification): JsonResponse
     {
-        $model = ToggleNotificationArchive::run($request->user(), $notification);
+        $model = $this->toggleNotificationArchive->run($request->user(), $notification);
 
         return NotificationResource::make($model)->response();
     }
 
     public function readAll(Request $request): Response
     {
-        MarkAllNotificationsRead::run($request->user());
+        $this->markAllNotificationsRead->run($request->user());
 
         return response()->noContent();
     }
 
     public function preferences(Request $request): JsonResponse
     {
-        return response()->json(['data' => GetNotificationPreferences::run($request->user())]);
+        return response()->json(['data' => $this->getNotificationPreferences->run($request->user())]);
     }
 
     public function updatePreferences(UpdateNotificationPreferencesRequest $request): Response
     {
-        UpdateNotificationPreferences::run(
+        $this->updateNotificationPreferences->run(
             $request->user(),
             $request->validated('email_digest_frequency'),
             $request->validated('preferences', []),
@@ -101,12 +115,12 @@ final class NotificationController extends Controller
 
     public function subscriptions(Request $request): JsonResponse
     {
-        return response()->json(['data' => GetNotificationSubscriptions::run($request->user())]);
+        return response()->json(['data' => $this->getNotificationSubscriptions->run($request->user())]);
     }
 
     public function updateSubscription(SetNotificationSubscriptionRequest $request): Response
     {
-        SetNotificationSubscription::run(
+        $this->setNotificationSubscription->run(
             $request->user(),
             $request->validated('scope_type'),
             $request->validated('scope_id'),

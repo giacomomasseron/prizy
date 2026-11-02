@@ -12,16 +12,14 @@ use Illuminate\Pagination\CursorPaginator;
 /**
  * A page of a project's chat (PRD §3.2.11): the newest messages first; `after` pages back in time.
  *
- * @method static CursorPaginator run(string $projectId, int $limit)
+ * @method CursorPaginator run(string $projectId, int $limit)
  */
 final class ListProjectMessages extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ProjectMessageRepository $messages;
+    public function __construct(private readonly ProjectMessageRepository $messages) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->messages = app(ProjectMessageRepository::class);
-
         return $this->execute(...$arguments);
     }
 

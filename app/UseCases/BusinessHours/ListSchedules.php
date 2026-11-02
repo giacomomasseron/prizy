@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ListSchedules extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ScheduleRepository $schedules;
+    public function __construct(private readonly ScheduleRepository $schedules) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->schedules = app(ScheduleRepository::class);
-
         return $this->execute(...$arguments);
     }
 

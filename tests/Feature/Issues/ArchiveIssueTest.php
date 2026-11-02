@@ -23,12 +23,12 @@ it('archives an issue once and is idempotent on repeat', function (): void {
     $team  = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    ArchiveIssue::run($actor, ['issue_id' => $issue->id]);
+    app(ArchiveIssue::class)->run($actor, ['issue_id' => $issue->id]);
     expect($issue->fresh()->archived_at)->not->toBeNull();
     $this->assertDatabaseHas('issue_activities', ['issue_id' => $issue->id, 'type' => 'archived']);
 
     // Repeat: no second activity row, no error.
-    ArchiveIssue::run($actor, ['issue_id' => $issue->id]);
+    app(ArchiveIssue::class)->run($actor, ['issue_id' => $issue->id]);
     expect(\App\Models\IssueActivity::where('issue_id', $issue->id)->where('type', 'archived')->count())->toBe(1);
 
     Workspace::forgetCurrent();

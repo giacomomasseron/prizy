@@ -16,12 +16,18 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueCommentController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly AddCommentToIssue $addCommentToIssue,
+        private readonly ListIssueComments $listIssueComments,
+    ) {}
+
     public function store(StoreCommentRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
-        $comment = AddCommentToIssue::run($request->user(), array_merge(
+        $comment = $this->addCommentToIssue->run($request->user(), array_merge(
             $request->validated(),
             ['issue_id' => $issue],
         ));
@@ -31,11 +37,11 @@ final class IssueCommentController extends Controller
 
     public function index(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
         $limit = min(max((int) $request->query('limit', '25'), 1), 100);
-        $page = ListIssueComments::run($issue, $limit);
+        $page = $this->listIssueComments->run($issue, $limit);
 
         return IssueCommentResource::collection($page)->response();
     }

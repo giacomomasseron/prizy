@@ -18,7 +18,7 @@ use Illuminate\Support\Str;
 use Throwable;
 
 /**
- * @method static array run(array $data)
+ * @method array run(array $data)
  */
 final class SignUpWorkspace extends BaseUseCase implements UseCaseInterface
 {
@@ -34,12 +34,10 @@ final class SignUpWorkspace extends BaseUseCase implements UseCaseInterface
      */
     public const USAGES = ['both', 'engineering', 'support'];
 
-    private readonly UserRepository $userRepository;
+    public function __construct(private readonly UserRepository $userRepository) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->userRepository = app(UserRepository::class);
-
         return $this->execute(...$arguments);
     }
 

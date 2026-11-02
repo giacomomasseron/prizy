@@ -18,30 +18,37 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueGithubLinkController extends Controller
 {
+    public function __construct(
+        private readonly FindIssue $findIssue,
+        private readonly ListGithubLinks $listGithubLinks,
+        private readonly AddGithubLink $addGithubLink,
+        private readonly RemoveGithubLink $removeGithubLink,
+    ) {}
+
     public function index(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
 
-        return GithubLinkResource::collection(ListGithubLinks::run($request->user(), $issue))->response();
+        return GithubLinkResource::collection($this->listGithubLinks->run($request->user(), $issue))->response();
     }
 
     public function store(StoreGithubLinkRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        $link = AddGithubLink::run($request->user(), $issue, $request->validated('url'));
+        $link = $this->addGithubLink->run($request->user(), $issue, $request->validated('url'));
 
         return GithubLinkResource::make($link)->response()->setStatusCode(201);
     }
 
     public function destroy(Request $request, string $issue, string $link): Response
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        RemoveGithubLink::run($request->user(), $issue, $link);
+        $this->removeGithubLink->run($request->user(), $issue, $link);
 
         return response()->noContent();
     }

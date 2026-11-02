@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static SavedView run(User $actor, array $data)
+ * @method SavedView run(User $actor, array $data)
  */
 final class CreateSavedView extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SavedViewRepository $views;
+    public function __construct(private readonly SavedViewRepository $views) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->views = app(SavedViewRepository::class);
-
         return $this->execute(...$arguments);
     }
 

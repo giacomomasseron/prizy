@@ -14,7 +14,7 @@ uses(InteractsWithTenant::class);
 function githubToken(Workspace $ws, string $level): string
 {
     $user = User::factory()->for($ws, 'workspace')->create(['admin_level' => $level, 'email_verified_at' => now()]);
-    return CreatePersonalAccessToken::run($user, 't', null)['token'];
+    return app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 }
 
 it('lets an admin configure and read back a masked config with a webhook url', function (): void {

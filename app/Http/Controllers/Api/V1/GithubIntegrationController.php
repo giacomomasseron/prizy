@@ -15,14 +15,20 @@ use Illuminate\Http\Response;
 
 final class GithubIntegrationController extends Controller
 {
+    public function __construct(
+        private readonly GetGithubIntegration $getGithubIntegration,
+        private readonly ConfigureGithubIntegration $configureGithubIntegration,
+        private readonly DisconnectGithubIntegration $disconnectGithubIntegration,
+    ) {}
+
     public function show(Request $request): JsonResponse
     {
-        return response()->json(['data' => $this->present(GetGithubIntegration::run($request->user()), $request->getSchemeAndHttpHost())]);
+        return response()->json(['data' => $this->present($this->getGithubIntegration->run($request->user()), $request->getSchemeAndHttpHost())]);
     }
 
     public function update(UpdateGithubIntegrationRequest $request): JsonResponse
     {
-        $integration = ConfigureGithubIntegration::run(
+        $integration = $this->configureGithubIntegration->run(
             $request->user(),
             $request->input('webhook_secret'),
             (bool) $request->validated('move_to_done_on_merge'),
@@ -34,7 +40,7 @@ final class GithubIntegrationController extends Controller
 
     public function destroy(Request $request): Response
     {
-        DisconnectGithubIntegration::run($request->user());
+        $this->disconnectGithubIntegration->run($request->user());
 
         return response()->noContent();
     }

@@ -29,7 +29,7 @@ it('still authenticates via a Bearer token (Plan 4 path unbroken)', function ():
     $ws = Workspace::factory()->create();
     $this->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->getJson('/v1/issues')->assertStatus(200);
 
@@ -46,7 +46,7 @@ it('a Bearer write needs no CSRF token', function (): void {
     $this->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->postJson('/v1/issues', ['team_id' => $team->id, 'title' => 'Via bearer'])
         ->assertStatus(201);

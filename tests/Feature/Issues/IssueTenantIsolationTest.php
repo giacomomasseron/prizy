@@ -35,11 +35,11 @@ it('cannot update, transition, or comment on another workspace issue', function 
     $this->actingInWorkspace($wsB);
     $actorB = User::factory()->for($wsB, 'workspace')->create();
 
-    expect(fn () => UpdateIssue::run($actorB, ['issue_id' => $issueA->id, 'title' => 'hijack']))
+    expect(fn () => app(UpdateIssue::class)->run($actorB, ['issue_id' => $issueA->id, 'title' => 'hijack']))
         ->toThrow(ValidationException::class);
-    expect(fn () => TransitionIssueStatus::run($actorB, ['issue_id' => $issueA->id, 'status' => 'done']))
+    expect(fn () => app(TransitionIssueStatus::class)->run($actorB, ['issue_id' => $issueA->id, 'status' => 'done']))
         ->toThrow(ValidationException::class);
-    expect(fn () => AddCommentToIssue::run($actorB, ['issue_id' => $issueA->id, 'body' => 'leak']))
+    expect(fn () => app(AddCommentToIssue::class)->run($actorB, ['issue_id' => $issueA->id, 'body' => 'leak']))
         ->toThrow(ValidationException::class);
 
     // A's issue is untouched.
@@ -63,7 +63,7 @@ it('cannot add a blocker between workspace-A issues when acting in workspace B',
     $this->actingInWorkspace($wsB);
     $actorB = User::factory()->for($wsB, 'workspace')->create();
 
-    expect(fn () => AddIssueBlocker::run($actorB, [
+    expect(fn () => app(AddIssueBlocker::class)->run($actorB, [
         'blocking_issue_id' => $issueA1->id,
         'blocked_issue_id'  => $issueA2->id,
     ]))->toThrow(ValidationException::class);
@@ -87,7 +87,7 @@ it('cannot remove a blocker between workspace-A issues when acting in workspace 
     $this->actingInWorkspace($wsB);
     $actorB = User::factory()->for($wsB, 'workspace')->create();
 
-    expect(fn () => RemoveIssueBlocker::run($actorB, [
+    expect(fn () => app(RemoveIssueBlocker::class)->run($actorB, [
         'blocking_issue_id' => $issueA1->id,
         'blocked_issue_id'  => $issueA2->id,
     ]))->toThrow(ValidationException::class);
@@ -109,7 +109,7 @@ it('cannot assign a workspace-A issue when acting in workspace B', function (): 
     $this->actingInWorkspace($wsB);
     $actorB = User::factory()->for($wsB, 'workspace')->create();
 
-    expect(fn () => AssignIssue::run($actorB, [
+    expect(fn () => app(AssignIssue::class)->run($actorB, [
         'issue_id'    => $issueA->id,
         'assignee_id' => $actorB->id,
     ]))->toThrow(ValidationException::class);
@@ -131,7 +131,7 @@ it('cannot archive a workspace-A issue when acting in workspace B', function ():
     $this->actingInWorkspace($wsB);
     $actorB = User::factory()->for($wsB, 'workspace')->create();
 
-    expect(fn () => ArchiveIssue::run($actorB, ['issue_id' => $issueA->id]))
+    expect(fn () => app(ArchiveIssue::class)->run($actorB, ['issue_id' => $issueA->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();

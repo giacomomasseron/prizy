@@ -21,35 +21,44 @@ use Illuminate\Http\Response;
 
 final class KbArticleController extends Controller
 {
+    public function __construct(
+        private readonly FindKbArticleForEdit $findKbArticleForEdit,
+        private readonly CreateKbArticle $createKbArticle,
+        private readonly UpdateKbArticle $updateKbArticle,
+        private readonly DeleteKbArticle $deleteKbArticle,
+        private readonly MoveKbArticle $moveKbArticle,
+        private readonly ChangeKbArticleStatus $changeKbArticleStatus,
+    ) {}
+
     public function show(Request $request, string $id): JsonResponse
     {
-        return KbArticleEditResource::make(FindKbArticleForEdit::run($request->user(), $id))->response();
+        return KbArticleEditResource::make($this->findKbArticleForEdit->run($request->user(), $id))->response();
     }
 
     public function store(KbArticleRequest $request): JsonResponse
     {
-        return KbArticleEditResource::make(CreateKbArticle::run($request->user(), $request->articleData()))->response()->setStatusCode(201);
+        return KbArticleEditResource::make($this->createKbArticle->run($request->user(), $request->articleData()))->response()->setStatusCode(201);
     }
 
     public function update(KbArticleRequest $request, string $id): JsonResponse
     {
-        return KbArticleEditResource::make(UpdateKbArticle::run($request->user(), $id, $request->articleData()))->response();
+        return KbArticleEditResource::make($this->updateKbArticle->run($request->user(), $id, $request->articleData()))->response();
     }
 
     public function destroy(Request $request, string $id): Response
     {
-        DeleteKbArticle::run($request->user(), $id);
+        $this->deleteKbArticle->run($request->user(), $id);
 
         return response()->noContent();
     }
 
     public function move(KbMoveRequest $request, string $id): JsonResponse
     {
-        return KbArticleEditResource::make(MoveKbArticle::run($request->user(), $id, $request->validated('direction')))->response();
+        return KbArticleEditResource::make($this->moveKbArticle->run($request->user(), $id, $request->validated('direction')))->response();
     }
 
     public function status(KbArticleStatusRequest $request, string $id): JsonResponse
     {
-        return KbArticleEditResource::make(ChangeKbArticleStatus::run($request->user(), $id, $request->validated('status')))->response();
+        return KbArticleEditResource::make($this->changeKbArticleStatus->run($request->user(), $id, $request->validated('status')))->response();
     }
 }

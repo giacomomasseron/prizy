@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static void run(User $actor, string $id)
+ * @method void run(User $actor, string $id)
  */
 final class DeleteHelpdeskSavedView extends BaseUseCase implements UseCaseInterface
 {
-    private readonly HelpdeskSavedViewRepository $views;
+    public function __construct(private readonly HelpdeskSavedViewRepository $views) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->views = app(HelpdeskSavedViewRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

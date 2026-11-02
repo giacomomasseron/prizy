@@ -11,9 +11,11 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueTicketLinkController extends Controller
 {
+    public function __construct(private readonly FindIssue $findIssue) {}
+
     public function store(Request $request, string $issue): never
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
         abort(501, 'Linking issues to tickets is not yet implemented.');

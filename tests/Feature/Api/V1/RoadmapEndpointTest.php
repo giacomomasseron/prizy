@@ -22,7 +22,7 @@ function roadmapWorld(array $attrs = []): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now(), 'is_developer' => true, 'admin_level' => 'member'], $attrs));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $user];
 }

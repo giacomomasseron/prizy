@@ -14,15 +14,20 @@ use Illuminate\Http\Request;
 
 final class KbLibraryController extends Controller
 {
+    public function __construct(
+        private readonly ShowKbLibrary $showKbLibrary,
+        private readonly PreviewKbMarkdown $previewKbMarkdown,
+    ) {}
+
     public function library(Request $request): JsonResponse
     {
-        $tree = ShowKbLibrary::run($request->user());
+        $tree = $this->showKbLibrary->run($request->user());
 
         return response()->json(['data' => (new KbLibraryResource($tree))->toArray($request)]);
     }
 
     public function preview(KbPreviewRequest $request): JsonResponse
     {
-        return response()->json(['data' => ['html' => PreviewKbMarkdown::run($request->user(), (string) ($request->validated('body') ?? ''))]]);
+        return response()->json(['data' => ['html' => $this->previewKbMarkdown->run($request->user(), (string) ($request->validated('body') ?? ''))]]);
     }
 }

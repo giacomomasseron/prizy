@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static Contact run(User $actor, array $data)
+ * @method Contact run(User $actor, array $data)
  */
 final class CreateContact extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ContactRepository $contacts;
+    public function __construct(private readonly ContactRepository $contacts) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->contacts = app(ContactRepository::class);
-
         return $this->execute(...$arguments);
     }
 

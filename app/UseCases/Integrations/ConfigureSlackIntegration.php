@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static SlackIntegration run(User $actor, ?string $webhookUrl, array $events, bool $isActive)
+ * @method SlackIntegration run(User $actor, ?string $webhookUrl, array $events, bool $isActive)
  */
 final class ConfigureSlackIntegration extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SlackIntegrationRepository $repo;
+    public function __construct(private readonly SlackIntegrationRepository $repo) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->repo = app(SlackIntegrationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

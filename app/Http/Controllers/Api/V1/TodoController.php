@@ -20,34 +20,42 @@ use Illuminate\Http\Response;
 /** /v1/me/todos — the caller's own to-dos (PRD §3.2.10). Tracker users only (the route gate). */
 final class TodoController extends Controller
 {
+    public function __construct(
+        private readonly ListTodos $listTodos,
+        private readonly AddTodo $addTodo,
+        private readonly UpdateTodo $updateTodo,
+        private readonly DeleteTodo $deleteTodo,
+        private readonly ClearCompletedTodos $clearCompletedTodos,
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        return TodoResource::collection(ListTodos::run($request->user()))->response();
+        return TodoResource::collection($this->listTodos->run($request->user()))->response();
     }
 
     public function store(AddTodoRequest $request): JsonResponse
     {
         $issueId = $request->validated('issue_id');
-        $todo = AddTodo::run($request->user(), (string) $request->validated('text'), is_string($issueId) ? $issueId : null);
+        $todo = $this->addTodo->run($request->user(), (string) $request->validated('text'), is_string($issueId) ? $issueId : null);
 
         return TodoResource::make($todo)->response()->setStatusCode(201);
     }
 
     public function update(UpdateTodoRequest $request, string $todo): JsonResponse
     {
-        return TodoResource::make(UpdateTodo::run($request->user(), $todo, $request->changes()))->response();
+        return TodoResource::make($this->updateTodo->run($request->user(), $todo, $request->changes()))->response();
     }
 
     public function destroy(Request $request, string $todo): Response
     {
-        DeleteTodo::run($request->user(), $todo);
+        $this->deleteTodo->run($request->user(), $todo);
 
         return response()->noContent();
     }
 
     public function clearDone(Request $request): Response
     {
-        ClearCompletedTodos::run($request->user());
+        $this->clearCompletedTodos->run($request->user());
 
         return response()->noContent();
     }

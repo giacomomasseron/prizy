@@ -28,7 +28,7 @@ it('groups issues, projects and teams for the palette', function (): void {
     Project::factory()->for($ws, 'workspace')->for($team)->create(['name' => 'Payments revamp']);
     Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment webhook', 'created_by' => $actor->id]);
 
-    $groups = SearchWorkspace::run($actor, 'Payment');
+    $groups = app(SearchWorkspace::class)->run($actor, 'Payment');
     Workspace::forgetCurrent();
 
     expect($groups['issues'])->toHaveCount(1)
@@ -46,7 +46,7 @@ it('returns empty groups for a blank query without touching the engine', functio
     Project::factory()->for($ws, 'workspace')->for($team)->create(['name' => 'Payment revamp']);
     Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment webhook', 'created_by' => $actor->id]);
 
-    $groups = SearchWorkspace::run($actor, '   ');
+    $groups = app(SearchWorkspace::class)->run($actor, '   ');
     Workspace::forgetCurrent();
 
     expect($groups['issues'])->toBeEmpty()
@@ -63,7 +63,7 @@ it('paginates issues for the full page', function (): void {
         Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => "Payment {$i}", 'created_by' => $actor->id]);
     }
 
-    $page = SearchIssues::run($actor, 'Payment', [], 'updated', 1);
+    $page = app(SearchIssues::class)->run($actor, 'Payment', [], 'updated', 1);
     Workspace::forgetCurrent();
 
     expect($page->total())->toBe(3);
@@ -76,7 +76,7 @@ it('browses all workspace issues for a blank query on the page', function (): vo
     $team = Team::factory()->for($ws, 'workspace')->create();
     Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment webhook', 'created_by' => $actor->id]);
 
-    $page = SearchIssues::run($actor, '', [], 'updated', 1);
+    $page = app(SearchIssues::class)->run($actor, '', [], 'updated', 1);
     Workspace::forgetCurrent();
 
     // Empty query now browses all workspace issues (not early-returns empty).

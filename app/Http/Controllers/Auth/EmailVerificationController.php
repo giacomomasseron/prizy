@@ -13,6 +13,11 @@ use Illuminate\Http\Request;
 
 final class EmailVerificationController extends Controller
 {
+    public function __construct(
+        private readonly MarkEmailVerified $markEmailVerified,
+        private readonly ResendVerification $resendVerification,
+    ) {}
+
     /**
      * Handle a signed email verification link click.
      *
@@ -29,7 +34,7 @@ final class EmailVerificationController extends Controller
      */
     public function verify(Request $request, string $id, string $hash): RedirectResponse
     {
-        $destination = MarkEmailVerified::run($id, $hash);
+        $destination = $this->markEmailVerified->run($id, $hash);
 
         if ($destination === null) {
             abort(403, 'Invalid verification link.');
@@ -49,7 +54,7 @@ final class EmailVerificationController extends Controller
             abort(401);
         }
 
-        ResendVerification::run($user);
+        $this->resendVerification->run($user);
 
         return response()->json(['message' => 'Verification link sent.']);
     }

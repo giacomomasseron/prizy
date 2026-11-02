@@ -13,11 +13,13 @@ use Illuminate\Http\JsonResponse;
 /** GET /v1/issues/lookup?q= — the issue picker's server half (PRD §3.2.1). Tracker users only. */
 final class IssueLookupController extends Controller
 {
+    public function __construct(private readonly LookupIssues $lookupIssues) {}
+
     public function index(LookupIssuesRequest $request): JsonResponse
     {
         /** @var string $q */
         $q = $request->validated('q');
 
-        return IssueLookupResource::collection(LookupIssues::run($q))->response();
+        return IssueLookupResource::collection($this->lookupIssues->run($q))->response();
     }
 }

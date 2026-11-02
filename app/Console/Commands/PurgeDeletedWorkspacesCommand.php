@@ -13,9 +13,9 @@ final class PurgeDeletedWorkspacesCommand extends Command
 
     protected $description = 'Queue the erasing again for workspaces deleted over an hour ago that are still there.';
 
-    public function handle(): int
+    public function handle(PurgeDeletedWorkspaces $purgeDeletedWorkspaces): int
     {
-        $count = PurgeDeletedWorkspaces::run();
+        $count = $purgeDeletedWorkspaces->run();
         $this->info("Queued {$count} deleted workspace(s) for erasing.");
 
         return self::SUCCESS;

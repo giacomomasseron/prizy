@@ -28,7 +28,7 @@ function patchWorld(string $actorLevel, string $targetLevel, bool $sameWorkspace
     if (!$sameWorkspace) {
         test()->actingInWorkspace($ws);
     }
-    $token = CreatePersonalAccessToken::run($actor, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($actor, 't', null)['token'];
     return [$token, $actor, $target, $ws];
 }
 

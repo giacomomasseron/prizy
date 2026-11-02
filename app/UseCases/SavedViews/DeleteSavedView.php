@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static void run(User $actor, array $data)
+ * @method void run(User $actor, array $data)
  */
 final class DeleteSavedView extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SavedViewRepository $views;
+    public function __construct(private readonly SavedViewRepository $views) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->views = app(SavedViewRepository::class);
-
         $this->execute(...$arguments);
 
         return null;

@@ -20,7 +20,7 @@ use Illuminate\Support\Str;
  * application refuses to serve, or refuses hosts it would have served —
  * taking a workspace offline.
  *
- * @method static bool run(string $host)
+ * @method bool run(string $host)
  */
 final class AuthorizeTlsHost extends BaseUseCase implements UseCaseInterface
 {

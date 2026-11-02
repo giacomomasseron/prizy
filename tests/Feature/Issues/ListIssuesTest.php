@@ -31,7 +31,7 @@ it('filters by status (CSV ⇒ IN)', function (): void {
     $make(['status' => 'in_progress']);
     $make(['status' => 'done']);
 
-    $page = ListIssues::run(['status' => 'todo,in_progress'], [['column' => 'created_at', 'dir' => 'asc']], 25);
+    $page = app(ListIssues::class)->run(['status' => 'todo,in_progress'], [['column' => 'created_at', 'dir' => 'asc']], 25);
 
     expect($page->count())->toBe(2);
 
@@ -43,13 +43,13 @@ it('excludes archived by default and includes them with archived=true', function
     $make(['status' => 'todo']);
     $make(['status' => 'todo', 'archived_at' => now()]);
 
-    $active = ListIssues::run([], [['column' => 'created_at', 'dir' => 'asc']], 25);
+    $active = app(ListIssues::class)->run([], [['column' => 'created_at', 'dir' => 'asc']], 25);
     expect($active->count())->toBe(1);
 
-    $archived = ListIssues::run(['archived' => 'true'], [['column' => 'created_at', 'dir' => 'asc']], 25);
+    $archived = app(ListIssues::class)->run(['archived' => 'true'], [['column' => 'created_at', 'dir' => 'asc']], 25);
     expect($archived->count())->toBe(1);
 
-    $all = ListIssues::run(['archived' => 'all'], [['column' => 'created_at', 'dir' => 'asc']], 25);
+    $all = app(ListIssues::class)->run(['archived' => 'all'], [['column' => 'created_at', 'dir' => 'asc']], 25);
     expect($all->count())->toBe(2);
 
     Workspace::forgetCurrent();
@@ -61,7 +61,7 @@ it('cursor-paginates with a stable limit', function (): void {
         $make(['status' => 'todo']);
     }
 
-    $page = ListIssues::run([], [['column' => 'created_at', 'dir' => 'asc']], 2);
+    $page = app(ListIssues::class)->run([], [['column' => 'created_at', 'dir' => 'asc']], 2);
 
     expect($page->count())->toBe(2);
     expect($page->hasMorePages())->toBeTrue();

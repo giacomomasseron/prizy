@@ -14,7 +14,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * a sign-up made with SIGNUP_REQUIRES_ACTIVATION on is ever pending, and its
  * owner could never log in, so it holds nothing but that one user.
  *
- * @method static int run()
+ * @method int run()
  */
 final class PrunePendingWorkspaces extends BaseUseCase implements UseCaseInterface
 {

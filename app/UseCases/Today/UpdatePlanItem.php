@@ -16,16 +16,14 @@ use Illuminate\Support\Facades\DB;
  * Change an item of the actor's day plan (the Today v2 design): its time or its place. An issue that is not on the
  * actor's plan → 404. When a move crowds two open items, the actor's open items are renumbered.
  *
- * @method static UserPlanItem run(User $actor, string $issueId, array $changes)
+ * @method UserPlanItem run(User $actor, string $issueId, array $changes)
  */
 final class UpdatePlanItem extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserPlanItemRepository $items;
+    public function __construct(private readonly UserPlanItemRepository $items) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-
         return $this->execute(...$arguments);
     }
 

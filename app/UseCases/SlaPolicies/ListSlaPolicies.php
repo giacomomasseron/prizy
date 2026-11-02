@@ -13,16 +13,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * @method static Collection run(User $actor)
+ * @method Collection run(User $actor)
  */
 final class ListSlaPolicies extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SlaPolicyRepository $policies;
+    public function __construct(private readonly SlaPolicyRepository $policies) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->policies = app(SlaPolicyRepository::class);
-
         return $this->execute(...$arguments);
     }
 

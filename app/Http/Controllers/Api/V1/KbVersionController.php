@@ -16,18 +16,24 @@ use Illuminate\Http\Request;
 
 final class KbVersionController extends Controller
 {
+    public function __construct(
+        private readonly ListKbArticleVersions $listKbArticleVersions,
+        private readonly ShowKbArticleVersion $showKbArticleVersion,
+        private readonly RestoreKbArticleVersion $restoreKbArticleVersion,
+    ) {}
+
     public function index(Request $request, string $id): JsonResponse
     {
-        return KbArticleVersionResource::collection(ListKbArticleVersions::run($request->user(), $id))->response();
+        return KbArticleVersionResource::collection($this->listKbArticleVersions->run($request->user(), $id))->response();
     }
 
     public function show(Request $request, string $id, string $versionId): JsonResponse
     {
-        return KbArticleVersionDetailResource::make(ShowKbArticleVersion::run($request->user(), $id, $versionId))->response();
+        return KbArticleVersionDetailResource::make($this->showKbArticleVersion->run($request->user(), $id, $versionId))->response();
     }
 
     public function restore(Request $request, string $id, string $versionId): JsonResponse
     {
-        return KbArticleEditResource::make(RestoreKbArticleVersion::run($request->user(), $id, $versionId))->response();
+        return KbArticleEditResource::make($this->restoreKbArticleVersion->run($request->user(), $id, $versionId))->response();
     }
 }

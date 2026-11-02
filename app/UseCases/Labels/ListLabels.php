@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Pagination\CursorPaginator;
 
 /**
- * @method static CursorPaginator run(int $limit)
+ * @method CursorPaginator run(int $limit)
  */
 final class ListLabels extends BaseUseCase implements UseCaseInterface
 {
-    private readonly LabelRepository $labels;
+    public function __construct(private readonly LabelRepository $labels) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->labels = app(LabelRepository::class);
-
         return $this->execute(...$arguments);
     }
 

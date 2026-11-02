@@ -20,7 +20,7 @@ function ghLinkSetup(string $level): array
     $team = Team::factory()->for($ws, 'workspace')->create();
     $user = User::factory()->for($ws, 'workspace')->create(['admin_level' => $level, 'is_developer' => $level !== 'viewer', 'email_verified_at' => now()]);
     $issue = Issue::factory()->for($ws, 'workspace')->for($team)->create(['created_by' => $user->id]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$ws, $issue, $token];
 }

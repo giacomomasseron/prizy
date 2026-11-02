@@ -18,21 +18,20 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static Issue run(User $actor, array $data)
+ * @method Issue run(User $actor, array $data)
  */
 final class AssignIssue extends BaseUseCase implements UseCaseInterface
 {
     use ValidatesWorkspaceReferences;
 
-    private readonly IssueRepository $issues;
-
-    private readonly IssueActivityRepository $activities;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueActivityRepository $activities,
+        private readonly NotificationDispatcher $notificationDispatcher,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->activities = app(IssueActivityRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -61,7 +60,7 @@ final class AssignIssue extends BaseUseCase implements UseCaseInterface
             $this->activities->log($issue->id, $actor->id, 'assigned', $previous, $assigneeId);
 
             if ($assigneeId !== null && $assigneeId !== $actor->id) {
-                $notification = NotificationDispatcher::run($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title, $issue->team_id, $issue->project_id);
+                $notification = $this->notificationDispatcher->run($assigneeId, 'issue_assigned', 'issue', $issue->id, $actor->id, $issue->title, $issue->team_id, $issue->project_id);
                 if ($notification !== null) {
                     $notificationEvent = new NotificationCreated($assigneeId, $notification->id, 'issue_assigned');
                 }

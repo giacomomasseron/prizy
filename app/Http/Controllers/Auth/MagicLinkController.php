@@ -18,6 +18,11 @@ use Illuminate\Http\Request;
  */
 final class MagicLinkController extends Controller
 {
+    public function __construct(
+        private readonly RequestMagicLink $requestMagicLink,
+        private readonly ConsumeMagicLink $consumeMagicLink,
+    ) {}
+
     /**
      * Send a magic-link login email to the given address.
      *
@@ -31,7 +36,7 @@ final class MagicLinkController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        RequestMagicLink::run($data['email']);
+        $this->requestMagicLink->run($data['email']);
 
         return response()->json(
             ['message' => 'If that email is registered, a login link is on its way.'],
@@ -56,7 +61,7 @@ final class MagicLinkController extends Controller
         $userId = (string) $request->query('user', '');
 
         try {
-            $user = ConsumeMagicLink::run($nonce, $userId);
+            $user = $this->consumeMagicLink->run($nonce, $userId);
         } catch (\Throwable) {
             abort(401, 'Invalid or expired magic link.');
         }

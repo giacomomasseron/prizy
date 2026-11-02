@@ -11,18 +11,16 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * @method static LengthAwarePaginator run(User $actor, string $q, array $filters, string $sort, int $page)
+ * @method LengthAwarePaginator run(User $actor, string $q, array $filters, string $sort, int $page)
  */
 final class SearchIssues extends BaseUseCase implements UseCaseInterface
 {
     private const PER_PAGE = 20;
 
-    private readonly SearchRepository $search;
+    public function __construct(private readonly SearchRepository $search) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->search = app(SearchRepository::class);
-
         return $this->execute(...$arguments);
     }
 

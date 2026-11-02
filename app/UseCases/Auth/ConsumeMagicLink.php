@@ -29,7 +29,7 @@ use RuntimeException;
  * current workspace is what stops a link opened on another workspace's host
  * from logging anyone in: never widen it with withoutGlobalScopes().
  *
- * @method static User run(string $nonce, string $userId)
+ * @method User run(string $nonce, string $userId)
  */
 final class ConsumeMagicLink extends BaseUseCase implements UseCaseInterface
 {

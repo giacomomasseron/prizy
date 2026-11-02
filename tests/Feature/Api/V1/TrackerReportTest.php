@@ -25,7 +25,7 @@ function trackerReportWorld(array $flags = ['is_developer' => true]): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $flags));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
     $team = Team::factory()->for($ws, 'workspace')->create();
 
     return [$token, $ws, $team];
@@ -134,7 +134,7 @@ it('isolates workspaces', function (): void {
     $other = Workspace::factory()->create();
     test()->actingInWorkspace($other);
     $otherUser = User::factory()->for($other, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $otherToken = CreatePersonalAccessToken::run($otherUser, 't', null)['token'];
+    $otherToken = app(CreatePersonalAccessToken::class)->run($otherUser, 't', null)['token'];
 
     $res = $this->withToken($otherToken)->getJson('/v1/reports/tracker-overview?range=7d')->assertOk();
     expect($res->json('data.kpis.created.value'))->toBe(0);

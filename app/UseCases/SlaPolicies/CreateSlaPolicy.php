@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static SlaPolicy run(User $actor, array $data)
+ * @method SlaPolicy run(User $actor, array $data)
  */
 final class CreateSlaPolicy extends BaseUseCase implements UseCaseInterface
 {
-    private readonly SlaPolicyRepository $policies;
+    public function __construct(private readonly SlaPolicyRepository $policies) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->policies = app(SlaPolicyRepository::class);
-
         return $this->execute(...$arguments);
     }
 

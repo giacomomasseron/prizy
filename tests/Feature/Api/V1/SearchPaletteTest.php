@@ -19,7 +19,7 @@ it('returns grouped, workspace-scoped palette results', function (): void {
     $team = Team::factory()->for($ws, 'workspace')->create(['name' => 'Payments']);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
     Issue::factory()->for($ws, 'workspace')->for($team)->create(['title' => 'Payment webhook', 'created_by' => $user->id]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson('/v1/search?q=Payment');
     Workspace::forgetCurrent();
@@ -44,7 +44,7 @@ it('does not leak another workspace\'s issues (tenancy)', function (): void {
     $ta  = Team::factory()->for($a, 'workspace')->create();
     $ua  = User::factory()->for($a, 'workspace')->create(['email_verified_at' => now()]);
     Issue::factory()->for($a, 'workspace')->for($ta)->create(['title' => 'Payment mine', 'created_by' => $ua->id]);
-    $token = CreatePersonalAccessToken::run($ua, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($ua, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson('/v1/search?q=Payment');
     Workspace::forgetCurrent();
@@ -56,7 +56,7 @@ it('returns empty groups for a blank query', function (): void {
     $ws   = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now()]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $res = $this->withToken($token)->getJson('/v1/search?q=');
     Workspace::forgetCurrent();

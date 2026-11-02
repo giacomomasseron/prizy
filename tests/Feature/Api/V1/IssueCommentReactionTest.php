@@ -29,7 +29,7 @@ function reactionWorld(array $userAttrs = ['is_developer' => true]): array
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
     $comment = IssueComment::create(['id' => (string) Str::uuid(), 'issue_id' => $issue->id, 'user_id' => $user->id, 'body' => 'hi']);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return ['token' => $token, 'issue' => $issue, 'comment' => $comment, 'user' => $user, 'workspace' => $ws];
 }
@@ -66,7 +66,7 @@ it('toggles a reaction via the endpoint and returns the comment with reactions',
 it('aggregates counts across users and marks reacted only for the caller', function (): void {
     ['token' => $token, 'issue' => $issue, 'comment' => $comment, 'workspace' => $ws] = reactionWorld();
     $other = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $otherToken = CreatePersonalAccessToken::run($other, 't', null)['token'];
+    $otherToken = app(CreatePersonalAccessToken::class)->run($other, 't', null)['token'];
     $url = "/v1/issues/{$issue->id}/comments/{$comment->id}/reactions";
 
     $this->withToken($token)->postJson($url, ['emoji' => '🎯'])->assertStatus(200);
@@ -98,7 +98,7 @@ it('forbids a member from another workspace (403/404)', function (): void {
     $otherWs = Workspace::factory()->create();
     test()->actingInWorkspace($otherWs);
     $stranger = User::factory()->for($otherWs, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $strangerToken = CreatePersonalAccessToken::run($stranger, 't', null)['token'];
+    $strangerToken = app(CreatePersonalAccessToken::class)->run($stranger, 't', null)['token'];
 
     $this->withToken($strangerToken)
         ->withSession(['ensure_valid_tenant_session_tenant_id' => $otherWs->id])
@@ -110,7 +110,7 @@ it('lets a non-developer member add a comment (authz relaxed to view)', function
     Event::fake([IssueCommented::class, NotificationCreated::class]); // avoid a real broadcast attempt (no Reverb service in tests)
     ['issue' => $issue, 'workspace' => $ws] = reactionWorld();
     $viewerDev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => false]);
-    $vToken = CreatePersonalAccessToken::run($viewerDev, 't', null)['token'];
+    $vToken = app(CreatePersonalAccessToken::class)->run($viewerDev, 't', null)['token'];
 
     $this->withToken($vToken)->postJson("/v1/issues/{$issue->id}/comments", ['body' => 'me too'])
         ->assertStatus(201);
@@ -119,7 +119,7 @@ it('lets a non-developer member add a comment (authz relaxed to view)', function
 it('computes reacted per-emoji per-caller, not from count', function (): void {
     ['token' => $tokenA, 'issue' => $issue, 'comment' => $comment, 'workspace' => $ws] = reactionWorld();
     $userB = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $tokenB = CreatePersonalAccessToken::run($userB, 't', null)['token'];
+    $tokenB = app(CreatePersonalAccessToken::class)->run($userB, 't', null)['token'];
     $url = "/v1/issues/{$issue->id}/comments/{$comment->id}/reactions";
 
     // A reacts 👀, B reacts 🎯.

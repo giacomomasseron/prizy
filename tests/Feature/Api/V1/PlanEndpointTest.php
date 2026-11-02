@@ -40,7 +40,7 @@ function planApiWorld(array $userAttrs = ['is_developer' => true]): array
         'status' => 'todo', 'priority' => 'no_priority', 'estimate' => null, 'due_date' => null,
     ], $attrs));
 
-    return ['token' => CreatePersonalAccessToken::run($user, 't', null)['token'], 'user' => $user, 'workspace' => $ws, 'issue' => $issue];
+    return ['token' => app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'], 'user' => $user, 'workspace' => $ws, 'issue' => $issue];
 }
 
 /** A plan item written straight to the table (the current workspace fills workspace_id). */
@@ -317,7 +317,7 @@ it('lets only people who may change the issue complete it: a viewer gets 403; al
     expect(Issue::query()->find($issue->id)?->status)->toBe('todo');
 
     $dev = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $devToken = CreatePersonalAccessToken::run($dev, 't', null)['token'];
+    $devToken = app(CreatePersonalAccessToken::class)->run($dev, 't', null)['token'];
     $finished = $make(['title' => 'Finished', 'status' => 'done', 'completed_at' => now()]);
     planApiItem($dev, $finished, 1);
 

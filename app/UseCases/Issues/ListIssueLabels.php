@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Support\Collection;
 
 /**
- * @method static Collection run(string $issueId)
+ * @method Collection run(string $issueId)
  */
 final class ListIssueLabels extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueLabelRepository $issueLabels;
+    public function __construct(private readonly IssueLabelRepository $issueLabels) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issueLabels = app(IssueLabelRepository::class);
-
         return $this->execute(...$arguments);
     }
 

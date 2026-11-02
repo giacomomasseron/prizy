@@ -17,16 +17,14 @@ use Illuminate\Support\Facades\DB;
  * Done stamps completed_at (kept if already set); undone clears it and the to-do keeps its position, so it
  * returns to its old place. When a move crowds two open to-dos, the actor's open list is renumbered.
  *
- * @method static UserTodo run(User $actor, string $id, array $changes)
+ * @method UserTodo run(User $actor, string $id, array $changes)
  */
 final class UpdateTodo extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserTodoRepository $todos;
+    public function __construct(private readonly UserTodoRepository $todos) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->todos = app(UserTodoRepository::class);
-
         return $this->execute(...$arguments);
     }
 

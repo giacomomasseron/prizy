@@ -16,7 +16,7 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * Rides along on /v1/me because the SPA needs them at the same moment it needs
  * the capability flags: both decide what the navigation offers.
  *
- * @method static array run(User $actor)
+ * @method array run(User $actor)
  */
 final class ShowWorkspaceModules extends BaseUseCase implements UseCaseInterface
 {

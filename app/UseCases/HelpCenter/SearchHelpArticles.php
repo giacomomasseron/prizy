@@ -14,19 +14,17 @@ use Illuminate\Support\Collection as BaseCollection;
 /**
  * Public help-center read — no actor: the pages are unauthenticated (CSAT precedent).
  *
- * @method static BaseCollection run(string $q, string $lang = KbLocales::SOURCE)
+ * @method BaseCollection run(string $q, string $lang = KbLocales::SOURCE)
  */
 final class SearchHelpArticles extends BaseUseCase implements UseCaseInterface
 {
-    private readonly KbRepository $kb;
-
-    private readonly KbTranslationRepository $translations;
+    public function __construct(
+        private readonly KbRepository $kb,
+        private readonly KbTranslationRepository $translations,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->kb = app(KbRepository::class);
-        $this->translations = app(KbTranslationRepository::class);
-
         return $this->execute(...$arguments);
     }
 

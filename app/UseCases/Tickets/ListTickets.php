@@ -12,16 +12,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Pagination\CursorPaginator;
 
 /**
- * @method static CursorPaginator run(User $actor, array $filters = [], string $sort = 'updated_at', int $limit = 25)
+ * @method CursorPaginator run(User $actor, array $filters = [], string $sort = 'updated_at', int $limit = 25)
  */
 final class ListTickets extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TicketRepository $tickets;
+    public function __construct(private readonly TicketRepository $tickets) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->tickets = app(TicketRepository::class);
-
         return $this->execute(...$arguments);
     }
 

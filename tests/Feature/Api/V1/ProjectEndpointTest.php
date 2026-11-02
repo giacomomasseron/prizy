@@ -25,7 +25,7 @@ function projectWorld(array $userAttrs = []): array
         $userAttrs,
     ));
     $team = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     return [$token, $ws, $team];
 }
@@ -201,7 +201,7 @@ it('records created_by as the acting user', function (): void {
         'admin_level'       => 'member',
     ]);
     $team  = Team::factory()->for($ws, 'workspace')->create();
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $response = $this->withToken($token)->postJson('/v1/projects', [
         'name'    => 'Created-By Test',

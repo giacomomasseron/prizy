@@ -25,7 +25,7 @@ function releaseWorld(array $flags = ['is_developer' => true]): array
     $ws = Workspace::factory()->create();
     test()->actingInWorkspace($ws);
     $user = User::factory()->for($ws, 'workspace')->create(array_merge(['email_verified_at' => now()], $flags));
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
     $team = Team::factory()->for($ws, 'workspace')->create();
 
     return [$token, $ws, $team, $user];
@@ -108,7 +108,7 @@ it('gates GET /v1/releases/{id} to developers only (agent-only cannot enumerate 
     $release = releaseRow($ws);
 
     $agent = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true, 'is_developer' => false]);
-    $agentToken = CreatePersonalAccessToken::run($agent, 't', null)['token'];
+    $agentToken = app(CreatePersonalAccessToken::class)->run($agent, 't', null)['token'];
 
     $this->withToken($agentToken)->getJson("/v1/releases/{$release->id}")->assertStatus(403);
     $this->withToken($devToken)->getJson("/v1/releases/{$release->id}")->assertOk();
@@ -243,7 +243,7 @@ it('embeds the release on the single-issue payload for an agent (bridge)', funct
 
     test()->actingInWorkspace($ws);
     $agent = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => now(), 'is_agent' => true, 'is_developer' => false]);
-    $agentToken = CreatePersonalAccessToken::run($agent, 't', null)['token'];
+    $agentToken = app(CreatePersonalAccessToken::class)->run($agent, 't', null)['token'];
 
     $res = $this->withToken($agentToken)->getJson("/v1/issues/{$issue->id}")->assertOk();
     expect($res->json('data.release.name'))->toBe('Bridge Release');

@@ -305,7 +305,7 @@ final class SetWorkspaceScopeTask implements SwitchTenantTask
 
 ### BindWorkspaceToContainerTask
 
-Binds the current `Workspace` into Laravel's service container so any class can `app(Workspace::class)` to retrieve it without reaching through `CurrentTenant`.
+Binds the current `Workspace` into Laravel's service container so code outside the use cases (which never call `app()`) can `app(Workspace::class)` to retrieve it without reaching through `CurrentTenant`.
 
 ```php
 <?php
@@ -520,7 +520,7 @@ final class IssueRepository implements RepositoryInterface
 
 ### UseCase Layer
 
-UseCases access the current workspace via the container binding set by `BindWorkspaceToContainerTask`:
+UseCases take their dependencies (repositories, services) in the constructor, built by Laravel's container, and read the current workspace while running:
 
 ```php
 <?php
@@ -529,32 +529,31 @@ declare(strict_types=1);
 
 namespace App\UseCases\Workspace;
 
-use App\Models\Workspace;
 use App\DataTransferObjects\Workspace\UpdateWorkspaceSettingsData;
+use App\Models\Workspace;
 use App\Repositories\WorkspaceRepository;
 use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
+/**
+ * @method Workspace run(UpdateWorkspaceSettingsData $data)
+ */
 final class UpdateWorkspaceSettingsUseCase extends BaseUseCase implements UseCaseInterface
 {
-    private readonly WorkspaceRepository $workspaceRepository;
+    public function __construct(private readonly WorkspaceRepository $workspaceRepository) {}
 
-    private readonly Workspace $workspace;
-
-    // BaseUseCase's constructor is final and private, and UseCaseInterface fixes
-    // handle() to handle(mixed ...$arguments): mixed. So dependencies come from
-    // the container here, and the typed work happens in execute().
+    // UseCaseInterface fixes handle() to handle(mixed ...$arguments): mixed,
+    // so the typed work happens in execute().
     public function handle(mixed ...$arguments): mixed
     {
-        $this->workspaceRepository = app(WorkspaceRepository::class);
-        $this->workspace = app(Workspace::class); // bound by BindWorkspaceToContainerTask
-
         return $this->execute(...$arguments);
     }
 
     private function execute(UpdateWorkspaceSettingsData $data): Workspace
     {
-        return $this->workspaceRepository->update($this->workspace, $data);
+        // Read while running, never injected: one injected instance serves
+        // every run on it, even across a tenant switch.
+        return $this->workspaceRepository->update(Workspace::current(), $data);
     }
 }
 ```
@@ -578,9 +577,11 @@ use Illuminate\Http\JsonResponse;
 
 final class WorkspaceController implements ControllerInterface
 {
+    public function __construct(private readonly UpdateWorkspaceSettingsUseCase $updateWorkspaceSettings) {}
+
     public function update(UpdateWorkspaceSettingsRequest $request): JsonResponse
     {
-        $workspace = UpdateWorkspaceSettingsUseCase::run($request->toData());
+        $workspace = $this->updateWorkspaceSettings->run($request->toData());
 
         return WorkspaceResource::make($workspace)->response();
     }
@@ -698,7 +699,7 @@ final class CreateIssueUseCaseTest extends TestCase
             priority: 'high',
         );
 
-        $issue = CreateIssueUseCase::run($user, $data);
+        $issue = app(CreateIssueUseCase::class)->run($user, $data);
 
         $this->assertSame($workspace->id, $issue->workspace_id);
         $this->assertDatabaseHas('issues', [

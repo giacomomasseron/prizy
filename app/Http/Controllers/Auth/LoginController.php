@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Auth;
 
 final class LoginController extends Controller
 {
+    public function __construct(private readonly LogIn $logIn) {}
+
     /**
      * Authenticate the user within the current workspace.
      *
@@ -26,7 +28,7 @@ final class LoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
-        $user = LogIn::run($data['email'], $data['password']);
+        $user = $this->logIn->run($data['email'], $data['password']);
 
         // Rotate the session ID after successful authentication to prevent session fixation:
         // a planted session ID (e.g. via a sibling-subdomain cookie) must not survive login.

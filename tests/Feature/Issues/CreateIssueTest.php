@@ -32,7 +32,7 @@ it('creates an issue, writes a created activity, and broadcasts IssueCreated', f
     Event::fake([IssueCreated::class, IssueAssigned::class, NotificationCreated::class]);
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
-    $issue = CreateIssue::run($actor, ['team_id' => $team->id, 'title' => 'Build login']);
+    $issue = app(CreateIssue::class)->run($actor, ['team_id' => $team->id, 'title' => 'Build login']);
 
     expect($issue->created_by)->toBe($actor->id);
     expect($issue->status)->toBe('backlog'); // DB default
@@ -50,7 +50,7 @@ it('notifies and broadcasts assignment when created with an assignee', function 
     [$ws, $actor, $team] = makeWorkspaceWithActor();
     $assignee = User::factory()->for($ws, 'workspace')->create();
 
-    $issue = CreateIssue::run($actor, [
+    $issue = app(CreateIssue::class)->run($actor, [
         'team_id' => $team->id, 'title' => 'Assigned issue', 'assignee_id' => $assignee->id,
     ]);
 
@@ -66,7 +66,7 @@ it('does not notify when an issue is created self-assigned to the actor', functi
     Event::fake([IssueCreated::class, IssueAssigned::class, NotificationCreated::class]);
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
-    $issue = CreateIssue::run($actor, [
+    $issue = app(CreateIssue::class)->run($actor, [
         'team_id' => $team->id, 'title' => 'Self-assigned issue', 'assignee_id' => $actor->id,
     ]);
 
@@ -82,7 +82,7 @@ it('does not notify when an issue is created self-assigned to the actor', functi
 it('rejects a team from another workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
-    expect(fn () => CreateIssue::run($actor, ['team_id' => (string) Str::uuid(), 'title' => 'x']))
+    expect(fn () => app(CreateIssue::class)->run($actor, ['team_id' => (string) Str::uuid(), 'title' => 'x']))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();
@@ -91,7 +91,7 @@ it('rejects a team from another workspace', function (): void {
 it('rejects an assignee from another workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
-    expect(fn () => CreateIssue::run($actor, [
+    expect(fn () => app(CreateIssue::class)->run($actor, [
         'team_id' => $team->id, 'title' => 'x', 'assignee_id' => (string) Str::uuid(),
     ]))->toThrow(ValidationException::class);
 
@@ -101,7 +101,7 @@ it('rejects an assignee from another workspace', function (): void {
 it('rejects a project_id not in the workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
-    expect(fn () => CreateIssue::run($actor, [
+    expect(fn () => app(CreateIssue::class)->run($actor, [
         'team_id' => $team->id,
         'title' => 'x',
         'project_id' => (string) Str::uuid(),
@@ -113,7 +113,7 @@ it('rejects a project_id not in the workspace', function (): void {
 it('rejects a cycle_id not in the workspace', function (): void {
     [$ws, $actor, $team] = makeWorkspaceWithActor();
 
-    expect(fn () => CreateIssue::run($actor, [
+    expect(fn () => app(CreateIssue::class)->run($actor, [
         'team_id' => $team->id,
         'title' => 'x',
         'cycle_id' => (string) Str::uuid(),

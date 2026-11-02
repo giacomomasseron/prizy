@@ -12,9 +12,11 @@ use Illuminate\Http\JsonResponse;
 
 final class TicketMessageController extends Controller
 {
+    public function __construct(private readonly PostTicketMessage $postTicketMessage) {}
+
     public function store(PostTicketMessageRequest $request, string $ticket): JsonResponse
     {
-        $message = PostTicketMessage::run(
+        $message = $this->postTicketMessage->run(
             $request->user(),
             $ticket,
             (string) $request->validated('body'),

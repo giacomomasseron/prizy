@@ -15,7 +15,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
  * Accepts any Authenticatable that implements MustVerifyEmail so the controller
  * never needs to import the concrete User model (deptrac: Controller → UseCase only).
  *
- * @method static void run(Authenticatable $user)
+ * @method void run(Authenticatable $user)
  */
 final class ResendVerification extends BaseUseCase implements UseCaseInterface
 {

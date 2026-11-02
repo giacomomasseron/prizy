@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * Scoped to the owning user — a user cannot revoke another user's tokens.
  * Throws ModelNotFoundException (404) if the token is not found or belongs to a different user.
  *
- * @method static void run(User $user, string $tokenId)
+ * @method void run(User $user, string $tokenId)
  */
 final class RevokeToken extends BaseUseCase implements UseCaseInterface
 {

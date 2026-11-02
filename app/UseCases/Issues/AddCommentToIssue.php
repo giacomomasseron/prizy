@@ -19,22 +19,19 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static IssueComment run(User $actor, array $data)
+ * @method IssueComment run(User $actor, array $data)
  */
 final class AddCommentToIssue extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueRepository $issues;
-
-    private readonly IssueCommentRepository $comments;
-
-    private readonly NotificationRecipients $recipients;
+    public function __construct(
+        private readonly IssueRepository $issues,
+        private readonly IssueCommentRepository $comments,
+        private readonly NotificationRecipients $recipients,
+        private readonly NotificationDispatcher $notificationDispatcher,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->issues = app(IssueRepository::class);
-        $this->comments = app(IssueCommentRepository::class);
-        $this->recipients = app(NotificationRecipients::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -86,7 +83,7 @@ final class AddCommentToIssue extends BaseUseCase implements UseCaseInterface
 
         $mentions = $this->recipients->mentioned($body, $members, $actor->id);
         foreach ($mentions as $userId) {
-            $notification = NotificationDispatcher::run($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt, $issue->team_id, $issue->project_id);
+            $notification = $this->notificationDispatcher->run($userId, 'issue_mentioned', 'issue', $issue->id, $actor->id, $excerpt, $issue->team_id, $issue->project_id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'issue_mentioned');
             }
@@ -96,7 +93,7 @@ final class AddCommentToIssue extends BaseUseCase implements UseCaseInterface
         // also a comment notification.
         $others = array_values(array_diff($this->recipients->participants($issue, $actor->id), $mentions));
         foreach ($others as $userId) {
-            $notification = NotificationDispatcher::run($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt, $issue->team_id, $issue->project_id);
+            $notification = $this->notificationDispatcher->run($userId, 'issue_commented', 'issue', $issue->id, $actor->id, $excerpt, $issue->team_id, $issue->project_id);
             if ($notification !== null) {
                 $events[] = new NotificationCreated($userId, $notification->id, 'issue_commented');
             }

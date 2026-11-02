@@ -37,7 +37,7 @@ it('a token for workspace A cannot read or mutate workspace B issues (404)', fun
     $wsA = Workspace::factory()->create();
     $this->actingInWorkspace($wsA);
     $userA = User::factory()->for($wsA, 'workspace')->create(['email_verified_at' => now(), 'is_developer' => true]);
-    $tokenA = CreatePersonalAccessToken::run($userA, 't', null)['token'];
+    $tokenA = app(CreatePersonalAccessToken::class)->run($userA, 't', null)['token'];
 
     $this->withToken($tokenA)->getJson("/v1/issues/{$issueB->id}")->assertStatus(404);
     $this->withToken($tokenA)->patchJson("/v1/issues/{$issueB->id}", ['title' => 'hijack'])->assertStatus(404);
@@ -55,7 +55,7 @@ it('a viewer / non-developer cannot create or mutate (403)', function (): void {
     $team = Team::factory()->for($ws, 'workspace')->create();
     $dev = User::factory()->for($ws, 'workspace')->create(['is_developer' => true]);
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $dev->id]);
-    $token = CreatePersonalAccessToken::run($viewer, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($viewer, 't', null)['token'];
 
     $this->withToken($token)->postJson('/v1/issues', ['team_id' => $team->id, 'title' => 'X'])->assertStatus(403);
     $this->withToken($token)->patchJson("/v1/issues/{$issue->id}", ['title' => 'Y'])->assertStatus(403);
@@ -72,7 +72,7 @@ it('an unverified developer cannot write (403) but can read (200)', function ():
     $user = User::factory()->for($ws, 'workspace')->create(['email_verified_at' => null, 'is_developer' => true]);
     $team = Team::factory()->for($ws, 'workspace')->create();
     $issue = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $user->id]);
-    $token = CreatePersonalAccessToken::run($user, 't', null)['token'];
+    $token = app(CreatePersonalAccessToken::class)->run($user, 't', null)['token'];
 
     $this->withToken($token)->postJson('/v1/issues', ['team_id' => $team->id, 'title' => 'X'])->assertStatus(403);
     $this->withToken($token)->getJson("/v1/issues/{$issue->id}")->assertStatus(200);

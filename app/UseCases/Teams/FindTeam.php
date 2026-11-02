@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static Team run(string $id)
+ * @method Team run(string $id)
  */
 final class FindTeam extends BaseUseCase implements UseCaseInterface
 {
-    private readonly TeamRepository $teams;
+    public function __construct(private readonly TeamRepository $teams) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->teams = app(TeamRepository::class);
-
         return $this->execute(...$arguments);
     }
 

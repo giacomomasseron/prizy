@@ -15,16 +15,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
  * Star an issue for the actor (PRD §3.2.9). A star is the actor's own state, not a change to the issue: no
  * activity, no notification, no broadcast, and the issue's updated_at is untouched.
  *
- * @method static CarbonInterface run(User $actor, Issue $issue)
+ * @method CarbonInterface run(User $actor, Issue $issue)
  */
 final class StarIssue extends BaseUseCase implements UseCaseInterface
 {
-    private readonly IssueStarRepository $stars;
+    public function __construct(private readonly IssueStarRepository $stars) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->stars = app(IssueStarRepository::class);
-
         return $this->execute(...$arguments);
     }
 

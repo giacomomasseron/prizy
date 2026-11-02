@@ -10,16 +10,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Pagination\CursorPaginator;
 
 /**
- * @method static CursorPaginator run(string $teamId, int $limit)
+ * @method CursorPaginator run(string $teamId, int $limit)
  */
 final class ListCycles extends BaseUseCase implements UseCaseInterface
 {
-    private readonly CycleRepository $cycles;
+    public function __construct(private readonly CycleRepository $cycles) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->cycles = app(CycleRepository::class);
-
         return $this->execute(...$arguments);
     }
 

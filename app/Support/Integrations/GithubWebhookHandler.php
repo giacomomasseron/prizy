@@ -23,6 +23,7 @@ final class GithubWebhookHandler
         private readonly GithubIntegrationRepository $integrations,
         private readonly GithubLinkRepository $links,
         private readonly IssueRepository $issues,
+        private readonly TransitionIssueStatus $transitionIssueStatus,
     ) {}
 
     public function handle(string $token, string $rawBody, ?string $signature, ?string $event): string
@@ -91,7 +92,7 @@ final class GithubWebhookHandler
             return;
         }
         try {
-            TransitionIssueStatus::run($actor, ['issue_id' => $link->issue_id, 'status' => 'done']);
+            $this->transitionIssueStatus->run($actor, ['issue_id' => $link->issue_id, 'status' => 'done']);
         } catch (\Throwable) {
             // A disallowed transition must not fail the whole webhook.
         }

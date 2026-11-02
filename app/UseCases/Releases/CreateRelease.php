@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
 use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
- * @method static Release run(User $actor, array $data)
+ * @method Release run(User $actor, array $data)
  */
 final class CreateRelease extends BaseUseCase implements UseCaseInterface
 {
-    private readonly ReleaseRepository $releases;
+    public function __construct(private readonly ReleaseRepository $releases) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->releases = app(ReleaseRepository::class);
-
         return $this->execute(...$arguments);
     }
 

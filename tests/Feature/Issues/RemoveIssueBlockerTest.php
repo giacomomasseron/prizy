@@ -24,7 +24,7 @@ it('removes an existing blocker edge and logs activity', function (): void {
     $d = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
     app(IssueBlockerRepository::class)->create($b->id, $d->id, $actor->id);
 
-    RemoveIssueBlocker::run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]);
+    app(RemoveIssueBlocker::class)->run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]);
 
     $this->assertDatabaseMissing('issue_blockers', ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]);
     $this->assertDatabaseHas('issue_activities', ['issue_id' => $d->id, 'type' => 'blocker_removed', 'to_value' => $b->id]);
@@ -40,7 +40,7 @@ it('rejects removing a non-existent edge', function (): void {
     $b = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
     $d = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $team->id, 'created_by' => $actor->id]);
 
-    expect(fn () => RemoveIssueBlocker::run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]))
+    expect(fn () => app(RemoveIssueBlocker::class)->run($actor, ['blocking_issue_id' => $b->id, 'blocked_issue_id' => $d->id]))
         ->toThrow(ValidationException::class);
 
     Workspace::forgetCurrent();

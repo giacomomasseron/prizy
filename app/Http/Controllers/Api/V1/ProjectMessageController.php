@@ -25,40 +25,48 @@ final class ProjectMessageController extends Controller
 {
     private const PAGE = 50;
 
+    public function __construct(
+        private readonly FindProject $findProject,
+        private readonly ListProjectMessages $listProjectMessages,
+        private readonly PostProjectMessage $postProjectMessage,
+        private readonly EditProjectMessage $editProjectMessage,
+        private readonly DeleteProjectMessage $deleteProjectMessage,
+    ) {}
+
     public function index(Request $request, string $project): JsonResponse
     {
-        $model = FindProject::run($project);
+        $model = $this->findProject->run($project);
         Gate::authorize('view', $model);
 
-        return ProjectMessageResource::collection(ListProjectMessages::run($model->id, self::PAGE))->response();
+        return ProjectMessageResource::collection($this->listProjectMessages->run($model->id, self::PAGE))->response();
     }
 
     public function store(ProjectMessageRequest $request, string $project): JsonResponse
     {
-        $model = FindProject::run($project);
+        $model = $this->findProject->run($project);
         Gate::authorize('chat', $model);
 
-        $message = PostProjectMessage::run($request->user(), $model, (string) $request->validated('body'), $request->issueIds() ?? []);
+        $message = $this->postProjectMessage->run($request->user(), $model, (string) $request->validated('body'), $request->issueIds() ?? []);
 
         return ProjectMessageResource::make($message)->response()->setStatusCode(201);
     }
 
     public function update(ProjectMessageRequest $request, string $project, string $message): JsonResponse
     {
-        $model = FindProject::run($project);
+        $model = $this->findProject->run($project);
         Gate::authorize('chat', $model);
 
-        $edited = EditProjectMessage::run($request->user(), $model, $message, (string) $request->validated('body'), $request->issueIds());
+        $edited = $this->editProjectMessage->run($request->user(), $model, $message, (string) $request->validated('body'), $request->issueIds());
 
         return ProjectMessageResource::make($edited)->response();
     }
 
     public function destroy(Request $request, string $project, string $message): Response
     {
-        $model = FindProject::run($project);
+        $model = $this->findProject->run($project);
         Gate::authorize('chat', $model);
 
-        DeleteProjectMessage::run($request->user(), $model, $message);
+        $this->deleteProjectMessage->run($request->user(), $model, $message);
 
         return response()->noContent();
     }

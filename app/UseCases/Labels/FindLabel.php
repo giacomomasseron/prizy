@@ -11,16 +11,14 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * @method static Label run(string $id)
+ * @method Label run(string $id)
  */
 final class FindLabel extends BaseUseCase implements UseCaseInterface
 {
-    private readonly LabelRepository $labels;
+    public function __construct(private readonly LabelRepository $labels) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->labels = app(LabelRepository::class);
-
         return $this->execute(...$arguments);
     }
 

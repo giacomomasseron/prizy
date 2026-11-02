@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * @method static array run(User $actor, Team $team, array $data)
+ * @method array run(User $actor, Team $team, array $data)
  */
 final class AddTeamMember extends BaseUseCase implements UseCaseInterface
 {

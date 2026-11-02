@@ -24,16 +24,26 @@ use Illuminate\Support\Facades\Gate;
 
 final class IssueController extends Controller
 {
+    public function __construct(
+        private readonly ListIssues $listIssues,
+        private readonly FindIssue $findIssue,
+        private readonly CreateIssue $createIssue,
+        private readonly UpdateIssue $updateIssue,
+        private readonly TransitionIssueStatus $transitionIssueStatus,
+        private readonly AssignIssue $assignIssue,
+        private readonly ArchiveIssue $archiveIssue,
+    ) {}
+
     public function index(ListIssuesRequest $request): JsonResponse
     {
-        $page = ListIssues::run($request->filters(), $request->sorts(), $request->limit(), $request->user()?->id);
+        $page = $this->listIssues->run($request->filters(), $request->sorts(), $request->limit(), $request->user()?->id);
 
         return IssueResource::collection($page)->response();
     }
 
     public function show(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('view', $model);
         $model->load(['assignee', 'project', 'cycle', 'release', 'supportTickets.requester.contactMetadata']);
 
@@ -42,17 +52,17 @@ final class IssueController extends Controller
 
     public function store(StoreIssueRequest $request): JsonResponse
     {
-        $issue = CreateIssue::run($request->user(), $request->validated());
+        $issue = $this->createIssue->run($request->user(), $request->validated());
 
         return IssueResource::make($issue)->response()->setStatusCode(201);
     }
 
     public function update(UpdateIssueRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        $updated = UpdateIssue::run($request->user(), array_merge(
+        $updated = $this->updateIssue->run($request->user(), array_merge(
             $request->validated(),
             ['issue_id' => $issue],
         ));
@@ -62,10 +72,10 @@ final class IssueController extends Controller
 
     public function status(TransitionStatusRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        $updated = TransitionIssueStatus::run($request->user(), [
+        $updated = $this->transitionIssueStatus->run($request->user(), [
             'issue_id' => $issue,
             'status' => $request->validated('status'),
         ]);
@@ -75,10 +85,10 @@ final class IssueController extends Controller
 
     public function assignee(AssignIssueRequest $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        $updated = AssignIssue::run($request->user(), [
+        $updated = $this->assignIssue->run($request->user(), [
             'issue_id' => $issue,
             'assignee_id' => $request->validated('assignee_id'),
         ]);
@@ -88,10 +98,10 @@ final class IssueController extends Controller
 
     public function archive(Request $request, string $issue): JsonResponse
     {
-        $model = FindIssue::run($issue);
+        $model = $this->findIssue->run($issue);
         Gate::authorize('update', $model);
 
-        $updated = ArchiveIssue::run($request->user(), ['issue_id' => $issue]);
+        $updated = $this->archiveIssue->run($request->user(), ['issue_id' => $issue]);
 
         return IssueResource::make($updated)->response();
     }

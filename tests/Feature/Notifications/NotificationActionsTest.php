@@ -43,7 +43,7 @@ it('marks a read notification as unread', function (): void {
     [$ws, $user] = notifActionsWorld();
     $notif = makeActionNotif($ws, $user, ['read_at' => now()]);
 
-    $result = MarkNotificationUnread::run($user, $notif->id);
+    $result = app(MarkNotificationUnread::class)->run($user, $notif->id);
 
     expect($result->read_at)->toBeNull();
     expect($notif->fresh()->read_at)->toBeNull();
@@ -56,7 +56,7 @@ it('throws a 404 model-not-found when mark-unread targets another user notificat
     $other = User::factory()->for($ws, 'workspace')->create();
     $foreign = makeActionNotif($ws, $other);
 
-    MarkNotificationUnread::run($user, $foreign->id);
+    app(MarkNotificationUnread::class)->run($user, $foreign->id);
 })->throws(ModelNotFoundException::class);
 
 it('toggles snooze on then off', function (): void {
@@ -64,12 +64,12 @@ it('toggles snooze on then off', function (): void {
     [$ws, $user] = notifActionsWorld();
     $notif = makeActionNotif($ws, $user);
 
-    $snoozed = ToggleNotificationSnooze::run($user, $notif->id);
+    $snoozed = app(ToggleNotificationSnooze::class)->run($user, $notif->id);
     expect($snoozed->snoozed_until)->not->toBeNull();
     expect($snoozed->snoozed_until->isFuture())->toBeTrue();
     expect($snoozed->snoozed_until->equalTo(Carbon::parse('2026-08-02 12:00:00', 'UTC')))->toBeTrue();
 
-    $unsnoozed = ToggleNotificationSnooze::run($user, $notif->id);
+    $unsnoozed = app(ToggleNotificationSnooze::class)->run($user, $notif->id);
     expect($unsnoozed->snoozed_until)->toBeNull();
 
     Workspace::forgetCurrent();
@@ -80,7 +80,7 @@ it('re-snoozes an already-expired snooze instead of toggling it off', function (
     [$ws, $user] = notifActionsWorld();
     $notif = makeActionNotif($ws, $user, ['snoozed_until' => Carbon::parse('2026-07-01 00:00:00', 'UTC')]);
 
-    $result = ToggleNotificationSnooze::run($user, $notif->id);
+    $result = app(ToggleNotificationSnooze::class)->run($user, $notif->id);
 
     expect($result->snoozed_until)->not->toBeNull();
     expect($result->snoozed_until->isFuture())->toBeTrue();
@@ -93,17 +93,17 @@ it('throws a 404 model-not-found when toggle-snooze targets another user notific
     $other = User::factory()->for($ws, 'workspace')->create();
     $foreign = makeActionNotif($ws, $other);
 
-    ToggleNotificationSnooze::run($user, $foreign->id);
+    app(ToggleNotificationSnooze::class)->run($user, $foreign->id);
 })->throws(ModelNotFoundException::class);
 
 it('toggles archive on then off', function (): void {
     [$ws, $user] = notifActionsWorld();
     $notif = makeActionNotif($ws, $user);
 
-    $archived = ToggleNotificationArchive::run($user, $notif->id);
+    $archived = app(ToggleNotificationArchive::class)->run($user, $notif->id);
     expect($archived->archived_at)->not->toBeNull();
 
-    $unarchived = ToggleNotificationArchive::run($user, $notif->id);
+    $unarchived = app(ToggleNotificationArchive::class)->run($user, $notif->id);
     expect($unarchived->archived_at)->toBeNull();
 
     Workspace::forgetCurrent();
@@ -114,7 +114,7 @@ it('throws a 404 model-not-found when toggle-archive targets another user notifi
     $other = User::factory()->for($ws, 'workspace')->create();
     $foreign = makeActionNotif($ws, $other);
 
-    ToggleNotificationArchive::run($user, $foreign->id);
+    app(ToggleNotificationArchive::class)->run($user, $foreign->id);
 })->throws(ModelNotFoundException::class);
 
 it('excludes archived and currently-snoozed notifications from the unread count, but includes an expired snooze', function (): void {
@@ -128,7 +128,7 @@ it('excludes archived and currently-snoozed notifications from the unread count,
     // Read notifications never count, regardless of archive/snooze state.
     makeActionNotif($ws, $user, ['read_at' => now()]);
 
-    $count = CountUnread::run($user);
+    $count = app(CountUnread::class)->run($user);
 
     // Qualifying unread notifications: $plain and $expiredSnooze only.
     expect($count)->toBe(2);

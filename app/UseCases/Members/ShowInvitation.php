@@ -14,16 +14,14 @@ use Illuminate\Validation\ValidationException;
  * What the accept page shows the invitee: who is invited, to which workspace
  * and by whom. Holding the raw token proves they received the email.
  *
- * @method static array run(string $token)
+ * @method array run(string $token)
  */
 final class ShowInvitation extends BaseUseCase implements UseCaseInterface
 {
-    private readonly OpenInvitation $openInvitation;
+    public function __construct(private readonly OpenInvitation $openInvitation) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->openInvitation = app(OpenInvitation::class);
-
         return $this->execute(...$arguments);
     }
 

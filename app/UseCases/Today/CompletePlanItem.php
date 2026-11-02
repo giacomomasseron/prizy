@@ -18,16 +18,17 @@ use Illuminate\Validation\ValidationException;
  * (activity, notifications, completed_at), and the plan item keeps the status it had, for Undo. The caller has
  * checked the actor may change the issue. An issue that is not on the plan → 404; one already done → 422.
  *
- * @method static UserPlanItem run(User $actor, string $issueId)
+ * @method UserPlanItem run(User $actor, string $issueId)
  */
 final class CompletePlanItem extends BaseUseCase implements UseCaseInterface
 {
-    private readonly UserPlanItemRepository $items;
+    public function __construct(
+        private readonly UserPlanItemRepository $items,
+        private readonly TransitionIssueStatus $transitionIssueStatus,
+    ) {}
 
     public function handle(mixed ...$arguments): mixed
     {
-        $this->items = app(UserPlanItemRepository::class);
-
         return $this->execute(...$arguments);
     }
 
@@ -44,7 +45,7 @@ final class CompletePlanItem extends BaseUseCase implements UseCaseInterface
 
         // The status change runs its own transaction and fires its events once it commits; the previous status is
         // kept only after the issue is really done.
-        TransitionIssueStatus::run($actor, ['issue_id' => $issueId, 'status' => 'done']);
+        $this->transitionIssueStatus->run($actor, ['issue_id' => $issueId, 'status' => 'done']);
         $item->previous_status = $from;
         // Undo compares the completion with this stamp, so it must move on every Done (an unchanged status leaves the row clean).
         $item->updated_at = $item->freshTimestamp();
