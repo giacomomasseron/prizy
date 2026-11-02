@@ -1,0 +1,81 @@
+import { render, screen, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ProjectSidebar } from './ProjectSidebar';
+
+function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
+function renderSidebar(path = '/projects/p1/issues', messagesCount: number | null = 7) {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        if (url.includes('/members')) return j({ data: [] });
+        if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: 'member', is_developer: false, is_agent: false, email_digest_frequency: 'off' } });
+        if (url.includes('/milestones')) return j({ data: [{ id: 'm1', project_id: 'p1', name: 'M', target_date: '2099-01-01', created_at: '', updated_at: '' }], links: { next: null } });
+        if (url.includes('/issues')) return j({ data: [{ id: 'i1', title: 'x', status: 'todo', priority: 'low', description: null, estimate: null, due_date: null, sort_order: 0, team_id: 't1', project_id: 'p1', cycle_id: null, parent_issue_id: null, assignee_id: null, created_by: 'u1', archived_at: null, created_at: '', updated_at: '' }], links: { next: null } });
+        // projects list (page shape) and single project
+        if (/\/projects\/p1(\?|$)/.test(url)) return j({ data: { id: 'p1', name: 'Escalation Engine', color: '#6d69f2', status: 'in_progress', description: null, icon: null, team_id: null, start_date: null, target_date: null, lead_id: null, priority: 'high', created_by: 'u1', created_at: '', updated_at: '', messages_count: messagesCount ?? undefined } });
+        if (url.includes('/projects')) return j({ data: [{ id: 'p1', name: 'Escalation Engine', color: '#6d69f2' }, { id: 'p2', name: 'Unified Inbox', color: '#5b8def' }], links: { next: null } });
+        return j({ data: {} });
+    }));
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><Routes><Route path="/projects/:id/*" element={<ProjectSidebar projectId="p1" />} /></Routes></MemoryRouter></QueryClientProvider>);
+}
+
+describe('ProjectSidebar', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it('renders the five sub-nav links', async () => {
+        renderSidebar();
+        for (const label of ['Overview', 'Chat', 'Issues', 'Cycles', 'Roadmap']) {
+            expect(await screen.findByRole('link', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
+        }
+    });
+    it('P7-C: Chat comes after Overview, opens the chat and shows its message count', async () => {
+        renderSidebar();
+        const chat = await screen.findByRole('link', { name: /^Chat/ });
+        expect(chat).toHaveAttribute('href', '/projects/p1/chat');
+        expect(await within(chat).findByText('7')).toBeInTheDocument();
+        const links = screen.getAllByRole('link');
+        expect(links.indexOf(chat)).toBe(links.indexOf(screen.getByRole('link', { name: /^Overview/ })) + 1);
+    });
+    it('P7-C: shows no chat count until the project carries one', async () => {
+        renderSidebar('/projects/p1/issues', null);
+        await screen.findByText('In Progress');
+        expect(screen.getByRole('link', { name: /^Chat/ })).toHaveTextContent(/^Chat$/);
+    });
+    it('renders "All projects" back link and a switch-project list', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('link', { name: /All projects/ })).toBeInTheDocument();
+        expect(await screen.findByRole('link', { name: /Unified Inbox/ })).toBeInTheDocument();
+    });
+    it('marks the active sub-nav link (Issues) as current', async () => {
+        renderSidebar('/projects/p1/issues');
+        const issues = await screen.findByRole('link', { name: /^Issues/ });
+        expect(issues).toHaveAttribute('aria-current', 'page');
+    });
+    it('v2: the back link is an outlined pill whose hover lives in classes', async () => {
+        renderSidebar();
+        const back = await screen.findByRole('link', { name: /All projects/ });
+        expect(back.style.borderRadius).toBe('var(--radius-pill)');
+        expect(back.style.borderColor).toBe('');
+        expect(back.className).toContain('hover:border-fg');
+    });
+    it('v2: the identity shows a round badge and the project status instead of "Project"', async () => {
+        renderSidebar();
+        expect(await screen.findByText('In Progress')).toBeInTheDocument();
+        expect(screen.queryByText('Project')).toBeNull();
+        const name = screen.getByText('Escalation Engine', { selector: 'div' });
+        const badge = name.parentElement!.previousElementSibling as HTMLElement;
+        expect(badge.style.borderRadius).toBe('50%');
+        expect(badge.textContent).toBe('E');
+    });
+
+    it('G3b: the project links are a named navigation landmark', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('navigation', { name: 'Project' })).toBeInTheDocument();
+    });
+
+    it('G3b: the switch-project list marks the current project', async () => {
+        renderSidebar();
+        expect(await screen.findByRole('link', { name: 'Escalation Engine' })).toHaveAttribute('aria-current', 'page');
+        expect(screen.getByRole('link', { name: 'Unified Inbox' })).not.toHaveAttribute('aria-current');
+    });
+});

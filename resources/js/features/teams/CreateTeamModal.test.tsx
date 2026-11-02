@@ -1,0 +1,74 @@
+import { describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import CreateTeamModal from './CreateTeamModal';
+
+function wrap(ui: React.ReactElement) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+    return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+}
+
+describe('CreateTeamModal', () => {
+    it('auto-suggests an identifier from the name and posts', async () => {
+        const calls: string[] = [];
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            calls.push(String(url));
+            return new Response(JSON.stringify({ data: { id: 't9', name: 'Platform', identifier: 'PLA', color: '#6366f1' } }), { status: 201 });
+        }));
+        const onClose = vi.fn();
+        wrap(<CreateTeamModal open onClose={onClose} />);
+        fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'Platform' } });
+        expect((screen.getByLabelText(/identifier/i) as HTMLInputElement).value).toBe('PLA');
+        fireEvent.click(screen.getByRole('button', { name: /create team/i }));
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
+        expect(calls.some((u) => u.includes('/teams'))).toBe(true);
+    });
+
+    it('shows an inline error on 422 and stays open', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ title: 'Unprocessable', detail: 'Identifier already taken.' }), { status: 422 })));
+        const onClose = vi.fn();
+        wrap(<CreateTeamModal open onClose={onClose} />);
+        fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'Eng' } });
+        fireEvent.click(screen.getByRole('button', { name: /create team/i }));
+        expect(await screen.findByText('Identifier already taken.')).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('clears the form when closed and reopened', () => {
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+        const Wrapper = ({ open }: { open: boolean }) => (
+            <QueryClientProvider client={qc}><CreateTeamModal open={open} onClose={() => {}} /></QueryClientProvider>
+        );
+        const { rerender } = render(<Wrapper open />);
+        fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'Temp' } });
+        rerender(<Wrapper open={false} />);
+        rerender(<Wrapper open />);
+        expect(screen.getByLabelText(/team name/i)).toHaveValue('');
+    });
+
+    it('v2: the preview tile follows the identifier and colour; the selected swatch has the ring', () => {
+        wrap(<CreateTeamModal open onClose={vi.fn()} />);
+        fireEvent.change(screen.getByLabelText(/team name/i), { target: { value: 'Platform' } });
+        expect(screen.getByText('PLA').style.background).toBe('rgb(99, 102, 241)'); // #6366f1
+        fireEvent.click(screen.getByRole('button', { name: 'Color #4bab66' }));
+        expect(screen.getByText('PLA').style.background).toBe('rgb(75, 171, 102)'); // #4bab66
+        expect(screen.getByRole('button', { name: 'Color #4bab66' }).style.boxShadow).toContain('var(--fg)');
+        expect(screen.getByRole('button', { name: 'Color #6366f1' }).style.boxShadow).toBe('none');
+        expect(screen.getByRole('heading', { name: 'Create team' }).style.fontFamily).toBe('var(--font-display)');
+    });
+
+    it('G3b: colour swatches say which colour is selected', () => {
+        wrap(<CreateTeamModal open onClose={() => {}} />);
+        expect(screen.getByRole('button', { name: 'Color #6366f1' })).toHaveAttribute('aria-pressed', 'true');
+        fireEvent.click(screen.getByRole('button', { name: 'Color #4bab66' }));
+        expect(screen.getByRole('button', { name: 'Color #4bab66' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Color #6366f1' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('G3c: the colour swatches are a group named Colour', () => {
+        wrap(<CreateTeamModal open onClose={vi.fn()} />);
+        expect(screen.getByRole('group', { name: 'Colour' })).toBeInTheDocument();
+    });
+});

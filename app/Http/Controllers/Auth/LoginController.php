@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\UseCases\Auth\LogIn;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
+final class LoginController extends Controller
+{
+    /**
+     * Authenticate the user within the current workspace.
+     *
+     * Validates email + password, delegates to the LogIn use case, and returns
+     * the authenticated user (without sensitive fields) on success.
+     * Returns 422 if credentials are invalid.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'email'    => ['required', 'email'],
+            'password' => ['required', 'string'],
+        ]);
+
+        $user = LogIn::run($data['email'], $data['password']);
+
+        // Rotate the session ID after successful authentication to prevent session fixation:
+        // a planted session ID (e.g. via a sibling-subdomain cookie) must not survive login.
+        $request->session()->regenerate();
+
+        return response()->json([
+            'user' => $user->only([
+                'id', 'workspace_id', 'name', 'email', 'admin_level',
+                'is_developer', 'is_agent', 'timezone', 'locale',
+                'email_verified_at', 'last_seen_at', 'created_at',
+            ]),
+        ]);
+    }
+
+    /**
+     * Log the user out: clear the session and invalidate the CSRF token.
+     */
+    public function destroy(Request $request): JsonResponse
+    {
+        Auth::logout();
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->json(['message' => 'Logged out.']);
+    }
+}

@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Notifications;
+
+use App\Models\Notification;
+use App\Repositories\NotificationPreferenceRepository;
+use App\Repositories\NotificationRepository;
+use App\Repositories\NotificationSubscriptionRepository;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+
+/**
+ * Single chokepoint for creating a notification: gates creation first on the
+ * recipient's team/project subscription level for issue-scoped subjects (via
+ * NotificationSubscriptionRepository::levelFor — 'off' always skips, 'mentions'
+ * skips everything except the mention types), then on the recipient's `in_app`
+ * preference for the event category $type maps to (via
+ * NotificationPreferenceRepository::TYPE_TO_EVENT), then persists it. Types
+ * with no known event-category mapping default to creating (never silently
+ * dropped).
+ *
+ * Does NOT fire NotificationCreated itself — the caller runs inside a
+ * DB::transaction() and must collect a NotificationCreated event from the
+ * returned Notification and dispatch it AFTER the transaction commits,
+ * alongside its other domain events. This keeps broadcasts from firing for
+ * rows that get rolled back.
+ *
+ * @method static ?Notification run(string $recipientId, string $type, string $subjectType, string $subjectId, ?string $actorId = null, ?string $body = null, ?string $teamId = null, ?string $projectId = null)
+ */
+final class NotificationDispatcher extends BaseUseCase implements UseCaseInterface
+{
+    private readonly NotificationRepository $notifications;
+
+    private readonly NotificationPreferenceRepository $preferences;
+
+    private readonly NotificationSubscriptionRepository $subscriptions;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->notifications = app(NotificationRepository::class);
+        $this->preferences = app(NotificationPreferenceRepository::class);
+        $this->subscriptions = app(NotificationSubscriptionRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    private function execute(
+        string $recipientId,
+        string $type,
+        string $subjectType,
+        string $subjectId,
+        ?string $actorId = null,
+        ?string $body = null,
+        ?string $teamId = null,
+        ?string $projectId = null,
+    ): ?Notification {
+        // The scope's subscription level: an issue's team (and project), or a project chat's project. "Mentions only"
+        // lets every mention type through.
+        if (($subjectType === 'issue' && $teamId !== null) || $type === 'project_mentioned') {
+            $level = $this->subscriptions->levelFor($recipientId, $teamId, $projectId);
+
+            if ($level === 'off') {
+                return null;
+            }
+
+            if ($level === 'mentions' && ! in_array($type, NotificationRepository::MENTION_TYPES, true)) {
+                return null;
+            }
+        }
+
+        $eventType = NotificationPreferenceRepository::TYPE_TO_EVENT[$type] ?? null;
+
+        if ($eventType !== null && ! $this->preferences->wants($recipientId, $eventType, 'in_app')) {
+            return null;
+        }
+
+        return $this->notifications->create($recipientId, $type, $subjectType, $subjectId, $actorId, $body);
+    }
+}

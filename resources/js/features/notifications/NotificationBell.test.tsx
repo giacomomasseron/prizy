@@ -1,0 +1,221 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { NotificationBell } from './NotificationBell';
+import { Drawer } from '../../components/ui/Drawer';
+
+const markAll = vi.fn();
+const markRead = vi.fn();
+let unreadCount = 3;
+let listItems: Array<Record<string, unknown>> = [
+    { id: 'n1', type: 'issue_assigned', subject_type: 'issue', subject_id: 'i1', read_at: null, created_at: new Date().toISOString() },
+    { id: 'n2', type: 'issue_unblocked', subject_type: 'issue', subject_id: 'i2', read_at: new Date().toISOString(), created_at: new Date().toISOString() },
+];
+
+vi.mock('./hooks', () => ({
+    useUnreadCount: () => ({ data: { count: unreadCount } }),
+    useNotifications: (_category: string, _unreadOnly: boolean, _enabled: boolean) => ({ data: { items: listItems }, isLoading: false }),
+    useMarkAllRead: () => ({ mutate: markAll }),
+    useMarkRead: () => ({ mutate: markRead }),
+}));
+
+function wrap() {
+    return render(
+        <MemoryRouter initialEntries={['/']}>
+            <Routes>
+                <Route path="/" element={<NotificationBell />} />
+                <Route path="/issues/:id" element={<div>issue page</div>} />
+                <Route path="/projects/:id/chat" element={<div>chat page</div>} />
+                <Route path="/notifications" element={<div>inbox page</div>} />
+            </Routes>
+        </MemoryRouter>,
+    );
+}
+
+describe('NotificationBell', () => {
+    beforeEach(() => { markAll.mockClear(); markRead.mockClear(); unreadCount = 3; listItems = [
+        { id: 'n1', type: 'issue_assigned', subject_type: 'issue', subject_id: 'i1', read_at: null, created_at: new Date().toISOString() },
+        { id: 'n2', type: 'issue_unblocked', subject_type: 'issue', subject_id: 'i2', read_at: new Date().toISOString(), created_at: new Date().toISOString() },
+    ]; });
+    afterEach(() => vi.clearAllMocks());
+
+    it('shows the unread badge with the count', () => {
+        wrap();
+        expect(screen.getByTestId('notif-bell-badge')).toHaveTextContent('3');
+    });
+
+    it('caps the badge at 99+', () => {
+        unreadCount = 128;
+        wrap();
+        expect(screen.getByTestId('notif-bell-badge')).toHaveTextContent('99+');
+    });
+
+    it('hides the badge when there are no unread notifications', () => {
+        unreadCount = 0;
+        wrap();
+        expect(screen.queryByTestId('notif-bell-badge')).not.toBeInTheDocument();
+    });
+
+    it('opens the dropdown on click, listing recent notifications + an Open inbox link', () => {
+        wrap();
+        expect(screen.queryByRole('dialog', { name: 'Notifications' })).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        const panel = screen.getByRole('dialog', { name: 'Notifications' });
+        expect(panel).toBeInTheDocument();
+        expect(screen.getByText('You were assigned an issue')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /Open inbox/ })).toHaveAttribute('href', '/notifications');
+    });
+
+    it('Mark all read fires the mutation', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Mark all read' }));
+        expect(markAll).toHaveBeenCalled();
+    });
+
+    it('clicking a notification marks it read and navigates to its subject', async () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        fireEvent.click(screen.getByText('You were assigned an issue'));
+        expect(markRead).toHaveBeenCalledWith('n1');
+        await waitFor(() => expect(screen.getByText('issue page')).toBeInTheDocument());
+    });
+
+    it('P7-C: a chat mention opens the message in the project chat', async () => {
+        listItems = [{
+            id: 'n3', type: 'project_mentioned', subject_type: 'project_message', subject_id: 'm1', read_at: null, created_at: new Date().toISOString(),
+            actor: { id: 'u1', name: 'Alex Rivera' },
+            subject: { type: 'project_message', id: 'm1', ref: 'Unified Inbox chat', title: 'Can you look?', path: '/projects/p1/chat?message=m1' },
+        }];
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        fireEvent.click(screen.getByText('mentioned you in the project chat'));
+        expect(markRead).toHaveBeenCalledWith('n3');
+        await waitFor(() => expect(screen.getByText('chat page')).toBeInTheDocument());
+    });
+
+    it('shows an empty state when there are no notifications', () => {
+        listItems = [];
+        unreadCount = 0;
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
+    });
+
+    it('renders the actor avatar and subject ref chip when the notification is enriched', () => {
+        listItems = [
+            {
+                id: 'n3',
+                type: 'issue_commented',
+                subject_type: 'issue',
+                subject_id: 'i3',
+                read_at: null,
+                created_at: new Date().toISOString(),
+                actor: { id: 'u1', name: 'Ada Lovelace' },
+                body: 'Looks good to me, shipping this now.',
+                subject: { type: 'issue', id: 'i3', ref: 'ENG-42', title: 'Fix the thing', path: '/issues/i3' },
+            },
+        ];
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+        expect(screen.getByTitle('Ada Lovelace')).toBeInTheDocument();
+        expect(screen.getByText('ENG-42')).toBeInTheDocument();
+        expect(screen.getByText('Looks good to me, shipping this now.')).toBeInTheDocument();
+    });
+
+    it('does not prefix the actor name for full-sentence notification types like issue_assigned', () => {
+        listItems = [
+            {
+                id: 'n4',
+                type: 'issue_assigned',
+                subject_type: 'issue',
+                subject_id: 'i4',
+                read_at: null,
+                created_at: new Date().toISOString(),
+                actor: { id: 'u2', name: 'Jane Doe' },
+            },
+        ];
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByText('You were assigned an issue')).toBeInTheDocument();
+        expect(screen.queryByText(/Jane Doe You were assigned/)).not.toBeInTheDocument();
+        expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument();
+        expect(screen.getByTitle('Jane Doe')).toBeInTheDocument();
+    });
+
+    it('v2 trigger: 34px round, colours via classes (hover works), accent while open', () => {
+        wrap();
+        const bell = screen.getByRole('button', { name: 'Notifications' });
+        expect(bell.style.borderRadius).toBe('50%');
+        expect(bell.style.width).toBe('34px');
+        expect(bell.style.borderColor).toBe('');
+        expect(bell.className).toContain('hover:border-border2');
+        fireEvent.click(bell);
+        expect(bell.className).toContain('border-accent');
+        expect(bell.className).toContain('bg-accent2');
+    });
+
+    it('v2 dropdown: ink border and offset shadow; colours that change on hover live in classes', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        const panel = screen.getByRole('dialog', { name: 'Notifications' });
+        expect(panel.style.border).toBe('var(--line) solid var(--fg)');
+        expect(panel.style.boxShadow).toBe('var(--pop-shadow)');
+        const markAll = screen.getByRole('button', { name: 'Mark all read' });
+        expect(markAll.className).toContain('enabled:hover:text-fg');
+        expect(markAll.style.color).toBe('');
+        const inbox = screen.getByRole('link', { name: /Open inbox/ });
+        expect(inbox.className).toContain('hover:text-fg');
+        expect(inbox.style.color).toBe('');
+    });
+
+    it('G3a: the unread count in the dropdown header writes accent text in the ink partner on its accent tint', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        const panel = screen.getByRole('dialog', { name: 'Notifications' });
+        const count = screen.getAllByText('3').find((el) => panel.contains(el)) as HTMLElement;
+        expect(count.style.color).toBe('var(--accent-ink)');
+        expect(count.style.background).toBe('var(--accent2)');
+    });
+
+    it('G3b: the bell says whether its panel is open, and each item is a button that opens on Enter', async () => {
+        wrap();
+        const bell = screen.getByRole('button', { name: 'Notifications' });
+        expect(bell).toHaveAttribute('aria-haspopup', 'dialog');
+        expect(bell).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(bell);
+        expect(bell).toHaveAttribute('aria-expanded', 'true');
+        const item = screen.getByRole('button', { name: 'Unread: You were assigned an issue' });
+        item.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(markRead).toHaveBeenCalledWith('n1');
+        await waitFor(() => expect(screen.getByText('issue page')).toBeInTheDocument());
+    });
+
+    it('G3c: only an unread item\'s primary control starts with a visually hidden "Unread: "', () => {
+        wrap();
+        fireEvent.click(screen.getByRole('button', { name: 'Notifications' }));
+        expect(screen.getByRole('button', { name: 'Unread: You were assigned an issue' }).querySelector('.sr-only')).toHaveTextContent('Unread:');
+        expect(screen.getByRole('button', { name: "An issue you're assigned was unblocked" }).querySelector('.sr-only')).toBeNull();
+    });
+
+    it('G3c: Escape closes the open panel and returns focus to the bell, leaving a drawer under it open', async () => {
+        const onClose = vi.fn();
+        render(
+            <MemoryRouter initialEntries={['/']}>
+                <Drawer open onClose={onClose} label="Peek">peek</Drawer>
+                <NotificationBell />
+            </MemoryRouter>,
+        );
+        const bell = screen.getByRole('button', { name: 'Notifications' });
+        fireEvent.click(bell);
+        expect(screen.getByRole('dialog', { name: 'Notifications' })).toBeInTheDocument();
+        await userEvent.keyboard('{Escape}');
+        await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Notifications' })).toBeNull());
+        expect(bell).toHaveFocus();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(screen.getByRole('dialog', { name: 'Peek' })).toBeInTheDocument();
+    });
+});

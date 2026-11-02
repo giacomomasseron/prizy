@@ -1,0 +1,98 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\V1\AssignIssueRequest;
+use App\Http\Requests\Api\V1\ListIssuesRequest;
+use App\Http\Requests\Api\V1\StoreIssueRequest;
+use App\Http\Requests\Api\V1\TransitionStatusRequest;
+use App\Http\Requests\Api\V1\UpdateIssueRequest;
+use App\Http\Resources\IssueResource;
+use App\UseCases\Issues\ArchiveIssue;
+use App\UseCases\Issues\AssignIssue;
+use App\UseCases\Issues\CreateIssue;
+use App\UseCases\Issues\FindIssue;
+use App\UseCases\Issues\ListIssues;
+use App\UseCases\Issues\TransitionIssueStatus;
+use App\UseCases\Issues\UpdateIssue;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
+
+final class IssueController extends Controller
+{
+    public function index(ListIssuesRequest $request): JsonResponse
+    {
+        $page = ListIssues::run($request->filters(), $request->sorts(), $request->limit(), $request->user()?->id);
+
+        return IssueResource::collection($page)->response();
+    }
+
+    public function show(Request $request, string $issue): JsonResponse
+    {
+        $model = FindIssue::run($issue);
+        Gate::authorize('view', $model);
+        $model->load(['assignee', 'project', 'cycle', 'release', 'supportTickets.requester.contactMetadata']);
+
+        return IssueResource::make($model)->response();
+    }
+
+    public function store(StoreIssueRequest $request): JsonResponse
+    {
+        $issue = CreateIssue::run($request->user(), $request->validated());
+
+        return IssueResource::make($issue)->response()->setStatusCode(201);
+    }
+
+    public function update(UpdateIssueRequest $request, string $issue): JsonResponse
+    {
+        $model = FindIssue::run($issue);
+        Gate::authorize('update', $model);
+
+        $updated = UpdateIssue::run($request->user(), array_merge(
+            $request->validated(),
+            ['issue_id' => $issue],
+        ));
+
+        return IssueResource::make($updated)->response();
+    }
+
+    public function status(TransitionStatusRequest $request, string $issue): JsonResponse
+    {
+        $model = FindIssue::run($issue);
+        Gate::authorize('update', $model);
+
+        $updated = TransitionIssueStatus::run($request->user(), [
+            'issue_id' => $issue,
+            'status' => $request->validated('status'),
+        ]);
+
+        return IssueResource::make($updated)->response();
+    }
+
+    public function assignee(AssignIssueRequest $request, string $issue): JsonResponse
+    {
+        $model = FindIssue::run($issue);
+        Gate::authorize('update', $model);
+
+        $updated = AssignIssue::run($request->user(), [
+            'issue_id' => $issue,
+            'assignee_id' => $request->validated('assignee_id'),
+        ]);
+
+        return IssueResource::make($updated)->response();
+    }
+
+    public function archive(Request $request, string $issue): JsonResponse
+    {
+        $model = FindIssue::run($issue);
+        Gate::authorize('update', $model);
+
+        $updated = ArchiveIssue::run($request->user(), ['issue_id' => $issue]);
+
+        return IssueResource::make($updated)->response();
+    }
+}

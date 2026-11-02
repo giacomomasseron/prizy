@@ -1,0 +1,131 @@
+import { Navigate, Route, Routes } from 'react-router-dom';
+import type { ReactElement } from 'react';
+import { useMe } from './auth/useAuth';
+import AppLayout from './components/AppLayout';
+import { RootRedirect } from './components/RootRedirect';
+import LoginPage from './auth/LoginPage';
+import SignupPage from './auth/SignupPage';
+import FindWorkspacePage from './auth/FindWorkspacePage';
+import AcceptInvitePage from './auth/AcceptInvitePage';
+import { onSignupHost } from './auth/signupUrl';
+import SetupPage from './features/setup/SetupPage';
+import IssueListPage from './features/issues/IssueListPage';
+import BoardPage from './features/issues/BoardPage';
+import IssueDetailPage from './features/issues/IssueDetailPage';
+import TodayPage from './features/today/TodayPage';
+import TeamsPage from './features/teams/TeamsPage';
+import TeamDetailPage from './features/teams/TeamDetailPage';
+import CyclesPage from './features/cycles/CyclesPage';
+import ProjectsPage from './features/projects/ProjectsPage';
+import ProjectWorkspace from './features/projects/ProjectWorkspace';
+import ProjectOverview from './features/projects/ProjectOverview';
+import ProjectIssues from './features/projects/ProjectIssues';
+import ProjectCycles from './features/projects/ProjectCycles';
+import ProjectRoadmap from './features/projects/ProjectRoadmap';
+import ChatPage from './features/chat/ChatPage';
+import LabelsSettingsPage from './features/labels/LabelsSettingsPage';
+import BusinessHoursSettingsPage from './features/business-hours/BusinessHoursSettingsPage';
+import SlaPoliciesSettingsPage from './features/sla-policies/SlaPoliciesSettingsPage';
+import RoadmapPage from './features/roadmap/RoadmapPage';
+import AnalyticsLayout from './features/analytics/AnalyticsLayout';
+import ReleasesPage from './features/releases/ReleasesPage';
+import ReleaseDetailPage from './features/releases/ReleaseDetailPage';
+import NotificationsPage from './features/notifications/NotificationsPage';
+import SearchPage from './features/search/SearchPage';
+import IntegrationsSettingsPage from './features/integrations/IntegrationsSettingsPage';
+import CreateScreen from './features/create/CreateScreen';
+import SettingsLayout, { RequireManage, StubPage } from './features/settings/SettingsLayout';
+import MembersPage from './features/members/MembersPage';
+import TeamsSettingsPage from './features/teams/TeamsSettingsPage';
+import GeneralPage from './features/settings/GeneralPage';
+import { ConfirmProvider } from './components/ui/ConfirmProvider';
+import SupportLayout from './features/support/SupportLayout';
+import ReportingLayout from './features/reporting/ReportingLayout';
+import KbLibraryPage from './features/kb/KbLibraryPage';
+import KbArticleEditorPage from './features/kb/KbArticleEditorPage';
+import { RequireAgent } from './auth/RequireAgent';
+import { RequireDeveloper } from './auth/RequireDeveloper';
+import { RequireTracker } from './auth/RequireTracker';
+
+function RequireAuth({ children }: { children: ReactElement }) {
+    const me = useMe();
+    if (me.isLoading) return <p className="p-8">Loading…</p>;
+    if (me.isError) return <Navigate to="/login" replace />;
+    return children;
+}
+
+function AuthedLayout() {
+    return (
+        <RequireAuth>
+            <ConfirmProvider>
+                <AppLayout />
+            </ConfirmProvider>
+        </RequireAuth>
+    );
+}
+
+export default function AppRouter() {
+    // The sign-up host is no workspace: its root is the sign-up page, and that
+    // is its one address, so older /signup links land there.
+    const signupHost = onSignupHost();
+
+    return (
+        <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            {signupHost && <Route path="/" element={<SignupPage />} />}
+            <Route path="/signup" element={signupHost ? <Navigate to="/" replace /> : <SignupPage />} />
+            <Route path="/find" element={<FindWorkspacePage />} />
+            {/* The link in an invitation email: the invitee has no session yet. */}
+            <Route path="/invitations/:token/accept" element={<AcceptInvitePage />} />
+            {/* Steps 2–3 of setting up a new workspace (sign-up was step 1): its own full-page frame, no app shell. */}
+            <Route path="/setup" element={<RequireAuth><SetupPage /></RequireAuth>} />
+            <Route element={<AuthedLayout />}>
+                <Route path="/" element={<RootRedirect />} />
+                {/* P7-B: the tracker user's home (homePathFor); `/` leads here */}
+                <Route path="/today" element={<RequireDeveloper><TodayPage /></RequireDeveloper>} />
+                <Route path="/issues" element={<RequireDeveloper><IssueListPage /></RequireDeveloper>} />
+                <Route path="/board" element={<RequireDeveloper><BoardPage /></RequireDeveloper>} />
+                {/* Not RequireDeveloper — the ticket→issue bridge opens it for agents too */}
+                <Route path="/issues/:id" element={<RequireTracker><IssueDetailPage /></RequireTracker>} />
+                <Route path="/teams" element={<RequireDeveloper><TeamsPage /></RequireDeveloper>} />
+                <Route path="/teams/:id" element={<RequireDeveloper><TeamDetailPage /></RequireDeveloper>} />
+                <Route path="/teams/:id/cycles" element={<RequireDeveloper><CyclesPage /></RequireDeveloper>} />
+                <Route path="/projects" element={<RequireDeveloper><ProjectsPage /></RequireDeveloper>} />
+                <Route path="/projects/:id" element={<RequireDeveloper><ProjectWorkspace /></RequireDeveloper>}>
+                    <Route index element={<ProjectOverview />} />
+                    <Route path="chat" element={<ChatPage />} />
+                    <Route path="issues" element={<ProjectIssues />} />
+                    <Route path="cycles" element={<ProjectCycles />} />
+                    <Route path="roadmap" element={<ProjectRoadmap />} />
+                </Route>
+                <Route path="/labels" element={<Navigate to="/settings/labels" replace />} />
+                <Route path="/roadmap" element={<RequireDeveloper><RoadmapPage /></RequireDeveloper>} />
+                <Route path="/analytics" element={<RequireDeveloper><AnalyticsLayout /></RequireDeveloper>} />
+                <Route path="/releases" element={<RequireDeveloper><ReleasesPage /></RequireDeveloper>} />
+                <Route path="/releases/:id" element={<RequireDeveloper><ReleaseDetailPage /></RequireDeveloper>} />
+                <Route path="/notifications" element={<RequireTracker><NotificationsPage /></RequireTracker>} />
+                <Route path="/settings" element={<SettingsLayout />}>
+                    <Route index element={<Navigate to="members" replace />} />
+                    <Route path="members" element={<RequireManage><MembersPage /></RequireManage>} />
+                    <Route path="teams" element={<RequireManage><RequireTracker><TeamsSettingsPage /></RequireTracker></RequireManage>} />
+                    <Route path="general" element={<GeneralPage />} />
+                    <Route path="labels" element={<RequireTracker><LabelsSettingsPage /></RequireTracker>} />
+                    <Route path="business-hours" element={<RequireAgent><BusinessHoursSettingsPage /></RequireAgent>} />
+                    <Route path="sla-policies" element={<RequireAgent><SlaPoliciesSettingsPage /></RequireAgent>} />
+                    <Route path="integrations" element={<RequireManage><RequireTracker><IntegrationsSettingsPage /></RequireTracker></RequireManage>} />
+                    <Route path="billing" element={<StubPage title="Billing" />} />
+                    <Route path="audit" element={<StubPage title="Audit log" />} />
+                </Route>
+                <Route path="/search" element={<RequireDeveloper><SearchPage /></RequireDeveloper>} />
+                <Route path="/integrations" element={<Navigate to="/settings/integrations" replace />} />
+                <Route path="/create" element={<RequireDeveloper><CreateScreen /></RequireDeveloper>} />
+                <Route path="/support" element={<RequireAgent><SupportLayout /></RequireAgent>} />
+                <Route path="/support/tickets/:id" element={<RequireAgent><SupportLayout /></RequireAgent>} />
+                <Route path="/support/reporting" element={<RequireAgent><ReportingLayout /></RequireAgent>} />
+                <Route path="/support/kb" element={<RequireAgent><KbLibraryPage /></RequireAgent>} />
+                <Route path="/support/kb/new" element={<RequireAgent><KbArticleEditorPage /></RequireAgent>} />
+                <Route path="/support/kb/articles/:id" element={<RequireAgent><KbArticleEditorPage /></RequireAgent>} />
+            </Route>
+        </Routes>
+    );
+}

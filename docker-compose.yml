@@ -1,0 +1,105 @@
+# Development email always lands in Mailpit, whatever .env says: environment
+# beats env_file.
+x-mailpit-env: &mailpit-env
+  MAIL_MAILER: smtp
+  MAIL_HOST: mailpit
+  MAIL_PORT: 1025
+
+services:
+  app:
+    build:
+      context: .
+      args:
+        UID: "1000"   # change if `id -u` is not 1000
+        GID: "1000"   # change if `id -g` is not 1000
+    image: prizy/app:dev
+    container_name: prizy-app
+    # --no-reload: without it artisan serve hides this environment from the web
+    # server, which then reads .env and misses the Mailpit settings.
+    command: php artisan serve --host=0.0.0.0 --port=8000 --no-reload
+    volumes:
+      - .:/var/www/html
+      - ./docker/php/zz-memory.ini:/usr/local/etc/php/conf.d/zz-memory.ini:ro
+    ports:
+      - "8001:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      mailpit:
+        condition: service_started
+    env_file: .env
+    environment: *mailpit-env
+
+  postgres:
+    image: postgres:16
+    container_name: prizy-postgres
+    environment:
+      POSTGRES_DB: prizy
+      POSTGRES_USER: prizy
+      POSTGRES_PASSWORD: secret
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres:/docker-entrypoint-initdb.d
+    # Lets `docker compose up --wait` block until the DB actually accepts
+    # connections (and its init scripts have finished) before migrate/seed run.
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U prizy -d prizy"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
+  redis:
+    image: redis:7
+    container_name: prizy-redis
+    ports:
+      - "6380:6379"
+
+  # Inbox at http://localhost:8025.
+  mailpit:
+    image: axllent/mailpit:v1.33.0
+    container_name: prizy-mailpit
+    ports:
+      - "8025:8025"
+
+  reverb:
+    image: prizy/app:dev
+    profiles: ["full"]
+    command: php artisan reverb:start --host=0.0.0.0 --port=8080
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8080:8080"
+    depends_on:
+      - app
+      - redis
+    env_file: .env
+
+  horizon:
+    image: prizy/app:dev
+    profiles: ["full"]
+    command: php artisan horizon
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      - app
+      - redis
+      - postgres
+    env_file: .env
+    environment: *mailpit-env
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.10
+    profiles: ["full"]
+    ports:
+      - "7700:7700"
+    volumes:
+      - meili:/meili_data
+
+volumes:
+  pgdata:
+  meili:

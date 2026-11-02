@@ -1,0 +1,29 @@
+deptrac:
+  paths:
+    - ./app
+  layers:
+    - name: Controller
+      collectors:
+        - { type: directory, value: app/Http/Controllers/.* }
+    - name: UseCase
+      collectors:
+        - { type: directory, value: app/UseCases/.* }
+    - name: Repository
+      collectors:
+        - { type: directory, value: app/Repositories/.* }
+    - name: Service
+      collectors:
+        - { type: directory, value: app/Services/.* }
+    - name: Entity
+      collectors:
+        - { type: directory, value: app/Models/.* }
+    - name: Policy
+      collectors:
+        - { type: directory, value: app/Policies/.* }
+  ruleset:
+    Controller: [UseCase]
+    UseCase: [Repository, Service, Entity]
+    Repository: [Entity, Service]
+    Service: [Entity]
+    Entity: []
+    Policy: [Entity]

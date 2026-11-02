@@ -1,0 +1,12 @@
+# Runs Prizy against an external PostgreSQL server instead of the bundled one.
+# The installer adds this file when .env names a DB_HOST other than `postgres`
+# (its --db-host flag); by hand that is:
+#
+#   docker compose -f docker-compose.prod.yml -f docker-compose.external-db.yml up -d --wait
+#
+# A profile nobody selects is how a service is switched off on every Compose
+# version: the bundled `postgres` never starts, and its pgdata volume is left
+# exactly as it was.
+services:
+  postgres:
+    profiles: ["bundled-database"]

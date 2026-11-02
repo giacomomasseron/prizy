@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Projects;
+
+use App\Models\Project;
+use App\Models\Team;
+use App\Models\User;
+use App\Repositories\ProjectRepository;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * @method static Project run(User $actor, array $data)
+ */
+final class CreateProject extends BaseUseCase implements UseCaseInterface
+{
+    private readonly ProjectRepository $projects;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->projects = app(ProjectRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function execute(User $actor, array $data): Project
+    {
+        $teamId = $data['team_id'] ?? null;
+        if ($teamId !== null && Team::find($teamId) === null) {
+            throw ValidationException::withMessages(['team_id' => ['The selected team is invalid.']]);
+        }
+
+        $leadId = $data['lead_id'] ?? null;
+        if ($leadId !== null && User::find($leadId) === null) {
+            throw ValidationException::withMessages(['lead_id' => ['The selected lead is invalid.']]);
+        }
+
+        return $this->projects->create([
+            'name'        => $data['name'],
+            'description' => $data['description'] ?? null,
+            'icon'        => $data['icon'] ?? null,
+            'color'       => $data['color'] ?? '#6366f1',
+            'status'      => $data['status'] ?? 'planning',
+            'lead_id'     => $data['lead_id'] ?? null,
+            'priority'    => $data['priority'] ?? 'no_priority',
+            'team_id'     => $teamId,
+            'start_date'  => $data['start_date'] ?? null,
+            'target_date' => $data['target_date'] ?? null,
+            'created_by'  => $actor->id,
+        ]);
+    }
+}

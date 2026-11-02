@@ -1,0 +1,352 @@
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import MembersPage from './MembersPage';
+import type { WorkspaceMember } from './workspaceHooks';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function makeMember(overrides?: Partial<WorkspaceMember>): WorkspaceMember {
+    return {
+        id: 'u1',
+        name: 'Alice Owner',
+        email: 'alice@example.com',
+        admin_level: 'owner',
+        is_developer: false,
+        is_agent: false,
+        status: 'active',
+        teams: [],
+        ...overrides,
+    };
+}
+
+function makeMe(adminLevel = 'owner', trackerEnabled = true) {
+    return {
+        id: 'u1',
+        workspace_id: 'w1',
+        name: 'Alice',
+        email: 'alice@example.com',
+        admin_level: adminLevel,
+        is_developer: false,
+        is_agent: false,
+        email_digest_frequency: 'off' as const,
+        workspace: { helpdesk_enabled: true, tracker_enabled: trackerEnabled },
+    };
+}
+
+function j(b: unknown, s = 200) {
+    return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+}
+
+function stubFetch(members: WorkspaceMember[], meAdminLevel = 'owner', trackerEnabled = true) {
+    vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+            // /workspace/members must come before /me (substring overlap: '/workspace/members' contains '/me')
+            if (url.includes('/workspace/members')) return j({ data: members });
+            if (url.includes('/me')) return j({ data: makeMe(meAdminLevel, trackerEnabled) });
+            if (url.includes('/members/') && init?.method === 'PATCH') return j({ data: members[0] ?? {} });
+            if (url.includes('/members/') && init?.method === 'DELETE') return new Response(null, { status: 204 });
+            if (url.includes('/invitations/') && init?.method === 'DELETE') return new Response(null, { status: 204 });
+            return j({ data: {} });
+        }),
+    );
+}
+
+function renderPage(members: WorkspaceMember[], meAdminLevel = 'owner', trackerEnabled = true) {
+    stubFetch(members, meAdminLevel, trackerEnabled);
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return render(
+        <QueryClientProvider client={qc}>
+            <MemoryRouter>
+                <MembersPage />
+            </MemoryRouter>
+        </QueryClientProvider>,
+    );
+}
+
+// ─── tests ──────────────────────────────────────────────────────────────────
+
+describe('MembersPage', () => {
+    afterEach(() => vi.unstubAllGlobals());
+
+    // 1. renders active + invited rows distinctly
+    it('renders active and invited rows with distinct status labels', async () => {
+        const members = [
+            makeMember({ id: 'u1', name: 'Alice', email: 'alice@x.co', status: 'active' }),
+            makeMember({ id: 'inv:ABC123', name: 'Bob', email: 'bob@x.co', status: 'invited' }),
+        ];
+        renderPage(members);
+        expect(await screen.findByText('Alice')).toBeInTheDocument();
+        expect(await screen.findByText('Bob')).toBeInTheDocument();
+        expect(screen.getByText('Active')).toBeInTheDocument();
+        expect(screen.getByText('Invited')).toBeInTheDocument();
+    });
+
+    // 2. level Menu items call PATCH with correct value
+    it('level menu item calls PATCH /members/{id} with correct admin_level', async () => {
+        const user = userEvent.setup();
+        const members = [makeMember({ id: 'u2', name: 'Bob', email: 'b@x.co', admin_level: 'member', status: 'active' })];
+        renderPage(members);
+        await screen.findByText('Bob');
+        // Open the Level menu
+        await user.click(screen.getByRole('button', { name: /Level: Member/i }));
+        // Click the Admin menu item
+        await user.click(screen.getByRole('menuitem', { name: 'Admin' }));
+        await vi.waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            expect(
+                calls.some(
+                    ([u, i]) =>
+                        u.includes('/members/u2') &&
+                        i?.method === 'PATCH' &&
+                        JSON.parse(i.body as string)?.admin_level === 'admin',
+                ),
+            ).toBe(true);
+        });
+    });
+
+    // 3. capability chip toggle calls PATCH with correct boolean
+    it('Developer chip calls PATCH /members/{id} with is_developer flipped', async () => {
+        const user = userEvent.setup();
+        const members = [makeMember({ id: 'u3', name: 'Carol', email: 'c@x.co', is_developer: false, status: 'active' })];
+        renderPage(members);
+        await screen.findByText('Carol');
+        await user.click(screen.getByRole('button', { name: /Developer/i }));
+        await vi.waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            expect(
+                calls.some(
+                    ([u, i]) =>
+                        u.includes('/members/u3') &&
+                        i?.method === 'PATCH' &&
+                        JSON.parse(i.body as string)?.is_developer === true,
+                ),
+            ).toBe(true);
+        });
+    });
+
+    // 3b. agent chip toggle calls PATCH with correct boolean
+    it('Agent chip calls PATCH /members/{id} with is_agent flipped', async () => {
+        const user = userEvent.setup();
+        const members = [makeMember({ id: 'u3b', name: 'Carol', email: 'c@x.co', is_agent: false, status: 'active' })];
+        renderPage(members);
+        await screen.findByText('Carol');
+        await user.click(screen.getByRole('button', { name: /Agent/i }));
+        await vi.waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            expect(
+                calls.some(
+                    ([u, i]) =>
+                        u.includes('/members/u3b') &&
+                        i?.method === 'PATCH' &&
+                        JSON.parse(i.body as string)?.is_agent === true,
+                ),
+            ).toBe(true);
+        });
+    });
+
+    // 4. remove button for active member calls DELETE /members/{id}
+    it('remove button for active member calls DELETE /members/{id} after confirm', async () => {
+        const user = userEvent.setup();
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const members = [makeMember({ id: 'u4', name: 'Dave', email: 'd@x.co', status: 'active' })];
+        renderPage(members);
+        await screen.findByText('Dave');
+        await user.click(screen.getAllByRole('button', { name: '×' })[0]);
+        await vi.waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            expect(
+                calls.some(([u, i]) => u.includes('/members/u4') && i?.method === 'DELETE'),
+            ).toBe(true);
+        });
+        confirmSpy.mockRestore();
+    });
+
+    // 5. remove button for invited row calls DELETE /invitations/{id} (stripped)
+    it('remove button for invited row calls DELETE /invitations/{invId} without confirm', async () => {
+        const user = userEvent.setup();
+        const members = [makeMember({ id: 'inv:ABC123', name: 'Eve', email: 'e@x.co', status: 'invited' })];
+        renderPage(members);
+        await screen.findByText('Eve');
+        await user.click(screen.getAllByRole('button', { name: '×' })[0]);
+        await vi.waitFor(() => {
+            const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+            expect(
+                calls.some(([u, i]) => u.includes('/invitations/ABC123') && i?.method === 'DELETE'),
+            ).toBe(true);
+        });
+    });
+
+    // 6. no-access banner shows only when member-level user has no capabilities
+    it('shows no-access banner when active member-level user has no capabilities, hides otherwise', async () => {
+        // With a no-capability member: banner should appear
+        const { unmount } = renderPage([
+            makeMember({ id: 'u5', name: 'Frank', email: 'f@x.co', admin_level: 'member', is_developer: false, is_agent: false, status: 'active' }),
+        ]);
+        await screen.findByText('Frank');
+        expect(screen.getByText(/no capability enabled/i)).toBeInTheDocument();
+        unmount();
+        vi.unstubAllGlobals();
+
+        // With a member who HAS a capability: banner should NOT appear
+        renderPage([
+            makeMember({ id: 'u6', name: 'Grace', email: 'g@x.co', admin_level: 'member', is_developer: true, is_agent: false, status: 'active' }),
+        ]);
+        await screen.findByText('Grace');
+        expect(screen.queryByText(/no capability enabled/i)).toBeNull();
+    });
+
+    // 7. stats compute correctly (total, admins, devs, agents)
+    it('stats grid displays correct counts for total / admins / devs / agents', async () => {
+        const members = [
+            makeMember({ id: 'u1', name: 'Alice Owner', email: 'a@x.co', admin_level: 'owner', is_developer: true, is_agent: false, status: 'active' }),
+            makeMember({ id: 'u2', name: 'Bob Admin', email: 'b@x.co', admin_level: 'admin', is_developer: true, is_agent: false, status: 'active' }),
+            makeMember({ id: 'u3', name: 'Carol Member', email: 'c@x.co', admin_level: 'member', is_developer: true, is_agent: true, status: 'active' }),
+            makeMember({ id: 'u4', name: 'Dave Viewer', email: 'd@x.co', admin_level: 'viewer', is_developer: false, is_agent: false, status: 'invited' }),
+        ];
+        // Total: 4 | Admins: 2 (owner + admin) | Devs: 3 | Agents: 1
+        renderPage(members);
+        await screen.findByText('Alice Owner');
+        expect(screen.getByTestId('stat-total').textContent).toBe('4');
+        expect(screen.getByTestId('stat-admins').textContent).toBe('2');
+        expect(screen.getByTestId('stat-devs').textContent).toBe('3');
+        expect(screen.getByTestId('stat-agents').textContent).toBe('1');
+    });
+
+    // 9. remove 403 error is surfaced as inline banner
+    it('shows inline error banner when DELETE /members/{id} returns 403', async () => {
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        const members = [makeMember({ id: 'u9', name: 'Zara', email: 'z@x.co', status: 'active', admin_level: 'owner' })];
+
+        // URL routing note: '/v1/members/u9' contains the substring '/me', so the /me
+        // check MUST use an exact match to avoid incorrectly matching DELETE calls.
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                if (url.includes('/workspace/members'))
+                    return { ok: true, status: 200, json: async () => ({ data: members }) };
+                if (url === '/v1/me') // exact — '/v1/members/…' also contains '/me'
+                    return { ok: true, status: 200, json: async () => ({ data: makeMe('admin') }) };
+                if (url.includes('/members/') && init?.method === 'DELETE')
+                    return { ok: false, status: 403, json: async () => ({ title: 'Forbidden', detail: 'Admins cannot remove owners.' }) };
+                return { ok: true, status: 200, json: async () => ({ data: {} }) };
+            }),
+        );
+
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter>
+                    <MembersPage />
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+
+        await screen.findByText('Zara');
+
+        // Use fireEvent (synchronous) so userEvent's async timer machinery
+        // doesn't race with TanStack Query's onError callback.
+        fireEvent.click(screen.getByTestId('remove-z@x.co'));
+
+        await waitFor(() => expect(screen.getByTestId('action-error')).toBeInTheDocument());
+        expect(screen.getByTestId('action-error')).toHaveTextContent('Admins cannot remove owners.');
+
+        confirmSpy.mockRestore();
+    });
+
+    // 8. owner-only 'owner' level option hidden for admin actor
+    it('hides Owner level option in menu when actor is admin (not owner)', async () => {
+        const user = userEvent.setup();
+        const members = [makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co', admin_level: 'member', status: 'active' })];
+        renderPage(members, 'admin'); // actor is admin, not owner
+        await screen.findByText('Alice');
+        await user.click(screen.getByRole('button', { name: /Level: Member/i }));
+        // Owner option must NOT appear for admin actor
+        expect(screen.queryByRole('menuitem', { name: 'Owner' })).toBeNull();
+        // Other options must be present
+        expect(screen.getByRole('menuitem', { name: 'Admin' })).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Member' })).toBeInTheDocument();
+        expect(screen.getByRole('menuitem', { name: 'Viewer' })).toBeInTheDocument();
+    });
+
+    it('v2: highlighted title, ink invite button and display-font stats', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        expect(screen.getByRole('heading', { level: 1, name: 'Members' }).querySelector('.hl')).not.toBeNull();
+        expect(screen.getByRole('button', { name: 'Invite people' }).className).toContain('bg-fg');
+        expect(screen.getByTestId('stat-total').style.fontFamily).toBe('var(--font-display)');
+    });
+
+    it('v2: the table card keeps a minimum width and never clips the level menu', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        const card = screen.getByTestId('members-table');
+        expect(card.style.minWidth).toBe('668px');
+        expect(card.style.overflow).toBe('');
+        expect(card.style.overflowX).toBe('');
+    });
+
+    it('v2: the remove × keeps its colour in classes so the red hover works', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        const x = screen.getByTestId('remove-a@x.co');
+        expect(x.className).toContain('hover:text-red');
+        expect(x.style.color).toBe('');
+    });
+
+    it('v2: an off capability chip is dashed and still shows its dot', async () => {
+        renderPage([makeMember({ id: 'u2', name: 'Bob', email: 'b@x.co', admin_level: 'member', is_developer: false, is_agent: true })]);
+        await screen.findByText('Bob');
+        const dev = screen.getByTestId('cap-developer-b@x.co');
+        expect(dev.style.border).toBe('1px dashed var(--border2)');
+        expect(dev.querySelector('span[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it('v2: the no-access strip sits inside the table card', async () => {
+        renderPage([makeMember({ id: 'u5', name: 'Frank', email: 'f@x.co', admin_level: 'member', is_developer: false, is_agent: false })]);
+        await screen.findByText('Frank');
+        expect(screen.getByTestId('members-table')).toContainElement(screen.getByText(/no capability enabled/i));
+    });
+    it('v2: the level trigger only shows its hover border while enabled', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co', admin_level: 'member' })]);
+        await screen.findByText('Alice');
+        const trigger = screen.getByTestId('level-btn-a@x.co');
+        expect(trigger.className).toContain('enabled:hover:border-fg');
+        expect(trigger.className).not.toMatch(/(^| )hover:border-fg/);
+    });
+
+    it('v2: the page frame keeps its gutters when the table forces sideways scrolling', async () => {
+        renderPage([makeMember({ id: 'u1', name: 'Alice', email: 'a@x.co' })]);
+        await screen.findByText('Alice');
+        const frame = screen.getByTestId('members-table').parentElement as HTMLElement;
+        expect(frame.style.minWidth).toBe('728px');
+    });
+    it('G3c: a failed members load shows the retryable alert, not an empty table of zeros', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (url.includes('/workspace/members')) return new Response(JSON.stringify({ message: 'boom' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+            return j({ data: makeMe('owner') });
+        }));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter><MembersPage /></MemoryRouter></QueryClientProvider>);
+        expect((await screen.findByRole('alert')).textContent).toContain("Couldn't load members.");
+        expect(screen.queryByTestId('members-table')).toBeNull();
+        expect(screen.queryByTestId('stat-total')).toBeNull();
+    });
+
+    it('offers no Developer capability, and counts nobody as one, where the workspace has switched the tracker off', async () => {
+        const members = [
+            makeMember({ id: 'u1', name: 'Alice', email: 'alice@x.co' }),
+            makeMember({ id: 'u3', name: 'Dana', email: 'dana@x.co', admin_level: 'member', is_developer: true }),
+        ];
+        renderPage(members, 'owner', false);
+        expect(await screen.findByText('Dana')).toBeInTheDocument();
+        await waitFor(() => expect(screen.queryByTestId('cap-developer-dana@x.co')).toBeNull());
+        expect(screen.getAllByRole('button', { name: 'Agent' }).length).toBeGreaterThan(0);
+        expect(screen.queryByTestId('stat-devs')).toBeNull();
+        // A member who is only a developer reaches nothing here.
+        expect(screen.getByText(/no access to any module/i)).toBeInTheDocument();
+    });
+});

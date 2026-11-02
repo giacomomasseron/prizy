@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Projects;
+
+use App\Models\Project;
+use App\Models\Team;
+use App\Models\User;
+use App\Repositories\ProjectRepository;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * @method static Project run(User $actor, array $data)
+ */
+final class UpdateProject extends BaseUseCase implements UseCaseInterface
+{
+    private readonly ProjectRepository $projects;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->projects = app(ProjectRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    /** @param array<string, mixed> $data */
+    private function execute(User $actor, array $data): Project
+    {
+        $project = $this->projects->findInWorkspace((string) $data['project_id']);
+        if ($project === null) {
+            throw ValidationException::withMessages(['project_id' => ['The selected project is invalid.']]);
+        }
+        if (array_key_exists('team_id', $data) && $data['team_id'] !== null && Team::find($data['team_id']) === null) {
+            throw ValidationException::withMessages(['team_id' => ['The selected team is invalid.']]);
+        }
+
+        if (array_key_exists('lead_id', $data) && $data['lead_id'] !== null && User::find($data['lead_id']) === null) {
+            throw ValidationException::withMessages(['lead_id' => ['The selected lead is invalid.']]);
+        }
+
+        $startDate  = $data['start_date']  ?? $project->start_date;
+        $targetDate = $data['target_date'] ?? $project->target_date;
+        if ($startDate !== null && $targetDate !== null) {
+            if (Carbon::parse($targetDate)->lessThan(Carbon::parse($startDate))) {
+                throw ValidationException::withMessages(['target_date' => ['The target date must be a date after or equal to start date.']]);
+            }
+        }
+
+        return $this->projects->update($project, array_intersect_key(
+            $data,
+            array_flip(['name', 'description', 'icon', 'color', 'status', 'lead_id', 'priority', 'team_id', 'start_date', 'target_date']),
+        ));
+    }
+}

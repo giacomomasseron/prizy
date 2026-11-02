@@ -1,0 +1,134 @@
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { MemoryRouter } from 'react-router-dom';
+import { vi, beforeEach } from 'vitest';
+import CycleForm from './CycleForm';
+
+vi.mock('../../features/teams/hooks', () => ({
+    useTeams: () => ({ data: { items: [{ id: 't1', name: 'Alpha', identifier: 'AL', color: '#6366f1', created_at: '', updated_at: '' }] } }),
+    useCreateCycle: (teamId: string) => ({ mutateAsync: mockMutate, isPending: false }),
+}));
+const mockMutate = vi.fn().mockResolvedValue({ id: 'c1', name: 'Sprint', team_id: 't1', starts_at: '2026-08-01', ends_at: '2026-08-15', cooldown_days: 2, created_at: '', updated_at: '' });
+
+beforeEach(() => {
+    mockMutate.mockClear();
+});
+
+function wrap(defaultTeamId?: string, onSuccess = vi.fn(), onCancel = vi.fn()) {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return {
+        onSuccess,
+        onCancel,
+        ...render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter>
+                    <CycleForm defaultTeamId={defaultTeamId} onSuccess={onSuccess} onCancel={onCancel} />
+                </MemoryRouter>
+            </QueryClientProvider>
+        ),
+    };
+}
+
+describe('CycleForm', () => {
+    it('disables Create cycle when name is empty', () => {
+        wrap();
+        expect(screen.getByRole('button', { name: /Create cycle/i })).toBeDisabled();
+    });
+    it('disables Create cycle when team is not selected', async () => {
+        wrap(); // no defaultTeamId
+        await userEvent.type(screen.getByPlaceholderText(/cycle name/i), 'Sprint');
+        expect(screen.getByRole('button', { name: /Create cycle/i })).toBeDisabled();
+    });
+    it('pre-selects team when defaultTeamId matches', () => {
+        wrap('t1');
+        // Team picker trigger should show team name
+        expect(screen.getByRole('button', { name: /Team picker/i })).toHaveTextContent('Alpha');
+    });
+    it('Duration chip sets ends_at = starts_at + N*7 days', async () => {
+        wrap('t1');
+        await userEvent.type(screen.getByPlaceholderText(/cycle name/i), 'Sprint');
+        // Set starts_at
+        await userEvent.type(screen.getByLabelText(/starts/i), '2026-08-01');
+        // Click "2 weeks" chip
+        await userEvent.click(screen.getByRole('button', { name: /2 weeks/i }));
+        // ends_at input should be 2026-08-15
+        expect((screen.getByLabelText(/ends/i) as HTMLInputElement).value).toBe('2026-08-15');
+    });
+    it('Cooldown toggle maps on=2 off=0 and submits correctly', async () => {
+        wrap('t1');
+        await userEvent.type(screen.getByPlaceholderText(/cycle name/i), 'Sprint');
+        await userEvent.type(screen.getByLabelText(/starts/i), '2026-08-01');
+        await userEvent.type(screen.getByLabelText(/ends/i), '2026-08-15');
+        // Toggle cooldown on (Switch ariaLabel is "Cooldown")
+        await userEvent.click(screen.getByRole('checkbox', { name: 'Cooldown' }));
+        await userEvent.click(screen.getByRole('button', { name: /Create cycle/i }));
+        await waitFor(() => {
+            expect(mockMutate).toHaveBeenCalledWith(expect.objectContaining({ cooldown_days: 2 }));
+        });
+    });
+    it('shows 4 duration chips', () => {
+        wrap('t1');
+        [1,2,3,4].forEach(n => {
+            expect(screen.getByRole('button', { name: new RegExp(`${n} week`) })).toBeInTheDocument();
+        });
+    });
+    it('editing Ends date clears the active duration chip', async () => {
+        wrap('t1');
+        // Click "2 weeks" to activate that chip
+        await userEvent.click(screen.getByRole('button', { name: /2 weeks/i }));
+        // Chip should be active (v2: ink-filled, via classes)
+        expect(screen.getByRole('button', { name: /2 weeks/i }).className).toContain('bg-fg');
+        // Manually change the Ends date via fireEvent (simulates user editing the date field)
+        fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2026-09-01' } });
+        // Active duration cleared → chip reverts to inactive styling (v2: the panel fill)
+        expect(screen.getByRole('button', { name: /2 weeks/i }).className).toContain('bg-panel');
+    });
+
+    it('shows inline error and does not call onSuccess when mutate rejects', async () => {
+        const onSuccess = vi.fn();
+        mockMutate.mockRejectedValueOnce(new Error('Server error'));
+        wrap('t1', onSuccess);
+        await userEvent.type(screen.getByPlaceholderText(/cycle name/i), 'Sprint');
+        fireEvent.change(screen.getByLabelText(/starts/i), { target: { value: '2026-08-01' } });
+        fireEvent.change(screen.getByLabelText(/ends/i), { target: { value: '2026-08-15' } });
+        await userEvent.click(screen.getByRole('button', { name: /Create cycle/i }));
+        await waitFor(() => {
+            expect(screen.getByText('Server error')).toBeInTheDocument();
+        });
+        expect(onSuccess).not.toHaveBeenCalled();
+    });
+
+    it('v2: display-font name, pill date fields, a toolbar-pill team picker and a sentence-case Description label', () => {
+        wrap('t1');
+        expect(screen.getByPlaceholderText(/cycle name/i).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByLabelText(/starts/i).className).toContain('focus:border-fg');
+        expect(screen.getByRole('button', { name: /Team picker/i }).className).toContain('hover:border-fg');
+        expect(screen.getByText('Description').style.textTransform).toBe('');
+    });
+
+    it('G3b: the name and the description fields are named', () => {
+        wrap();
+        expect(screen.getByRole('textbox', { name: 'Cycle name' })).toBeInTheDocument();
+        expect(screen.getByRole('textbox', { name: 'Cycle description' })).toBeInTheDocument();
+    });
+
+    it('G3b: the name field shows an ink underline while focused (no edge at rest)', () => {
+        wrap();
+        const name = screen.getByRole('textbox', { name: 'Cycle name' });
+        expect(name.className).toBe('border-transparent focus:border-fg');
+        expect(name.style.borderStyle).toBe('solid');
+    });
+
+    it('G3b: the duration chips say which one is selected', async () => {
+        wrap();
+        await userEvent.click(screen.getByRole('button', { name: '2 weeks' }));
+        expect(screen.getByRole('button', { name: '2 weeks' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: '1 week' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('G3c: Cancel is a secondary button, like the dialog Cancels', () => {
+        wrap();
+        expect(screen.getByRole('button', { name: 'Cancel' }).className).toContain('border-border2');
+    });
+});

@@ -1,0 +1,200 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { InviteModal } from './InviteModal';
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function renderModal(onClose = vi.fn()) {
+    const qc = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+        <QueryClientProvider client={qc}>
+            <InviteModal open={true} onClose={onClose} />
+        </QueryClientProvider>,
+    );
+    return { onClose };
+}
+
+afterEach(() => vi.unstubAllGlobals());
+
+// ─── tests ──────────────────────────────────────────────────────────────────
+
+describe('InviteModal', () => {
+    // 1. Send button disabled when email empty
+    it('Send button is disabled when email is empty', () => {
+        renderModal();
+        expect(screen.getByRole('button', { name: /send invite/i })).toBeDisabled();
+    });
+
+    // 2. Send button disabled when level=member and no capability selected
+    it('Send button is disabled when level=member and no capability selected', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+        // level defaults to 'member', no capabilities selected
+        expect(screen.getByRole('button', { name: /send invite/i })).toBeDisabled();
+    });
+
+    // 3. Send button enabled when level=viewer and no capability (viewer is exempt)
+    it('Send button is enabled when level=viewer and no capability', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        await user.type(screen.getByLabelText(/email address/i), 'test@example.com');
+        await user.click(screen.getByRole('button', { name: 'Viewer' }));
+        expect(screen.getByRole('button', { name: /send invite/i })).not.toBeDisabled();
+    });
+
+    // 4. on submit calls POST /invitations with correct body; modal closes on success
+    it('on submit calls POST /invitations with correct body and modal closes on success', async () => {
+        const user = userEvent.setup();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: true,
+                status: 201,
+                json: async () => ({ invitation: {} }),
+            }),
+        );
+        const onClose = vi.fn();
+        const qc = new QueryClient({
+            defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+        });
+        render(
+            <QueryClientProvider client={qc}>
+                <InviteModal open={true} onClose={onClose} />
+            </QueryClientProvider>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Viewer' }));
+        await user.type(screen.getByLabelText(/email address/i), 'new@example.com');
+        await user.click(screen.getByRole('button', { name: /send invite/i }));
+
+        await waitFor(() => expect(onClose).toHaveBeenCalled());
+
+        const calls = vi.mocked(fetch).mock.calls as [string, RequestInit?][];
+        expect(
+            calls.some(([url, init]) => {
+                if (url !== '/invitations' || init?.method !== 'POST') return false;
+                const body = JSON.parse(init.body as string);
+                return (
+                    body.email === 'new@example.com' &&
+                    body.admin_level === 'viewer' &&
+                    body.is_developer === false &&
+                    body.is_agent === false
+                );
+            }),
+        ).toBe(true);
+    });
+
+    // 5. no-access banner shown only for member + no capability
+    it('shows no-access banner for member with no capability; hides when viewer selected', async () => {
+        const user = userEvent.setup();
+        renderModal();
+        // Default: member + no capability → banner visible
+        expect(screen.getByText(/no access to any module/i)).toBeInTheDocument();
+        // Switch to viewer → banner gone
+        await user.click(screen.getByRole('button', { name: 'Viewer' }));
+        expect(screen.queryByText(/no access to any module/i)).not.toBeInTheDocument();
+    });
+
+    // 6. 'Owner' level option NOT rendered
+    it('does not render an Owner chip', () => {
+        renderModal();
+        expect(screen.queryByRole('button', { name: 'Owner' })).not.toBeInTheDocument();
+    });
+
+    // 7. POST /invitations 422 → modal stays open + shows inline error text
+    it('modal stays open and shows error text when POST /invitations returns 422', async () => {
+        const user = userEvent.setup();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: false,
+                status: 422,
+                json: async () => ({
+                    message: 'Invalid.',
+                    errors: { email: ['This person is already a member of this workspace.'] },
+                }),
+            }),
+        );
+        const onClose = vi.fn();
+        const qc = new QueryClient({
+            defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+        });
+        render(
+            <QueryClientProvider client={qc}>
+                <InviteModal open={true} onClose={onClose} />
+            </QueryClientProvider>,
+        );
+
+        await user.click(screen.getByRole('button', { name: 'Viewer' }));
+        await user.type(screen.getByLabelText(/email address/i), 'existing@example.com');
+        await user.click(screen.getByRole('button', { name: /send invite/i }));
+
+        await waitFor(() =>
+            expect(screen.getByText('This person is already a member of this workspace.')).toBeInTheDocument(),
+        );
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    // 8. POST /invitations 429 → says to wait, rather than a generic failure
+    it('says to try later when too many invitations were sent', async () => {
+        const user = userEvent.setup();
+        vi.stubGlobal(
+            'fetch',
+            vi.fn().mockResolvedValue({
+                ok: false,
+                status: 429,
+                json: async () => ({ message: 'Too Many Attempts.' }),
+            }),
+        );
+        const { onClose } = renderModal();
+
+        await user.click(screen.getByRole('button', { name: 'Viewer' }));
+        await user.type(screen.getByLabelText(/email address/i), 'new@example.com');
+        await user.click(screen.getByRole('button', { name: /send invite/i }));
+
+        expect(await screen.findByText('Too many invitations for now. Try again later.')).toBeInTheDocument();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('v2: level chips are ink chips and the active one is pressed', () => {
+        renderModal();
+        const member = screen.getByRole('button', { name: 'Member' });
+        expect(member).toHaveAttribute('aria-pressed', 'true');
+        expect(member.className).toContain('bg-fg');
+        expect(screen.getByRole('button', { name: 'Viewer' }).className).toContain('hover:border-fg');
+    });
+
+    it('v2: display-font title and pill footer buttons', () => {
+        renderModal();
+        expect(screen.getByRole('heading', { name: 'Invite to Prizy' }).style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByRole('button', { name: 'Cancel' }).style.borderRadius).toBe('var(--radius-pill)');
+        expect(screen.getByRole('button', { name: /send invite/i }).className).toContain('bg-fg');
+    });
+
+    it('offers no Developer capability where the workspace has switched the tracker off', async () => {
+        const user = userEvent.setup();
+        const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+            if (url.includes('/v1/me')) {
+                return new Response(JSON.stringify({ data: { id: 'u1', workspace_id: 'w1', name: 'A', email: 'a@x.co', admin_level: 'owner', is_developer: true, is_agent: true, email_digest_frequency: 'off', workspace: { helpdesk_enabled: true, tracker_enabled: false } } }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            }
+            return new Response(JSON.stringify({ invitation: { id: 'i', ...JSON.parse(String(init?.body ?? '{}')) } }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        renderModal();
+
+        await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'Developer' })).toBeNull());
+        await user.type(screen.getByLabelText(/email address/i), 'sam@example.com');
+        await user.click(screen.getByRole('checkbox', { name: 'Agent' }));
+        await user.click(screen.getByRole('button', { name: /send invite/i }));
+
+        await waitFor(() => {
+            const sent = fetchMock.mock.calls.find(([, init]) => init?.method === 'POST');
+            expect(JSON.parse(String(sent?.[1]?.body))).toMatchObject({ email: 'sam@example.com', is_developer: false, is_agent: true });
+        });
+    });
+});

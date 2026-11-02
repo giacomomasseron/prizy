@@ -1,0 +1,542 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+import { Button } from './Button';
+import { Drawer } from './Drawer';
+import { Menu } from './Menu';
+import { Modal } from './Modal';
+import { isTopmost, popOverlay, pushOverlay } from './overlayStack';
+
+describe('Modal', () => {
+  it('renders nothing when open=false', () => {
+    const { container } = render(<Modal open={false} onClose={() => {}}><p>content</p></Modal>);
+    expect(container.querySelector('p')).toBeNull();
+  });
+  it('renders children when open=true', () => {
+    render(<Modal open={true} onClose={() => {}}><p>Hello modal</p></Modal>);
+    expect(screen.getByText('Hello modal')).toBeInTheDocument();
+  });
+  it('calls onClose when backdrop is clicked', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Modal open={true} onClose={onClose}><p>content</p></Modal>);
+    // Click the backdrop (the dialog element itself)
+    await user.click(screen.getByRole('dialog').parentElement!);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it('does not call onClose when clicking inside the panel', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Modal open={true} onClose={onClose}><p>panel content</p></Modal>);
+    await user.click(screen.getByRole('dialog'));
+    expect(onClose).not.toHaveBeenCalled();
+  });
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(<Modal open={true} onClose={onClose}><p>content</p></Modal>);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Drawer', () => {
+  it('renders nothing when open=false', () => {
+    const { container } = render(<Drawer open={false} onClose={() => {}}><p>drawer</p></Drawer>);
+    expect(container.querySelector('p')).toBeNull();
+  });
+  it('renders children when open=true', () => {
+    render(<Drawer open={true} onClose={() => {}}><p>Drawer content</p></Drawer>);
+    expect(screen.getByText('Drawer content')).toBeInTheDocument();
+  });
+  it('calls onClose when Escape is pressed', () => {
+    const onClose = vi.fn();
+    render(<Drawer open={true} onClose={onClose}><p>content</p></Drawer>);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+  it('calls onClose when backdrop is clicked', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    const { container } = render(<Drawer open={true} onClose={onClose}><p>drawer</p></Drawer>);
+    // Backdrop is the flex:1 sibling rendered before the panel inside the outer fixed container
+    const outerDiv = container.firstElementChild as HTMLElement;
+    const backdrop = outerDiv.children[0] as HTMLElement;
+    await user.click(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('Menu', () => {
+  const items = [
+    { key: 'settings', label: 'Settings', onActivate: vi.fn() },
+    { key: 'logout', label: 'Logout', onActivate: vi.fn(), danger: true },
+  ];
+
+  it('shows menu items after trigger click', async () => {
+    const user = userEvent.setup();
+    render(<Menu trigger={<button>Open</button>} items={items} />);
+    expect(screen.queryByText('Settings')).toBeNull();
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByRole('menuitem', { name: 'Settings' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: 'Logout' })).toBeInTheDocument();
+  });
+
+  it('calls onActivate and closes when item is clicked', async () => {
+    const user = userEvent.setup();
+    const onActivate = vi.fn();
+    render(
+      <Menu trigger={<button>Open</button>} items={[{ key: 'a', label: 'Action', onActivate }]} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    await user.click(screen.getByRole('menuitem', { name: 'Action' }));
+    expect(onActivate).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('menuitem')).toBeNull();
+  });
+
+  it('renders subtitle below label when subtitle is provided', async () => {
+    const user = userEvent.setup();
+    render(
+      <Menu
+        trigger={<button>Open</button>}
+        items={[{ key: 'sub', label: 'Settings', subtitle: 'Configure things', onActivate: vi.fn() }]}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    expect(screen.getByText('Settings')).toBeInTheDocument();
+    expect(screen.getByText('Configure things')).toBeInTheDocument();
+  });
+});
+
+describe('Drawer focus-trap + a11y', () => {
+    it('sets role=dialog + aria-modal + aria-label and moves focus inside on open', () => {
+        render(<Drawer open onClose={() => {}} label="Test drawer"><button>Inside</button></Drawer>);
+        const dialog = screen.getByRole('dialog', { name: 'Test drawer' });
+        expect(dialog).toHaveAttribute('aria-modal', 'true');
+        expect(dialog.contains(document.activeElement)).toBe(true); // focus moved inside
+    });
+    it('wraps Tab within the panel and restores focus on close', () => {
+        const trigger = document.createElement('button');
+        document.body.appendChild(trigger);
+        trigger.focus();
+        const { rerender } = render(
+            <Drawer open onClose={() => {}} label="D"><button>A</button><button>B</button></Drawer>,
+        );
+        const [a, b] = screen.getAllByRole('button').filter((n) => ['A', 'B'].includes(n.textContent ?? ''));
+        b.focus();
+        fireEvent.keyDown(b, { key: 'Tab' });          // from last → wraps to first
+        expect(document.activeElement).toBe(a);
+        fireEvent.keyDown(a, { key: 'Tab', shiftKey: true }); // shift+Tab from first → wraps to last
+        expect(document.activeElement).toBe(b);
+        rerender(<Drawer open={false} onClose={() => {}} label="D"><button>A</button></Drawer>);
+        expect(document.activeElement).toBe(trigger);  // focus restored
+        trigger.remove();
+    });
+});
+
+describe('Modal focus-trap', () => {
+    it('moves focus inside on open and restores on close', () => {
+        const trigger = document.createElement('button');
+        document.body.appendChild(trigger);
+        trigger.focus();
+        const { rerender } = render(<Modal open onClose={() => {}} label="M"><button>OK</button></Modal>);
+        const dialog = screen.getByRole('dialog', { name: 'M' });
+        expect(dialog.contains(document.activeElement)).toBe(true);
+        rerender(<Modal open={false} onClose={() => {}} label="M"><button>OK</button></Modal>);
+        expect(document.activeElement).toBe(trigger);
+        trigger.remove();
+    });
+});
+
+describe('Menu keyboard + aria', () => {
+    function open3(onA = vi.fn()) {
+        render(<Menu trigger={<button>Open</button>} items={[
+            { key: 'a', label: 'Alpha', onActivate: onA },
+            { key: 'b', label: 'Beta', onActivate: vi.fn() },
+            { key: 'c', label: 'Gamma', onActivate: vi.fn() },
+        ]} />);
+        return onA;
+    }
+    it('trigger exposes aria-haspopup=menu + aria-expanded', () => {
+        open3();
+        const trigger = screen.getByRole('button', { name: 'Open' });
+        expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+        expect(trigger).toHaveAttribute('aria-expanded', 'false');
+        fireEvent.click(trigger);
+        expect(trigger).toHaveAttribute('aria-expanded', 'true');
+    });
+    it('focuses the first item on open and moves with ArrowDown', () => {
+        open3();
+        fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Alpha' }));
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'ArrowDown' });
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Beta' }));
+    });
+    it('activates the focused item on Enter and closes', () => {
+        const onA = open3();
+        fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Enter' }); // Alpha focused
+        expect(onA).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+    it('closes on Escape and restores focus to the trigger', () => {
+        open3();
+        const trigger = screen.getByRole('button', { name: 'Open' });
+        fireEvent.click(trigger);
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Escape' });
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+    });
+});
+
+describe('Drawer / Modal autoFocus respect', () => {
+    it('keeps focus on the autoFocus element even when it is not the first focusable', () => {
+        // Render a Drawer where the second element has autoFocus.
+        // The focus-trap must NOT steal focus back to the first button.
+        render(
+            <Drawer open onClose={() => {}} label="AutoFocus drawer">
+                <button>First</button>
+                <input autoFocus aria-label="Focus me" />
+            </Drawer>,
+        );
+        // The autoFocus input must be the active element, not the first button.
+        expect(document.activeElement).toBe(screen.getByRole('textbox', { name: 'Focus me' }));
+        expect(document.activeElement).not.toBe(screen.getByRole('button', { name: 'First' }));
+    });
+
+    it('still moves focus to the first focusable when no autoFocus is present', () => {
+        const trigger = document.createElement('button');
+        document.body.appendChild(trigger);
+        trigger.focus();
+        render(
+            <Drawer open onClose={() => {}} label="No autoFocus drawer">
+                <button>Alpha</button>
+                <button>Beta</button>
+            </Drawer>,
+        );
+        // Without autoFocus, the trap must move focus to the first focusable.
+        expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Alpha' }));
+        trigger.remove();
+    });
+});
+
+describe('Button', () => {
+    it('applies the shared hover class', () => {
+        render(<Button variant="ghost">x</Button>);
+        expect(screen.getByRole('button', { name: 'x' }).className).toContain('hover:bg-hover');
+    });
+});
+
+describe('overlayStack', () => {
+    it('tracks the top-most overlay', () => {
+        pushOverlay('a'); expect(isTopmost('a')).toBe(true);
+        pushOverlay('b'); expect(isTopmost('a')).toBe(false); expect(isTopmost('b')).toBe(true);
+        popOverlay('b'); expect(isTopmost('a')).toBe(true);
+        popOverlay('a');
+    });
+});
+
+describe('nested overlay Escape (Drawer under Modal)', () => {
+    it('Escape closes only the top-most overlay', () => {
+        const drawerClose = vi.fn();
+        const modalClose = vi.fn();
+        const { rerender } = render(
+            <>
+                <Drawer open onClose={drawerClose} label="D"><button>d</button></Drawer>
+                <Modal open onClose={modalClose} label="M"><button>m</button></Modal>
+            </>,
+        );
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(modalClose).toHaveBeenCalledTimes(1);
+        expect(drawerClose).not.toHaveBeenCalled();     // drawer stays (not top-most)
+        // close the modal; a second Escape now closes the drawer
+        rerender(<><Drawer open onClose={drawerClose} label="D"><button>d</button></Drawer><Modal open={false} onClose={modalClose} label="M"><button>m</button></Modal></>);
+        fireEvent.keyDown(document, { key: 'Escape' });
+        expect(drawerClose).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('v2 overlay styling', () => {
+  it('Menu wrapper is inline by default; fullWidth stretches it to fill a flex row', () => {
+    const { container, unmount } = render(<Menu trigger={<button type="button">Open</button>} items={[]} />);
+    expect((container.firstElementChild as HTMLElement).style.display).toBe('inline-block');
+    unmount();
+    const r = render(<Menu fullWidth trigger={<button type="button">Open</button>} items={[]} />);
+    const wrap = r.container.firstElementChild as HTMLElement;
+    expect(wrap.style.display).toBe('block');
+    expect(wrap.style.flex).toContain('1');
+  });
+  it('Menu popover has the ink border + offset shadow; items carry hover/focus classes and no inline background', async () => {
+    const user = userEvent.setup();
+    render(<Menu trigger={<button type="button">Open</button>} items={[{ key: 'a', label: 'Alpha', onActivate: () => {} }]} />);
+    await user.click(screen.getByRole('button', { name: 'Open' }));
+    const menu = screen.getByRole('menu') as HTMLElement;
+    expect(menu.style.border).toBe('var(--line) solid var(--fg)');
+    expect(menu.style.boxShadow).toBe('var(--pop-shadow)');
+    expect(menu.style.borderRadius).toBe('var(--radius-pop)');
+    const item = screen.getByRole('menuitem', { name: 'Alpha' }) as HTMLElement;
+    expect(item.style.background).toBe('');
+    expect(item.className).toContain('hover:bg-hover');
+    expect(item.className).toContain('focus-visible:bg-accent2');
+    expect(item.className).not.toContain(' focus:bg-accent2');
+  });
+  it('Modal panel uses the modal radius, ink border and warm backdrop', () => {
+    render(<Modal open onClose={() => {}} label="M"><p>x</p></Modal>);
+    const panel = screen.getByRole('dialog', { name: 'M' }) as HTMLElement;
+    expect(panel.style.borderRadius).toBe('var(--radius-modal)');
+    expect(panel.style.border).toBe('var(--line) solid var(--fg)');
+    expect((panel.parentElement as HTMLElement).style.background).toBe('var(--backdrop)');
+  });
+  it('Drawer defaults to 520px and uses the warm backdrop', () => {
+    render(<Drawer open onClose={() => {}} label="D"><p>x</p></Drawer>);
+    const panel = screen.getByRole('dialog', { name: 'D' }) as HTMLElement;
+    expect(panel.style.width).toBe('520px');
+    expect((panel.previousElementSibling as HTMLElement).style.background).toBe('var(--backdrop)');
+  });
+});
+
+describe('G3a: drawer edge and the danger button', () => {
+    it('a drawer draws the v2 ink edge on the side facing the page, with no fixed colours', () => {
+        const { unmount } = render(<Drawer open onClose={() => {}} label="Right"><p>x</p></Drawer>);
+        expect(screen.getByRole('dialog', { name: 'Right' }).style.boxShadow).toBe('-6px 0 0 var(--fg)');
+        unmount();
+        render(<Drawer open onClose={() => {}} side="left" label="Left"><p>x</p></Drawer>);
+        expect(screen.getByRole('dialog', { name: 'Left' }).style.boxShadow).toBe('6px 0 0 var(--fg)');
+    });
+    it('the danger Button is red through classes (so its hover works), with no inline colour', () => {
+        render(<Button variant="danger">Delete</Button>);
+        const b = screen.getByRole('button', { name: 'Delete' });
+        expect(b.className).toContain('bg-red');
+        expect(b.className).toContain('enabled:hover:bg-red-hover');
+        expect(b.className).toContain('text-on-accent');
+        expect(b.style.background).toBe('');
+    });
+});
+
+describe('G3a: Menu disabled and danger items, and long lists', () => {
+    const items = [
+        { key: 'a', label: 'Open', onActivate: vi.fn() },
+        { key: 'b', label: 'Locked', onActivate: vi.fn(), disabled: true },
+        { key: 'c', label: 'Delete', onActivate: vi.fn(), danger: true },
+    ];
+    it('a disabled item gets no hover/focus tint; a danger item is written in red ink', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        expect(screen.getByRole('menuitem', { name: 'Locked' }).className).not.toContain('hover:bg-hover');
+        expect(screen.getByRole('menuitem', { name: 'Open' }).className).toContain('hover:bg-hover');
+        expect(screen.getByRole('menuitem', { name: 'Delete' }).style.color).toBe('var(--red-ink)');
+    });
+    it('the popover caps its height and scrolls a long list inside itself', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        const menu = screen.getByRole('menu');
+        expect(menu.style.maxHeight).toBe('min(320px, 60vh)');
+        expect(menu.style.overflowY).toBe('auto');
+    });
+});
+
+describe('G3b: Menu focus skips disabled items', () => {
+    const items = [
+        { key: 'a', label: 'Locked', onActivate: vi.fn(), disabled: true },
+        { key: 'b', label: 'Open', onActivate: vi.fn() },
+    ];
+    it('opening a menu whose first item is disabled focuses the first enabled item', async () => {
+        render(<Menu trigger={<button type="button">Actions</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Actions' }));
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
+    });
+    it('ArrowDown from the search box skips a disabled first item', async () => {
+        render(<Menu searchable trigger={<button type="button">Pick</button>} items={items} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'ArrowDown' });
+        expect(document.activeElement).toBe(screen.getByRole('menuitem', { name: 'Open' }));
+    });
+});
+
+describe('G3b: dialog backdrops', () => {
+    it('a backdrop is presentational and still closes the dialog on click', () => {
+        const onClose = vi.fn();
+        const { unmount } = render(<Drawer open onClose={onClose} label="Panel">x</Drawer>);
+        const drawerBackdrop = screen.getByRole('dialog').previousElementSibling as HTMLElement;
+        expect(drawerBackdrop).toHaveAttribute('role', 'presentation');
+        fireEvent.click(drawerBackdrop);
+        expect(onClose).toHaveBeenCalledTimes(1);
+        unmount();
+        render(<Modal open onClose={onClose} label="Dialog">x</Modal>);
+        const modalBackdrop = screen.getByRole('dialog').parentElement as HTMLElement;
+        expect(modalBackdrop).toHaveAttribute('role', 'presentation');
+        fireEvent.click(modalBackdrop);
+        expect(onClose).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('G3c: Drawer side and searchable Menu', () => {
+    it('G3c: side="left" reverses the row so the panel sits on the left; the default stays on the right', () => {
+        const { unmount } = render(<Drawer open onClose={() => {}} side="left" label="L"><p>x</p></Drawer>);
+        expect((screen.getByRole('dialog').parentElement as HTMLElement).style.flexDirection).toBe('row-reverse');
+        unmount();
+        render(<Drawer open onClose={() => {}} label="R"><p>x</p></Drawer>);
+        expect((screen.getByRole('dialog').parentElement as HTMLElement).style.flexDirection).toBe('row');
+    });
+
+    it('G3c: the search box sticks to the top of the scrolling list', async () => {
+        render(<Menu searchable trigger={<button type="button">Pick</button>} items={[{ key: 'a', label: 'Alpha', onActivate: () => {} }]} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        const box = screen.getByRole('searchbox');
+        expect(box.style.position).toBe('sticky');
+        expect(box.style.top).toBe('0px');
+        expect(box.style.zIndex).toBe('1');
+    });
+});
+
+describe('Peek drawer menus: the current option, several at once, and Escape inside a drawer', () => {
+    const pick = (onA = vi.fn(), onB = vi.fn()) => [
+        { key: 'a', label: 'Alpha', onActivate: onA, checked: true },
+        { key: 'b', label: 'Beta', onActivate: onB, checked: false },
+    ];
+
+    it('a single-choice menu marks the current option with a ✓, says it is checked, and closes on a pick', async () => {
+        const onB = vi.fn();
+        render(<Menu selection="single" trigger={<button type="button">Pick</button>} items={pick(vi.fn(), onB)} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+
+        const alpha = screen.getByRole('menuitemradio', { name: 'Alpha' });
+        const beta = screen.getByRole('menuitemradio', { name: 'Beta' });
+        expect(alpha).toHaveAttribute('aria-checked', 'true');
+        expect(beta).toHaveAttribute('aria-checked', 'false');
+        expect(alpha).toHaveTextContent(/Alpha✓$/);
+        expect(beta).toHaveTextContent(/^Beta$/);
+        // The current option rests on the hover tint (a class, so hover still works on the others).
+        expect(alpha.className.split(' ')).toContain('bg-hover');
+        expect(beta.className.split(' ')).toContain('bg-transparent');
+        const check = alpha.querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(check).toHaveTextContent('✓');
+        expect(check.style.color).toBe('var(--accent-ink)');
+
+        await userEvent.click(beta);
+        expect(onB).toHaveBeenCalledOnce();
+        expect(screen.queryByRole('menu')).toBeNull();
+    });
+
+    it('a several-at-once menu stays open after a pick, by click or by Enter', async () => {
+        const onA = vi.fn();
+        const onB = vi.fn();
+        render(<Menu selection="multi" trigger={<button type="button">Labels</button>} items={pick(onA, onB)} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Labels' }));
+
+        expect(screen.getByRole('menuitemcheckbox', { name: 'Alpha' })).toHaveAttribute('aria-checked', 'true');
+        await userEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Beta' }));
+        expect(onB).toHaveBeenCalledOnce();
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+
+        screen.getByRole('menuitemcheckbox', { name: 'Alpha' }).focus();
+        fireEvent.keyDown(screen.getByRole('menu'), { key: 'Enter' });
+        expect(onA).toHaveBeenCalledOnce();
+        expect(screen.getByRole('menu')).toBeInTheDocument();
+    });
+
+    it('a plain menu keeps plain menu items with no checked state', async () => {
+        render(<Menu trigger={<button type="button">Open</button>} items={pick()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+        expect(screen.getByRole('menuitem', { name: 'Alpha' })).not.toHaveAttribute('aria-checked');
+        expect(screen.getByRole('menuitem', { name: 'Alpha' })).toHaveTextContent(/^Alpha$/);
+    });
+
+    it('Escape in a menu inside a drawer closes the menu and leaves the drawer open', async () => {
+        const onClose = vi.fn();
+        render(
+            <Drawer open onClose={onClose} label="Issue">
+                <Menu trigger={<button type="button">Status</button>} items={pick()} />
+            </Drawer>,
+        );
+        const trigger = screen.getByRole('button', { name: 'Status' });
+        await userEvent.click(trigger);
+        await userEvent.keyboard('{Escape}');
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(document.activeElement).toBe(trigger);
+
+        await userEvent.keyboard('{Escape}');
+        expect(onClose).toHaveBeenCalledOnce();
+    });
+
+    it('Escape in a searchable menu\'s search box also stays inside the menu', async () => {
+        const onClose = vi.fn();
+        render(
+            <Drawer open onClose={onClose} label="Issue">
+                <Menu searchable trigger={<button type="button">Pick</button>} items={pick()} />
+            </Drawer>,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        fireEvent.keyDown(screen.getByRole('searchbox'), { key: 'Escape' });
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('takes the popover\'s position and the items\' type from the caller', async () => {
+        render(
+            <Menu
+                trigger={<button type="button">Pick</button>}
+                items={pick()}
+                popoverStyle={{ left: 106, right: 6, minWidth: 0, maxHeight: 300 }}
+                itemStyle={{ fontSize: 13, fontWeight: 400, padding: '7px 10px' }}
+            />,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        const menu = screen.getByRole('menu');
+        expect(menu.style.left).toBe('106px');
+        expect(menu.style.right).toBe('6px');
+        expect(menu.style.top).toBe('100%');
+        expect(menu.style.maxHeight).toBe('300px');
+        const item = screen.getByRole('menuitem', { name: 'Alpha' });
+        expect(item.style.fontSize).toBe('13px');
+        expect(item.style.fontWeight).toBe('400');
+        expect(item.style.padding).toBe('7px 10px');
+    });
+
+    it('can line its popover up with the row around it, so it spans a button beside the trigger', async () => {
+        render(
+            <div style={{ position: 'relative', display: 'flex' }}>
+                <Menu fullWidth anchorToParent trigger={<button type="button">Pick</button>} items={pick()} />
+                <button type="button">Beside</button>
+            </div>,
+        );
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        // An unpositioned wrapper hands the popover's position to the row.
+        const wrapper = screen.getByRole('menu').parentElement as HTMLElement;
+        expect(wrapper.style.position).toBe('static');
+        expect(wrapper.style.flexGrow).toBe('1');
+    });
+
+    it('positions its popover against its own trigger by default', async () => {
+        render(<Menu fullWidth trigger={<button type="button">Pick</button>} items={pick()} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Pick' }));
+        expect((screen.getByRole('menu').parentElement as HTMLElement).style.position).toBe('relative');
+    });
+});
+
+describe('Menu: focus after a pick', () => {
+    const items = (onA: () => void = vi.fn()) => [{ key: 'a', label: 'Alpha', onActivate: onA }, { key: 'b', label: 'Beta', onActivate: vi.fn() }];
+
+    it('a pick by keyboard or click closes the menu and puts focus back on its trigger, not the page', async () => {
+        render(<Menu trigger={<button type="button">Open</button>} items={items()} />);
+        const trigger = screen.getByRole('button', { name: 'Open' });
+        await userEvent.click(trigger);
+        await userEvent.keyboard('{Enter}');
+        expect(screen.queryByRole('menu')).toBeNull();
+        expect(document.activeElement).toBe(trigger);
+
+        await userEvent.click(trigger);
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Beta' }));
+        expect(document.activeElement).toBe(trigger);
+    });
+
+    it('focus moved by the pick itself (a field it opens) stays where the pick put it', async () => {
+        const field = document.createElement('input');
+        document.body.appendChild(field);
+        render(<Menu trigger={<button type="button">Open</button>} items={items(() => field.focus())} />);
+        await userEvent.click(screen.getByRole('button', { name: 'Open' }));
+        await userEvent.keyboard('{Enter}');
+        expect(document.activeElement).toBe(field);
+        field.remove();
+    });
+});

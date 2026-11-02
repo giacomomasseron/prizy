@@ -1,0 +1,129 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Auth;
+
+use App\Models\User;
+use App\Models\Workspace;
+use App\Notifications\VerifyEmail;
+use App\Repositories\UserRepository;
+use App\Services\LoginHandoff;
+use App\Services\WorkspaceUrl;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Throwable;
+
+/**
+ * @method static array run(array $data)
+ */
+final class SignUpWorkspace extends BaseUseCase implements UseCaseInterface
+{
+    /** The workspace mark colours the sign-up page offers. */
+    public const COLORS = ['#5b57e0', '#3a8f4d', '#3f74d6', '#d9623a', '#9b5bd6', '#c96b8f'];
+
+    /**
+     * What the workspace will run: engineering turns the support side off,
+     * support turns the tracker off, both keeps both. It is also what the
+     * owner works on, so it gives them the tracker, the support desk, or both
+     * (the setup page opens the desk for a support-only owner). Either module
+     * can be switched back on later, under Settings → General.
+     */
+    public const USAGES = ['both', 'engineering', 'support'];
+
+    private readonly UserRepository $userRepository;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->userRepository = app(UserRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    /**
+     * Create a new Workspace and its owner User in a single transaction, then
+     * dispatch the verification notification OUTSIDE it so a mail-driver
+     * failure cannot roll back a valid signup.
+     *
+     * Nobody is logged in here: this runs on the sign-up host, whose session
+     * the workspace never sees. Instead the owner gets a one-time login link
+     * on the workspace's own host (LoginHandoff).
+     *
+     * With app.signup_requires_activation on (the public cloud), the workspace
+     * is created pending instead: no hostname reaches it until the owner clicks
+     * the emailed link (MarkEmailVerified), which is when they get logged in.
+     *
+     * @param  array<string, mixed>  $data  Validated input (workspace_name, slug, name, email, password; color and usage optional)
+     * @return array{workspace: Workspace, user: User, activation_required: bool, workspace_url: string, login_url: string|null}
+     */
+    private function execute(array $data): array
+    {
+        $pending = (bool) config('app.signup_requires_activation');
+        // Not given (an older client): both modules stay on, and the owner
+        // gets neither capability, as before there was a choice.
+        $usage = $data['usage'] ?? null;
+
+        [$workspace, $user] = DB::transaction(function () use ($data, $pending, $usage): array {
+            // Generate the UUID in PHP so the model has its key immediately;
+            // Eloquent does not fetch the Postgres-generated UUID back for
+            // non-incrementing models, so $workspace->id would be null otherwise.
+            $attributes = [
+                'id'               => (string) Str::uuid(),
+                'name'             => $data['workspace_name'],
+                'slug'             => $data['slug'],
+                'color'            => $data['color'] ?? null,
+                'helpdesk_enabled' => $usage !== 'engineering',
+                'tracker_enabled'  => $usage !== 'support',
+            ];
+            if ($pending) {
+                // An explicit NULL overrides the column's DEFAULT now().
+                $attributes['activated_at'] = null;
+            }
+            $workspace = Workspace::forceCreate($attributes);
+
+            // Make this workspace current so the BelongsToWorkspace creating-hook
+            // auto-fills workspace_id on the new User row.
+            $workspace->makeCurrent();
+
+            $user = $this->userRepository->create([
+                'name'          => $data['name'],
+                'email'         => $data['email'],
+                'password_hash' => Hash::make($data['password']),
+                'admin_level'   => 'owner',
+                'is_developer'  => in_array($usage, ['both', 'engineering'], true),
+                'is_agent'      => in_array($usage, ['both', 'support'], true),
+            ]);
+
+            return [$workspace, $user];
+        });
+
+        // Notify AFTER the transaction commits so a mail-driver exception
+        // cannot roll back the user/workspace rows.
+        try {
+            $user->notify(new VerifyEmail());
+        } catch (Throwable $e) {
+            // A pending owner can never log in to ask for the link again, so
+            // the workspace would only hold its slug until the prune. Undo it,
+            // so the person can simply sign up again.
+            if ($pending) {
+                $workspace->forceDelete();
+
+                throw $e;
+            }
+
+            // A live workspace's owner logs in below and can ask for another.
+            report($e);
+        }
+
+        return [
+            'workspace'           => $workspace,
+            'user'                => $user,
+            'activation_required' => $pending,
+            'workspace_url'       => WorkspaceUrl::for($workspace),
+            'login_url'           => $pending ? null : LoginHandoff::url($user, $workspace),
+        ];
+    }
+}

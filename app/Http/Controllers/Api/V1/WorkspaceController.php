@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\UseCases\Workspace\DeleteWorkspace;
+use App\UseCases\Workspace\ShowWorkspace;
+use App\UseCases\Workspace\UpdateWorkspaceSettings;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+
+final class WorkspaceController extends Controller
+{
+    public function show(Request $request): JsonResponse
+    {
+        return response()->json(['data' => ShowWorkspace::run($request->user())]);
+    }
+
+    public function update(Request $request): JsonResponse
+    {
+        // Either switch, or both; an empty request changes nothing and is refused.
+        $data = $request->validate([
+            'helpdesk_enabled' => ['required_without:tracker_enabled', 'boolean'],
+            'tracker_enabled'  => ['required_without:helpdesk_enabled', 'boolean'],
+        ]);
+
+        $workspace = UpdateWorkspaceSettings::run($request->user(), $data);
+
+        return response()->json(['data' => [
+            'id'               => $workspace->id,
+            'name'             => $workspace->name,
+            'slug'             => $workspace->slug,
+            'helpdesk_enabled' => $workspace->helpdesk_enabled,
+            'tracker_enabled'  => $workspace->tracker_enabled,
+        ]]);
+    }
+
+    /**
+     * The typed name is checked in the use case, after the owner check, so a
+     * non-owner is refused whatever they sent. The workspace and the caller's
+     * session end together: invalidating the session signs the caller out
+     * without touching their user row, which the queued erasing removes.
+     */
+    public function destroy(Request $request): Response
+    {
+        $confirm = $request->input('confirm');
+
+        DeleteWorkspace::run($request->user(), is_string($confirm) ? $confirm : '');
+
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return response()->noContent();
+    }
+}

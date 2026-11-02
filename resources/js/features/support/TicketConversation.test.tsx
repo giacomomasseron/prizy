@@ -1,0 +1,197 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { TicketConversation } from './TicketConversation';
+import type { TicketDetail, TicketMessage } from '../../lib/types';
+
+function msg(over: Partial<TicketMessage>): TicketMessage {
+    return { id: 'm1', kind: 'customer', sender: { name: 'Ada Lovelace' }, body: 'hello', created_at: '', ...over };
+}
+
+function ticket(over: Partial<TicketDetail>): TicketDetail {
+    return {
+        id: 'ticket-12345678',
+        subject: 'Cannot log in',
+        status: 'open',
+        priority: 'normal',
+        channel: 'email',
+        requester: null,
+        assignee: null,
+        tags: [],
+        linked_issues: [],
+        sla_metrics: [],
+        updated_at: '',
+        created_at: '',
+        first_replied_at: null,
+        resolved_at: null,
+        csat_rating: null,
+        messages: [],
+        requester_history: [],
+        ...over,
+    };
+}
+
+let ticketData: TicketDetail | undefined;
+let isLoading = false;
+let isError = false;
+
+vi.mock('./hooks', () => ({
+    useTicket: () => ({ data: ticketData, isLoading, isError, refetch: vi.fn() }),
+    usePostTicketMessage: () => ({ mutateAsync: vi.fn().mockResolvedValue(undefined), isPending: false }),
+    useChangeTicketStatus: () => ({ mutate: vi.fn(), isPending: false }),
+}));
+let meData: Record<string, unknown> = { id: 'me-1', admin_level: 'member', is_agent: true, is_developer: false, workspace: { helpdesk_enabled: true } };
+vi.mock('../../auth/useAuth', () => ({
+    useMe: () => ({ data: meData }),
+}));
+
+function renderWithRouter(ticketId: string | undefined) {
+    return render(
+        <MemoryRouter>
+            <TicketConversation ticketId={ticketId} />
+        </MemoryRouter>,
+    );
+}
+
+describe('TicketConversation', () => {
+    it('shows a "Select a ticket" empty state when no ticket is selected', () => {
+        ticketData = undefined;
+        isLoading = false;
+        renderWithRouter(undefined);
+        expect(screen.getByText('Select a ticket')).toBeInTheDocument();
+    });
+
+    it('shows a loading state while the ticket is fetching', () => {
+        ticketData = undefined;
+        isLoading = true;
+        renderWithRouter('t1');
+        expect(screen.getByText('Loading…')).toBeInTheDocument();
+    });
+
+    it('renders the three message kinds with correct data-kind and role labels', () => {
+        ticketData = ticket({
+            messages: [
+                msg({ id: 'm1', kind: 'customer', sender: { name: 'Ada Lovelace' }, body: 'It is broken' }),
+                msg({ id: 'm2', kind: 'agent', sender: { name: 'Grace Hopper' }, body: 'Looking into it' }),
+                msg({ id: 'm3', kind: 'note', sender: { name: 'Grace Hopper' }, body: 'Escalate to eng' }),
+            ],
+        });
+        isLoading = false;
+        renderWithRouter('t1');
+
+        const rows = screen.getAllByTestId('ticket-message');
+        expect(rows).toHaveLength(3);
+        expect(rows[0]).toHaveAttribute('data-kind', 'customer');
+        expect(rows[1]).toHaveAttribute('data-kind', 'agent');
+        expect(rows[2]).toHaveAttribute('data-kind', 'note');
+
+        expect(within(rows[0]).getByText('Customer')).toBeInTheDocument();
+        expect(within(rows[1]).getByText('Agent')).toBeInTheDocument();
+        expect(within(rows[2]).getByText('Internal note')).toBeInTheDocument();
+        expect(within(rows[0]).getByText('It is broken')).toBeInTheDocument();
+        expect(within(rows[1]).getByText('Looking into it')).toBeInTheDocument();
+        expect(within(rows[2]).getByText('Escalate to eng')).toBeInTheDocument();
+    });
+
+    it('renders the composer (textarea) below the thread', () => {
+        ticketData = ticket({ messages: [msg({})] });
+        isLoading = false;
+        renderWithRouter('t1');
+        expect(screen.getByRole('textbox')).toBeInTheDocument();
+        expect(document.querySelector('textarea')).toBeInTheDocument();
+    });
+
+    it('lets an agent change the status from the header', () => {
+        ticketData = ticket({ status: 'pending' });
+        renderWithRouter('t1');
+        expect(screen.getByRole('button', { name: 'Status: Pending' })).toBeInTheDocument();
+    });
+
+    describe('a viewer who is an agent (read-only)', () => {
+        const member = meData;
+        afterEach(() => { meData = member; });
+
+        it('reads the thread and the status, but has no composer and no status menu', () => {
+            meData = { ...member, admin_level: 'viewer' };
+            ticketData = ticket({ status: 'pending', messages: [msg({ body: 'Still broken' })] });
+            renderWithRouter('t1');
+            expect(screen.getByText('Still broken')).toBeInTheDocument();
+            expect(screen.queryByRole('textbox')).toBeNull();
+            expect(screen.queryByRole('button', { name: /^Status/ })).toBeNull();
+            const status = screen.getByText('Pending');
+            expect(status.closest('button')).toBeNull();
+            expect(status.closest('header')).not.toBeNull();
+        });
+    });
+
+    it('renders a linked-issue link pointing at /issues/:id', () => {
+        ticketData = ticket({
+            linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }],
+        });
+        isLoading = false;
+        renderWithRouter('t1');
+        const link = screen.getByText('↩ PRJ-42 ↗');
+        expect(link).toHaveAttribute('href', '/issues/issue-1');
+    });
+
+    it('shows a "Rated good" chip when csat_rating is thumbs_up', () => {
+        ticketData = ticket({ csat_rating: 'thumbs_up' });
+        renderWithRouter('ticket-12345678');
+        expect(screen.getByText('👍 Rated good')).toBeInTheDocument();
+    });
+
+    it('shows a "Rated poor" chip when csat_rating is thumbs_down', () => {
+        ticketData = ticket({ csat_rating: 'thumbs_down' });
+        renderWithRouter('ticket-12345678');
+        expect(screen.getByText('👎 Rated poor')).toBeInTheDocument();
+    });
+
+    it('shows no rating chip when the ticket is unrated', () => {
+        ticketData = ticket({});
+        renderWithRouter('ticket-12345678');
+        expect(screen.queryByText(/Rated good|Rated poor/)).not.toBeInTheDocument();
+    });
+
+    it('v2: display-font subject, pill linked issue, and note cards bordered with a note tint', () => {
+        ticketData = ticket({
+            linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }],
+            messages: [msg({ id: 'm3', kind: 'note', sender: { name: 'Grace Hopper' }, body: 'Escalate to eng' })],
+        });
+        isLoading = false;
+        renderWithRouter('t1');
+        expect(screen.getByText('Cannot log in').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('↩ PRJ-42 ↗').style.borderRadius).toBe('var(--radius-pill)');
+        const card = screen.getByTestId('ticket-message').lastElementChild as HTMLElement;
+        expect(card.style.border).toBe('var(--line) solid color-mix(in srgb, var(--note) 40%, transparent)');
+        expect(card.style.borderRadius).toBe('16px');
+        expect(within(card).getByText('Internal note').style.borderRadius).toBe('var(--radius-pill)');
+    });
+
+    it('G3a: the linked-issue pill writes accent text in the ink partner on its accent tint', () => {
+        ticketData = ticket({ linked_issues: [{ id: 'issue-1', identifier: 'PRJ-42', title: 'Fix login' }] });
+        isLoading = false;
+        renderWithRouter('t1');
+        const pill = screen.getByText('↩ PRJ-42 ↗');
+        expect(pill.style.color).toBe('var(--accent-ink)');
+        expect(pill.style.background).toBe('var(--accent2)');
+    });
+
+    it('G3b: the conversation pane is not a second main landmark, in every state', () => {
+        ticketData = undefined;
+        isLoading = false;
+        renderWithRouter(undefined);
+        expect(screen.queryByRole('main')).toBeNull();
+    });
+    it('G3c: a failed ticket load shows the retryable alert', () => {
+        ticketData = undefined;
+        isLoading = false;
+        isError = true;
+        try {
+            renderWithRouter('t1');
+            expect(screen.getByRole('alert').textContent).toContain("Couldn't load this ticket.");
+            expect(screen.queryByText('Select a ticket')).toBeNull();
+        } finally {
+            isError = false;
+        }
+    });
+});

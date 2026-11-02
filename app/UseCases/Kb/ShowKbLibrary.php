@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Kb;
+
+use App\Models\User;
+use App\Repositories\KbAuthoringRepository;
+use App\Services\HelpdeskAccess;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+use Illuminate\Database\Eloquent\Collection;
+
+/**
+ * @method static Collection run(User $actor)
+ */
+final class ShowKbLibrary extends BaseUseCase implements UseCaseInterface
+{
+    private readonly KbAuthoringRepository $kb;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->kb = app(KbAuthoringRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    private function execute(User $actor): Collection
+    {
+        HelpdeskAccess::gate($actor);
+
+        return $this->kb->libraryTree();
+    }
+}

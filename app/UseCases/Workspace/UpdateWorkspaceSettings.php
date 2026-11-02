@@ -1,0 +1,67 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Workspace;
+
+use App\Models\User;
+use App\Models\Workspace;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
+
+/**
+ * Workspace-level configuration.
+ *
+ * The permission rule already exists as WorkspacePolicy::updateSettings (admin
+ * or owner, same workspace) and is pinned by RbacMatrixTest — so this asks the
+ * policy rather than restating it, and tightening the policy tightens this
+ * endpoint too. Asked here rather than in the controller because reaching the
+ * Workspace entity from a controller is a deptrac violation (Controller:
+ * [UseCase]).
+ *
+ * Always acts on the actor's own workspace — there is no workspace id in the
+ * request to get wrong.
+ *
+ * At least one of the two modules stays on: a workspace with neither would
+ * have nothing left to open. The table refuses it too (workspaces_one_module_on);
+ * this is where the person switching gets told why. The row is locked while it
+ * is checked, so two admins switching off one module each cannot both pass.
+ *
+ * @method static Workspace run(User $actor, array $data)
+ */
+final class UpdateWorkspaceSettings extends BaseUseCase implements UseCaseInterface
+{
+    public function handle(mixed ...$arguments): mixed
+    {
+        return $this->execute(...$arguments);
+    }
+
+    /** @param array{helpdesk_enabled?: bool, tracker_enabled?: bool} $data Validated input */
+    private function execute(User $actor, array $data): Workspace
+    {
+        return DB::transaction(function () use ($actor, $data): Workspace {
+            /** @var Workspace $workspace */
+            $workspace = Workspace::query()->lockForUpdate()->findOrFail($actor->workspace_id);
+
+            abort_unless(Gate::forUser($actor)->allows('updateSettings', $workspace), 403);
+
+            $workspace->fill($data);
+
+            if (! $workspace->helpdesk_enabled && ! $workspace->tracker_enabled) {
+                // Named after the switch this request turned off, so the message lands on it.
+                $field = array_key_exists('tracker_enabled', $data) && ! $data['tracker_enabled'] ? 'tracker_enabled' : 'helpdesk_enabled';
+
+                throw ValidationException::withMessages([
+                    $field => 'Keep at least one module on: a workspace needs the issue tracker or the support desk.',
+                ]);
+            }
+
+            $workspace->save();
+
+            return $workspace;
+        });
+    }
+}

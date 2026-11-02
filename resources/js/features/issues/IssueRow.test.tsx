@@ -1,0 +1,172 @@
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { vi, describe, it, expect } from 'vitest';
+import { IssueRow, formatRelativeShort } from './IssueRow';
+import type { Issue } from '../../lib/types';
+
+const BASE: Issue = {
+    id: 'abc-123-xyz-qrs',
+    title: 'Fix login bug',
+    description: null,
+    status: 'in_progress',
+    priority: 'high',
+    estimate: null,
+    due_date: null,
+    sort_order: 0,
+    team_id: 'team-1',
+    project_id: null,
+    cycle_id: null,
+    parent_issue_id: null,
+    assignee_id: null,
+    created_by: 'u1',
+    archived_at: null,
+    created_at: '2026-07-01T00:00:00.000000Z',
+    updated_at: '2026-07-02T00:00:00.000000Z',
+    labels: [],
+};
+
+describe('IssueRow', () => {
+    function renderRow(overrides: Partial<Issue> = {}) {
+        const onPeek = vi.fn();
+        // P7-A: the row's star toggle runs a mutation, so the row renders inside a query client.
+        const { container } = render(
+            <QueryClientProvider client={new QueryClient()}>
+                <MemoryRouter>
+                    <IssueRow issue={{ ...BASE, ...overrides }} onPeek={onPeek} projects={[]} />
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+        return { onPeek, container };
+    }
+
+    it('G3b: the title is the row\'s button — Enter or Space peeks the issue, and the row draws the focus ring', async () => {
+        const { onPeek } = renderRow();
+        const title = screen.getByRole('button', { name: 'Fix login bug' });
+        title.focus();
+        await userEvent.keyboard('{Enter}');
+        expect(onPeek).toHaveBeenCalledWith('abc-123-xyz-qrs');
+        await userEvent.keyboard(' ');
+        expect(onPeek).toHaveBeenCalledTimes(2);
+        expect(screen.getByTestId('issue-row').className).toContain('has-[.row-primary:focus-visible]:outline-2');
+    });
+
+    it('renders priority icon aria-label=high', () => {
+        renderRow();
+        expect(screen.getByRole('img', { name: 'Priority: High' })).toBeInTheDocument();
+    });
+
+    it('renders status icon aria-label=in_progress', () => {
+        renderRow();
+        expect(screen.getByRole('img', { name: 'Status: In Progress' })).toBeInTheDocument();
+    });
+
+    it('builds the PRZ- reference from the id when there is no identifier (PRD §3.2.1)', () => {
+        renderRow();
+        // BASE.id = 'abc-123-xyz-qrs': PRZ- and the first 6 characters in capitals = 'PRZ-ABC-12'
+        expect(screen.getByText('PRZ-ABC-12')).toBeInTheDocument();
+    });
+
+    it('prefers issue.identifier when present', () => {
+        renderRow({ identifier: 'PRZ-42' });
+        expect(screen.getByText('PRZ-42')).toBeInTheDocument();
+        expect(screen.queryByText('ABC-12')).not.toBeInTheDocument();
+    });
+
+    it('renders title text', () => {
+        renderRow();
+        expect(screen.getByText('Fix login bug')).toBeInTheDocument();
+    });
+
+    it('calls onPeek with issue.id on row click', () => {
+        const { onPeek, container } = renderRow();
+        const row = container.querySelector('[data-testid="issue-row"]')!;
+        fireEvent.click(row);
+        expect(onPeek).toHaveBeenCalledWith('abc-123-xyz-qrs');
+    });
+
+    it('renders LabelChip for each embedded label', () => {
+        renderRow({ labels: [{ id: 'l1', name: 'frontend', color: '#4bab66' }] });
+        expect(screen.getByText('frontend')).toBeInTheDocument();
+    });
+
+    it('renders Avatar with assignee initials when an assignee is present', () => {
+        // avatarFor({ id: 'user-1', name: 'Jane Doe' }) → initials 'JD'
+        // Avatar renders <span aria-label="JD">JD</span>
+        renderRow({ assignee: { id: 'user-1', name: 'Jane Doe' } });
+        expect(screen.getByLabelText('JD')).toBeInTheDocument();
+        expect(screen.getByText('JD')).toBeInTheDocument();
+    });
+
+    it('renders dashed unassigned Avatar when there is no assignee', () => {
+        // Avatar without initials renders <span aria-label="Unassigned" …/>
+        renderRow({ assignee: null });
+        expect(screen.getByLabelText('Unassigned')).toBeInTheDocument();
+    });
+
+    it('renders ProjectPill when project_id matches passed projects', () => {
+        const proj = { id: 'p1', name: 'Alpha', color: '#6d69f2',
+            description: null, icon: null, status: 'in_progress' as const,
+            team_id: null, start_date: null, target_date: null,
+            lead_id: null, priority: 'no_priority' as const,
+            created_by: 'u1', created_at: '2026-07-04T00:00:00.000000Z',
+            updated_at: '2026-07-04T00:00:00.000000Z' };
+        render(
+            <QueryClientProvider client={new QueryClient()}>
+                <MemoryRouter>
+                    <IssueRow issue={{ ...BASE, project_id: 'p1' }} onPeek={vi.fn()} projects={[proj]} />
+                </MemoryRouter>
+            </QueryClientProvider>
+        );
+        expect(screen.getByText('Alpha')).toBeInTheDocument();
+    });
+
+    it('v2: hovers via classes (no inline background, no JS handler) and drops the last row border', () => {
+        renderRow();
+        const row = screen.getByTestId('issue-row');
+        fireEvent.mouseEnter(row);
+        expect(row.style.background).toBe('');
+        expect(row.className).toContain('hover:bg-hover');
+        expect(row.className).toContain('last:border-b-0');
+    });
+});
+
+describe('formatRelativeShort', () => {
+    it('returns "today" for same-day ISO', () => {
+        expect(formatRelativeShort(new Date().toISOString())).toBe('today');
+    });
+    it('returns "2d" for 2 days ago', () => {
+        expect(formatRelativeShort(new Date(Date.now() - 2 * 86_400_000).toISOString())).toBe('2d');
+    });
+    it('returns "1w" for 8 days ago', () => {
+        expect(formatRelativeShort(new Date(Date.now() - 8 * 86_400_000).toISOString())).toBe('1w');
+    });
+    it('returns "1mo" for 35 days ago', () => {
+        expect(formatRelativeShort(new Date(Date.now() - 35 * 86_400_000).toISOString())).toBe('1mo');
+    });
+});
+
+describe('P7-A: the star toggle on a row', () => {
+    it('comes first in the row, and clicking it stars without opening the issue', async () => {
+        const fetchMock = vi.fn(() => new Promise<Response>(() => {}));
+        vi.stubGlobal('fetch', fetchMock);
+        try {
+            const onPeek = vi.fn();
+            const { container } = render(
+                <QueryClientProvider client={new QueryClient()}>
+                    <MemoryRouter>
+                        <IssueRow issue={BASE} onPeek={onPeek} projects={[]} />
+                    </MemoryRouter>
+                </QueryClientProvider>
+            );
+            const star = screen.getByRole('button', { name: 'Star' });
+            expect(container.querySelector('[data-testid="issue-row"] button')).toBe(star);
+            fireEvent.click(star);
+            expect(onPeek).not.toHaveBeenCalled();
+            await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/v1/issues/abc-123-xyz-qrs/star', expect.objectContaining({ method: 'PUT' })));
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+});

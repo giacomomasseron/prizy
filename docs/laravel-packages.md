@@ -1,0 +1,3 @@
+- https://github.com/giacomomasseron/php-clean-architecture (for enforcing Clean Architecture principles)
+- https://github.com/giacomomasseron/laravel-models-generator (for generating Eloquent models from migrations)
+- https://github.com/carthage-software/mago (installed via composer)

@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        DB::statement(<<<'SQL'
+            CREATE TABLE ticket_attachments (
+                id                  UUID            PRIMARY KEY DEFAULT gen_random_uuid(),
+                message_id          UUID            NOT NULL REFERENCES ticket_messages(id) ON DELETE CASCADE,
+                filename            VARCHAR(255)    NOT NULL,
+                mime_type           VARCHAR(127)    NOT NULL,
+                size_bytes          BIGINT          NOT NULL,
+                storage_key         VARCHAR(1024)   NOT NULL,   -- S3 object key
+                created_at          TIMESTAMPTZ     NOT NULL DEFAULT now()
+            );
+        SQL);
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('ticket_attachments');
+    }
+};

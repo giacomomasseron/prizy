@@ -1,0 +1,114 @@
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api, nextPath } from '../../lib/apiClient';
+import type { TicketListItem, TicketDetail, TicketMessage, TicketStatus, ContactOption, NewTicketInput, TicketCounts, HelpdeskSavedView } from '../../lib/types';
+
+function ticketsPath(filters: Record<string, string>, sort: string): string {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([k, v]) => { if (v !== '') params.set(`filter[${k}]`, v); });
+    if (sort !== 'updated_at') params.set('sort', sort);
+    const qs = params.toString();
+    return `/tickets${qs ? `?${qs}` : ''}`;
+}
+
+export function useTickets(filters: Record<string, string> = {}, sort: string = 'updated_at') {
+    return useInfiniteQuery({
+        queryKey: ['tickets', filters, sort],
+        queryFn: ({ pageParam }) => api.page<TicketListItem>((pageParam as string | null) ?? ticketsPath(filters, sort)),
+        initialPageParam: null as string | null,
+        getNextPageParam: (last) => nextPath(last.next),
+    });
+}
+
+export function useTicketCounts() {
+    return useQuery({ queryKey: ['ticketCounts'], queryFn: () => api.get<TicketCounts>('/tickets/counts') });
+}
+
+export function useTicket(id: string) {
+    return useQuery({ queryKey: ['ticket', id], queryFn: () => api.get<TicketDetail>(`/tickets/${id}`), enabled: !!id });
+}
+
+export function usePostTicketMessage(ticketId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { body: string; internal: boolean }) =>
+            api.post<TicketMessage>(`/tickets/${ticketId}/messages`, input),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
+            qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
+        },
+    });
+}
+
+export function useChangeTicketStatus(ticketId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (status: TicketStatus) =>
+            api.patch<TicketListItem>(`/tickets/${ticketId}`, { status }),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
+            qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
+        },
+    });
+}
+
+export function useAssignTicket(ticketId: string) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (assigneeId: string | null) =>
+            api.put<TicketListItem>(`/tickets/${ticketId}/assignee`, { assignee_id: assigneeId }),
+        // Pending until the ticket is fetched again, so Assign to me does not flash back in between.
+        onSuccess: async () => {
+            qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
+            await qc.invalidateQueries({ queryKey: ['ticket', ticketId] });
+        },
+    });
+}
+
+export function useContacts() {
+    return useQuery({ queryKey: ['contacts'], queryFn: () => api.get<ContactOption[]>('/contacts') });
+}
+
+export function useCreateTicket() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: NewTicketInput) => api.post<TicketListItem>('/tickets', input),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['tickets'] });
+            qc.invalidateQueries({ queryKey: ['ticketCounts'] });
+        },
+    });
+}
+
+export function useCreateContact() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { name: string; email: string; phone: string | null }) => api.post<ContactOption>('/contacts', input),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: ['contacts'] });
+        },
+    });
+}
+
+export function useSavedViews() {
+    return useQuery({ queryKey: ['support', 'saved-views'], queryFn: () => api.get<HelpdeskSavedView[]>('/ticket-views') });
+}
+
+export function useCreateSavedView() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input: { name: string; definition: { filter: Record<string, string>; sort: string } }) =>
+            api.post<HelpdeskSavedView>('/ticket-views', input),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['support', 'saved-views'] }); },
+    });
+}
+
+export function useDeleteSavedView() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (id: string) => api.del(`/ticket-views/${id}`),
+        onSuccess: () => { qc.invalidateQueries({ queryKey: ['support', 'saved-views'] }); },
+    });
+}

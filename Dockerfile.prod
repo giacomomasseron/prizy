@@ -1,0 +1,190 @@
+# syntax=docker/dockerfile:1
+
+# Read by the web stage's FROM line, which can only see an ARG declared before
+# the first FROM. See "caddy" below.
+ARG CADDY_DNS_PROVIDER
+
+# ---------------------------------------------------------------------------
+# assets — the compiled frontend.
+#
+# node:24-slim, not node:22 — Vite 8.1.1 declares
+# `node: ^20.19.0 || >=22.12.0`.
+# `npm run build` is `tsc --noEmit && vite build`, so devDependencies are
+# required and a type error fails the image build on purpose.
+# ---------------------------------------------------------------------------
+FROM node:24-slim AS assets
+
+WORKDIR /app
+COPY package.json package-lock.json /app/
+RUN npm ci
+
+COPY . /app
+
+# Vite inlines every VITE_*-prefixed variable into the bundle at BUILD time,
+# reading them from the build environment — and Docker exposes an ARG to RUN
+# as an environment variable, so these four declarations are the whole wiring.
+# Verified by canary: `VITE_REVERB_APP_KEY=x npm run build` puts x into
+# public/build/assets/main-*.js.
+#
+# Deliberately no `=""` defaults. An ARG with an empty default is DEFINED and
+# empty, which would make `import.meta.env.VITE_REVERB_PORT ?? 8080` evaluate
+# to Number('') = 0 rather than the fallback. Undeclared values stay genuinely
+# undefined, which is today's behaviour and the polling default.
+ARG VITE_REVERB_APP_KEY
+ARG VITE_REVERB_HOST
+ARG VITE_REVERB_PORT
+ARG VITE_REVERB_SCHEME
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# vendor — PHP dependencies, production only.
+#
+# The whole source is copied in first because composer.json's
+# post-autoload-dump runs `artisan package:discover`, which boots the app.
+# ---------------------------------------------------------------------------
+FROM composer:2 AS vendor
+
+WORKDIR /app
+COPY . /app
+
+RUN composer install \
+        --no-dev \
+        --optimize-autoloader \
+        --no-interaction \
+        --no-progress \
+        --prefer-dist
+
+# ---------------------------------------------------------------------------
+# Runtime — php-fpm with the application baked in.
+# ---------------------------------------------------------------------------
+FROM php:8.5-fpm AS runtime
+
+WORKDIR /var/www/html
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libpq-dev libzip-dev libicu-dev \
+    && docker-php-ext-install pdo pdo_pgsql pgsql zip intl pcntl \
+    && pecl install redis && docker-php-ext-enable redis \
+    && apt-mark manual libpq5 libzip5 libicu76 \
+    && apt-get purge -y --auto-remove libpq-dev libzip-dev libicu-dev \
+    && rm -rf /var/lib/apt/lists/*
+# The -dev packages are purged after the extensions are built, but the
+# runtime shared libraries they pulled in as dependencies (libpq5, libzip5,
+# libicu76) are marked manual first, so `apt-get purge --auto-remove` cannot
+# sweep them away with the -dev packages — the technique the php:8.5-fpm base
+# image uses on itself. Confirmed via `ldd` + `dpkg -S` on this base image
+# that these three package names own the .so files the extensions link
+# against.
+
+# The base image ships php.ini-production but activates no php.ini at all.
+RUN mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini"
+
+COPY docker/prod/php.ini /usr/local/etc/php/conf.d/zz-prizy-prod.ini
+
+# libfcgi-bin provides cgi-fcgi, which the HEALTHCHECK below uses to speak
+# FastCGI to the fpm pool directly — php-fpm has no HTTP listener to probe.
+RUN apt-get update && apt-get install -y --no-install-recommends libfcgi-bin \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY docker/prod/fpm-pool.conf /usr/local/etc/php-fpm.d/zz-prizy.conf
+
+COPY . /var/www/html
+COPY --from=vendor /app/vendor /var/www/html/vendor
+COPY --from=vendor /app/bootstrap/cache /var/www/html/bootstrap/cache
+COPY --from=assets /app/public/build /var/www/html/public/build
+
+COPY docker/prod/entrypoint.sh /usr/local/bin/prizy-entrypoint
+# storage/ is excluded from the build context entirely (see .dockerignore) -
+# none of its content belongs in the image - so the skeleton directories
+# docker/prod/entrypoint.sh needs don't exist yet at this point. Recreate the
+# same list entrypoint.sh recreates on every container start, both so this
+# chown has something to act on and so the app can boot on a `docker run`
+# with no volume mounted over storage/ at all.
+RUN mkdir -p \
+        /var/www/html/storage/framework/cache/data \
+        /var/www/html/storage/framework/sessions \
+        /var/www/html/storage/framework/views \
+        /var/www/html/storage/framework/testing \
+        /var/www/html/storage/logs \
+        /var/www/html/storage/app/public \
+        /var/www/html/storage/app/private \
+    && chmod +x /usr/local/bin/prizy-entrypoint \
+    && chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache \
+    && chmod 755 /var/www/html
+
+USER www-data
+
+ENTRYPOINT ["prizy-entrypoint"]
+CMD ["php-fpm"]
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=3 \
+    CMD SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET \
+        cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong
+
+# ---------------------------------------------------------------------------
+# postgres — PostgreSQL with the application's role script baked in.
+#
+# For hosts that cannot mount a file from this repository: Coolify, for one,
+# keeps the repository on the server only with "Preserve repository during
+# deployment" switched on. docker-compose.prod.yml mounts the same script into
+# the stock image instead. A missed mount does not heal: Docker mounts an
+# empty directory in the script's place, the first initialisation fails on
+# it, and every later start finds a data directory and skips the scripts, so
+# prizy_app is never created. A missing PRIZY_APP_DB_PASSWORD ends the same
+# way, so a compose file using this target must require it, as
+# docker-compose.prod.yml does (${...:?}). Same major version as
+# docker-compose.prod.yml.
+# ---------------------------------------------------------------------------
+FROM postgres:16 AS postgres
+COPY docker/prod/postgres-init.sh /docker-entrypoint-initdb.d/01-app-role.sh
+# Password checks on loopback too, as docker-compose.prod.yml sets for the
+# stock image (see the comment there): initdb's own pg_hba.conf trusts
+# 127.0.0.1 without one. A default, so a compose file that sets it still wins.
+ENV POSTGRES_INITDB_ARGS="--auth-host=scram-sha-256"
+
+# ---------------------------------------------------------------------------
+# caddy — the Caddy the web stage starts from.
+#
+# Stock, unless CADDY_DNS_PROVIDER=cloudflare, which docker-compose.prod.yml
+# passes when .env has a CLOUDFLARE_API_TOKEN. Then Caddy is rebuilt with the
+# caddy-dns/cloudflare plugin, which docker/prod/Caddyfile.cloudflare needs to
+# prove a wildcard certificate over DNS. BuildKit builds only the stages the
+# target uses, so a stock build never pulls or runs the Go toolchain.
+#
+# The plugin is pinned so a rebuild cannot pick up a new release of it unseen;
+# Caddy itself follows the 2.x tag, like the stock stage. v0.2.4 is the first
+# to accept the cfat_/cfut_ token format Cloudflare issues today.
+# ---------------------------------------------------------------------------
+FROM caddy:2-builder-alpine AS caddy-cloudflare-build
+RUN xcaddy build --with github.com/caddy-dns/cloudflare@v0.2.4
+
+FROM caddy:2-alpine AS caddy-stock
+
+FROM caddy:2-alpine AS caddy-cloudflare
+COPY --from=caddy-cloudflare-build /usr/bin/caddy /usr/bin/caddy
+
+# ---------------------------------------------------------------------------
+# web — Caddy carrying the same compiled assets as the runtime image.
+#
+# Caddy replaces nginx here: it terminates TLS with on-demand certificates,
+# serves public/ directly, speaks FastCGI to the app, and carries the Reverb
+# WebSocket. Built from the runtime stage for the same reason nginx was — the
+# asset filenames are content-hashed and the app's Vite manifest points at
+# them, so serving a different build renders a blank page with no error.
+# ---------------------------------------------------------------------------
+# :-stock because Compose passes an EMPTY value, not none, without a token.
+FROM caddy-${CADDY_DNS_PROVIDER:-stock} AS web
+
+COPY --from=runtime /var/www/html/public /var/www/html/public
+COPY docker/prod/Caddyfile docker/prod/Caddyfile.cloudflare /etc/caddy/
+
+# Probed on the INTERNAL listener, which is always plain HTTP. The public site
+# cannot be used: with auto_https on, Caddy answers :80 with a redirect to
+# https and the check would fail on every healthy production container.
+#
+# /health is a landlord route inside the `web` middleware group — reachable
+# without a tenant session, but it still exercises session and cookie
+# middleware and routes to a controller, so this proves the app serves rather
+# than merely that PHP boots.
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=3 \
+    CMD wget -qO- http://127.0.0.1:2020/health >/dev/null 2>&1 || exit 1

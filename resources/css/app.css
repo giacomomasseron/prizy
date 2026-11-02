@@ -1,0 +1,114 @@
+@import 'tailwindcss';
+@import './shared.css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@theme inline {
+  --font-sans: 'Figtree', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --color-bg: var(--bg);           --color-bg2: var(--bg2);
+  --color-panel: var(--panel);     --color-border: var(--border);
+  --color-border2: var(--border2); --color-fg: var(--fg);
+  --color-fg2: var(--fg2);         --color-fg3: var(--fg3);
+  --color-hover: var(--hover);     --color-accent: var(--accent);
+  --color-accent2: var(--accent2); --color-red: var(--red);
+  --color-amber: var(--amber);     --color-green: var(--green);
+  --color-blue: var(--blue);       --color-teal: var(--teal);
+  --color-hi: var(--hi);           --color-on-accent: var(--on-accent);
+  --color-on-sup: var(--on-sup);   --color-on-hi: var(--on-hi);
+  --color-sup: var(--sup);         --color-sup2: var(--sup2);
+  --color-red-ink: var(--red-ink); --color-red-hover: var(--red-hover);     --color-amber-ink: var(--amber-ink);
+  --color-green-ink: var(--green-ink); --color-blue-ink: var(--blue-ink);
+  --color-teal-ink: var(--teal-ink);   --color-accent-ink: var(--accent-ink);
+  --color-sup-ink: var(--sup-ink);     --color-note-ink: var(--note-ink);
+  --color-field: var(--field);
+  --color-sticky-field: var(--sticky-field); --color-sticky-hover: var(--sticky-hover); --color-sticky-pop: var(--sticky-pop);
+}
+
+/* One keyboard focus ring app-wide (v2 ink). It lives in the base layer (after Tailwind's preflight), so a
+   utility class wins over it: a component sets its own focus style with focus-visible: classes (V2-G3b rows draw
+   the ring on the row instead). Text fields keep their ink-border focus (FIELD_CLASSES). */
+@layer base {
+  :where(a, button, summary, [role="button"], [role="tab"], [role="menuitem"], [role="option"], [tabindex]:not([tabindex="-1"])):focus-visible {
+    outline: 2px solid var(--fg);
+    outline-offset: 2px;
+  }
+}
+
+html, body { background: var(--bg); color: var(--fg); }
+
+@keyframes prizy-fade  { from { opacity: 0 }                              to { opacity: 1 } }
+@keyframes prizy-slide { from { transform: translateX(30px); opacity: 0 } to { transform: none; opacity: 1 } }
+@keyframes prizy-pop   { from { transform: scale(.97) translateY(6px); opacity: 0 } to { transform: none; opacity: 1 } }
+
+/* The @ mention picker's popover (P7-B): pops in, unless the user asked for less motion. */
+.mention-pop { animation: prizy-pop .12s ease; }
+@media (prefers-reduced-motion: reduce) { .mention-pop { animation: none; } }
+
+/* The My to-dos checkbox (P7-B): a native checkbox drawn as the design's rounded ink square on the yellow note. */
+.todo-check {
+  appearance: none; width: 20px; height: 20px; margin: 1px 0 0; flex-shrink: 0; box-sizing: border-box;
+  border: 2px solid var(--on-hi); border-radius: 6px; background: transparent; cursor: pointer;
+  display: inline-grid; place-content: center;
+}
+.todo-check:hover { background: var(--sticky-field); }
+.todo-check:checked { background: var(--on-hi); }
+.todo-check:checked::after { content: '✓'; color: var(--hi); font-size: 11px; font-weight: 700; line-height: 1; }
+/* The note is yellow in both themes: its focus rings take its ink, not --fg (cream in dark theme). */
+.sticky-note :focus-visible { outline-color: var(--on-hi); }
+/* The global ring leaves inputs to the browser; the note's checkbox draws its own, in the note's ink. */
+.todo-check:focus-visible { outline: 2px solid var(--on-hi); outline-offset: 2px; }
+
+/* ── Auth pages (login + signup, v2). Inline styles set only the field border's width and style, so the
+      colour and the offset focus shadow below can change on :focus. ── */
+@keyframes login-fade   { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+.login-fade  { animation: login-fade .5s ease both; }
+@media (prefers-reduced-motion: reduce) { .login-fade { animation: none; } }
+.login-input { border-color: var(--field); outline: none; transition: border-color .12s, box-shadow .12s; }
+.login-input:focus { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); outline: 2px solid transparent; } /* the transparent outline shows in forced-colours mode */
+@media (max-width: 900px) { .login-aside { display: none; } }
+
+/* ── Setup v2 (sign-up = step 1, /setup = steps 2–3). The URL field is an input inside a bordered box, so the
+      box takes the input's focus look through :focus-within. ── */
+@keyframes setup-rise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes setup-pop  { from { opacity: 0; transform: scale(.8) rotate(-8deg) } to { opacity: 1; transform: none } }
+/* The dynamic viewport unit keeps the footer bar above Safari's toolbar; 100vh is the fallback. */
+.setup-frame { height: 100vh; height: 100dvh; }
+.setup-rise { animation: setup-rise .4s ease both; }
+.setup-pop  { animation: setup-pop .45s ease both; }
+@media (prefers-reduced-motion: reduce) { .setup-rise, .setup-pop { animation: none; } }
+.setup-field { border: var(--line) solid var(--field); transition: border-color .12s, box-shadow .12s; }
+.setup-field:focus-within { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); outline: 2px solid transparent; }
+.setup-field input { outline: none; }
+.setup-next { transition: transform .12s, box-shadow .12s, border-color .12s; border-color: var(--border); }
+.setup-next:hover { border-color: var(--fg); box-shadow: 3px 3px 0 var(--fg); transform: translate(-1px, -1px); }
+@media (prefers-reduced-motion: reduce) { .setup-next:hover { transform: none; } }
+@media (max-width: 900px) { .setup-aside { display: none; } .setup-column { padding: 32px 16px !important; } }
+
+/* KB article editor preview ("As customers see it") — mirrors the public Help Center's article body
+   (`article.kb` in resources/css/help.css) rule for rule, so the preview honours its promise;
+   test/help-center-styles.test.ts holds the two in step. Typography and spacing only. */
+.kb-preview { color: var(--fg); font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.kb-preview h1 { margin: 36px 0 12px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 26px; font-weight: 800; letter-spacing: -.035em; line-height: 1.15; }
+.kb-preview h2 { margin: 32px 0 10px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 22px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
+.kb-preview h3 { margin: 24px 0 8px; font-family: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif; font-size: 18px; font-weight: 800; letter-spacing: -.02em; line-height: 1.25; }
+.kb-preview h4 { margin: 20px 0 6px; font-size: 16px; font-weight: 700; }
+.kb-preview hr { margin: 28px 0; border: 0; border-top: 1px solid var(--border); }
+.kb-preview p { margin: 12px 0; }
+.kb-preview ul { list-style: disc; padding-left: 22px; }
+.kb-preview ol { list-style: decimal; padding-left: 22px; }
+.kb-preview li { margin: 4px 0; }
+.kb-preview a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+.kb-preview strong { font-weight: 700; }
+.kb-preview code { padding: 1px 5px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg2); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: .875em; }
+.kb-preview pre { overflow-x: auto; padding: 14px 16px; border: var(--line) solid var(--border); border-radius: var(--radius-row); background: var(--bg2); font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 13.5px; line-height: 1.6; }
+.kb-preview pre code { padding: 0; border: 0; background: none; font-size: inherit; }
+.kb-preview img { max-width: 100%; height: auto; border-radius: var(--radius-row); }
+.kb-preview blockquote { margin: 16px 0; padding: 2px 0 2px 16px; border-left: 3px solid var(--border2); color: var(--fg2); }
+.kb-preview table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.kb-preview th, .kb-preview td { padding: 8px 10px; border: 1px solid var(--border); text-align: left; }
+.kb-preview th { background: var(--bg2); }

@@ -1,0 +1,24 @@
+import { defineConfig } from 'vite';
+import laravel from 'laravel-vite-plugin';
+import { bunny } from 'laravel-vite-plugin/fonts';
+import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+    plugins: [
+        laravel({
+            input: ['resources/css/app.css', 'resources/js/main.tsx', 'resources/css/help.css'],
+            refresh: true,
+            fonts: [
+                bunny('Figtree', { weights: [400, 500, 600, 700] }),
+                bunny('Bricolage Grotesque', { weights: [500, 700, 800] }),
+                bunny('JetBrains Mono', { weights: [400, 500, 600] }),
+            ],
+        }),
+        tailwindcss(),
+        react(),
+    ],
+    server: {
+        watch: { ignored: ['**/storage/framework/views/**'] },
+    },
+});

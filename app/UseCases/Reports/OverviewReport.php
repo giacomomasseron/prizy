@@ -1,0 +1,34 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\Reports;
+
+use App\Models\User;
+use App\Repositories\ReportRepository;
+use App\Services\HelpdeskAccess;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+
+/**
+ * @method static array run(User $actor, string $range)
+ */
+final class OverviewReport extends BaseUseCase implements UseCaseInterface
+{
+    private readonly ReportRepository $reports;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->reports = app(ReportRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    /** @return array<string, mixed> */
+    private function execute(User $actor, string $range): array
+    {
+        HelpdeskAccess::gate($actor);
+
+        return $this->reports->overview($actor->workspace_id, $range);
+    }
+}

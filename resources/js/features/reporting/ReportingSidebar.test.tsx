@@ -1,0 +1,98 @@
+import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { ReportingSidebar } from './ReportingSidebar';
+import type { HelpdeskSavedReport } from '../../lib/types';
+
+const savedReports: HelpdeskSavedReport[] = [
+    { id: 'sr1', name: 'Weekly overview', created_by: 'u1', definition: { section: 'overview', range: '7d' }, created_at: '', updated_at: '' },
+];
+
+function sidebarProps(overrides = {}) {
+    return {
+        section: 'overview' as const,
+        onSelectSection: vi.fn(),
+        savedReports,
+        onSelectReport: vi.fn(),
+        onDeleteReport: vi.fn(),
+        onSaveReport: vi.fn(),
+        ...overrides,
+    };
+}
+
+describe('ReportingSidebar', () => {
+    it('without save/delete handlers (a viewer) opens a saved report but cannot add or delete one', () => {
+        const onSelectReport = vi.fn();
+        render(<ReportingSidebar {...sidebarProps({ onSelectReport, onSaveReport: undefined, onDeleteReport: undefined })} />);
+        fireEvent.click(screen.getByText('Weekly overview'));
+        expect(onSelectReport).toHaveBeenCalledWith('overview', '7d');
+        expect(screen.queryByText('+ Save report')).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Delete report Weekly overview' })).toBeNull();
+    });
+
+    it('drops the Saved reports heading when there is nothing to open and nothing to save', () => {
+        render(<ReportingSidebar {...sidebarProps({ savedReports: [], onSaveReport: undefined, onDeleteReport: undefined })} />);
+        expect(screen.queryByText('Saved reports')).toBeNull();
+    });
+
+    it('renders the three report sections and calls onSelectSection', () => {
+        const onSelectSection = vi.fn();
+        render(<ReportingSidebar {...sidebarProps({ onSelectSection })} />);
+        expect(screen.getByText('Overview')).toBeInTheDocument();
+        expect(screen.getByText('SLA & channels')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Agents & CSAT'));
+        expect(onSelectSection).toHaveBeenCalledWith('agents');
+    });
+
+    it('renders the Saved reports group and selects one (applies section+range)', () => {
+        const onSelectReport = vi.fn();
+        render(<ReportingSidebar {...sidebarProps({ onSelectReport })} />);
+        fireEvent.click(screen.getByText('Weekly overview'));
+        expect(onSelectReport).toHaveBeenCalledWith('overview', '7d');
+    });
+
+    it('reveals the inline save form and submits a name', () => {
+        const onSaveReport = vi.fn();
+        render(<ReportingSidebar {...sidebarProps({ onSaveReport })} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
+        fireEvent.change(screen.getByPlaceholderText('Report name'), { target: { value: 'My report' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+        expect(onSaveReport).toHaveBeenCalledWith('My report');
+    });
+
+    it('deletes a saved report via its × control', () => {
+        const onDeleteReport = vi.fn();
+        render(<ReportingSidebar {...sidebarProps({ onDeleteReport })} />);
+        fireEvent.click(screen.getByRole('button', { name: 'Delete report Weekly overview' }));
+        expect(onDeleteReport).toHaveBeenCalledWith('sr1');
+    });
+
+    it('v2: display-font title, a white active row and row names that keep their icon', () => {
+        render(<ReportingSidebar {...sidebarProps()} />);
+        expect(screen.getByText('Reporting').style.fontFamily).toBe('var(--font-display)');
+        expect(screen.getByText('Reports').style.textTransform).toBe('');
+        expect(screen.getByRole('button', { name: /◫\s*Overview/ }).style.background).toBe('var(--panel)');
+        const agents = screen.getByRole('button', { name: /☺\s*Agents & CSAT/ });
+        expect(agents.className).toContain('hover:bg-hover');
+        expect(agents.style.background).toBe('');
+        expect(screen.getByRole('button', { name: 'Delete report Weekly overview' }).className).toContain('hover:text-red');
+    });
+
+    it('v2: the save-report form uses the v2 input and buttons', () => {
+        render(<ReportingSidebar {...sidebarProps()} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
+        expect(screen.getByPlaceholderText('Report name').className).toContain('focus:border-fg');
+        expect(screen.getByRole('button', { name: 'Save' }).className).toContain('bg-fg');
+    });
+
+    it('G3b: the report name field is named', () => {
+        render(<ReportingSidebar {...sidebarProps({})} />);
+        fireEvent.click(screen.getByRole('button', { name: /\+ Save report/ }));
+        expect(screen.getByRole('textbox', { name: 'Report name' })).toBeInTheDocument();
+    });
+
+    it('G3b: the selected report section says it is pressed', () => {
+        render(<ReportingSidebar {...sidebarProps({})} />);
+        expect(screen.getByRole('button', { name: /Overview/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-pressed', 'false');
+    });
+});

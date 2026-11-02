@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\UseCases\HelpCenter;
+
+use App\Models\KbArticle;
+use App\Repositories\KbRepository;
+use GiacomoMasseroni\PHPCleanArchitecture\BaseUseCase;
+use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
+/**
+ * Public help-center read — no actor: the pages are unauthenticated (CSAT precedent).
+ *
+ * @method static bool run(string $articleId, mixed $vote)
+ */
+final class RecordArticleFeedback extends BaseUseCase implements UseCaseInterface
+{
+    private const VALID_VOTES = ['up', 'down'];
+
+    private readonly KbRepository $kb;
+
+    public function handle(mixed ...$arguments): mixed
+    {
+        $this->kb = app(KbRepository::class);
+
+        return $this->execute(...$arguments);
+    }
+
+    /**
+     * @return bool whether the vote was actually recorded — the controller
+     *              uses this to decide whether the redirect shows the "thanks"
+     *              state, instead of trusting an unconditional redirect param.
+     */
+    private function execute(string $articleId, mixed $vote): bool
+    {
+        $article = $this->kb->findPublishedById($articleId);
+        if ($article === null) {
+            throw (new ModelNotFoundException)->setModel(KbArticle::class, [$articleId]);
+        }
+
+        // $vote comes straight from request input, so it can be an array
+        // (e.g. `vote[]=up`) — guard the type before the strict in_array()
+        // comparison so a shaped payload is just an invalid vote, not a crash.
+        if (! is_string($vote) || ! in_array($vote, self::VALID_VOTES, true)) {
+            return false;
+        }
+
+        $this->kb->recordFeedback($article, $vote === 'up');
+
+        return true;
+    }
+}
