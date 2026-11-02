@@ -7,10 +7,12 @@ use GiacomoMasseroni\PHPCleanArchitecture\Contracts\UseCaseInterface;
 
 /**
  * php-clean-architecture's rule for a use case: the class extends BaseUseCase
- * and implements UseCaseInterface, written out in its own declaration, and is
- * run with UseCase::run(...). BaseUseCase's constructor is final and private,
- * so Laravel cannot build a use case either: anything that still asks for one
- * as a constructor or action parameter breaks at runtime, not here, unless
+ * and implements UseCaseInterface, written out in its own declaration.
+ *
+ * Dependencies come in through the constructor, built by Laravel's container,
+ * and whoever runs a use case gets it injected and calls ->run(...) on it.
+ * A static UseCase::run(...) on a use case with constructor dependencies
+ * throws UseCaseNotStaticallyRunnableException at runtime, not here, unless
  * this guard catches it first.
  *
  * Loading every class also makes PHP check each handle() against the
@@ -36,18 +38,21 @@ function useCaseShapeClassesIn(string $dir): array
     return $classes;
 }
 
+function useCaseShapeSource(string $path): string
+{
+    return (string) file_get_contents((string) realpath(__DIR__.'/../../app').'/'.$path);
+}
+
 it('declares every use case as extending BaseUseCase and implementing UseCaseInterface', function (): void {
-    $root = (string) realpath(__DIR__.'/../../app');
     $offenders = [];
 
     foreach (useCaseShapeClassesIn('UseCases') as $class => $path) {
         if (trait_exists($class)) {
             continue;
         }
-        $source = (string) file_get_contents("{$root}/{$path}");
         $declared = preg_match(
             '/^(?:final\s+|readonly\s+)*class\s+\w+\s+extends\s+BaseUseCase\s+implements\s+[^{]*\bUseCaseInterface\b/m',
-            $source,
+            useCaseShapeSource($path),
         ) === 1;
         $reflection = new ReflectionClass($class);
 
@@ -62,47 +67,58 @@ it('declares every use case as extending BaseUseCase and implementing UseCaseInt
     expect($offenders)->toBe([]);
 });
 
-it('never asks Laravel to build a use case', function (): void {
+it('never lets a use case fetch a dependency from the container', function (): void {
     $offenders = [];
 
-    foreach (useCaseShapeClassesIn('') as $class => $path) {
-        if (! class_exists($class)) {
-            continue;
-        }
-        foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
-            if ($method->getDeclaringClass()->getName() !== $class) {
-                continue;
-            }
-            foreach ($method->getParameters() as $parameter) {
-                $type = $parameter->getType();
-                $names = $type instanceof ReflectionUnionType || $type instanceof ReflectionIntersectionType
-                    ? array_map(fn (ReflectionNamedType $t): string => $t->getName(), $type->getTypes())
-                    : ($type instanceof ReflectionNamedType ? [$type->getName()] : []);
+    foreach (useCaseShapeClassesIn('UseCases') as $path) {
+        $found = preg_match_all(
+            '/(?<![\w$>:])(?:app|resolve)\s*\(|\bApp::make(?:With)?\s*\(|\bContainer::getInstance\s*\(/',
+            useCaseShapeSource($path),
+        );
 
-                foreach ($names as $name) {
-                    if (is_subclass_of($name, BaseUseCase::class) || in_array($name, useCaseShapeLegacyUseCases(), true)) {
-                        $offenders[] = "{$path}: {$method->getName()}(\${$parameter->getName()})";
-                    }
-                }
-            }
+        if ($found > 0) {
+            $offenders[] = "{$path} ({$found})";
         }
     }
 
     expect($offenders)->toBe([]);
 });
 
-/**
- * Every class in app/UseCases, whatever it extends: before the conversion a
- * use case extends nothing, so is_subclass_of alone would find no offenders.
- *
- * @return list<string>
- */
-function useCaseShapeLegacyUseCases(): array
-{
-    static $classes = null;
+it('never lets a use case keep state between runs', function (): void {
+    // An injected use case is one instance for every run() on it (a controller
+    // holds it for the whole request), so a property written while running
+    // would still be there for the next run.
+    $offenders = [];
 
-    return $classes ??= array_values(array_filter(
+    foreach (useCaseShapeClassesIn('UseCases') as $path) {
+        $found = preg_match_all(
+            '/\$this->\w+(?:\[[^\]]*\])*\s*(?:\.|\+|-|\*|\/|\?\?)?=(?![=>])/',
+            useCaseShapeSource($path),
+        );
+
+        if ($found > 0) {
+            $offenders[] = "{$path} ({$found})";
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
+
+it('runs every use case through an injected instance, never statically', function (): void {
+    $names = array_map(
+        fn (string $class): string => substr($class, (int) strrpos($class, '\\') + 1),
         array_keys(useCaseShapeClassesIn('UseCases')),
-        fn (string $class): bool => class_exists($class),
-    ));
-}
+    );
+    $pattern = '/\b(?:'.implode('|', $names).'|self|static)::(?:run|actingAs)\s*\(/';
+    $offenders = [];
+
+    foreach (useCaseShapeClassesIn('') as $path) {
+        $found = preg_match_all($pattern, useCaseShapeSource($path));
+
+        if ($found > 0) {
+            $offenders[] = "{$path} ({$found})";
+        }
+    }
+
+    expect($offenders)->toBe([]);
+});
