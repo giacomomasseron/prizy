@@ -22,27 +22,31 @@ jobs:
       - name: Build frontend assets
         run: npm ci --no-audit --no-fund && npm run build
 
-      # The dev image creates a user matching the host's, so files it writes
-      # into the bind-mounted checkout stay the runner's. The compose file
-      # defaults to 1000, which the runner's user need not be — and a
-      # container user that cannot write the checkout cannot create vendor/.
-      - name: Build app image
-        run: docker compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)" app
+      # Fakes docker and npm, so it runs in seconds and fails before the image
+      # build when the bootstrap's own logic is wrong.
+      - name: Dev bootstrap tests
+        run: bash scripts/test-dev-bootstrap.sh
 
-      # Before `up`, not after: the app service runs `php artisan serve`,
-      # which exits at once without vendor/, so a later `exec` finds no
-      # container to run in. `run` starts postgres and redis first, as
-      # depends_on says. The token keeps Composer's GitHub downloads out of
-      # the unauthenticated API rate limit.
-      - name: Install dependencies
+      # What `composer dev` runs first on a fresh clone, for real: builds the
+      # dev image with the runner's ids (a container user that cannot write the
+      # bind-mounted checkout cannot create vendor/), installs the PHP
+      # dependencies and generates the app key, all before `up` (see the
+      # script's header). .env already exists, from the first step. The
+      # frontend build's `npm ci` leaves no copy of the lock the bootstrap
+      # recognises, so it runs one quick `npm install` over it. The token
+      # keeps Composer's GitHub downloads out of the unauthenticated API rate
+      # limit.
+      - name: Bootstrap the checkout (what composer dev runs first)
         env:
           COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.GITHUB_TOKEN }}"}}'
-        run: docker compose run --rm -T -e COMPOSER_AUTH app composer install --no-interaction --prefer-dist
+        run: bash scripts/dev-bootstrap.sh
 
-      # Also before `up`: the container reads .env as its environment when it
-      # starts, so a key written afterwards never reaches it.
-      - name: Generate app key
-        run: docker compose run --rm -T app php artisan key:generate
+      # A checkout that's set up must cost a later `composer dev` nothing: the
+      # real image name, the real stamps, nothing left to do.
+      - name: A second bootstrap does nothing
+        run: |
+          out=$(bash scripts/dev-bootstrap.sh 2>&1)
+          if [ -n "$out" ]; then echo "$out"; exit 1; fi
 
       - name: Start core services (app + postgres + redis)
         run: docker compose up -d --wait
@@ -145,4 +149,5 @@ jobs:
           docker run --rm -v "$PWD:/mnt" -w /mnt koalaman/shellcheck:stable -x \
             scripts/install.sh scripts/test-install.sh \
             scripts/test-prod-image.sh scripts/test-prod-stack.sh \
-            scripts/test-invitation-flow.sh
+            scripts/test-invitation-flow.sh \
+            scripts/dev-bootstrap.sh scripts/test-dev-bootstrap.sh
