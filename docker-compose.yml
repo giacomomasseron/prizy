@@ -9,9 +9,11 @@ services:
   app:
     build:
       context: .
+      # `composer dev` builds this with your own ids (scripts/dev-bootstrap.sh).
+      # These defaults are for a plain `docker compose build`.
       args:
-        UID: "1000"   # change if `id -u` is not 1000
-        GID: "1000"   # change if `id -g` is not 1000
+        UID: "1000"
+        GID: "1000"
     image: prizy/app:dev
     container_name: prizy-app
     # --no-reload: without it artisan serve hides this environment from the web
