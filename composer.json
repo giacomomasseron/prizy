@@ -46,14 +46,12 @@
     },
     "scripts": {
         "setup": [
-            "composer install",
-            "@php -r \"file_exists('.env') || copy('.env.example', '.env');\"",
-            "@php artisan key:generate",
-            "npm install --ignore-scripts",
-            "npm run build"
+            "Composer\\Config::disableProcessTimeout",
+            "bash scripts/dev-bootstrap.sh"
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
+            "bash scripts/dev-bootstrap.sh",
             "docker compose up -d --wait app postgres redis",
             "docker compose exec -T app php artisan migrate --force",
             "docker compose exec -T app php artisan db:seed --class=SmokeSeeder --force",
@@ -62,6 +60,7 @@
         ],
         "dev:full": [
             "Composer\\Config::disableProcessTimeout",
+            "bash scripts/dev-bootstrap.sh",
             "docker compose up -d --wait app postgres redis",
             "docker compose exec -T app php artisan migrate --force",
             "docker compose exec -T app php artisan db:seed --class=SmokeSeeder --force",

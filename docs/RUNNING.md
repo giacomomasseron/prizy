@@ -10,23 +10,28 @@
 composer dev
 ```
 
-This is the single command to run the platform. It:
+This is the single command to run the platform, on a fresh clone too. It:
 
-1. brings up the docker stack (`app`, `postgres`, `redis`, `mailpit`) and **waits** for the DB to be
+1. sets the checkout up, running only the steps it still needs (`scripts/dev-bootstrap.sh`):
+   copies `.env.example` to `.env`, builds the dev image with your user and group id, runs
+   `composer install` in the container, generates the app key, and runs `npm install`;
+2. brings up the docker stack (`app`, `postgres`, `redis`, `mailpit`) and **waits** for the DB to be
    healthy (`--wait` + the postgres healthcheck);
-2. runs **`php artisan migrate`** (applies any pending migrations);
-3. seeds the **SmokeSeeder** (idempotent — the smoke workspace + test logins below);
-4. prints the URLs, the test logins, and the Mailpit address;
-5. runs, concurrently, the **queue** listener, **pail** logs, and **Vite** (`npm run dev`).
+3. runs **`php artisan migrate`** (applies any pending migrations);
+4. seeds the **SmokeSeeder** (idempotent — the smoke workspace + test logins below);
+5. prints the URLs, the test logins, and the Mailpit address;
+6. runs, concurrently, the **queue** listener, **pail** logs, and **Vite** (`npm run dev`).
 
 Leave it running; `Ctrl-C` stops all three long-running processes. After this, the app is
 usable at `http://smoke.localhost:8001` with no further steps. All email lands in Mailpit at
 `http://localhost:8025`, whatever `.env` says, so nothing reaches a real address. After
 editing `.env`, restart `composer dev`: the app only reads it when its container starts.
 
-> **First time only** (fresh clone): `composer setup` — installs PHP + JS deps, copies
-> `.env`, generates the app key, and builds assets. It does **not** touch the DB; migration
-> and seeding happen in `composer dev` (inside the container, once the DB is up).
+> **Fresh clone:** nothing to run first. Step 1 takes a few minutes the first time and then
+> only repeats what a pull made stale: dependencies whose lock file changed. `composer setup`
+> runs step 1 on its own, without starting anything. The image is built only when missing;
+> after a `Dockerfile` change, rebuild it with
+> `docker compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)" app`.
 
 ## Open it
 
@@ -73,6 +78,6 @@ docker compose exec -T app php artisan db:seed --class=SmokeSeeder --force
   `rm -f public/hot && npm run build`.
 - **`composer dev:full`** adds the optional `--profile full` docker services (Reverb
   websockets, Horizon, Meilisearch) if you need real-time / queue dashboard / Meili search
-  locally. It also waits-for-DB, migrates, and seeds like `composer dev`. Reverb accepts
+  locally. It also sets the checkout up, waits-for-DB, migrates, and seeds like `composer dev`. Reverb accepts
   sockets only from pages on `APP_BASE_DOMAIN` and its subdomains (`*.localhost`, so
   `smoke.localhost` works); `REVERB_ALLOWED_ORIGINS` overrides that list.
