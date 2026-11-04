@@ -60,10 +60,12 @@ composer dev
 
 `composer dev` does the following:
 
-1. starts the app, PostgreSQL and Redis in Docker and waits until the database
+1. sets the checkout up when it needs it: on a fresh clone, or after a pull
+   changes the dependencies (see below);
+2. starts the app, PostgreSQL and Redis in Docker and waits until the database
    is healthy;
-2. runs the migrations and seeds a demo workspace;
-3. runs the queue worker, the live log tail and Vite with hot reload side by side
+3. runs the migrations and seeds a demo workspace;
+4. runs the queue worker, the live log tail and Vite with hot reload side by side
    in one terminal.
 
 When it's up, open **http://smoke.localhost:8001** and sign in as
@@ -80,20 +82,25 @@ You need **Docker** (with Compose) and **Node + npm** on the host, plus
 **Composer**. Composer is only used to launch the scripts, so any PHP version on
 the host works; the app itself runs on PHP 8.5 inside the container.
 
-Then, once:
+Nothing else. A fresh clone starts with the same command:
 
 ```bash
 git clone https://github.com/giacomomasseron/prizy.git && cd prizy
-cp .env.example .env                                   # Compose reads it at startup
-docker compose build                                   # the dev image
-docker compose run --rm app composer install           # PHP dependencies, in the container
-docker compose run --rm app php artisan key:generate
-npm install                                            # JS dependencies, on the host
+composer dev
 ```
 
-If your user id isn't 1000, build with
-`docker compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)"`
-instead, so files the container writes stay yours.
+The first run sets the checkout up before it starts anything, which takes a few
+minutes once. It copies `.env.example` to `.env`, builds the dev image with your
+user and group id (so files the container writes stay yours), installs the PHP
+dependencies inside the container, generates the app key and runs `npm install`.
+Later runs skip each step that's already done, and install dependencies again
+only after `composer.lock` or `package-lock.json` changes, for example after a
+pull. `composer setup` runs the same steps without starting anything
+(`scripts/dev-bootstrap.sh`).
+
+The image is built only when it's missing. After a change to the `Dockerfile`,
+rebuild it with
+`docker compose build --build-arg UID="$(id -u)" --build-arg GID="$(id -g)" app`.
 
 ### What's running
 
