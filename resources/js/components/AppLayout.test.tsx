@@ -40,6 +40,8 @@ function renderLayout(adminLevel = 'member', path = '/') {
         // it's a non-paginated api.get, so the envelope's `data` is the array directly.
         if ((url as string).includes('/releases')) return j({ data: [] });
         if ((url as string).includes('/issues')) return j({ data: [], links: { next: null } });
+        // Today's left bar shows the workspace card.
+        if ((url as string).endsWith('/workspace')) return j({ data: { id: 'w1', name: 'Smoke', slug: 'smoke', color: '#5b57e0', helpdesk_enabled: true, tracker_enabled: true, member_count: 1, team_count: 0 } });
         return j({ data: {} });
     }));
     return render(
