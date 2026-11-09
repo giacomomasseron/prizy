@@ -11,6 +11,8 @@ import { useIssueDrawers } from '../issues/useIssueDrawers';
 import { useUnreadCount } from '../notifications/hooks';
 import { ProjectBadge } from '../projects/ProjectBadge';
 import { useMyProjects } from '../projects/hooks';
+import { useWorkspace } from '../settings/hooks';
+import { WorkspaceMark } from '../setup/WorkspaceMark';
 import { useTeams } from '../teams/hooks';
 import { usePlan } from './planHooks';
 
@@ -19,6 +21,7 @@ const ROW: CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, bor
 const ROW_HOVER = 'text-fg2 hover:bg-hover hover:text-fg';
 const LABEL: CSSProperties = { padding: '20px 12px 6px', fontSize: 12.5, fontWeight: 700, color: 'var(--fg3)' };
 const RED_BADGE: CSSProperties = { fontSize: 12, fontWeight: 700, color: 'var(--on-accent)', background: 'var(--red)', borderRadius: 'var(--radius-pill)', padding: '0 7px' };
+const ONE_LINE: CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' };
 
 /** The « button's id: AppLayout puts the focus back on it when the Menu pill brings the bar back. */
 export const HIDE_ID = 'today-sidebar-hide';
@@ -36,9 +39,9 @@ function myProjects(projects: Project[], plan: PlanItem[]): MyProject[] {
 }
 
 /**
- * Today's own left bar (the Today v2 design): Today with the plan count, My issues, Inbox and Escalations; the
- * workspace's Issues, Cycles and Projects; My projects with what each holds of today's plan; and you, your team and
- * the theme. « (or `[`, wired in AppLayout) hides it.
+ * Today's own left bar (the Today v2 design): the workspace card, which opens its settings; Today with the plan count,
+ * My issues, Inbox and Escalations; the workspace's Issues, Cycles and Projects; My projects with what each holds of
+ * today's plan; and you, your team and the theme. « (or `[`, wired in AppLayout) hides it.
  */
 export function TodaySidebar({ onHide }: { onHide: () => void }) {
     const me = useMe();
@@ -50,6 +53,8 @@ export function TodaySidebar({ onHide }: { onHide: () => void }) {
     const unread = useUnreadCount(trackerEnabled(me.data));
     const projects = useMyProjects({ enabled: tracker });
     const teams = useTeams({ mine: true, enabled: trackerEnabled(me.data) });
+    // Every member may read it. No card until it answers, and none if it fails.
+    const workspace = useWorkspace();
 
     const items = plan.data?.items ?? [];
     const unreadCount = unread.data?.count ?? 0;
@@ -73,6 +78,22 @@ export function TodaySidebar({ onHide }: { onHide: () => void }) {
                     «
                 </button>
             </div>
+
+            {workspace.data && (
+                <Link
+                    to="/settings/general"
+                    title="Workspace settings"
+                    className="bg-panel text-fg hover:bg-hover"
+                    style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', margin: '0 0 14px', borderRadius: 14, boxShadow: '0 1px 0 var(--border)', textDecoration: 'none' }}
+                >
+                    <WorkspaceMark name={workspace.data.name} color={workspace.data.color} small />
+                    <span style={{ display: 'flex', flexDirection: 'column', minWidth: 0, flex: 1, lineHeight: 1.25 }}>
+                        <span style={{ ...ONE_LINE, fontWeight: 700, fontSize: 14 }}>{workspace.data.name}</span>
+                        {/* The address it is served at: the page's own host, as Setup shows it. */}
+                        <span style={{ ...ONE_LINE, fontFamily: 'var(--font-mono)', fontSize: 11.5, color: 'var(--fg3)' }}>{window.location.host}</span>
+                    </span>
+                </Link>
+            )}
 
             {canDevelop && (
                 <button

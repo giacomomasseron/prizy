@@ -25,12 +25,19 @@ function planned(id: string, proj: { id: string; name: string; color: string } |
     };
 }
 
-interface World { developer?: boolean; unread?: number; items?: PlanItem[]; projects?: Project[]; teams?: { id: string; name: string }[] }
+/** null: /workspace fails. */
+type WorkspaceWorld = { name: string; color: string | null } | null;
+interface World { developer?: boolean; unread?: number; items?: PlanItem[]; projects?: Project[]; teams?: { id: string; name: string }[]; workspace?: WorkspaceWorld }
 let fetchMock: ReturnType<typeof vi.fn>;
 
-function stub({ developer = true, unread = 0, items = [], projects = [], teams = [{ id: 't1', name: 'Platform team' }] }: World = {}) {
+function stub({ developer = true, unread = 0, items = [], projects = [], teams = [{ id: 't1', name: 'Platform team' }], workspace = { name: 'Northwind', color: '#3f74d6' } }: World = {}) {
     fetchMock = vi.fn(async (url: string) => {
         const u = String(url);
+        if (u.endsWith('/workspace')) {
+            return workspace
+                ? j({ data: { id: 'w1', slug: 'northwind', helpdesk_enabled: true, tracker_enabled: true, member_count: 3, team_count: 1, ...workspace } })
+                : new Response(JSON.stringify({ message: 'Server Error' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+        }
         if (u.includes('/members')) return j({ data: [] });
         if (u.includes('/me/plan')) return j({ data: { capacity_minutes: 360, items, done_today: [] } });
         if (u.endsWith('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex Rivera', email: 'a@e.com', admin_level: 'member', is_developer: developer, is_agent: false, email_digest_frequency: 'off' } });
@@ -79,6 +86,58 @@ describe('Today v2: the left bar', () => {
         await user.click(create);
         expect(screen.getByTestId('where')).toHaveTextContent('/today?create=1');
         expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
+    });
+
+    it('puts the workspace card between the header and + New issue: its mark, name and address, opening its settings', async () => {
+        renderSidebar();
+
+        const card = await screen.findByTitle('Workspace settings');
+        expect(card.tagName).toBe('A');
+        expect(card).toHaveAttribute('href', '/settings/general');
+        expect(within(card).getByText('Northwind')).toBeInTheDocument();
+        // The address is the page's own host: northwind.prizy.dev in the cloud, smoke.localhost:8001 in development.
+        expect(window.location.host).not.toBe('');
+        expect(within(card).getByText(window.location.host)).toBeInTheDocument();
+
+        const mark = card.querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(mark).toHaveTextContent(/^N$/);
+        expect(mark.style.background).toBe('rgb(63, 116, 214)');
+        expect(mark.style.color).toBe('rgb(255, 255, 255)');
+        expect(mark.style.width).toBe('28px');
+        expect(mark.style.borderRadius).toBe('9px');
+
+        const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+        expect(follows(screen.getByRole('button', { name: 'Hide sidebar' }), card)).toBe(true);
+        expect(follows(card, await screen.findByRole('button', { name: '+ New issue' }))).toBe(true);
+    });
+
+    it('cuts a long workspace name and address short with an ellipsis', async () => {
+        renderSidebar({ workspace: { name: 'Northwind Logistics and Freight Forwarding', color: '#3f74d6' } });
+        const card = await screen.findByTitle('Workspace settings');
+        for (const text of ['Northwind Logistics and Freight Forwarding', window.location.host]) {
+            expect(within(card).getByText(text)).toHaveStyle({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' });
+        }
+    });
+
+    it('writes the mark letter dark on a light colour, as the mark in Setup does', async () => {
+        renderSidebar({ workspace: { name: 'Petals', color: '#c96b8f' } });
+        const mark = (await screen.findByTitle('Workspace settings')).querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(mark).toHaveTextContent(/^P$/);
+        expect(mark.style.color).toBe('var(--on-hi)');
+    });
+
+    it('draws the mark in the default indigo for a workspace that never picked a colour', async () => {
+        renderSidebar({ workspace: { name: 'Acme', color: null } });
+        const mark = (await screen.findByTitle('Workspace settings')).querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(mark.style.background).toBe('rgb(91, 87, 224)');
+    });
+
+    it('leaves the workspace card out when the workspace cannot be read', async () => {
+        renderSidebar({ workspace: null });
+        await screen.findByText('Alex Rivera');
+        await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).endsWith('/workspace'))).toBe(true));
+        await waitFor(() => expect(screen.queryByTitle('Workspace settings')).toBeNull());
+        expect(screen.queryByText(window.location.host)).toBeNull();
     });
 
     it('offers + New issue only to those who can create issues, and asks a non-tracker user for no plan or projects', async () => {
