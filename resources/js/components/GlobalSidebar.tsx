@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useMatch } from 'react-router-dom';
 import { canDevelop as canDevelopFor, canUseTracker, canWorkHelpdesk, trackerEnabled } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
@@ -49,6 +49,10 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const unreadCount = unread.data?.count ?? 0;
     const planCount = plan.data?.items.length ?? 0;
     const myTeams = teams.data?.items ?? [];
+    // Cycles belong to a team: the row opens your first team's (the team list when you are in none), as on Today's
+    // bar, and is the current page on any team's cycles.
+    const cyclesPath = myTeams[0] ? `/teams/${myTeams[0].id}/cycles` : '/teams';
+    const onCycles = useMatch('/teams/:id/cycles') !== null;
 
     function openSearch() { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })); }
 
@@ -137,6 +141,10 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
                                     <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
                                 </NavLink>
+                                <Link to={cyclesPath} aria-current={onCycles ? 'page' : undefined} style={navRow(onCycles)} className={onCycles ? '' : NAV_ROW_HOVER}>
+                                    <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: '50%', border: '1.6px solid currentColor' }} /></span>
+                                    <span style={{ flex: 1 }}>Cycles</span>
+                                </Link>
                                 <NavLink to="/projects" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
                                     <span style={{ flex: 1 }}>Projects</span>

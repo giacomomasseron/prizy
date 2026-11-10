@@ -28,9 +28,9 @@ test.describe('shell sidebar redesign', () => {
         await page.getByRole('button', { name: /Smoke Team/ }).click();
         // The team-tree child links' leading icon glyphs (▤/◔/▦) are now
         // aria-hidden, so the accessible name is exactly the label — use an
-        // exact match to prove the clean name and disambiguate from any
-        // other "Cycles"-named element on the page.
-        await page.getByRole('link', { name: 'Cycles', exact: true }).click();
+        // exact match to prove the clean name. Scoped to the team's own
+        // links: the Workspace section has a Cycles row too.
+        await page.getByTestId(/^team-links-/).getByRole('link', { name: 'Cycles', exact: true }).click();
         await expect(page).toHaveURL(/\/teams\/[0-9a-f-]+\/cycles/);
         await expect(page.getByRole('heading', { name: 'Cycles' })).toBeVisible();
 
