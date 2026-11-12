@@ -209,6 +209,14 @@ final class IssueRepository
             }
         }
 
+        // escalated=true: only the issues linked to a support ticket (the sidebar's Escalations).
+        if (isset($filters['escalated'])) {
+            unset($filters['escalated']);
+            $query->whereIn('id', function ($sub): void {
+                $sub->select('issue_id')->from('issue_ticket_links');
+            });
+        }
+
         // label_id: issues having ANY of the given labels (junction subquery).
         if (isset($filters['label_id'])) {
             $labelIds = array_filter(array_map('trim', explode(',', $filters['label_id'])));
@@ -244,7 +252,8 @@ final class IssueRepository
         // Stable cursor tiebreaker.
         $query->orderBy('id');
 
-        $query->with('labels', 'assignee');
+        // The ticket (with its requester's organisation and plan) is what rows and cards show as "↩ TKT-…".
+        $query->with('labels', 'assignee', 'supportTickets.requester.contactMetadata');
 
         return $query->cursorPaginate(perPage: $limit, cursorName: 'after');
     }

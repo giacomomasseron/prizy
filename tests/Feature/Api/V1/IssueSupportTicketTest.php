@@ -78,3 +78,42 @@ it('drops the support bridge from the issue payload when the helpdesk is off', f
 
     Workspace::forgetCurrent();
 });
+
+it('carries the ticket on the issue list too, where rows and cards show its reference', function (): void {
+    ['token' => $token, 'issue' => $issue, 'ticket' => $ticket] = escalatedIssueWorld();
+    $ws = Workspace::current();
+    $plain = Issue::factory()->for($ws, 'workspace')->create(['team_id' => $issue->team_id]);
+
+    $rows = collect($this->withToken($token)->getJson('/v1/issues')->assertOk()->json('data'))->keyBy('id');
+
+    expect($rows[$issue->id]['support_ticket']['ref'])->toBe('TKT-'.strtoupper(substr($ticket->id, 0, 6)));
+    expect($rows[$issue->id]['support_ticket']['customer'])->toBe('Acme Corp');
+    expect($rows[$plain->id]['support_ticket'])->toBeNull();
+});
+
+it('lists only the issues that came from Support with filter[escalated]=true', function (): void {
+    ['token' => $token, 'issue' => $issue] = escalatedIssueWorld();
+    $ws = Workspace::current();
+    Issue::factory()->for($ws, 'workspace')->count(2)->create(['team_id' => $issue->team_id]);
+
+    expect($this->withToken($token)->getJson('/v1/issues')->assertOk()->json('data'))->toHaveCount(3);
+    expect($this->withToken($token)->getJson('/v1/issues?filter[escalated]=true')->assertOk()->json('data.*.id'))->toBe([$issue->id]);
+    // With another filter, both apply.
+    expect($this->withToken($token)->getJson("/v1/issues?filter[escalated]=true&filter[status]={$issue->status}")->assertOk()->json('data.*.id'))->toBe([$issue->id]);
+    expect($this->withToken($token)->getJson('/v1/issues?filter[escalated]=true&filter[status]=cancelled')->assertOk()->json('data'))->toBe([]);
+});
+
+it('accepts no other value for filter[escalated]', function (): void {
+    ['token' => $token] = escalatedIssueWorld();
+
+    $this->withToken($token)->getJson('/v1/issues?filter[escalated]=false')->assertStatus(422);
+});
+
+it('drops the ticket from the issue list when the helpdesk is off', function (): void {
+    ['token' => $token, 'issue' => $issue] = escalatedIssueWorld();
+    Workspace::current()->update(['helpdesk_enabled' => false]);
+
+    $rows = collect($this->withToken($token)->getJson('/v1/issues')->assertOk()->json('data'))->keyBy('id');
+
+    expect($rows[$issue->id]['support_ticket'])->toBeNull();
+});
