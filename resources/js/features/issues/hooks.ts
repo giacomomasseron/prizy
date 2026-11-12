@@ -144,6 +144,58 @@ export function useTransitionStatus() {
     });
 }
 
+/**
+ * A card dropped on the board, applied to a cached list: the issue takes the new status (when one is given) and sits
+ * right before `beforeId`, or last when there is none (or it is not in this list), which is the end of its column
+ * wherever issues are shown by status. A list that does not hold the issue is returned as it is.
+ */
+export function applyMoveOptimistic(page: IssuePage | undefined, id: string, status: IssueStatus | undefined, beforeId: string | null): IssuePage {
+    if (!page) return { items: [], next: null };
+    const current = page.items.find((i) => i.id === id);
+    if (!current) return page;
+    const moved = status && status !== current.status ? { ...current, status } : current;
+    const rest = page.items.filter((i) => i.id !== id);
+    let at = beforeId ? rest.findIndex((i) => i.id === beforeId) : -1;
+    if (at < 0) at = rest.length;
+    return { ...page, items: [...rest.slice(0, at), moved, ...rest.slice(at)] };
+}
+
+/**
+ * Move a board card (PUT /v1/issues/{id}/position): before another card or to the end of a column (`beforeId` null),
+ * into another column when `status` is given. Optimistic, like a status change; put back when the server refuses.
+ */
+export function useMoveIssue() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (vars: { id: string; status?: IssueStatus; beforeId: string | null }) =>
+            api.put<Issue>(`/issues/${vars.id}/position`, { status: vars.status, before_id: vars.beforeId }),
+        onMutate: async (vars) => {
+            await qc.cancelQueries({ queryKey: ['issues'] });
+            const snapshots = qc.getQueriesData<IssuePage>({ queryKey: ['issues'] });
+            for (const [key, page] of snapshots) {
+                // A list still loading has nothing to move; writing a page into it would show it empty.
+                if (page) qc.setQueryData(key, applyMoveOptimistic(page, vars.id, vars.status, vars.beforeId));
+            }
+            const prevDetail = qc.getQueryData<Issue>(['issue', vars.id]);
+            if (prevDetail && vars.status) qc.setQueryData<Issue>(['issue', vars.id], { ...prevDetail, status: vars.status });
+            return { snapshots, prevDetail };
+        },
+        onError: (_err, vars, ctx) => {
+            ctx?.snapshots.forEach(([key, page]) => qc.setQueryData(key, page));
+            if (ctx?.prevDetail) qc.setQueryData<Issue>(['issue', vars.id], ctx.prevDetail);
+        },
+        onSuccess: (data, vars) => {
+            // The reply carries the issue's own columns, not its relations: merge it over what the cache has.
+            if (data) qc.setQueryData<Issue>(['issue', vars.id], (prev) => (prev ? { ...prev, ...data } : prev));
+        },
+        onSettled: (_data, _err, vars) => {
+            qc.invalidateQueries({ queryKey: ['issues'] });
+            // Only a change of column is logged; a new place in the same one is not.
+            if (vars.status) qc.invalidateQueries({ queryKey: ['issue', vars.id, 'activities'] });
+        },
+    });
+}
+
 /** The server's answer to a star or unstar (PUT / DELETE /v1/issues/{id}/star). */
 export interface StarState {
     issue_id: string;
