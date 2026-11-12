@@ -58,6 +58,8 @@ describe('CommandPalette: actions', () => {
         expect(icon.style.width).toBe('18px');
         expect(row.firstElementChild).toBe(icon);
         expect(row.textContent).toBe('□Go to Issues');
+        // The one action with a key of its own says so.
+        expect(option('Create new issue').textContent).toBe('+Create new issueC');
         expect(screen.queryByText('Action')).toBeNull();
     });
 

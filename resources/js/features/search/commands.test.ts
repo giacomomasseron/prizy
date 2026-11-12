@@ -20,6 +20,10 @@ describe('COMMANDS', () => {
         expect(COMMANDS.filter((c) => !c.icon).map((c) => c.id)).toEqual([]);
     });
 
+    it('shows the C shortcut on Create new issue, and no hint on any other action', () => {
+        expect(COMMANDS.filter((c) => c.hint).map((c) => [c.id, c.hint])).toEqual([['create-issue', 'C']]);
+    });
+
     it.each([
         ['goto-issues', '/issues'],
         ['goto-projects', '/projects'],

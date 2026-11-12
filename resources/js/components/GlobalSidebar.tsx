@@ -5,6 +5,7 @@ import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
 import { useUnreadCount } from '../features/notifications/hooks';
+import { useProjects } from '../features/projects/hooks';
 import { useTeams } from '../features/teams/hooks';
 import { usePlan } from '../features/today/planHooks';
 import { SidebarFooter } from './SidebarFooter';
@@ -31,6 +32,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const canDevelop = canDevelopFor(me.data);
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues({}, { enabled: showTracker });
+    const projectCount = useProjects(undefined, { enabled: showTracker }).data?.items.length ?? 0;
     // Escalations: the issues that came from Support. The row goes when the workspace has no support desk.
     const showEscalations = showTracker && me.data?.workspace?.helpdesk_enabled === true;
     const { data: escalatedData } = useIssues({ escalated: 'true' }, { enabled: showEscalations });
@@ -151,7 +153,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                                 </Link>
                                 <NavLink to="/projects" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
-                                    <span style={{ flex: 1 }}>Projects</span>
+                                    <span style={{ flex: 1 }}>Projects</span>{projectCount > 0 && <span data-testid="projects-count" style={countStyle}>{projectCount}</span>}
                                 </NavLink>
                                 <NavLink to="/roadmap" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalSidebar } from './GlobalSidebar';
 
 function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
+let projects: string[] = [];
 function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true, path = '/') {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/members')) return j({ data: [] });
@@ -14,6 +15,7 @@ function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = 
         if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off', workspace: { helpdesk_enabled: helpdeskEnabled } } });
         if (url.includes('/unread-count')) return j({ data: { count: 0 } });
         if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', member_count: 3, created_at: '', updated_at: '' }], links: { next: null } });
+        if (url.includes('/projects')) return j({ data: projects.map((id) => ({ id, name: id })), links: { next: null } });
         // Two issues came from Support; the plain list is empty.
         if (url.includes('/issues') && url.includes('escalated')) return j({ data: [{ id: 'e1', status: 'todo' }, { id: 'e2', status: 'done' }], links: { next: null } });
         if (url.includes('/issues')) return j({ data: [], links: { next: null } });
@@ -64,6 +66,24 @@ describe('GlobalSidebar', () => {
         const nav = within(await screen.findByRole('navigation', { name: 'Workspace' }));
         expect(nav.getAllByRole('link').map((l) => l.textContent)).toEqual(['Issues', 'Projects', 'Roadmap', 'Analytics', 'Releases'].map((label) => expect.stringContaining(label)));
         expect(nav.queryByRole('link', { name: 'Cycles' })).toBeNull();
+    });
+    it('Projects shows how many projects there are', async () => {
+        projects = ['p1', 'p2', 'p3'];
+        try {
+            renderSidebar();
+            const link = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: /^Projects/ });
+            const count = await within(link).findByTestId('projects-count');
+            expect(count.textContent).toBe('3');
+            expect(count.style.fontFamily).toBe('var(--font-mono)');
+        } finally {
+            projects = [];
+        }
+    });
+    it('Projects shows no count while there are no projects', async () => {
+        renderSidebar();
+        const link = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: /^Projects/ });
+        await screen.findByTestId('escalations-badge'); // the lists have loaded
+        expect(within(link).queryByTestId('projects-count')).toBeNull();
     });
     it('Escalations opens the issues that came from Support, with their count on a highlighter badge', async () => {
         renderSidebar();

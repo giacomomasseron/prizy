@@ -104,6 +104,7 @@ export default function CommandPalette() {
                 key: `cmd:${c.id}`,
                 label: c.label,
                 leading: <span aria-hidden="true" data-testid="command-icon" style={{ width: 18, display: 'inline-flex', justifyContent: 'center', flexShrink: 0, color: 'var(--fg2)' }}>{icon}</span>,
+                hint: c.hint,
                 onActivate: () => { setOpen(false); c.run(ctx); },
             });
         }

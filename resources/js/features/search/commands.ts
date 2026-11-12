@@ -13,6 +13,8 @@ export interface Command {
     keywords: string;
     /** The glyph in the row's leading column. */
     icon: string;
+    /** The key that does the same from anywhere, shown at the end of the row. */
+    hint?: string;
     run: (ctx: CommandContext) => void;
     /** Leads into the tracker: not offered in a workspace that has switched it off. */
     tracker?: boolean;
@@ -33,7 +35,7 @@ export const COMMANDS: Command[] = [
     { id: 'new-project', label: 'New project', keywords: 'create add project', icon: '▦', run: (c) => c.nav('/create'), tracker: true, write: true },
     { id: 'new-cycle', label: 'New cycle', keywords: 'create add cycle sprint', icon: '○', run: (c) => c.nav('/create?tab=cycle'), tracker: true, write: true },
     { id: 'goto-settings', label: 'Open workspace settings', keywords: 'settings preferences', icon: '⚙', run: (c) => c.nav('/settings') },
-    { id: 'create-issue', label: 'Create new issue', keywords: 'new add issue', icon: '+', run: (c) => c.createIssue(), tracker: true, write: true },
+    { id: 'create-issue', label: 'Create new issue', keywords: 'new add issue', icon: '+', hint: 'C', run: (c) => c.createIssue(), tracker: true, write: true },
     { id: 'toggle-theme', label: 'Toggle theme', keywords: 'dark light mode appearance', icon: '☾', run: (c) => c.toggleTheme() },
     { id: 'goto-board', label: 'Go to Board', keywords: 'board kanban', icon: '▥', run: (c) => c.nav('/board'), tracker: true },
     { id: 'goto-notifications', label: 'Go to Notifications', keywords: 'notifications inbox', icon: '◔', run: (c) => c.nav('/notifications'), tracker: true },
