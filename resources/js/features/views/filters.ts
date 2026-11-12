@@ -8,13 +8,14 @@ const PARAM_KEYS: Array<keyof IssueFilters> = ['status', 'priority', 'team_id', 
 export const STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
 export const PRIORITIES: IssuePriority[] = ['no_priority', 'urgent', 'high', 'medium', 'low'];
 
-/** Menu-selectable filter fields. Entity fields (team/project/label) get their options at render time from hooks. */
-export const FILTER_FIELDS: Array<{ key: FilterKey; label: string; kind: 'enum' | 'team' | 'project' | 'label'; options?: string[] }> = [
+/** Menu-selectable filter fields. Entity fields (team/project/label/assignee) get their options at render time from hooks. */
+export const FILTER_FIELDS: Array<{ key: FilterKey; label: string; kind: 'enum' | 'team' | 'project' | 'label' | 'assignee'; options?: string[] }> = [
     { key: 'status', label: 'Status', kind: 'enum', options: STATUSES },
     { key: 'priority', label: 'Priority', kind: 'enum', options: PRIORITIES },
     { key: 'team_id', label: 'Team', kind: 'team' },
     { key: 'project_id', label: 'Project', kind: 'project' },
     { key: 'label_id', label: 'Label', kind: 'label' },
+    { key: 'assignee_id', label: 'Assignee', kind: 'assignee' },
 ];
 
 /** Filter fields for the Advanced Search page (superset of FILTER_FIELDS; no Team field). */
@@ -37,9 +38,8 @@ export const SORT_OPTIONS: Array<{ value: string; label: string }> = [
     { value: 'title', label: 'Title' },
 ];
 
-/** Non-editable pills produced by built-in views (no value picker). */
+/** Non-editable pills produced by built-in views (no value picker). My Issues is an ordinary Assignee filter. */
 export const PRESET_PILLS: Record<string, (value: string) => string> = {
-    assignee_id: () => 'Assigned to me',
     cycle_id: (value) => (value === 'active' ? 'Active cycle' : 'Cycle'),
 };
 

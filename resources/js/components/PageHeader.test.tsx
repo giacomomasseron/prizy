@@ -5,7 +5,13 @@ import { PageHeader } from './PageHeader';
 describe('PageHeader', () => {
     it('pads its left edge by --nav-inset so the collapsed-sidebar button never covers the title', () => {
         const { container } = render(<PageHeader title="X" />);
-        expect((container.querySelector('header') as HTMLElement).style.padding).toBe('0 24px 0 calc(24px + var(--nav-inset, 0px))');
+        expect((container.querySelector('header') as HTMLElement).style.padding).toBe('0 20px 0 calc(24px + var(--nav-inset, 0px))');
+    });
+    it('keeps the tighter spacing of the Workspace mockup and may shrink inside its row', () => {
+        const { container } = render(<PageHeader title="X" />);
+        const header = container.querySelector('header') as HTMLElement;
+        expect(header.style.gap).toBe('12px');
+        expect(header.style.minWidth).toBe('0px');
     });
     it('renders the title as a highlighted display h1', () => {
         render(<PageHeader title="Issues" />);

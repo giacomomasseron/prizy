@@ -156,7 +156,7 @@ export function TodaySidebar({ onHide }: { onHide: () => void }) {
             </div>
 
             <div style={{ flexShrink: 0, padding: '12px 0 0', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <UserMenu variant="full" subtitle={team?.name ?? 'Prizy workspace'} />
+                <UserMenu subtitle={team?.name ?? 'Prizy workspace'} />
                 <ThemeToggle variant="outlined" />
             </div>
         </>

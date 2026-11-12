@@ -5,6 +5,7 @@ import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { ApiError } from '../../lib/apiClient';
 import type { SavedView } from '../../lib/types';
 import { useLabels } from '../labels/hooks';
+import { useMembers } from '../members/hooks';
 import { useProjects } from '../projects/hooks';
 import { useTeams } from '../teams/hooks';
 import type { IssueFilters } from '../issues/hooks';
@@ -19,11 +20,13 @@ function useFieldOptions() {
     const teams = useTeams();
     const projects = useProjects();
     const labels = useLabels();
+    const members = useMembers();
     return (key: FilterKey): Array<{ value: string; label: string }> => {
         const field = FILTER_FIELDS.find((f) => f.key === key)!;
         if (field.kind === 'enum') return (field.options ?? []).map((o) => ({ value: o, label: o }));
         if (field.kind === 'team') return (teams.data?.items ?? []).map((t) => ({ value: t.id, label: t.name }));
         if (field.kind === 'project') return (projects.data?.items ?? []).map((p) => ({ value: p.id, label: p.name }));
+        if (field.kind === 'assignee') return (members.data ?? []).map((m) => ({ value: m.id, label: m.name }));
         return (labels.data?.items ?? []).map((l) => ({ value: l.id, label: l.name }));
     };
 }
@@ -43,6 +46,14 @@ const pillRemoveStyle: React.CSSProperties = {
 };
 
 const popNote: React.CSSProperties = { padding: '8px 10px', color: 'var(--fg3)', fontSize: 13, margin: 0 };
+
+/** The tick column of a Views row: every row keeps it, so the names line up whether or not one is ticked. */
+const viewTick: React.CSSProperties = { width: 12, flexShrink: 0, color: 'var(--accent)', fontSize: 11 };
+
+function sameFilter(a: Record<string, string>, b: Record<string, string>): boolean {
+    const keys = Object.keys(a);
+    return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
+}
 
 export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const [searchParams, setSearchParams] = useSearchParams();
@@ -110,6 +121,16 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     }
 
     const activeKeys = Object.keys(filters).filter((k) => k !== 'sort');
+
+    // The active view is read off the URL, so it survives a reload and drops itself when a filter changes.
+    // A built-in view ignores the sort (it sets none); a saved view carries its own sort and its own page.
+    const { sort: currentSort, ...currentFilter } = filters as Record<string, string>;
+    const builtinFilters = (v: (typeof BUILTIN_VIEWS)[number]): IssueFilters => (v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {}));
+    const activeBuiltin = BUILTIN_VIEWS.find((v) => sameFilter(builtinFilters(v) as Record<string, string>, currentFilter));
+    const activeSaved = activeBuiltin ? undefined : savedViews.data?.items.find((v) => (
+        v.definition.view_type === viewType && (v.definition.sort || '') === (currentSort ?? '') && sameFilter(v.definition.filter, currentFilter)
+    ));
+    const activeViewName = activeBuiltin?.label ?? activeSaved?.name;
     const editableActive = activeKeys.filter((k) => FILTER_FIELDS.some((f) => f.key === k)) as FilterKey[];
     const presetActive = activeKeys.filter((k) => k in PRESET_PILLS);
 
@@ -126,27 +147,34 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
             <div style={{ position: 'relative' }}>
                 <button
                     type="button"
-                    aria-label="Views"
+                    aria-label={activeViewName ? `Views: ${activeViewName}` : 'Views'}
                     onClick={() => setViewsOpen((o) => !o)}
                     className={TOOL_PILL_CLASSES}
                     style={toolPillStyle}
                 >
-                    Views ▾
+                    <span style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis' }}>{activeViewName ?? 'Views'}</span>
+                    <span aria-hidden="true" style={{ fontSize: 9, color: 'var(--fg3)' }}>▾</span>
                 </button>
                 {viewsOpen && (
                     <div role="menu" style={{ ...popoverStyle, width: 224 }}>
-                        {BUILTIN_VIEWS.map((v) => (
-                            <button
-                                key={v.key}
-                                type="button"
-                                role="menuitem"
-                                onClick={() => { applyFilters(v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {})); setViewsOpen(false); }}
-                                className={POP_ITEM_CLASSES}
-                                style={popItemStyle}
-                            >
-                                {v.label}
-                            </button>
-                        ))}
+                        {BUILTIN_VIEWS.map((v) => {
+                            const on = v === activeBuiltin;
+                            return (
+                                <button
+                                    key={v.key}
+                                    type="button"
+                                    role="menuitem"
+                                    aria-current={on ? 'true' : undefined}
+                                    // Picking the active view again turns it off.
+                                    onClick={() => { applyFilters(on ? {} : builtinFilters(v)); setViewsOpen(false); }}
+                                    className={POP_ITEM_CLASSES}
+                                    style={on ? { ...popItemStyle, fontWeight: 700 } : popItemStyle}
+                                >
+                                    <span aria-hidden="true" style={viewTick}>{on ? '✓' : ''}</span>
+                                    {v.label}
+                                </button>
+                            );
+                        })}
                         <div style={{ margin: '4px 6px', borderTop: '1px solid var(--border)' }} />
                         {savedViews.data?.items.map((view) => (
                             <div
@@ -157,10 +185,12 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                                 <button
                                     type="button"
                                     role="menuitem"
+                                    aria-current={view === activeSaved ? 'true' : undefined}
                                     onClick={() => applySavedView(view)}
                                     className="bg-transparent focus-visible:bg-accent2"
-                                    style={{ ...popItemStyle, flex: 1 }}
+                                    style={{ ...popItemStyle, flex: 1, ...(view === activeSaved ? { fontWeight: 700 } : {}) }}
                                 >
+                                    <span aria-hidden="true" style={viewTick}>{view === activeSaved ? '✓' : ''}</span>
                                     {view.name}
                                 </button>
                                 {canManage(view.created_by) && (
@@ -251,7 +281,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                     {PRESET_PILLS[key]((filters as Record<string, string>)[key])}
                     <button
                         type="button"
-                        aria-label={`Remove ${key === 'assignee_id' ? 'Assigned to me' : key === 'cycle_id' ? 'Active cycle' : key} filter`}
+                        aria-label={`Remove ${key === 'cycle_id' ? 'Active cycle' : key} filter`}
                         onClick={() => setFilter(key, null)}
                         className="opacity-70 hover:opacity-100"
                         style={pillRemoveStyle}
@@ -260,6 +290,19 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                     </button>
                 </span>
             ))}
+
+            {/* Clear: drops every filter, leaves the sort alone */}
+            {activeKeys.length > 0 && (
+                <button
+                    type="button"
+                    aria-label="Clear filters"
+                    onClick={() => { applyFilters(filters.sort ? { sort: filters.sort } : {}); setOpenPill(null); }}
+                    className="text-fg3 hover:text-fg"
+                    style={{ marginLeft: 2, border: 'none', background: 'none', padding: 0, cursor: 'pointer', fontSize: 12, fontFamily: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }}
+                >
+                    Clear
+                </button>
+            )}
 
             {/* Sort — keeps native select for behavior preservation */}
             <label className={`${TOOL_PILL_CLASSES} focus-within:border-fg`} style={{ ...toolPillStyle, marginLeft: 'auto', cursor: 'default' }}>

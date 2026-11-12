@@ -246,7 +246,10 @@ fi
 # `compose port` prints "host:port" for a published binding. When a service
 # publishes nothing, some Compose versions exit non-zero with a message
 # naming the port and container (e.g. "no port 5432/tcp for container ...");
-# others exit 0 and print the empty binding ":0". Either is "unpublished" —
+# others exit 0 and print the empty binding: ":0" up to Compose 2.x,
+# "invalid IP:0" from Compose 5 (an unset address now prints as "invalid IP").
+# What says "unpublished" there is host port 0, whatever stands before the
+# colon: a published port is never 0. Either is "unpublished" —
 # but a nonzero exit with ANY OTHER message (bad service name, daemon
 # unreachable, ...) is a genuine command failure, not proof of anything, and
 # must not be read as a pass.
@@ -255,7 +258,7 @@ port_is_unpublished() {
     output="$(compose port "$1" "$2" 2>&1)"
     rc=$?
     if [ "$rc" -eq 0 ]; then
-        [ -z "$output" ] || [ "$output" = ":0" ]
+        [ -z "$output" ] || [ "${output##*:}" = "0" ]
         return
     fi
     [[ "$output" == "no port "*"for container"* ]]

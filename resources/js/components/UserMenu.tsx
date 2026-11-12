@@ -15,19 +15,15 @@ function getInitials(name: string): string {
 }
 
 export interface UserMenuProps {
-    /** 'full' = sidebar-footer row (avatar + name); 'compact' = toolbar avatar only. */
-    variant?: 'full' | 'compact';
-    /** The line under the name in the 'full' row (Today v2's left bar shows your team). */
+    /** The line under the name (Today v2's left bar shows your team). */
     subtitle?: string;
 }
 
 /**
- * The user account menu (Settings / Integrations / Logout), shared by the global
- * sidebar footer and the issues toolbar. The two variants differ only in the
- * trigger presentation, popover placement, and test id — the menu items are
- * identical. Extracted from SidebarFooter when the toolbar became a 2nd consumer.
+ * The user account menu (Settings / Integrations / Logout): the account row at the foot of the left bars.
+ * The issues toolbar used to carry an avatar-only form; the Workspace mockup dropped it (2026-11-11).
  */
-export function UserMenu({ variant = 'full', subtitle = 'Prizy workspace' }: UserMenuProps) {
+export function UserMenu({ subtitle = 'Prizy workspace' }: UserMenuProps) {
     const me = useMe();
     const logout = useLogout();
     const navigate = useNavigate();
@@ -45,29 +41,6 @@ export function UserMenu({ variant = 'full', subtitle = 'Prizy workspace' }: Use
     const avatar = (
         <Avatar initials={initials || undefined} color={initials ? avatarColor : undefined} size={34} title={userName || 'Me'} />
     );
-
-    if (variant === 'compact') {
-        return (
-            <Menu
-                placement="bottom-end"
-                trigger={
-                    <button
-                        type="button"
-                        data-testid="toolbar-user-menu-trigger"
-                        aria-label={userName ? `${userName} — account menu` : 'Account menu'}
-                        title={userName || 'Account'}
-                        style={{
-                            border: 'none', background: 'none', cursor: 'pointer', padding: 0,
-                            borderRadius: '50%', display: 'inline-flex', flexShrink: 0, fontFamily: 'inherit',
-                        }}
-                    >
-                        {avatar}
-                    </button>
-                }
-                items={items}
-            />
-        );
-    }
 
     // fullWidth: the account block takes the row's free width, so what follows it sits at the right edge.
     return (

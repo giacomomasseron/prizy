@@ -386,13 +386,12 @@ test('toolbar: text-size controls render and Increase enables Reset', async ({ p
     await expect(page.getByRole('button', { name: 'Reset text size' })).toBeEnabled();
 });
 
-// ── Toolbar right side: theme toggle + user avatar menu ──
-test('toolbar: theme toggle and user avatar menu are present', async ({ page }) => {
+// ── Toolbar right side: theme toggle; the account menu lives in the sidebar footer only ──
+test('toolbar: theme toggle is present and the account menu opens from the sidebar', async ({ page }) => {
     await page.goto('/issues');
     await expect(page.getByRole('button', { name: 'Toggle theme' })).toBeVisible();
-    const avatar = page.getByTestId('toolbar-user-menu-trigger');
-    await expect(avatar).toBeVisible();
-    // Opening the avatar menu reveals account actions.
-    await avatar.click();
+    await expect(page.getByTestId('toolbar-user-menu-trigger')).toHaveCount(0);
+    // Opening the sidebar account row reveals account actions.
+    await page.getByTestId('user-menu-trigger').click();
     await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible();
 });
