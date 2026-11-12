@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { trackerEnabled } from '../../auth/capabilities';
+import { canDevelop, canUseTracker, trackerEnabled } from '../../auth/capabilities';
 import { useMe } from '../../auth/useAuth';
 import { useSearch } from './hooks';
-import { filterCommands } from './commands';
+import { filterCommands, type CommandContext } from './commands';
+import { useIssues } from '../issues/hooks';
+import { useIssueDrawers } from '../issues/useIssueDrawers';
+import { useTeams } from '../teams/hooks';
+import { useTheme } from '../../lib/theme';
+import type { Issue } from '../../lib/types';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { Kbd } from '../../components/ui/Kbd';
 import { useFocusTrap } from '../../components/ui/useFocusTrap';
@@ -17,6 +22,9 @@ interface Row {
     onActivate: () => void;
     hint?: string;
 }
+
+/** How many issues the palette lists before anything is typed. */
+const RECENT_ISSUES = 6;
 
 export default function CommandPalette() {
     const [open, setOpen] = useState(false);
@@ -67,8 +75,19 @@ export default function CommandPalette() {
     }, [open]);
 
     // Search and most commands lead into the tracker; a workspace that has switched it off keeps only the rest.
-    const tracker = trackerEnabled(useMe().data);
+    const me = useMe().data;
+    const tracker = trackerEnabled(me);
+    const helpdesk = me?.workspace?.helpdesk_enabled === true;
+    const write = canDevelop(me);
     const search = useSearch(debounced, tracker);
+    // Before anything is typed the palette lists a few issues under the actions; typing replaces them with the search.
+    const useTracker = canUseTracker(me);
+    const recent = useIssues({}, { enabled: open && useTracker });
+    const teams = useTeams({ mine: true, enabled: open && useTracker });
+    const firstTeam = teams.data?.items[0];
+    const cyclesPath = firstTeam ? `/teams/${firstTeam.id}/cycles` : '/teams';
+    const { openCreate } = useIssueDrawers();
+    const { theme, toggle: toggleTheme } = useTheme();
 
     function go(to: string) {
         setOpen(false);
@@ -77,26 +96,36 @@ export default function CommandPalette() {
 
     const rows: Row[] = useMemo(() => {
         const out: Row[] = [];
-        for (const c of filterCommands(q, tracker)) {
-            out.push({ key: `cmd:${c.id}`, label: c.label, hint: 'Action', onActivate: () => { setOpen(false); c.run(navigate); } });
-        }
-        const data = search.data;
-        for (const i of data?.issues ?? []) {
+        const ctx: CommandContext = { nav: navigate, createIssue: () => openCreate(), toggleTheme, cyclesPath };
+        for (const c of filterCommands(q, { tracker, helpdesk, write })) {
+            // The theme action shows the theme it switches to.
+            const icon = c.id === 'toggle-theme' ? (theme === 'dark' ? '☀' : '☾') : c.icon;
             out.push({
-                key: `issue:${i.id}`,
-                label: i.title,
-                leading: (
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        <StatusIcon status={i.status} size={12} />
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', width: 70 }}>
-                            {issueRef(i)}
-                        </span>
-                    </span>
-                ),
-                hint: 'Issue',
-                onActivate: () => go(`/issues/${i.id}`),
+                key: `cmd:${c.id}`,
+                label: c.label,
+                leading: <span aria-hidden="true" data-testid="command-icon" style={{ width: 18, display: 'inline-flex', justifyContent: 'center', flexShrink: 0, color: 'var(--fg2)' }}>{icon}</span>,
+                onActivate: () => { setOpen(false); c.run(ctx); },
             });
         }
+        const data = search.data;
+        const issueRow = (i: Pick<Issue, 'id' | 'title' | 'status'>): Row => ({
+            key: `issue:${i.id}`,
+            label: i.title,
+            leading: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                    <StatusIcon status={i.status} size={12} />
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10.5, color: 'var(--fg3)', width: 70 }}>
+                        {issueRef(i)}
+                    </span>
+                </span>
+            ),
+            hint: 'Issue',
+            onActivate: () => go(`/issues/${i.id}`),
+        });
+        if (q.trim() === '') {
+            for (const i of (recent.data?.items ?? []).slice(0, RECENT_ISSUES)) out.push(issueRow(i));
+        }
+        for (const i of data?.issues ?? []) out.push(issueRow(i));
         for (const p of data?.projects ?? []) {
             out.push({ key: `project:${p.id}`, label: p.name, hint: 'Project', onActivate: () => go(`/projects/${p.id}`) });
         }
@@ -108,7 +137,7 @@ export default function CommandPalette() {
         }
         return out;
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [q, search.data, tracker]);
+    }, [q, search.data, recent.data, tracker, helpdesk, write, theme, cyclesPath]);
 
     useEffect(() => setActive(0), [rows.length]);
 
@@ -148,7 +177,7 @@ export default function CommandPalette() {
                         aria-autocomplete="list"
                         aria-activedescendant={rows[active] ? optionId(active) : undefined}
                         aria-label="Search"
-                        placeholder="Search issues, jump to a page, or run a command…"
+                        placeholder="Type a command or search…"
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         onKeyDown={(e) => {
@@ -156,7 +185,7 @@ export default function CommandPalette() {
                             else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
                             else if (e.key === 'Enter') { e.preventDefault(); rows[active]?.onActivate(); }
                         }}
-                        style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none', color: 'var(--fg)', fontSize: 15, fontFamily: 'inherit' }}
+                        style={{ flex: 1, minWidth: 0, border: 'none', background: 'none', outline: 'none', color: 'var(--fg)', fontSize: 14, fontFamily: 'inherit' }}
                     />
                     <span style={{ color: 'var(--fg3)', flexShrink: 0 }}><Kbd>esc</Kbd></span>
                 </div>
@@ -181,16 +210,15 @@ export default function CommandPalette() {
                     ))}
                 </ul>
                 {/* Outside the listbox (a listbox holds options only), and always rendered so a screen reader announces the text when it appears. */}
-                <div role="status" style={rows.length === 0 ? { padding: '0 22px 22px', textAlign: 'center', color: 'var(--fg3)', fontSize: 13 } : undefined}>{rows.length === 0 ? 'No results.' : ''}</div>
-                {tracker && <div style={{ borderTop: '1px solid var(--border)' }}>
+                <div role="status" style={rows.length === 0 ? { padding: '0 22px 22px', textAlign: 'center', color: 'var(--fg3)', fontSize: 13 } : undefined}>{rows.length === 0 ? 'No results' : ''}</div>
+                {tracker && <div data-testid="palette-footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '9px 14px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
                     <button
                         type="button"
                         onClick={() => go(q.trim() ? `/search?q=${encodeURIComponent(q.trim())}` : '/search')}
-                        className="bg-transparent text-fg2 hover:bg-hover hover:text-fg"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', padding: '11px 16px', border: 'none', fontSize: 13, fontFamily: 'inherit', cursor: 'pointer', textAlign: 'left' }}
+                        className="bg-transparent text-fg2 hover:text-accent"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: 0, border: 'none', fontSize: 12, fontWeight: 500, fontFamily: 'inherit', cursor: 'pointer' }}
                     >
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>⌕ Advanced search</span>
-                        <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>filters, sort &amp; save</span>
+                        <span aria-hidden="true" style={{ fontSize: 13 }}>⌕</span>Advanced Search<span aria-hidden="true" style={{ fontSize: 12 }}>↗</span>
                     </button>
                 </div>}
             </div>
