@@ -98,8 +98,11 @@ describe('Help Center v2 guards', () => {
         const nav = /<nav\b[^>]*>([\s\S]*?)<\/nav>/.exec(layout)!;
         expect(nav[0]).toMatch(/^<nav[^>]*aria-label="Help center"/);
         const links = tags(nav[1], 'a');
-        expect(links.length).toBeGreaterThanOrEqual(3);
+        expect(links.length).toBeGreaterThanOrEqual(2);
         for (const { tag } of links) expect(tag, tag).toMatch(/aria-current="page"/);
+        // "Submit a request" left the nav for a button of its own (Help Center mockup); it can still be the current page.
+        expect(nav[1]).not.toContain('Submit a request');
+        expect(layout).toMatch(/<a href="\{\{ route\('help\.new'\) \}\}" class="hc-btn hc-btn--primary hc-header__submit" @if \(\$helpCurrent === 'new'\) aria-current="page" @endif>Submit a request<\/a>/);
     });
 
     it('the copy and markup the PHP tests and Playwright pin are still in the views', () => {
@@ -112,12 +115,12 @@ describe('Help Center v2 guards', () => {
             'help/article.blade.php': ['<h1 @if (! $is_fallback)lang="{{ $lang }}" @endif', '<article class="kb" @if (! $is_fallback)lang="{{ $lang }}"@endif>{!! $html !!}</article>',
                 'Was this helpful?', 'Thanks for the feedback!', '>Switch to English</a>',
                 "This article isn't available in {{ \\App\\Services\\KbLocales::name($lang) }} yet — showing the English version.",
-                "Updated {{ $updated_at->format('M j, Y') }}"],
+                "updated {{ $updated_at->format('M j, Y') }}"],
             'help/search.blade.php': ['{!! $r->snippet_html !!}', 'No articles match.'],
             'help/login.blade.php': ['Sign in to view your requests', 'Email me a sign-in link',
                 `{{ "If that address has requests with us, we've emailed a sign-in link. It expires in 15 minutes." }}`],
             'help/link-expired.blade.php': ['This link has expired', 'Request a new one'],
-            'help/requests.blade.php': ['{{ $label }} ({{ $counts[$key] }})', 'New reply', 'No requests match'],
+            'help/requests.blade.php': ['{{ $label }} <span class="hc-seg__count">{{ $counts[$key] }}</span>', 'New reply', 'No requests match'],
             'help/request.blade.php': ['How did we do?', 'thanks for the feedback.', 'no action needed from you', "{{ $item['label'] }}", 'Send reply', 'Mark as solved'],
             'help/new.blade.php': ['Submit a request', 'Submit request'],
             'csat/thanks.blade.php': ['Thanks — your feedback was recorded'],
@@ -185,8 +188,9 @@ describe('Help Center v2: portal pages', () => {
         expect(src('help/new.blade.php').match(/class="hc-error"/g)).toHaveLength(3);
         expect(src('help/request.blade.php').match(/class="hc-error"/g)).toHaveLength(1);
     });
-    it('"New reply" is an accent chip, not a button class on a span', () => {
-        expect(src('help/requests.blade.php')).toContain('<span class="hc-chip hc-chip--accent">New reply</span>');
+    it('"New reply" is a support-green chip, not a button class on a span, in the list and on the home page', () => {
+        expect(src('help/requests.blade.php')).toContain('<span class="hc-chip hc-chip--sup">New reply</span>');
+        expect(src('help/home.blade.php')).toContain('<span class="hc-chip hc-chip--sup">New reply</span>');
     });
     it('the active request filter says so', () => {
         expect(src('help/requests.blade.php')).toContain('@if ($filter === $key) aria-current="true" @endif');

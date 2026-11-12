@@ -4,7 +4,8 @@
 
 @section('content')
     <section class="hc-wrap hc-wrap--form hc-page">
-        <h1 class="hc-title hc-title--sm">Submit a request</h1>
+        <a href="{{ route('help.home') }}" class="hc-back">‹ Help center</a>
+        <h1 class="hc-title hc-title--page">Submit a request</h1>
         <p class="hc-lead">Tell us what's going on and our team will get back to you.</p>
 
         <form method="POST" action="{{ route('help.new.store') }}" class="hc-card hc-form">
@@ -17,8 +18,9 @@
                     id="subject"
                     name="subject"
                     value="{{ old('subject') }}"
+                    placeholder="A one-line summary"
                     required
-                    class="hc-field"
+                    class="hc-field hc-field--sunk"
                     @error('subject') aria-invalid="true" aria-describedby="subject-error" @enderror
                 >
                 @error('subject')
@@ -32,7 +34,7 @@
                 <select
                     id="priority"
                     name="priority"
-                    class="hc-field"
+                    class="hc-field hc-field--sunk"
                     @error('priority') aria-invalid="true" aria-describedby="priority-error" @enderror
                 >
                     <option value="urgent" @selected($priority === 'urgent')>Urgent — work is blocked</option>
@@ -51,8 +53,9 @@
                     id="body"
                     name="body"
                     rows="6"
+                    placeholder="What you expected, what happened instead, and the steps to reproduce it."
                     required
-                    class="hc-field"
+                    class="hc-field hc-field--sunk"
                     @error('body') aria-invalid="true" aria-describedby="body-error" @enderror
                 >{{ old('body') }}</textarea>
                 @error('body')
@@ -60,9 +63,9 @@
                 @enderror
             </div>
 
-            <div class="hc-form__actions">
+            <div class="hc-form__actions hc-form__actions--end">
+                <a href="{{ route('help.home') }}" class="hc-btn hc-btn--quiet">Cancel</a>
                 <button type="submit" class="hc-btn hc-btn--primary">Submit request</button>
-                <a href="{{ route('help.requests') }}" class="hc-muted">Cancel</a>
             </div>
         </form>
 
@@ -72,7 +75,7 @@
                 <div class="hc-help-links__list">
                     @foreach ($selfHelp as $a)
                         <a href="{{ route('help.article', [$a->section->category->slug, $a->section->slug, $a->slug]) }}">
-                            {{ $a->title }}
+                            {{ $a->title }} <span aria-hidden="true">↗</span>
                         </a>
                     @endforeach
                 </div>

@@ -24,16 +24,18 @@
             @endphp
             <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" class="hc-brand">
                 <span class="hc-mark" aria-hidden="true">P</span>
-                <span class="hc-brand__name">{{ \App\Models\Workspace::current()?->name ?? 'Prizy' }} Support</span>
+                <span class="hc-brand__name">{{ \App\Models\Workspace::current()?->name ?? 'Prizy' }}</span>
+                <span class="hc-brand__tag">help</span>
             </a>
             <nav class="hc-nav" aria-label="Help center">
                 <a href="{{ \App\Services\HelpLocale::url('help.home', [], $helpLang) }}" @if ($helpCurrent === 'kb') aria-current="page" @endif>Help center</a>
                 @if (auth('contact')->check())
                     <a href="{{ route('help.requests') }}" @if ($helpCurrent === 'requests') aria-current="page" @endif>My requests</a>
-                    <a href="{{ route('help.new') }}" @if ($helpCurrent === 'new') aria-current="page" @endif>Submit a request</a>
                 @endif
             </nav>
             <div class="hc-header__spacer"></div>
+            {{-- Always on offer: a visitor who is not signed in is asked to sign in first, then lands on the form. --}}
+            <a href="{{ route('help.new') }}" class="hc-btn hc-btn--primary hc-header__submit" @if ($helpCurrent === 'new') aria-current="page" @endif>Submit a request</a>
             {{-- The switcher is scoped to the four knowledge-base pages, which pass
                  helpRoute. The portal views (sign-in, requests, submit-a-request,
                  link-expired) never set it: they have no locale to switch (this
@@ -67,10 +69,11 @@
             <div class="hc-account">
                 @if (auth('contact')->check())
                     @php $contactOrg = auth('contact')->user()->contactMetadata->firstWhere('key', 'organization')?->value; @endphp
-                    <span class="hc-account__who hc-muted">
-                        {{ auth('contact')->user()->name }}
+                    @include('help.partials.avatar', ['name' => auth('contact')->user()->name, 'tone' => 'me', 'size' => 'md'])
+                    <span class="hc-account__who">
+                        <span class="hc-account__name">{{ auth('contact')->user()->name }}</span>
                         @if (filled($contactOrg))
-                            <span class="hc-faint">· {{ $contactOrg }}</span>
+                            <span class="hc-account__org">{{ $contactOrg }}</span>
                         @endif
                     </span>
                     <form method="POST" action="{{ route('help.logout') }}">@csrf<button type="submit" class="hc-btn">Sign out</button></form>
@@ -82,7 +85,12 @@
     </header>
     <main id="content" class="hc-main">@yield('content')</main>
     <footer class="hc-footer">
-        <div class="hc-wrap hc-footer__inner">© {{ date('Y') }} Prizy</div>
+        <div class="hc-wrap hc-footer__inner">
+            <span>© {{ date('Y') }} Prizy</span>
+            <span class="hc-footer__spacer"></span>
+            {{-- For the workspace's own support staff: the desk, behind the app's sign-in. --}}
+            <a href="/support" class="hc-footer__agent">Agent view <span aria-hidden="true">↗</span></a>
+        </div>
     </footer>
 </body>
 </html>

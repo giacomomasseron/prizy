@@ -3,7 +3,7 @@
 @section('title', $title)
 
 @section('content')
-    <div class="hc-wrap hc-wrap--narrow hc-page">
+    <div class="hc-wrap hc-wrap--narrow hc-page hc-page--tight">
         <nav class="hc-crumbs" aria-label="Breadcrumb">
             <a href="{{ \App\Services\HelpLocale::url('help.home', [], $lang) }}">Help center</a>
             › <a href="{{ \App\Services\HelpLocale::url('help.topic', [$category->slug], $lang) }}">{{ $category->name }}</a>
@@ -23,7 +23,7 @@
              would mislabel it — $is_fallback is the definitive signal. The lang
              attribute stays first on the h1: a test pins `<h1 lang="…"`. --}}
         <h1 @if (! $is_fallback)lang="{{ $lang }}" @endif class="hc-title">{{ $title }}</h1>
-        <div class="hc-article__updated">Updated {{ $updated_at->format('M j, Y') }}</div>
+        <div class="hc-article__updated">{{ $category->name }} · updated {{ $updated_at->format('M j, Y') }}</div>
 
         <article class="kb" @if (! $is_fallback)lang="{{ $lang }}"@endif>{!! $html !!}</article>
 
