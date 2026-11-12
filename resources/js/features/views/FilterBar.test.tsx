@@ -31,7 +31,7 @@ describe('FilterBar inline save-view', () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {
             const j = (b: unknown, s = 200) =>
                 new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
-            if (url.includes('/v1/me')) return j({ data: devUser });
+            if (/\/v1\/me(\?|$)/.test(url)) return j({ data: devUser });
             if (url.includes('/v1/saved-views')) return j({ data: [], links: { next: null } });
             return j({ data: [], links: { next: null } });
         }));
@@ -132,7 +132,7 @@ describe('FilterBar v2 styling', () => {
 
     it('G3c: the save-view Cancel is a secondary button, like the dialog Cancels', async () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => new Response(
-            JSON.stringify(url.includes('/v1/me') ? { data: devUser } : { data: [], links: { next: null } }),
+            JSON.stringify(/\/v1\/me(\?|$)/.test(url) ? { data: devUser } : { data: [], links: { next: null } }),
             { status: 200, headers: { 'Content-Type': 'application/json' } },
         )));
         try {
@@ -155,7 +155,7 @@ describe('FilterBar saved views across list and board', () => {
         vi.stubGlobal('fetch', vi.fn(async (url: string) => {
             const j = (b: unknown, s = 200) =>
                 new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
-            if (url.includes('/v1/me')) return j({ data: devUser });
+            if (/\/v1\/me(\?|$)/.test(url)) return j({ data: devUser });
             if (url.includes('/v1/saved-views')) {
                 return j({
                     data: [{ id: 'v1', name: 'My todo list', created_by: 'u1', definition: { filter: { status: 'todo' }, sort: '', view_type: 'list' }, created_at: '', updated_at: '' }],

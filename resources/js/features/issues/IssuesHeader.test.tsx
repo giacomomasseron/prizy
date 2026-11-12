@@ -15,8 +15,8 @@ vi.mock('react-router-dom', async (importOriginal) => {
     return { ...actual, useNavigate: () => mockNavigate };
 });
 
-// UserMenu pulls in react-query (useMe/useLogout); stub it — its behaviour is
-// covered by UserMenu.test.tsx / SidebarFooter.test.tsx / AppLayout.test.tsx.
+// The header no longer shows the account menu (Workspace mockup, 2026-11-11: the avatar lives in the sidebar
+// footer only). The stub stays so a test can prove the header does not render it.
 vi.mock('../../components/UserMenu', () => ({
     UserMenu: () => <div data-testid="user-menu-stub" />,
 }));
@@ -55,18 +55,18 @@ describe('IssuesHeader', () => {
         expect(screen.getByRole('button', { name: 'Board' })).toBeInTheDocument();
     });
 
-    it('renders search button with ⌘K hint', () => {
+    it('the search pill shows only the glass and the ⌘K hint, and is still named for readers', () => {
         wrap(<IssuesHeader view="list" />);
-        expect(screen.getByText('Search')).toBeInTheDocument();
-        expect(screen.getByText('⌘K')).toBeInTheDocument();
+        const search = screen.getByRole('button', { name: 'Search ⌘K' });
+        expect(search.textContent).toBe('⌕⌘K');
+        expect(screen.queryByText('Search')).toBeNull();
     });
 
     it('dispatches ⌘K keydown when search button is clicked', () => {
         wrap(<IssuesHeader view="list" />);
         const spy = vi.fn();
         window.addEventListener('keydown', spy);
-        const btn = screen.getByText('Search').closest('button')!;
-        fireEvent.click(btn);
+        fireEvent.click(screen.getByRole('button', { name: 'Search ⌘K' }));
         expect(spy).toHaveBeenCalledWith(expect.objectContaining({ key: 'k', metaKey: true }));
         window.removeEventListener('keydown', spy);
     });
@@ -132,12 +132,18 @@ describe('IssuesHeader', () => {
         expect(resetBtn).toBeDisabled();
     });
 
-    // ── Notifications bell + theme toggle + user avatar (right side of the toolbar) ──
-    it('renders the notifications bell, Toggle theme button, and the user avatar menu', () => {
+    // ── Notifications bell + theme toggle (right side of the toolbar) ──
+    it('renders the notifications bell and the Toggle theme button, and no account menu', () => {
         wrap(<IssuesHeader view="list" />);
         expect(screen.getByTestId('notif-bell-stub')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Toggle theme' })).toBeInTheDocument();
-        expect(screen.getByTestId('user-menu-stub')).toBeInTheDocument();
+        expect(screen.queryByTestId('user-menu-stub')).toBeNull();
+    });
+
+    it('the theme toggle is the last control of the header', () => {
+        const { container } = wrap(<IssuesHeader view="list" />);
+        const actions = container.querySelector('header')!.lastElementChild as HTMLElement;
+        expect(actions.lastElementChild).toBe(screen.getByRole('button', { name: 'Toggle theme' }));
     });
 
     // ── v2 header ──
@@ -148,7 +154,7 @@ describe('IssuesHeader', () => {
 
     it('search, theme and text-size controls hover via classes (no inline colours)', () => {
         wrap(<IssuesHeader view="list" />);
-        const search = screen.getByText('Search').closest('button')!;
+        const search = screen.getByRole('button', { name: 'Search ⌘K' });
         expect(search.style.borderColor).toBe('');
         expect(search.className).toContain('hover:border-fg');
         const theme = screen.getByRole('button', { name: 'Toggle theme' });

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Kbd } from '../../components/ui/Kbd';
-import { UserMenu } from '../../components/UserMenu';
 import { NotificationBell } from '../notifications/NotificationBell';
 import { useFontScale } from '../../lib/fontScale';
 import { useTheme } from '../../lib/theme';
@@ -114,6 +113,9 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
                     <button
                         type="button"
                         onClick={handleSearch}
+                        // Icon-only pill (Workspace mockup). Not plain "Search": that is the sidebar's own search button.
+                        aria-label="Search ⌘K"
+                        title="Search"
                         className="border-border bg-panel text-fg2 hover:border-fg"
                         style={{
                             display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px 7px 14px',
@@ -122,7 +124,6 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
                         }}
                     >
                         <span style={{ fontSize: 13 }}>⌕</span>
-                        Search
                         <Kbd>⌘K</Kbd>
                     </button>
 
@@ -136,9 +137,6 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
                     >
                         {theme === 'dark' ? '☾' : '☀'}
                     </button>
-
-                    {/* User avatar → account menu */}
-                    <UserMenu variant="compact" />
                 </>
             }
         >
