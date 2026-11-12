@@ -1,10 +1,12 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useRoadmap } from './hooks';
 import { barGeometry, computeWindow, isScheduled, markerLeft } from './layout';
 import { PageHeader } from '../../components/PageHeader';
 import { QueryState } from '../../components/ui/QueryState';
-import { sectionTitle } from '../issues/issueStyles';
+import { chipClasses, chipStyle, sectionTitle } from '../issues/issueStyles';
+import { PROJECT_STATUS } from '../projects/projectStatus';
+import type { ProjectStatus } from '../../lib/types';
 import { cardStyle, emptyState } from '../projects/projectStyles';
 import { readableOn } from '../../lib/readableOn';
 
@@ -12,19 +14,36 @@ export default function RoadmapPage() {
     const roadmap = useRoadmap();
     const projects = useMemo(() => roadmap.data ?? [], [roadmap.data]);
     const win = useMemo(() => computeWindow(projects, new Date()), [projects]);
-    const scheduled = projects.filter(isScheduled);
-    const unscheduled = projects.filter((p) => !isScheduled(p));
+    // The Status filter offers the statuses the projects have. The months stay as they are while it filters.
+    const [status, setStatus] = useState<ProjectStatus | 'all'>('all');
+    const statuses = (Object.keys(PROJECT_STATUS) as ProjectStatus[]).filter((s) => projects.some((p) => p.status === s));
+    const picked = status !== 'all' && statuses.includes(status) ? status : 'all';
+    const shown = picked === 'all' ? projects : projects.filter((p) => p.status === picked);
+    const scheduled = shown.filter(isScheduled);
+    const unscheduled = shown.filter((p) => !isScheduled(p));
     const period = win.months.length ? `${win.months[0].label}–${win.months[win.months.length - 1].label} ${win.end.getFullYear()}` : '';
 
     return (
         <>
-            <PageHeader title="Roadmap">
-                {period && <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--fg3)' }}>{period}</span>}
-            </PageHeader>
+            <PageHeader title="Roadmap" />
 
             <div style={{ padding: '4px 26px 40px' }}>
                 <QueryState query={roadmap} what="the roadmap">
                     {projects.length === 0 && <div style={emptyState}>No projects yet.</div>}
+
+                    {projects.length > 0 && (
+                        <>
+                            {period && <h2 style={{ margin: '0 0 12px', fontFamily: 'var(--font-display)', fontSize: 26, fontWeight: 800, letterSpacing: '-.025em', color: 'var(--fg)' }}>{period}</h2>}
+                            <div role="group" aria-label="Status" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                <span style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--fg3)' }}>Status</span>
+                                {(['all', ...statuses] as const).map((s) => (
+                                    <button key={s} type="button" aria-pressed={picked === s} onClick={() => setStatus(s)} className={chipClasses(picked === s)} style={chipStyle}>
+                                        {s === 'all' ? 'All' : PROJECT_STATUS[s].label}
+                                    </button>
+                                ))}
+                            </div>
+                        </>
+                    )}
 
                     {scheduled.length > 0 && (
                         <div style={{ ...cardStyle, borderRadius: 18, overflow: 'hidden' }}>
