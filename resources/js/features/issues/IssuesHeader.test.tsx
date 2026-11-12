@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { IssuesHeader } from './IssuesHeader';
 import { setFontScale } from '../../lib/fontScale';
@@ -164,5 +164,43 @@ describe('IssuesHeader', () => {
         const inc = screen.getByRole('button', { name: 'Increase text size' });
         expect(inc.style.background).toBe('');
         expect(inc.className).toContain('enabled:hover:bg-hover');
+    });
+});
+
+describe('IssuesHeader: the "From Support" chip', () => {
+    function Where() {
+        const l = useLocation();
+        return <output data-testid="where">{l.pathname + l.search}</output>;
+    }
+    const at = (path: string) => wrap(<><IssuesHeader view="list" /><Where /></>, path);
+
+    beforeEach(() => mockNavigate.mockReset());
+
+    it('is not there on the plain issue list', () => {
+        at('/?status=todo');
+        expect(screen.queryByText('From Support')).toBeNull();
+    });
+
+    it('sits right after the title when the list is scoped to escalated issues, in accent ink on the accent tint', () => {
+        at('/?escalated=true');
+        const chip = screen.getByText('From Support');
+        expect(chip.style.background).toBe('var(--accent2)');
+        expect(chip.style.color).toBe('var(--accent-ink)');
+        expect(chip.style.fontWeight).toBe('700');
+        expect(chip.previousElementSibling?.tagName).toBe('H1');
+        expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Issues');
+    });
+
+    it('its ✕ leaves the scope and keeps the other filters', () => {
+        at('/?escalated=true&status=todo');
+        fireEvent.click(screen.getByRole('button', { name: 'Clear From Support filter' }));
+        expect(screen.getByTestId('where').textContent).toBe('/?status=todo');
+        expect(screen.queryByText('From Support')).toBeNull();
+    });
+
+    it('the List / Board switch stays inside the scope', () => {
+        at('/?escalated=true&status=todo');
+        fireEvent.click(screen.getByRole('button', { name: 'Board' }));
+        expect(mockNavigate).toHaveBeenCalledWith('/board?escalated=true', { replace: true });
     });
 });

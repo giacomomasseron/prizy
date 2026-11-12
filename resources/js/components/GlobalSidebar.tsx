@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { Link, NavLink } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { canDevelop as canDevelopFor, canUseTracker, canWorkHelpdesk, trackerEnabled } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
@@ -31,6 +31,17 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const canDevelop = canDevelopFor(me.data);
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues({}, { enabled: showTracker });
+    // Escalations: the issues that came from Support. The row goes when the workspace has no support desk.
+    const showEscalations = showTracker && me.data?.workspace?.helpdesk_enabled === true;
+    const { data: escalatedData } = useIssues({ escalated: 'true' }, { enabled: showEscalations });
+    const escalatedCount = escalatedData?.items.length ?? 0;
+    // Which issue view is open: the plain one, the "From Support" scope, or the caller's own issues.
+    const location = useLocation();
+    const query = new URLSearchParams(location.search);
+    const onIssues = location.pathname === '/issues' || location.pathname === '/board';
+    const supportMode = onIssues && query.get('escalated') === 'true';
+    const mineMode = onIssues && !!me.data?.id && query.get('assignee_id') === me.data.id;
+    const issuesCurrent = location.pathname === '/issues' && !supportMode;
     const unread = useUnreadCount(!!me.data && showInbox);
     const plan = usePlan(showTracker);
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
@@ -86,16 +97,16 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                 <div style={{ ...sectionLabel, padding: '6px 18px 6px' }}>Support bridge</div>
                 <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {showTracker && (
-                        <NavLink to={me.data?.id ? `/issues?assignee_id=${me.data.id}` : '/issues'} style={() => navRow(false)} className={NAV_ROW_HOVER}>
+                        <Link to={me.data?.id ? `/issues?assignee_id=${me.data.id}` : '/issues'} aria-current={mineMode ? 'page' : undefined} style={navRow(mineMode)} className={mineMode ? '' : NAV_ROW_HOVER}>
                             <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
                             <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
-                        </NavLink>
+                        </Link>
                     )}
-                    {showTracker && (
-                        <button type="button" disabled aria-disabled="true" title="Coming soon" style={{ ...navRow(false), opacity: 0.5, cursor: 'default' }}>
+                    {showEscalations && (
+                        <Link to="/issues?escalated=true" aria-current={supportMode ? 'page' : undefined} style={supportMode ? { ...navRow(true), color: 'var(--accent)' } : navRow(false)} className={supportMode ? '' : NAV_ROW_HOVER}>
                             <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
-                            <span style={tagBadge}>Soon</span>
-                        </button>
+                            {escalatedCount > 0 && <span data-testid="escalations-badge" style={hiBadge}>{escalatedCount > 99 ? '99+' : escalatedCount}</span>}
+                        </Link>
                     )}
                     {/* Inbox → notifications (design folds this into the Support bridge with the ◔ glyph) */}
                     {showInbox && (
@@ -133,10 +144,11 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                         </div>
                         {workspaceOpen && (
                             <nav aria-label="Workspace" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                <NavLink to="/issues" end style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
+                                {/* Not the current row inside the "From Support" scope: Escalations is. */}
+                                <Link to="/issues" aria-current={issuesCurrent ? 'page' : undefined} style={navRow(issuesCurrent)} className={issuesCurrent ? '' : NAV_ROW_HOVER}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
                                     <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
-                                </NavLink>
+                                </Link>
                                 <NavLink to="/projects" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
                                     <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
                                     <span style={{ flex: 1 }}>Projects</span>

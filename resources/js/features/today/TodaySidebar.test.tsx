@@ -148,7 +148,7 @@ describe('Today v2: the left bar', () => {
         expect(fetchMock.mock.calls.filter(([u]) => /\/me\/plan|\/projects/.test(String(u)))).toEqual([]);
     });
 
-    it('lists Today (current, with the plan count), My issues, Inbox and a disabled Escalations', async () => {
+    it('lists Today (current, with the plan count), My issues, Inbox and Escalations', async () => {
         renderSidebar({ items: [planned('a', null), planned('b', null)] });
         const nav = within(screen.getByRole('navigation', { name: 'Your work' }));
 
@@ -158,9 +158,15 @@ describe('Today v2: the left bar', () => {
         await waitFor(() => expect(within(today).getByTestId('today-badge')).toHaveTextContent('2'));
         await waitFor(() => expect(nav.getByRole('link', { name: 'My issues' })).toHaveAttribute('href', '/issues?assignee_id=u1'));
         expect(nav.getByRole('link', { name: 'Inbox' })).toHaveAttribute('href', '/notifications');
-        const escalations = nav.getByRole('button', { name: 'Escalations' });
-        expect(escalations).toBeDisabled();
-        expect(escalations).toHaveAttribute('title', 'Coming soon');
+        expect(nav.getByRole('link', { name: 'Escalations' })).toHaveAttribute('href', '/issues?escalated=true');
+        expect(nav.queryByRole('button', { name: 'Escalations' })).toBeNull();
+    });
+
+    it('drops Escalations when the workspace has no support desk', async () => {
+        renderSidebar({ workspace: { name: 'Northwind', color: '#3f74d6', helpdesk_enabled: false } as never });
+        const nav = within(screen.getByRole('navigation', { name: 'Your work' }));
+        await waitFor(() => expect(nav.queryByRole('link', { name: 'Escalations' })).toBeNull());
+        expect(nav.getByRole('link', { name: 'Inbox' })).toBeInTheDocument();
     });
 
     it('shows the Today count even at 0', async () => {

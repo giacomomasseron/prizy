@@ -25,10 +25,12 @@ export interface IssueFilters {
     label_id?: string;
     /** `'true'`: the caller's starred issues only (PRD §3.2.9) — the list's Starred group; never a URL filter. */
     starred?: string;
+    /** `'true'`: only the issues that came from Support (the sidebar's Escalations). A scope, not a toolbar filter. */
+    escalated?: string;
     sort?: string;
 }
 
-const FILTER_PARAM_KEYS = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id', 'starred'] as const;
+const FILTER_PARAM_KEYS = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id', 'starred', 'escalated'] as const;
 
 function issuesPath(filters: IssueFilters): string {
     const params = new URLSearchParams();

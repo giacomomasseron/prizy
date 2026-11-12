@@ -179,3 +179,53 @@ describe('FilterBar: Assignee field, Clear link, active view', () => {
         expect(await screen.findByRole('menuitem', { name: 'Bugs by priority' })).not.toHaveAttribute('aria-current');
     });
 });
+
+describe('FilterBar: the "From Support" scope (escalated=true) is not one of its filters', () => {
+    let posted: unknown[] = [];
+    beforeEach(() => {
+        posted = [];
+        vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+            const j = (b: unknown) => new Response(JSON.stringify(b), { status: 200, headers: { 'Content-Type': 'application/json' } });
+            if (/\/v1\/me(\?|$)/.test(url)) return j({ data: me });
+            if (url.includes('/v1/saved-views') && init?.method === 'POST') { posted.push(JSON.parse(String(init.body))); return j({ data: { id: 'v9' } }); }
+            return j({ data: [], links: { next: null } });
+        }));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('shows no pill and no Clear link for it', () => {
+        renderBar('/?escalated=true');
+        expect(screen.queryByRole('button', { name: /^Remove .* filter$/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+    });
+
+    it('Clear drops the filters and keeps the scope', async () => {
+        renderBar('/?escalated=true&status=todo&sort=priority');
+        await userEvent.click(screen.getByRole('button', { name: 'Clear filters' }));
+        expect(screen.getByTestId('qs').textContent).toBe('escalated=true&sort=priority');
+    });
+
+    it('adding and removing a filter keeps the scope', async () => {
+        renderBar('/?escalated=true&priority=high');
+        await userEvent.click(screen.getByRole('button', { name: 'Remove Priority filter' }));
+        expect(screen.getByTestId('qs').textContent).toBe('escalated=true');
+    });
+
+    it('a view still counts as active inside the scope, and picking one keeps the scope', async () => {
+        renderBar('/?escalated=true&status=backlog');
+        expect(screen.getByRole('button', { name: 'Views: Backlog' })).toBeInTheDocument();
+        await userEvent.click(screen.getByRole('button', { name: 'Views: Backlog' }));
+        await userEvent.click(screen.getByRole('menuitem', { name: 'Active Cycle' }));
+        expect(screen.getByTestId('qs').textContent).toBe('cycle_id=active&escalated=true');
+    });
+
+    it('a saved view does not carry the scope', async () => {
+        renderBar('/?escalated=true&status=todo');
+        await userEvent.click(screen.getByRole('button', { name: 'Views' }));
+        await userEvent.click(await screen.findByRole('button', { name: 'Save view' }));
+        await userEvent.type(screen.getByRole('textbox'), 'Todo');
+        await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+        await vi.waitFor(() => expect(posted).toHaveLength(1));
+        expect((posted[0] as { definition: { filter: unknown } }).definition.filter).toEqual({ status: 'todo' });
+    });
+});

@@ -123,9 +123,12 @@ export function TodaySidebar({ onHide }: { onHide: () => void }) {
                         <span style={{ flex: 1 }}>Inbox</span>
                         {unreadCount > 0 && <span style={RED_BADGE}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
                     </Link>
-                    <button type="button" disabled aria-disabled="true" title="Coming soon" className="text-fg2" style={{ ...ROW, padding: '8px 12px', border: 'none', background: 'none', opacity: 0.5, cursor: 'default', textAlign: 'left', fontFamily: 'inherit' }}>
-                        <span style={{ flex: 1 }}>Escalations</span>
-                    </button>
+                    {/* The issues that came from Support; gone when the workspace has no support desk. */}
+                    {workspace.data?.helpdesk_enabled !== false && (
+                        <Link to="/issues?escalated=true" className={ROW_HOVER} style={{ ...ROW, padding: '8px 12px' }}>
+                            <span style={{ flex: 1 }}>Escalations</span>
+                        </Link>
+                    )}
                 </nav>
 
                 <div id="today-nav-workspace" style={LABEL}>Workspace</div>

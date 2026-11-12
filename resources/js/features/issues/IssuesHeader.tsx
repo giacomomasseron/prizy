@@ -1,5 +1,5 @@
 import type { CSSProperties, JSX } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
 import { SegmentedControl } from '../../components/ui/SegmentedControl';
 import { Kbd } from '../../components/ui/Kbd';
@@ -50,9 +50,22 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
     const { scale, step, reset, canDecrease, canIncrease, canReset } = useFontScale();
     const { theme, toggle: toggleTheme } = useTheme();
 
+    const [searchParams, setSearchParams] = useSearchParams();
+    // "From Support": the list or board holds only the issues that came from Support (the sidebar's Escalations).
+    const fromSupport = searchParams.get('escalated') === 'true';
+
     function handleNav(value: 'list' | 'board') {
-        if (value === 'list') navigate('/issues', { replace: true });
-        else navigate('/board', { replace: true });
+        const scope = fromSupport ? '?escalated=true' : '';
+        if (value === 'list') navigate(`/issues${scope}`, { replace: true });
+        else navigate(`/board${scope}`, { replace: true });
+    }
+
+    function leaveSupportScope() {
+        setSearchParams((prev) => {
+            const params = new URLSearchParams(prev);
+            params.delete('escalated');
+            return params;
+        }, { replace: true });
     }
 
     function handleSearch() {
@@ -140,6 +153,19 @@ export function IssuesHeader({ view }: IssuesHeaderProps): JSX.Element {
                 </>
             }
         >
+            {fromSupport && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0, padding: '3px 6px 3px 9px', borderRadius: 'var(--radius-pill)', background: 'var(--accent2)', color: 'var(--accent-ink)', fontSize: 13, fontWeight: 700 }}>
+                    From Support
+                    <button
+                        type="button"
+                        aria-label="Clear From Support filter"
+                        onClick={leaveSupportScope}
+                        style={{ border: 'none', background: 'none', color: 'inherit', cursor: 'pointer', fontSize: 12, padding: 0, lineHeight: 1, fontFamily: 'inherit' }}
+                    >
+                        <span aria-hidden="true">✕</span>
+                    </button>
+                </span>
+            )}
             <div style={{ marginLeft: 4 }}>
                 <SegmentedControl options={VIEW_OPTIONS} value={view} onChange={handleNav} />
             </div>

@@ -232,6 +232,22 @@ describe('BoardPage: card layout', () => {
     });
 });
 
+describe('BoardPage: the support ticket chip', () => {
+    it('shows "↩ TKT-…" beside the id of a card whose issue came from Support, and on no other card', () => {
+        state.items = [
+            issue('a', 'todo', { support_ticket: { id: 't1', ref: 'TKT-AB12CD', subject: 'Attachments missing', customer: 'Acme', plan: null } }),
+            issue('b', 'todo'),
+        ];
+        mount();
+        const chip = within(screen.getByTestId('card-a')).getByTestId('ticket-chip');
+        expect(chip.textContent).toBe('↩ TKT-AB12CD');
+        expect(chip.style.fontSize).toBe('10px');
+        expect(chip.style.padding).toBe('1px 6px');
+        expect(chip.previousElementSibling?.textContent).toBe('PRZ-a');
+        expect(within(screen.getByTestId('card-b')).queryByTestId('ticket-chip')).toBeNull();
+    });
+});
+
 describe('cardsFirst', () => {
     const hit = (id: string, before: string | null): Collision => ({ id, data: { droppableContainer: { data: { current: { status: 'todo', before } } } } }) as never;
 

@@ -14,6 +14,7 @@ import { useIssueDrawers } from './useIssueDrawers';
 import { useDragClickGuard } from './useDragClickGuard';
 import { STATUS_LABELS, issueRef } from './issueMeta';
 import { StarToggle } from './StarToggle';
+import { TicketChip } from './TicketChip';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
@@ -77,6 +78,7 @@ function CardFace({ issue, projects }: { issue: Issue; projects: Project[] }) {
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>
                     {issueRef(issue)}
                 </span>
+                <TicketChip ticket={issue.support_ticket} size="card" />
                 <span style={{ marginLeft: 'auto', marginRight: 28 }}>
                     <PriorityIcon priority={issue.priority} />
                 </span>
