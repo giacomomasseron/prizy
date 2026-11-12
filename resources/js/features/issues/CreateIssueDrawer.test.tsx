@@ -31,13 +31,13 @@ vi.mock('../releases/hooks', () => ({
     useReleases: () => ({ data: [{ id: 'r1', name: 'Q1 Ship', description: null, target_date: null, shipped_at: null, created_at: '', rollup: { total: 0, done: 0, cancelled: 0, pct: null } }] }),
 }));
 
-function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onClose?: () => void }) {
+function mount(props: { open?: boolean; initialStatus?: IssueStatus | null; onClose?: () => void; onCreated?: (id: string) => void }) {
     const qc = new QueryClient();
     const onClose = props.onClose ?? vi.fn();
     render(
         <QueryClientProvider client={qc}>
             <MemoryRouter>
-                <CreateIssueDrawer open={props.open ?? true} initialStatus={props.initialStatus ?? null} onClose={onClose} />
+                <CreateIssueDrawer open={props.open ?? true} initialStatus={props.initialStatus ?? null} onClose={onClose} onCreated={props.onCreated} />
             </MemoryRouter>
         </QueryClientProvider>,
     );
@@ -308,5 +308,71 @@ describe('CreateIssueDrawer: Assign to me (Prizy v2)', () => {
         fireEvent.change(screen.getByLabelText(/Issue title/i), { target: { value: 'Nobody yet' } });
         fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
         await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ assignee_id: null })));
+    });
+});
+
+describe('CreateIssueDrawer: Workspace mockup defaults', () => {
+    beforeEach(() => { mockMutateAsync.mockClear(); });
+    const title = () => screen.getByLabelText(/Issue title/i) as HTMLInputElement;
+
+    it('starts at Medium priority and creates with it', async () => {
+        mount({});
+        expect(screen.getByRole('button', { name: 'Priority Medium' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Priority No priority' })).toHaveAttribute('aria-pressed', 'false');
+        fireEvent.change(title(), { target: { value: 'Task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalledWith(expect.objectContaining({ priority: 'medium' })));
+    });
+
+    it('goes back to Medium after Create more', async () => {
+        mount({});
+        fireEvent.click(screen.getByRole('button', { name: 'Priority Urgent' }));
+        fireEvent.change(title(), { target: { value: 'Task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create more' }));
+        await waitFor(() => expect(title().value).toBe(''));
+        expect(screen.getByRole('button', { name: 'Priority Medium' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.getByRole('button', { name: 'Priority Urgent' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('says "Ready to create" once there is a title, in place of the ask for one', () => {
+        mount({});
+        expect(screen.queryByText('Ready to create')).toBeNull();
+        fireEvent.change(title(), { target: { value: '  ' } });
+        expect(screen.getByText('Add a title to create this issue')).toBeInTheDocument();
+        fireEvent.change(title(), { target: { value: 'Task' } });
+        expect(screen.getByText('Ready to create')).toBeInTheDocument();
+        expect(screen.queryByText('Add a title to create this issue')).toBeNull();
+    });
+
+    it('Create issue hands the new issue over to be opened, in place of a plain close', async () => {
+        const onCreated = vi.fn();
+        const { onClose } = mount({ onCreated });
+        fireEvent.change(title(), { target: { value: 'Task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(onCreated).toHaveBeenCalledExactlyOnceWith('new1'));
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('Create more opens nothing: the composer stays for the next issue', async () => {
+        const onCreated = vi.fn();
+        const { onClose } = mount({ onCreated });
+        fireEvent.change(title(), { target: { value: 'Task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create more' }));
+        await waitFor(() => expect(title().value).toBe(''));
+        expect(onCreated).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it('opens nothing and stays open when the create fails', async () => {
+        mockMutateAsync.mockRejectedValueOnce(new Error('422'));
+        const onCreated = vi.fn();
+        const { onClose } = mount({ onCreated });
+        fireEvent.change(title(), { target: { value: 'Task' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Create issue' }));
+        await waitFor(() => expect(mockMutateAsync).toHaveBeenCalled());
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(onCreated).not.toHaveBeenCalled();
+        expect(onClose).not.toHaveBeenCalled();
+        expect(title().value).toBe('Task');
     });
 });

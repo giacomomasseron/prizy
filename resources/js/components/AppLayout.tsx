@@ -15,7 +15,7 @@ import { canDevelop as canDevelopFor } from '../auth/capabilities';
 
 export default function AppLayout() {
     useRealtimeNotifications();
-    const { peekId, createOpen, createStatus, openCreate, close } = useIssueDrawers();
+    const { peekId, createOpen, createStatus, openCreate, openPeek, close } = useIssueDrawers();
     const { scale } = useFontScale();
     const me = useMe();
     const canDevelop = canDevelopFor(me.data);
@@ -154,7 +154,8 @@ export default function AppLayout() {
             {/* Globally mounted — preserved from original AppLayout */}
             <CommandPalette />
             <PeekDrawer issueId={peekId} onClose={close} />
-            <CreateIssueDrawer open={createOpen} initialStatus={createStatus} onClose={close} />
+            {/* A created issue opens in the peek drawer, which takes the composer's place. */}
+            <CreateIssueDrawer open={createOpen} initialStatus={createStatus} onClose={close} onCreated={openPeek} />
         </div>
     );
 }
