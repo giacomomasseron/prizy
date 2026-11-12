@@ -40,6 +40,9 @@ test('login, create an issue, and move its card across the board', async ({ page
     await page.getByLabel(/Issue title/i).fill(title);
     await expect(page.getByRole('button', { name: /Create issue/i })).not.toBeDisabled({ timeout: 5_000 });
     await page.getByRole('button', { name: /Create issue/i }).click();
+    // "Create issue" opens the new issue in the peek drawer: close it to get back to the list.
+    await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
+    await page.keyboard.press('Escape');
     // Drawer closes and the issue appears in the list
     await expect(page.getByText(title)).toBeVisible({ timeout: 8_000 });
 
