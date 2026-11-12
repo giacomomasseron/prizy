@@ -6,14 +6,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GlobalSidebar } from './GlobalSidebar';
 
 function j(b: unknown, s = 200) { return new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } }); }
-function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true, path = '/', inTeam = true) {
+let projects: string[] = [];
+function renderSidebar(adminLevel = 'owner', isAgent = false, helpdeskEnabled = true, path = '/') {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
         if (url.includes('/members')) return j({ data: [] });
         // The Today count reads /me/plan, which also contains '/me'.
         if (url.includes('/me/plan')) return j({ data: { capacity_minutes: 360, items: [], done_today: [] } });
         if (url.includes('/me')) return j({ data: { id: 'u1', workspace_id: 'w1', name: 'Alex', email: 'a@e.com', admin_level: adminLevel, is_developer: true, is_agent: isAgent, email_digest_frequency: 'off', workspace: { helpdesk_enabled: helpdeskEnabled } } });
         if (url.includes('/unread-count')) return j({ data: { count: 0 } });
-        if (url.includes('/teams')) return j({ data: inTeam ? [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', member_count: 3, created_at: '', updated_at: '' }] : [], links: { next: null } });
+        if (url.includes('/teams')) return j({ data: [{ id: 't1', name: 'Smoke Team', identifier: 'SMK', color: '#6d69f2', member_count: 3, created_at: '', updated_at: '' }], links: { next: null } });
+        if (url.includes('/projects')) return j({ data: projects.map((id) => ({ id, name: id })), links: { next: null } });
+        // Two issues came from Support; the plain list is empty.
+        if (url.includes('/issues') && url.includes('escalated')) return j({ data: [{ id: 'e1', status: 'todo' }, { id: 'e2', status: 'done' }], links: { next: null } });
         if (url.includes('/issues')) return j({ data: [], links: { next: null } });
         return j({ data: {} });
     }));
@@ -57,42 +61,75 @@ describe('GlobalSidebar', () => {
         const workspaceNav = within(await screen.findByRole('navigation'));
         expect(workspaceNav.getByRole('link', { name: /^Issues/ })).toHaveAttribute('href', '/issues');
     });
-    it('lists Cycles between Issues and Projects, with its ring icon, opening your team\'s cycles', async () => {
+    it('lists Issues, Projects and Roadmap in the Workspace section, with no Cycles row (cycles are reached from a team)', async () => {
         renderSidebar();
         const nav = within(await screen.findByRole('navigation', { name: 'Workspace' }));
-        expect(nav.getAllByRole('link').map((l) => l.textContent)).toEqual(['Issues', 'Cycles', 'Projects', 'Roadmap', 'Analytics', 'Releases'].map((label) => expect.stringContaining(label)));
-        const cycles = nav.getByRole('link', { name: 'Cycles' });
-        await waitFor(() => expect(cycles).toHaveAttribute('href', '/teams/t1/cycles'));
-        expect(cycles).not.toHaveAttribute('aria-current');
-        const ring = cycles.querySelector('[aria-hidden="true"] > span') as HTMLElement;
-        expect(ring.style.borderRadius).toBe('50%');
-        expect(ring.style.width).toBe('13px');
-        // jsdom reads the border back without its currentColor.
-        expect(ring.style.borderWidth).toBe('1.6px');
-        expect(ring.style.borderStyle).toBe('solid');
+        expect(nav.getAllByRole('link').map((l) => l.textContent)).toEqual(['Issues', 'Projects', 'Roadmap', 'Analytics', 'Releases'].map((label) => expect.stringContaining(label)));
+        expect(nav.queryByRole('link', { name: 'Cycles' })).toBeNull();
     });
-    it('sends Cycles to the team list when you are in no team', async () => {
-        renderSidebar('owner', false, true, '/', false);
-        const nav = within(await screen.findByRole('navigation', { name: 'Workspace' }));
-        await screen.findByText('No teams yet.');
-        expect(nav.getByRole('link', { name: 'Cycles' })).toHaveAttribute('href', '/teams');
+    it('Projects shows how many projects there are', async () => {
+        projects = ['p1', 'p2', 'p3'];
+        try {
+            renderSidebar();
+            const link = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: /^Projects/ });
+            const count = await within(link).findByTestId('projects-count');
+            expect(count.textContent).toBe('3');
+            expect(count.style.fontFamily).toBe('var(--font-mono)');
+        } finally {
+            projects = [];
+        }
     });
-    it('marks Cycles as the current page on any team\'s cycles', async () => {
-        renderSidebar('owner', false, true, '/teams/t9/cycles');
-        const cycles = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: 'Cycles' });
-        expect(cycles).toHaveAttribute('aria-current', 'page');
-        expect(cycles.style.fontWeight).toBe('700');
-    });
-    it('does not mark Cycles on the team list, where it leads when you are in no team', async () => {
-        renderSidebar('owner', false, true, '/teams', false);
-        const cycles = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: 'Cycles' });
-        await screen.findByText('No teams yet.');
-        expect(cycles).toHaveAttribute('href', '/teams');
-        expect(cycles).not.toHaveAttribute('aria-current');
-    });
-    it('renders the disabled Escalations stub', async () => {
+    it('Projects shows no count while there are no projects', async () => {
         renderSidebar();
-        expect(await screen.findByRole('button', { name: /Escalations/ })).toBeDisabled();
+        const link = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: /^Projects/ });
+        await screen.findByTestId('escalations-badge'); // the lists have loaded
+        expect(within(link).queryByTestId('projects-count')).toBeNull();
+    });
+    it('Escalations opens the issues that came from Support, with their count on a highlighter badge', async () => {
+        renderSidebar();
+        const link = await screen.findByRole('link', { name: /Escalations/ });
+        expect(link).toHaveAttribute('href', '/issues?escalated=true');
+        expect(link).not.toHaveAttribute('aria-current');
+        const badge = await screen.findByTestId('escalations-badge');
+        expect(badge.textContent).toBe('2');
+        expect(badge.style.background).toBe('var(--hi)');
+        const calls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]));
+        expect(calls.some((u) => u.includes('filter%5Bescalated%5D=true'))).toBe(true);
+    });
+    it('Escalations is the current row, in the accent colour, on the escalated list or board; Issues is not', async () => {
+        renderSidebar('owner', false, true, '/issues?escalated=true');
+        const link = await screen.findByRole('link', { name: /Escalations/ });
+        expect(link).toHaveAttribute('aria-current', 'page');
+        expect(link.style.fontWeight).toBe('700');
+        expect(link.style.color).toBe('var(--accent)');
+        const issues = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: /^Issues/ });
+        expect(issues).not.toHaveAttribute('aria-current');
+        expect(issues.style.fontWeight).not.toBe('700');
+    });
+    it('Issues is the current row on the plain issue list, and Escalations is not', async () => {
+        renderSidebar('owner', false, true, '/issues?status=todo');
+        const issues = within(await screen.findByRole('navigation', { name: 'Workspace' })).getByRole('link', { name: /^Issues/ });
+        expect(issues).toHaveAttribute('aria-current', 'page');
+        expect(issues.style.fontWeight).toBe('700');
+        expect(await screen.findByRole('link', { name: /Escalations/ })).not.toHaveAttribute('aria-current');
+    });
+    it('hides Escalations when the workspace has no support desk', async () => {
+        renderSidebar('owner', false, false);
+        await screen.findByRole('link', { name: /My Issues/ });
+        expect(screen.queryByRole('link', { name: /Escalations/ })).toBeNull();
+        expect(screen.queryByRole('button', { name: /Escalations/ })).toBeNull();
+    });
+    it('My Issues is the current row while the list is filtered to your own issues', async () => {
+        renderSidebar('owner', false, true, '/issues?assignee_id=u1');
+        const mine = await screen.findByRole('link', { name: /My Issues/ });
+        await waitFor(() => expect(mine).toHaveAttribute('aria-current', 'page'));
+        expect(mine.style.fontWeight).toBe('700');
+    });
+    it('My Issues is not current on the plain list or on someone else\'s issues', async () => {
+        renderSidebar('owner', false, true, '/issues?assignee_id=u2');
+        const mine = await screen.findByRole('link', { name: /My Issues/ });
+        await waitFor(() => expect(mine).toHaveAttribute('href', '/issues?assignee_id=u1'));
+        expect(mine).not.toHaveAttribute('aria-current');
     });
     it('expands a team to team-scoped destinations', async () => {
         const user = userEvent.setup();

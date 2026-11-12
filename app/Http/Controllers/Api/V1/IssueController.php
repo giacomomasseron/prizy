@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\AssignIssueRequest;
 use App\Http\Requests\Api\V1\ListIssuesRequest;
+use App\Http\Requests\Api\V1\MoveIssueRequest;
 use App\Http\Requests\Api\V1\StoreIssueRequest;
 use App\Http\Requests\Api\V1\TransitionStatusRequest;
 use App\Http\Requests\Api\V1\UpdateIssueRequest;
@@ -16,6 +17,7 @@ use App\UseCases\Issues\AssignIssue;
 use App\UseCases\Issues\CreateIssue;
 use App\UseCases\Issues\FindIssue;
 use App\UseCases\Issues\ListIssues;
+use App\UseCases\Issues\MoveIssue;
 use App\UseCases\Issues\TransitionIssueStatus;
 use App\UseCases\Issues\UpdateIssue;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +32,7 @@ final class IssueController extends Controller
         private readonly CreateIssue $createIssue,
         private readonly UpdateIssue $updateIssue,
         private readonly TransitionIssueStatus $transitionIssueStatus,
+        private readonly MoveIssue $moveIssue,
         private readonly AssignIssue $assignIssue,
         private readonly ArchiveIssue $archiveIssue,
     ) {}
@@ -81,6 +84,20 @@ final class IssueController extends Controller
         ]);
 
         return IssueResource::make($updated)->response();
+    }
+
+    /** A card dropped on the board: a place in a column's manual order, and the column itself when it changed. */
+    public function position(MoveIssueRequest $request, string $issue): JsonResponse
+    {
+        $model = $this->findIssue->run($issue);
+        Gate::authorize('update', $model);
+
+        $moved = $this->moveIssue->run($request->user(), array_merge(
+            $request->validated(),
+            ['issue_id' => $issue],
+        ));
+
+        return IssueResource::make($moved)->response();
     }
 
     public function assignee(AssignIssueRequest $request, string $issue): JsonResponse

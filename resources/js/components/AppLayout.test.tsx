@@ -35,7 +35,7 @@ function renderLayout(adminLevel = 'member', path = '/') {
         if ((url as string).includes('/notifications')) return j({ data: [], links: { next: null } });
         if ((url as string).includes('/teams')) return j({ data: [], links: { next: null } });
         if (/\/projects\/p1(\?|$)/.test(url as string)) return j({ data: { id: 'p1', name: 'Escalation Engine', color: '#6d69f2', status: 'in_progress', description: null, icon: null, team_id: null, start_date: null, target_date: null, lead_id: null, priority: 'high', created_by: 'u1', created_at: '', updated_at: '' } });
-        if ((url as string).includes('/projects')) return j({ items: [], next: null });
+        if ((url as string).includes('/projects')) return j({ data: [], links: { next: null } });
         // CreateIssueDrawer (mounted unconditionally by AppLayout) also fetches the release list;
         // it's a non-paginated api.get, so the envelope's `data` is the array directly.
         if ((url as string).includes('/releases')) return j({ data: [] });
@@ -168,7 +168,7 @@ describe('AppLayout C-hotkey', () => {
             if ((url as string).includes('/teams')) return j({ data: [], links: { next: null } });
             // CreateIssueDrawer is mounted unconditionally by AppLayout (regardless of `open`) and
             // fetches the project list itself — matches the shape `renderLayout` above stubs.
-            if ((url as string).includes('/projects')) return j({ items: [], next: null });
+            if ((url as string).includes('/projects')) return j({ data: [], links: { next: null } });
             // ...and the release list too (non-paginated api.get — `data` is the array directly).
             if ((url as string).includes('/releases')) return j({ data: [] });
             if ((url as string).includes('/issues')) return j({ data: [], links: { next: null } });

@@ -170,3 +170,32 @@ describe('P7-A: the star toggle on a row', () => {
         }
     });
 });
+
+describe('IssueRow: the support ticket chip', () => {
+    const row = (overrides: Partial<Issue>) => render(
+        <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter><IssueRow issue={{ ...BASE, ...overrides }} onPeek={() => {}} projects={[]} /></MemoryRouter>
+        </QueryClientProvider>,
+    );
+    const ticket = { id: 't1', ref: 'TKT-AB12CD', subject: 'Attachments missing', customer: 'Acme', plan: 'Business' };
+
+    it('shows "↩ TKT-…" first in the right cluster, before the labels, for an issue that came from Support', () => {
+        row({ support_ticket: ticket, labels: [{ id: 'l1', name: 'Bug', color: '#eb5757' }] });
+        const chip = screen.getByTestId('ticket-chip');
+        expect(chip.textContent).toBe('↩ TKT-AB12CD');
+        expect(chip).toHaveAttribute('title', 'Attachments missing');
+        expect(chip.style.fontSize).toBe('10.5px');
+        expect(chip.style.padding).toBe('2px 7px');
+        expect(chip.style.background).toBe('var(--accent2)');
+        expect(chip.style.color).toBe('var(--accent-ink)');
+        expect(chip.parentElement?.firstElementChild).toBe(chip);
+        expect(chip.nextElementSibling?.textContent).toContain('Bug');
+    });
+
+    it('shows none for an issue without a ticket', () => {
+        row({ support_ticket: null });
+        expect(screen.queryByTestId('ticket-chip')).toBeNull();
+        row({});
+        expect(screen.queryByTestId('ticket-chip')).toBeNull();
+    });
+});

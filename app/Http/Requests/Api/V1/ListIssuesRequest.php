@@ -10,7 +10,7 @@ use Illuminate\Validation\Validator;
 
 final class ListIssuesRequest extends FormRequest
 {
-    private const FILTERS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id', 'starred'];
+    private const FILTERS = ['status', 'priority', 'assignee_id', 'project_id', 'cycle_id', 'team_id', 'parent_issue_id', 'archived', 'label_id', 'starred', 'escalated'];
 
     private const SORTS = ['created_at', 'updated_at', 'priority', 'due_date', 'sort_order', 'status', 'title'];
 
@@ -26,6 +26,8 @@ final class ListIssuesRequest extends FormRequest
             'filter' => ['sometimes', Rule::array(self::FILTERS)],
             // The caller's starred issues only (PRD §3.2.9); the one accepted value is `true`.
             'filter.starred' => ['sometimes', 'in:true'],
+            // Issues that came from Support (linked to a ticket) only; the one accepted value is `true`.
+            'filter.escalated' => ['sometimes', 'in:true'],
             'sort'   => ['sometimes', 'string'],
             'limit'  => ['sometimes', 'integer', 'min:1', 'max:100'],
             'fields' => ['sometimes', 'array'],
@@ -51,10 +53,11 @@ final class ListIssuesRequest extends FormRequest
     /** @return array<string, string> */
     public function filters(): array
     {
-        /** @var array<string, string> $filter */
+        /** @var array<string, string|null> $filter */
         $filter = $this->validated('filter', []);
 
-        return $filter;
+        // `filter[status]=` arrives as null (empty strings are converted): it filters nothing.
+        return array_filter($filter, fn ($value): bool => $value !== null);
     }
 
     /** @return list<array{column:string,dir:string}> */

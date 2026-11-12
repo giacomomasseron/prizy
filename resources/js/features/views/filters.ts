@@ -3,7 +3,13 @@ import type { IssuePriority, IssueStatus } from '../../lib/types';
 
 export type FilterKey = 'status' | 'priority' | 'team_id' | 'project_id' | 'label_id' | 'assignee_id' | 'source';
 
-const PARAM_KEYS: Array<keyof IssueFilters> = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id', 'sort'];
+const PARAM_KEYS: Array<keyof IssueFilters> = ['status', 'priority', 'team_id', 'project_id', 'cycle_id', 'assignee_id', 'label_id', 'escalated', 'sort'];
+
+/**
+ * URL keys the issue pages read that are not toolbar filters: the sort, and the "From Support" scope (set from the
+ * sidebar's Escalations, cleared from the chip beside the page title).
+ */
+export const NON_FILTER_KEYS = ['sort', 'escalated'];
 
 export const STATUSES: IssueStatus[] = ['backlog', 'todo', 'in_progress', 'in_review', 'done', 'cancelled'];
 export const PRIORITIES: IssuePriority[] = ['no_priority', 'urgent', 'high', 'medium', 'low'];

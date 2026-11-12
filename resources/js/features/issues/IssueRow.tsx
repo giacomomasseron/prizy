@@ -8,6 +8,7 @@ import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, rowPrimary } from '../../compon
 import type { Issue, Project } from '../../lib/types';
 import { issueRef } from './issueMeta';
 import { StarToggle } from './StarToggle';
+import { TicketChip } from './TicketChip';
 
 export interface IssueRowProps {
     issue: Issue;
@@ -59,6 +60,7 @@ export function IssueRow({ issue, onPeek, projects }: IssueRowProps) {
 
             {/* Right cluster */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <TicketChip ticket={issue.support_ticket} />
                 {(issue.labels ?? []).map((l) => (
                     <LabelChip key={l.id} name={l.name} color={l.color} />
                 ))}

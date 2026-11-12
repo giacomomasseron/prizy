@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -101,5 +101,75 @@ describe('RoadmapPage', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load the roadmap.");
         expect(screen.queryByText('No projects yet.')).toBeNull();
         expect(screen.getByRole('heading', { name: 'Roadmap' })).toBeInTheDocument();
+    });
+});
+
+describe('RoadmapPage: the Status filter and the period heading', () => {
+    const paused = { ...scheduled, id: 'p3', name: 'Billing', status: 'paused', start_date: '2026-11-01T00:00:00.000000Z', target_date: '2026-12-15T00:00:00.000000Z', milestones: [] };
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async () =>
+            new Response(JSON.stringify({ data: [scheduled, unscheduled, paused] }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
+        ));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    const chips = () => within(screen.getByRole('group', { name: 'Status' })).getAllByRole('button');
+
+    it('offers All and the statuses the projects have, in the status order, All first and on', async () => {
+        renderPage();
+        await screen.findByTestId('bar-p1');
+        expect(chips().map((c) => c.textContent)).toEqual(['All', 'Planning', 'In Progress', 'Paused']);
+        expect(chips().map((c) => c.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
+        expect(chips()[0].className).toContain('bg-fg');
+        expect(chips()[1].className).not.toContain('bg-fg');
+        expect(screen.getByRole('group', { name: 'Status' }).firstElementChild?.textContent).toBe('Status');
+    });
+
+    it('keeps only the projects of the picked status, bars and unscheduled alike, and All brings them back', async () => {
+        renderPage();
+        await screen.findByTestId('bar-p1');
+        fireEvent.click(screen.getByRole('button', { name: 'Paused' }));
+        expect(screen.getByRole('button', { name: 'Paused' })).toHaveAttribute('aria-pressed', 'true');
+        expect(screen.queryByTestId('bar-p1')).toBeNull();
+        expect(screen.getByTestId('bar-p3')).toBeInTheDocument();
+        expect(screen.queryByRole('link', { name: 'Research spike' })).toBeNull();
+        expect(screen.queryByText('Unscheduled')).toBeNull();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Planning' }));
+        expect(screen.queryByTestId('bar-p3')).toBeNull();
+        expect(screen.getByRole('link', { name: 'Research spike' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'All' }));
+        expect(screen.getByTestId('bar-p1')).toBeInTheDocument();
+        expect(screen.getByTestId('bar-p3')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: 'Research spike' })).toBeInTheDocument();
+    });
+
+    it('keeps the months where they are while filtering', async () => {
+        renderPage();
+        const before = (await screen.findByTestId('bar-p3')).style.left;
+        fireEvent.click(screen.getByRole('button', { name: 'Paused' }));
+        expect(screen.getByTestId('bar-p3').style.left).toBe(before);
+    });
+
+    it('shows the period as a heading above the filter, not in the page header', async () => {
+        renderPage();
+        await screen.findByTestId('bar-p1');
+        const period = screen.getByRole('heading', { level: 2, name: /2026$/ });
+        expect(period.style.fontSize).toBe('26px');
+        expect(period.closest('header')).toBeNull();
+        expect(screen.getByRole('heading', { level: 1 }).closest('header')?.textContent).toBe('Roadmap');
+        expect(period.compareDocumentPosition(screen.getByRole('group', { name: 'Status' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+});
+
+describe('RoadmapPage: no projects', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it('shows no Status filter and no period', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [] }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+        renderPage();
+        await screen.findByText('No projects yet.');
+        expect(screen.queryByRole('group', { name: 'Status' })).toBeNull();
+        expect(screen.queryByRole('heading', { level: 2 })).toBeNull();
     });
 });

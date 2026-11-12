@@ -64,6 +64,9 @@ test('create issue via drawer: appears in the list', async ({ page }) => {
     await page.getByRole('button', { name: /Create issue/i }).click();
     const res = await createResponsePromise;
     expect(res.status()).toBe(201);
+    // "Create issue" opens the new issue in the peek drawer: close it to get back to the list.
+    await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
+    await page.keyboard.press('Escape');
 
     // Drawer closes: title input no longer visible, and issue appears in list
     await expect(page.getByLabel(/Issue title/i)).not.toBeVisible({ timeout: 5_000 });
@@ -168,6 +171,9 @@ test('issue detail: change status via dropdown, set assignee, add comment', asyn
     );
     await page.getByRole('button', { name: /Create issue/i }).click();
     await createResponsePromise;
+    // "Create issue" opens the new issue in the peek drawer: close it to get back to the list.
+    await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
+    await page.keyboard.press('Escape');
     await expect(page.getByLabel(/Issue title/i)).not.toBeVisible({ timeout: 5_000 });
 
     // Navigate to detail via peek → "Open full page ↗"
@@ -309,6 +315,9 @@ test('peek drawer edits the title, description, priority and assignee in place',
     const created = page.waitForResponse((r) => r.url().includes('/issues') && r.request().method() === 'POST');
     await page.getByRole('button', { name: /Create issue/i }).click();
     await created;
+    // "Create issue" opens the new issue in the peek drawer: close it to get back to the list.
+    await expect(page.getByRole('link', { name: /Open full page/i })).toBeVisible({ timeout: 8_000 });
+    await page.keyboard.press('Escape');
     // The create drawer has its own "Issue title" field: wait for it to go.
     await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 5_000 });
 

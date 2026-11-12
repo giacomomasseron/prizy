@@ -10,7 +10,7 @@ import { useProjects } from '../projects/hooks';
 import { useTeams } from '../teams/hooks';
 import type { IssueFilters } from '../issues/hooks';
 import { HI_PILL_CLASSES, POP_ITEM_CLASSES, TOOL_PILL_CLASSES, popItemStyle, popoverStyle, toolPillStyle } from '../issues/issueStyles';
-import { BUILTIN_VIEWS, FILTER_FIELDS, type FilterKey, PRESET_PILLS, SORT_OPTIONS, filtersToParams, paramsToFilters } from './filters';
+import { BUILTIN_VIEWS, FILTER_FIELDS, type FilterKey, NON_FILTER_KEYS, PRESET_PILLS, SORT_OPTIONS, filtersToParams, paramsToFilters } from './filters';
 import { useCreateSavedView, useDeleteSavedView, useSavedViews } from './hooks';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
@@ -74,18 +74,21 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     const [newViewName, setNewViewName] = useState('');
     const canDevelop = canDevelopFor(me.data);
 
+    // The "From Support" scope is not the toolbar's to change: whatever is applied here stays inside it.
+    const inScope = (next: IssueFilters): IssueFilters => (filters.escalated ? { ...next, escalated: filters.escalated } : next);
+
     function applyFilters(next: IssueFilters) {
-        setSearchParams(filtersToParams(next), { replace: true });
+        setSearchParams(filtersToParams(inScope(next)), { replace: true });
     }
 
     function applySavedView(view: SavedView) {
         const next = { ...view.definition.filter, sort: view.definition.sort } as IssueFilters;
         setViewsOpen(false);
-        const search = filtersToParams(next).toString();
+        const search = filtersToParams(inScope(next)).toString();
         if (view.definition.view_type !== viewType) {
             navigate({ pathname: view.definition.view_type === 'board' ? '/board' : '/issues', search });
         } else {
-            setSearchParams(filtersToParams(next), { replace: true });
+            applyFilters(next);
         }
     }
 
@@ -93,7 +96,7 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
         setError('');
         const name = newViewName.trim();
         if (!name) return;
-        const { sort, ...filterOnly } = filters;
+        const { sort, escalated: _scope, ...filterOnly } = filters;
         try {
             await createView.mutateAsync({ name, definition: { filter: filterOnly as Record<string, string>, sort: sort ?? '', view_type: viewType } });
             setSavingView(false); setNewViewName('');
@@ -120,11 +123,11 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
         setFilter(key, next.length ? next.join(',') : null);
     }
 
-    const activeKeys = Object.keys(filters).filter((k) => k !== 'sort');
+    const activeKeys = Object.keys(filters).filter((k) => !NON_FILTER_KEYS.includes(k));
 
     // The active view is read off the URL, so it survives a reload and drops itself when a filter changes.
     // A built-in view ignores the sort (it sets none); a saved view carries its own sort and its own page.
-    const { sort: currentSort, ...currentFilter } = filters as Record<string, string>;
+    const { sort: currentSort, escalated: _scope, ...currentFilter } = filters as Record<string, string>;
     const builtinFilters = (v: (typeof BUILTIN_VIEWS)[number]): IssueFilters => (v.build ? v.build(me.data?.id ?? '') : (v.filters ?? {}));
     const activeBuiltin = BUILTIN_VIEWS.find((v) => sameFilter(builtinFilters(v) as Record<string, string>, currentFilter));
     const activeSaved = activeBuiltin ? undefined : savedViews.data?.items.find((v) => (

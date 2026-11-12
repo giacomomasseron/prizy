@@ -1,7 +1,11 @@
-import { DndContext, useDraggable, useDroppable, type DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useState } from 'react';
+import {
+    DndContext, DragOverlay, PointerSensor, pointerWithin, useDraggable, useDroppable, useSensor, useSensors,
+    type Collision, type CollisionDetection, type DragEndEvent, type DragOverEvent, type DragStartEvent, type Over,
+} from '@dnd-kit/core';
 import { useSearchParams } from 'react-router-dom';
 import type { Issue, IssueStatus, Project } from '../../lib/types';
-import { BOARD_STATUSES, groupByStatus, useIssues, useTransitionStatus } from './hooks';
+import { BOARD_STATUSES, groupByStatus, useIssues, useMoveIssue } from './hooks';
 import { useProjects } from '../projects/hooks';
 import { FilterBar } from '../views/FilterBar';
 import { paramsToFilters } from '../views/filters';
@@ -10,6 +14,7 @@ import { useIssueDrawers } from './useIssueDrawers';
 import { useDragClickGuard } from './useDragClickGuard';
 import { STATUS_LABELS, issueRef } from './issueMeta';
 import { StarToggle } from './StarToggle';
+import { TicketChip } from './TicketChip';
 import { StatusIcon } from '../../components/ui/StatusIcon';
 import { PriorityIcon } from '../../components/ui/PriorityIcon';
 import { Avatar } from '../../components/ui/Avatar';
@@ -22,56 +27,59 @@ import { avatarFor } from '../../lib/avatarFor';
 // Hover lift (ink border + offset shadow + 1px raise) lives in classes so it actually fires.
 const CARD_CLASSES = 'border-border hover:border-fg hover:shadow-[3px_3px_0_var(--fg)] hover:-translate-x-px hover:-translate-y-px transition-[translate,box-shadow]';
 
-interface CardProps {
-    issue: Issue;
-    onCardClick(id: string): void;
-    projects: Project[];
+/** Where a dragged card would land: in a column, right before one of its cards or (null) after the last one. */
+interface DropTarget {
+    status: IssueStatus;
+    before: string | null;
 }
 
-function Card({ issue, onCardClick, projects }: CardProps) {
-    const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: issue.id });
-    const style: React.CSSProperties = {
-        background: 'var(--panel)',
-        borderWidth: 'var(--line)',
-        borderStyle: 'solid',
-        borderRadius: 16,
-        padding: '14px 15px',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        cursor: 'grab',
-    };
+function dropTargetOf(over: Pick<Over, 'data'> | null | undefined): DropTarget | null {
+    const target = over?.data.current as DropTarget | undefined;
+    return target?.status ? target : null;
+}
 
+/** Of the drop areas under the pointer, a card wins over the column that holds it. */
+export function cardsFirst(hits: Collision[]): Collision[] {
+    const cards = hits.filter((hit) => dropTargetOf(hit.data?.droppableContainer)?.before != null);
+    return cards.length > 0 ? cards : hits;
+}
+
+const underPointer: CollisionDetection = (args) => cardsFirst(pointerWithin(args));
+
+/** A column's cards as the board shows them: starred first (the newest star on top), the rest in the list's order. */
+function starredFirst(issues: Issue[]): Issue[] {
+    const stamp = (i: Issue) => (i.starred === true ? (i.starred_at ?? '') : '');
+    return issues
+        .map((issue, n) => ({ issue, n }))
+        .sort((a, b) => Number(b.issue.starred === true) - Number(a.issue.starred === true) || stamp(b.issue).localeCompare(stamp(a.issue)) || a.n - b.n)
+        .map(({ issue }) => issue);
+}
+
+const CARD_STYLE: React.CSSProperties = {
+    background: 'var(--panel)',
+    borderWidth: 'var(--line)',
+    borderStyle: 'solid',
+    borderRadius: 16,
+    padding: '14px 15px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 10,
+    cursor: 'grab',
+};
+
+/** What a card shows. Its star sits outside (see Card), so the top row keeps the star's place free on the right. */
+function CardFace({ issue, projects }: { issue: Issue; projects: Project[] }) {
     const project = issue.project_id ? projects.find((p) => p.id === issue.project_id) : undefined;
 
     return (
-        // The star sits beside the card's own control, not inside it: the card is role="button", whose children are
-        // presentational — a nested button would be hidden from assistive tech. The wrapper moves with a dragged card.
-        <div style={{ position: 'relative', ...(transform ? { transform: `translate(${transform.x}px, ${transform.y}px)`, zIndex: 10 } : {}) }}>
-        <div
-            ref={setNodeRef}
-            style={style}
-            className={CARD_CLASSES}
-            {...listeners}
-            {...attributes}
-            // V2-G3b: dnd-kit's attributes already make the card focusable; role and tabIndex are restated (same values)
-            // for readers and the guard. Only the pointer sensor is on, so Enter/Space open the peek, like a click, and
-            // dragging stays mouse-only — so dnd-kit's "draggable" role description and its keyboard drag instructions
-            // are dropped: they would tell a screen-reader user Space picks the card up.
-            role="button"
-            tabIndex={0}
-            aria-roledescription={undefined}
-            aria-describedby={undefined}
-            data-testid={`card-${issue.id}`}
-            onClick={() => onCardClick(issue.id)}
-            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onCardClick(issue.id); } }}
-        >
-            {/* Top row: identifier + priority */}
+        <>
+            {/* Top row: identifier + priority (the star follows it) */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--fg3)' }}>
                     {issueRef(issue)}
                 </span>
-                <span style={{ marginLeft: 'auto' }}>
+                <TicketChip ticket={issue.support_ticket} size="card" />
+                <span style={{ marginLeft: 'auto', marginRight: 28 }}>
                     <PriorityIcon priority={issue.priority} />
                 </span>
             </div>
@@ -93,9 +101,64 @@ function Card({ issue, onCardClick, projects }: CardProps) {
                         : <Avatar size={20} />}
                 </span>
             </div>
+        </>
+    );
+}
+
+interface CardProps {
+    issue: Issue;
+    onCardClick(id: string): void;
+    projects: Project[];
+    /** This card is the one being dragged: it stays where it is, faded, while its copy follows the pointer. */
+    dragging: boolean;
+    /** The dragged card would land right before this one. */
+    dropBefore: boolean;
+}
+
+function Card({ issue, onCardClick, projects, dragging, dropBefore }: CardProps) {
+    const { attributes, listeners, setNodeRef } = useDraggable({ id: issue.id });
+    const { setNodeRef: setSlotRef } = useDroppable({ id: `card:${issue.id}`, data: { status: issue.status, before: issue.id } satisfies DropTarget });
+
+    return (
+        // The slot is the card's drop area and carries the drag marks: the accent line above the card a drop would
+        // land before, and the fade of the card being dragged. The line takes no room: border + padding = the pull-up.
+        //
+        // The star sits beside the card's own control, not inside it: the card is role="button", whose children are
+        // presentational — a nested button would be hidden from assistive tech.
+        <div
+            ref={setSlotRef}
+            data-testid={`slot-${issue.id}`}
+            style={{
+                position: 'relative',
+                opacity: dragging ? 0.35 : 1,
+                borderTop: `3px solid ${dropBefore ? 'var(--accent)' : 'transparent'}`,
+                borderRadius: 4,
+                paddingTop: 2,
+                marginTop: -5,
+            }}
+        >
+        <div
+            ref={setNodeRef}
+            style={CARD_STYLE}
+            className={CARD_CLASSES}
+            {...listeners}
+            {...attributes}
+            // V2-G3b: dnd-kit's attributes already make the card focusable; role and tabIndex are restated (same values)
+            // for readers and the guard. Only the pointer sensor is on, so Enter/Space open the peek, like a click, and
+            // dragging stays mouse-only — so dnd-kit's "draggable" role description and its keyboard drag instructions
+            // are dropped: they would tell a screen-reader user Space picks the card up.
+            role="button"
+            tabIndex={0}
+            aria-roledescription={undefined}
+            aria-describedby={undefined}
+            data-testid={`card-${issue.id}`}
+            onClick={() => onCardClick(issue.id)}
+            onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); onCardClick(issue.id); } }}
+        >
+            <CardFace issue={issue} projects={projects} />
         </div>
-        {/* Over the card's top row, left of the priority icon. */}
-        <StarToggle issue={issue} style={{ position: 'absolute', top: 10, right: 38 }} />
+        {/* At the right end of the card's top row, after the priority icon. */}
+        <StarToggle issue={issue} style={{ position: 'absolute', top: 12, right: 15 }} />
         </div>
     );
 }
@@ -106,10 +169,19 @@ interface ColumnProps {
     onCardClick(id: string): void;
     onColumnAdd(status: IssueStatus): void;
     projects: Project[];
+    /** The drag in progress, if any: which card, and where it would land. */
+    drag: DragState | null;
 }
 
-function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnProps) {
-    const { setNodeRef, isOver } = useDroppable({ id: status });
+interface DragState {
+    id: string;
+    over: IssueStatus | null;
+    before: string | null;
+}
+
+function Column({ status, issues, onCardClick, onColumnAdd, projects, drag }: ColumnProps) {
+    const { setNodeRef } = useDroppable({ id: status, data: { status, before: null } satisfies DropTarget });
+    const over = drag?.over === status;
     return (
         <div
             ref={setNodeRef}
@@ -119,12 +191,16 @@ function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnPr
                 flexShrink: 0,
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 10,
+                gap: 9,
                 // A real drop area even for an empty column (the drop lands on the column element).
                 minHeight: 240,
-                borderRadius: 'var(--radius-card)',
-                padding: 4,
-                ...(isOver ? { background: 'var(--accent2)', boxShadow: '0 0 0 1.5px var(--accent)' } : {}),
+                // The column under a dragged card is filled and outlined; the room for that is taken back by the margin.
+                padding: 6,
+                margin: -6,
+                borderRadius: 20,
+                background: over ? 'var(--hover)' : 'transparent',
+                outline: `1.5px dashed ${over ? 'var(--border2)' : 'transparent'}`,
+                transition: 'background .12s',
             }}
         >
             {/* Column header */}
@@ -145,31 +221,68 @@ function Column({ status, issues, onCardClick, onColumnAdd, projects }: ColumnPr
 
             {/* Cards list */}
             {issues.map((i) => (
-                <Card key={i.id} issue={i} onCardClick={onCardClick} projects={projects} />
+                <Card
+                    key={i.id}
+                    issue={i}
+                    onCardClick={onCardClick}
+                    projects={projects}
+                    dragging={drag?.id === i.id}
+                    dropBefore={drag != null && drag.before === i.id && drag.id !== i.id}
+                />
             ))}
         </div>
     );
 }
 
 export default function BoardPage() {
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const issuesQ = useIssues(paramsToFilters(searchParams));
     const data = issuesQ.data;
-    const transition = useTransitionStatus();
-    const sensors = useSensors(useSensor(PointerSensor));
+    const move = useMoveIssue();
+    // A press only becomes a drag once the pointer has moved: a plain click never fades the card.
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const grouped = groupByStatus(data?.items ?? []);
+    const columns = Object.fromEntries(BOARD_STATUSES.map((status) => [status, starredFirst(grouped[status])])) as Record<IssueStatus, Issue[]>;
     const projectsQuery = useProjects();
     const projects = projectsQuery.data?.items ?? [];
     const { openCreate, openPeek } = useIssueDrawers();
     const { markDragged, guard } = useDragClickGuard();
+    const [drag, setDrag] = useState<DragState | null>(null);
+    const dragged = drag ? data?.items.find((i) => i.id === drag.id) : undefined;
+
+    function onDragStart(e: DragStartEvent) {
+        setDrag({ id: String(e.active.id), over: null, before: null });
+    }
+
+    function onDragOver(e: DragOverEvent) {
+        const target = dropTargetOf(e.over);
+        setDrag({ id: String(e.active.id), over: target?.status ?? null, before: target?.before ?? null });
+    }
 
     function onDragEnd(e: DragEndEvent) {
+        setDrag(null);
         const id = String(e.active.id);
-        const target = e.over ? (String(e.over.id) as IssueStatus) : null;
+        const target = dropTargetOf(e.over);
         const current = data?.items.find((i) => i.id === id);
-        if (target && current && current.status !== target) {
-            transition.mutate({ id, status: target });
-            markDragged();
+        if (!target || !current || target.before === id) return;
+
+        const sameColumn = current.status === target.status;
+        if (sameColumn) {
+            // Dropped where it already is (before the card that follows it, or at the end as the last card).
+            const column = columns[current.status] ?? [];
+            const next = column[column.findIndex((i) => i.id === id) + 1]?.id ?? null;
+            if (next === target.before) return;
+        }
+
+        move.mutate({ id, status: sameColumn ? undefined : target.status, beforeId: target.before });
+        markDragged();
+        // A place among the cards only shows in the manual order: a sort would put the card straight back.
+        if (target.before !== null && searchParams.has('sort')) {
+            setSearchParams((prev) => {
+                const params = new URLSearchParams(prev);
+                params.delete('sort');
+                return params;
+            });
         }
     }
 
@@ -184,19 +297,28 @@ export default function BoardPage() {
             <IssuesHeader view="board" />
             <FilterBar viewType="board" />
             <QueryState query={issuesQ} what="issues" frame={{ padding: '4px 26px 26px' }}>
-                <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+                <DndContext sensors={sensors} collisionDetection={underPointer} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEnd} onDragCancel={() => setDrag(null)}>
                     <div style={{ display: 'flex', gap: 18, padding: '4px 26px 26px', overflowX: 'auto', flexShrink: 0 }}>
                         {BOARD_STATUSES.map((status) => (
                             <Column
                                 key={status}
                                 status={status}
-                                issues={grouped[status]}
+                                issues={columns[status]}
                                 onCardClick={guardedCardClick}
                                 onColumnAdd={onColumnAdd}
                                 projects={projects}
+                                drag={drag}
                             />
                         ))}
                     </div>
+                    {/* The copy that follows the pointer, drawn as the card looks under it (ink border, offset shadow). */}
+                    <DragOverlay dropAnimation={null}>
+                        {dragged && (
+                            <div style={{ ...CARD_STYLE, cursor: 'grabbing', borderColor: 'var(--fg)', boxShadow: '3px 3px 0 var(--fg)' }}>
+                                <CardFace issue={dragged} projects={projects} />
+                            </div>
+                        )}
+                    </DragOverlay>
                 </DndContext>
             </QueryState>
         </>

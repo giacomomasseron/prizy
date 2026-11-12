@@ -219,7 +219,7 @@ it('G3b: Escape closes only the palette, not a drawer open under it', async () =
     expect(screen.getByRole('dialog', { name: 'Peek' })).toBeInTheDocument();
 });
 
-it('G3c: "No results." lives in an always-rendered status region, empty while there are results', async () => {
+it('G3c: "No results" lives in an always-rendered status region, empty while there are results', async () => {
     const { unmount } = renderPalette();
     await openPalette();
     await screen.findByRole('combobox', { name: 'Search' });
@@ -235,7 +235,7 @@ it('G3c: "No results." lives in an always-rendered status region, empty while th
         await openPalette();
         await screen.findByRole('combobox', { name: 'Search' });
         expect(screen.queryAllByRole('option')).toHaveLength(0);
-        expect(screen.getByRole('status').textContent).toBe('No results.');
+        expect(screen.getByRole('status').textContent).toBe('No results');
         expect(screen.getByRole('status').closest('[role=listbox]')).toBeNull();
     } finally { spy.mockRestore(); }
 });

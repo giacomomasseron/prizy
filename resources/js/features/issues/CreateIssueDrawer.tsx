@@ -24,6 +24,8 @@ export interface CreateIssueDrawerProps {
     open: boolean;
     initialStatus?: IssueStatus | null;
     onClose(): void;
+    /** "Create issue" hands the new issue's id here (to open it) in place of calling onClose. */
+    onCreated?(id: string): void;
 }
 
 // New-issue statuses (Done and Cancelled excluded — you don't file a new issue as done).
@@ -57,7 +59,10 @@ function projectSwatch(color: string) {
     return <span style={{ width: 9, height: 9, borderRadius: 3, background: color, flexShrink: 0 }} />;
 }
 
-export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueDrawerProps) {
+/** The priority a new issue starts at (Workspace mockup). */
+const DEFAULT_PRIORITY: IssuePriority = 'medium';
+
+export function CreateIssueDrawer({ open, initialStatus, onClose, onCreated }: CreateIssueDrawerProps) {
     const me = useMe().data;
     // Mounted on every page: a workspace that has switched the tracker off answers 403 here.
     const teams = useTeams({ enabled: trackerEnabled(me) });
@@ -77,7 +82,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     const [labelIds, setLabelIds] = useState<string[]>([]);
     const [title, setTitle] = useState('');
     const [status, setStatus] = useState<IssueStatus>(initialStatus ?? 'todo');
-    const [priority, setPriority] = useState<IssuePriority>('no_priority');
+    const [priority, setPriority] = useState<IssuePriority>(DEFAULT_PRIORITY);
     const [description, setDescription] = useState('');
 
     // Auto-select when there is exactly one team
@@ -90,7 +95,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     function resetFields() {
         setTitle('');
         setStatus(initialStatus ?? 'todo');
-        setPriority('no_priority');
+        setPriority(DEFAULT_PRIORITY);
         setDescription('');
         setProjectId(null);
         setReleaseId(null);
@@ -123,7 +128,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
     async function submit(keepOpen: boolean) {
         if (!teamId || !title.trim()) return;
         try {
-            await createIssue.mutateAsync({
+            const created = await createIssue.mutateAsync({
                 team_id: teamId,
                 title: title.trim(),
                 status,
@@ -137,6 +142,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                 ...(releaseId ? { release_id: releaseId } : {}),
             });
             if (keepOpen) resetFields();
+            else if (onCreated) onCreated(created.id);
             else onClose();
         } catch {
             // inline error handling arrives with a later slice
@@ -329,7 +335,7 @@ export function CreateIssueDrawer({ open, initialStatus, onClose }: CreateIssueD
                 {/* Footer */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px', borderTop: '1px solid var(--border)', background: 'var(--bg2)' }}>
                     <span style={{ fontSize: 11.5, color: 'var(--fg3)' }}>
-                        {title.trim() ? '' : 'Add a title to create this issue'}
+                        {title.trim() ? (canSubmit ? 'Ready to create' : '') : 'Add a title to create this issue'}
                     </span>
                     <Button variant="secondary" onClick={() => void submit(true)} disabled={!canSubmit} style={{ marginLeft: 'auto' }}>
                         Create more
