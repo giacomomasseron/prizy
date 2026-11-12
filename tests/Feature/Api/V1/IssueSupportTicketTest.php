@@ -95,6 +95,7 @@ it('lists only the issues that came from Support with filter[escalated]=true', f
     ['token' => $token, 'issue' => $issue] = escalatedIssueWorld();
     $ws = Workspace::current();
     Issue::factory()->for($ws, 'workspace')->count(2)->create(['team_id' => $issue->team_id]);
+    $issue->refresh(); // the factory leaves the status to the database
 
     expect($this->withToken($token)->getJson('/v1/issues')->assertOk()->json('data'))->toHaveCount(3);
     expect($this->withToken($token)->getJson('/v1/issues?filter[escalated]=true')->assertOk()->json('data.*.id'))->toBe([$issue->id]);
@@ -116,4 +117,10 @@ it('drops the ticket from the issue list when the helpdesk is off', function ():
     $rows = collect($this->withToken($token)->getJson('/v1/issues')->assertOk()->json('data'))->keyBy('id');
 
     expect($rows[$issue->id]['support_ticket'])->toBeNull();
+});
+
+it('reads an empty filter value as no filter, not as an error', function (): void {
+    ['token' => $token] = escalatedIssueWorld();
+
+    expect($this->withToken($token)->getJson('/v1/issues?filter[status]=')->assertOk()->json('data'))->toHaveCount(1);
 });

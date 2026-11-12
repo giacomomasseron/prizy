@@ -53,10 +53,11 @@ final class ListIssuesRequest extends FormRequest
     /** @return array<string, string> */
     public function filters(): array
     {
-        /** @var array<string, string> $filter */
+        /** @var array<string, string|null> $filter */
         $filter = $this->validated('filter', []);
 
-        return $filter;
+        // `filter[status]=` arrives as null (empty strings are converted): it filters nothing.
+        return array_filter($filter, fn ($value): bool => $value !== null);
     }
 
     /** @return list<array{column:string,dir:string}> */

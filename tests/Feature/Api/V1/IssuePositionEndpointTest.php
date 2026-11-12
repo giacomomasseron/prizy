@@ -130,12 +130,13 @@ it('still finds a place between two neighbours whose order values are one step a
 it('keeps bisecting the same gap for many moves in a row', function (): void {
     [$token, $user, $ws, $team] = positionWorld();
     $a = positionIssue($ws, $team, $user, 'todo', '1024');
-    $b = positionIssue($ws, $team, $user, 'todo', '2048');
+    $b = positionIssue($ws, $team, $user, 'todo', '1024.0000000001');
     $c = positionIssue($ws, $team, $user, 'todo', '3072');
     $d = positionIssue($ws, $team, $user, 'todo', '4096');
 
-    // c and d take turns going right before b: each move halves the gap after a, past what a double can split.
-    foreach (range(1, 70) as $i) {
+    // c and d take turns going right before b: each move halves the gap before b, which starts so narrow that a
+    // double cannot split it ten times. (Few moves: the API allows 60 requests a minute.)
+    foreach (range(1, 24) as $i) {
         $moved = $i % 2 === 1 ? $c : $d;
         $this->withToken($token)->putJson("/v1/issues/{$moved->id}/position", ['before_id' => $b->id])->assertOk();
     }
