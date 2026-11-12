@@ -106,9 +106,9 @@ it('lists only the contact\'s own tickets with filters, counts, and search', fun
     $all->assertSee('Feature request: dark mode');
     $all->assertSee('Invoice question resolved');
     $all->assertDontSee('Foreign secret request');
-    $all->assertSee('All (3)');
-    $all->assertSee('Open (2)');
-    $all->assertSee('Solved (1)');
+    $all->assertSee('All <span class="hc-seg__count">3</span>', false);
+    $all->assertSee('Open <span class="hc-seg__count">2</span>', false);
+    $all->assertSee('Solved <span class="hc-seg__count">1</span>', false);
 
     $open = $this->get('/help/requests?f=open')->assertOk();
     $open->assertSee('Cannot log into dashboard');
@@ -156,7 +156,7 @@ it('treats a non-string filter query param as the default instead of 500ing', fu
     portalReqTicket($ws, $contact);
 
     $this->actingAs($contact, 'contact');
-    $this->get('/help/requests?f[]=x')->assertOk()->assertSee('All (1)');
+    $this->get('/help/requests?f[]=x')->assertOk()->assertSee('All <span class="hc-seg__count">1</span>', false);
 
     Workspace::forgetCurrent();
 });

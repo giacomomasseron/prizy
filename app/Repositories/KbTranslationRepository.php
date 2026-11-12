@@ -126,13 +126,16 @@ final class KbTranslationRepository
     public function applyDisplayTitles(BaseCollection $articles, string $lang): void
     {
         if ($lang === KbLocales::SOURCE || $articles->isEmpty()) {
-            $articles->each(fn (KbArticle $a) => $a->setAttribute('display_title', $a->title));
+            $articles->each(fn (KbArticle $a) => $a->setAttribute('display_title', $a->title)->setAttribute('translated', true));
 
             return;
         }
 
         $byArticle = $this->publishedForArticles($articles->pluck('id')->all(), $lang);
-        $articles->each(fn (KbArticle $a) => $a->setAttribute('display_title', $byArticle[$a->id]->title ?? $a->title));
+        // `translated`: whether the article exists in $lang; a list marks the ones that do not as "English only".
+        $articles->each(fn (KbArticle $a) => $a
+            ->setAttribute('display_title', $byArticle[$a->id]->title ?? $a->title)
+            ->setAttribute('translated', isset($byArticle[$a->id])));
     }
 
     /**

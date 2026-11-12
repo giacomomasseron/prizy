@@ -36,16 +36,24 @@ final class ShowHelpHome extends BaseUseCase implements UseCaseInterface
         return $this->execute(...$arguments);
     }
 
-    /** @return array{categories: Collection<int, KbCategory>, suggestions: Collection<int, KbArticle>, recent: ?Collection<int, Ticket>, lang: string} */
+    /** How many of the most-viewed articles the home page lists; the first SUGGESTIONS of them are also the chips under the search. */
+    private const POPULAR = 6;
+
+    private const SUGGESTIONS = 4;
+
+    /** @return array{categories: Collection<int, KbCategory>, suggestions: Collection<int, KbArticle>, popular: Collection<int, KbArticle>, recent: ?Collection<int, Ticket>, recentTotal: int, lang: string} */
     private function execute(?Contact $contact = null, string $lang = KbLocales::SOURCE): array
     {
-        $suggestions = $this->kb->topArticles();
-        $this->translations->applyDisplayTitles($suggestions, $lang);
+        $popular = $this->kb->topArticles(self::POPULAR);
+        $this->translations->applyDisplayTitles($popular, $lang);
 
         return [
             'categories' => $this->kb->categoriesWithCounts(),
-            'suggestions' => $suggestions,
+            'suggestions' => $popular->take(self::SUGGESTIONS)->values(),
+            'popular' => $popular,
             'recent' => $contact !== null ? $this->portalTickets->forContactRecent($contact) : null,
+            // Every request the contact has, for the "View all N" link over the three shown.
+            'recentTotal' => $contact !== null ? $this->portalTickets->countsFor($contact)['all'] : 0,
             'lang' => $lang,
         ];
     }

@@ -30,6 +30,13 @@ final class PortalTicketRepository
         'solved' => 'green', 'closed' => 'green',
     ];
 
+    /** A ticket's columns plus `unread`: a public agent message the contact has not seen yet. */
+    private const WITH_UNREAD = 'tickets.*, EXISTS('
+        .'SELECT 1 FROM ticket_messages m WHERE m.ticket_id = tickets.id'
+        ." AND m.is_internal = false AND m.sender_type = 'user'"
+        .' AND (tickets.contact_seen_at IS NULL OR m.created_at > tickets.contact_seen_at)'
+        .') AS unread';
+
     /**
      * The contact's own tickets, newest activity first, each with an
      * `unread` attribute: a PUBLIC agent message newer than contact_seen_at
@@ -42,11 +49,7 @@ final class PortalTicketRepository
         $query = Ticket::query()
             ->where('requester_id', $contact->id)
             ->with('assignee')
-            ->selectRaw('tickets.*, EXISTS('
-                .'SELECT 1 FROM ticket_messages m WHERE m.ticket_id = tickets.id'
-                ." AND m.is_internal = false AND m.sender_type = 'user'"
-                .' AND (tickets.contact_seen_at IS NULL OR m.created_at > tickets.contact_seen_at)'
-                .') AS unread')
+            ->selectRaw(self::WITH_UNREAD)
             ->orderByDesc('updated_at');
 
         if ($filter === 'open') {
@@ -78,6 +81,7 @@ final class PortalTicketRepository
         return Ticket::query()
             ->where('requester_id', $contact->id)
             ->with('assignee')
+            ->selectRaw(self::WITH_UNREAD)
             ->orderByDesc('updated_at')
             ->limit($limit)
             ->get();

@@ -3,12 +3,13 @@
 @section('title', 'My requests')
 
 @section('content')
-    <section class="hc-wrap hc-wrap--list hc-page">
-        <h1 class="hc-title hc-title--sm hc-title--spaced">My requests</h1>
+    <section class="hc-wrap hc-page">
+        <h1 class="hc-title hc-title--page">My requests</h1>
+        <p class="hc-lead hc-lead--tight">Everything you have sent us.</p>
 
         <div class="hc-toolbar">
             @php $tabs = ['all' => 'All', 'open' => 'Open', 'solved' => 'Solved']; @endphp
-            <nav class="hc-tabs" aria-label="Filter requests">
+            <nav class="hc-seg" aria-label="Filter requests">
                 @foreach ($tabs as $key => $label)
                     @php
                         // Explicit null-safe build (not array_filter): array_filter
@@ -21,12 +22,13 @@
                     @endphp
                     <a
                         href="{{ route('help.requests', $tabParams) }}"
-                        class="hc-pill"
+                        class="hc-seg__item"
                         @if ($filter === $key) aria-current="true" @endif
-                    >{{ $label }} ({{ $counts[$key] }})</a>
+                    >{{ $label }} <span class="hc-seg__count">{{ $counts[$key] }}</span></a>
                 @endforeach
             </nav>
-            <form method="GET" action="{{ route('help.requests') }}" class="hc-inline-form" role="search">
+            <form method="GET" action="{{ route('help.requests') }}" class="hc-findbox" role="search">
+                <span aria-hidden="true" class="hc-faint">⌕</span>
                 @if ($filter !== 'all')
                     <input type="hidden" name="f" value="{{ $filter }}">
                 @endif
@@ -37,33 +39,42 @@
                     name="q"
                     value="{{ $q }}"
                     placeholder="Search your requests"
-                    class="hc-field hc-field--pill"
+                    class="hc-findbox__input"
                 >
-                <button type="submit" class="hc-btn">Search</button>
+                {{-- Enter submits; the button is there for assistive technology. --}}
+                <button type="submit" class="sr-only">Search</button>
             </form>
+            <a href="{{ route('help.new') }}" class="hc-btn hc-btn--tool"><span aria-hidden="true">＋</span> New request</a>
         </div>
 
-        @if ($tickets->isEmpty())
-            <p class="hc-empty">No requests match</p>
-        @else
-            <div class="hc-tickets">
-                @foreach ($tickets as $t)
-                    <a href="{{ route('help.request', $t->id) }}" class="hc-card hc-ticket">
-                        @include('help.partials.status', ['status' => $t->status])
-                        <span class="hc-ticket__main">
-                            <span class="hc-ticket__subject" title="{{ $t->subject }}">
-                                {{ $t->subject }}
-                                <span class="hc-ticket__id hc-mono">#{{ substr($t->id, 0, 8) }}</span>
-                            </span>
-                            <span class="hc-ticket__who">{{ $t->assignee?->name ?? 'Awaiting assignment' }}</span>
-                        </span>
-                        @if ($t->unread)
-                            <span class="hc-chip hc-chip--accent">New reply</span>
-                        @endif
-                        <span class="hc-ticket__when">{{ $t->updated_at->diffForHumans() }}</span>
-                    </a>
-                @endforeach
+        <div class="hc-card hc-table">
+            <div class="hc-table__head" aria-hidden="true">
+                <div>Status</div><div>Subject</div><div>Handled by</div><div class="hc-table__end">Last activity</div>
             </div>
-        @endif
+            @forelse ($tickets as $t)
+                <a href="{{ route('help.request', $t->id) }}" class="hc-table__row">
+                    @include('help.partials.status', ['status' => $t->status])
+                    <span class="hc-table__subject">
+                        <span class="hc-row__title" title="{{ $t->subject }}">{{ $t->subject }}</span>
+                        <span class="hc-row__sub">
+                            <span class="hc-mono">#{{ substr($t->id, 0, 8) }}</span>
+                            @if ($t->unread)
+                                <span class="hc-chip hc-chip--sup">New reply</span>
+                            @endif
+                        </span>
+                    </span>
+                    <span class="hc-table__agent">
+                        @include('help.partials.avatar', ['name' => $t->assignee?->name, 'tone' => $t->assignee ? 'agent' : 'none', 'size' => 'sm'])
+                        <span class="hc-table__agent-name">{{ $t->assignee?->name ?? 'Awaiting assignment' }}</span>
+                    </span>
+                    <span class="hc-table__when hc-table__end">{{ $t->updated_at->diffForHumans() }}</span>
+                </a>
+            @empty
+                <div class="hc-table__empty">
+                    <div class="hc-table__empty-title">No requests match</div>
+                    <div class="hc-table__empty-hint">Try another filter, or start a new request.</div>
+                </div>
+            @endforelse
+        </div>
     </section>
 @endsection

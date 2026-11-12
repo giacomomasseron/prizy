@@ -29,7 +29,8 @@ function phoneBlock(needle: string): string {
 
 describe('F1: page bodies keep the hc-wrap side gutters', () => {
     it.each([
-        ['<div class="hc-wrap hc-page"></div>', '40px', '72px'],
+        ['<div class="hc-wrap hc-page"></div>', '40px', '64px'],
+        ['<div class="hc-wrap hc-page hc-page--tight"></div>', '26px', '64px'],
         ['<div class="hc-wrap hc-section"></div>', '40px', '0px'],
         ['<section class="hc-wrap hc-wrap--solo hc-solo-page"></section>', '64px', '64px'],
     ])('%s', (html, top, bottom) => {
@@ -42,16 +43,33 @@ describe('F1: page bodies keep the hc-wrap side gutters', () => {
 });
 
 describe('F2: card links and ticket rows', () => {
-    it('a ticket row is a flex row', () => {
-        expect(cs(render('<a class="hc-card hc-ticket"></a>')).display).toBe('flex');
+    it('a request row is a grid row in the --fg colour, and so is the header over it', () => {
+        const row = cs(render('<a class="hc-table__row"></a>'));
+        expect(row.display).toBe('grid');
+        expect(row.color).toBe('var(--fg)'); // jsdom keeps var() unresolved; the point is it is not the bare-anchor colour
+        expect(cs(render('<div class="hc-table__head"></div>')).gridTemplateColumns).toBe(row.gridTemplateColumns);
     });
     it('a plain card link stays a block in the --fg colour', () => {
-        const s = cs(render('<a class="hc-card hc-topic"></a>'));
+        const s = cs(render('<a class="hc-card"></a>'));
         expect(s.display).toBe('block');
-        expect(s.color).toBe("var(--fg)"); // jsdom keeps var() unresolved; the point is it is not the bare-anchor colour
+        expect(s.color).toBe('var(--fg)');
     });
-    it('the phone ticket lets the main column take the first line', () => {
-        expect(phoneBlock('.hc-ticket {')).toMatch(/\.hc-ticket__main \{[^}]*order: -1;[^}]*flex-basis: 100%;/);
+    it('a topic card stacks its lines, still in the --fg colour', () => {
+        const s = cs(render('<a class="hc-card hc-topic"></a>'));
+        expect(s.display).toBe('flex');
+        expect(s.flexDirection).toBe('column');
+        expect(s.color).toBe('var(--fg)');
+    });
+    it('a list row (popular articles, recent requests) is a flex row in the --fg colour', () => {
+        const s = cs(render('<a class="hc-row"></a>'));
+        expect(s.display).toBe('flex');
+        expect(s.color).toBe('var(--fg)');
+    });
+    it('the phone request row gives the subject the first line and drops the header and the agent', () => {
+        const b = phoneBlock('.hc-table__row {');
+        expect(b).toMatch(/\.hc-table__subject \{[^}]*grid-column: 1 \/ -1;[^}]*order: -1;/);
+        expect(b).toMatch(/\.hc-table__head \{ display: none; \}/);
+        expect(b).toMatch(/\.hc-table__agent \{ display: none; \}/);
     });
 });
 
