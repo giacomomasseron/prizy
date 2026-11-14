@@ -15,7 +15,7 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     // 2. Teams — create a new team via the repointed Settings › Teams flow
     // (R-E-2 removed the old inline /teams create form; "New team" now routes to Settings).
     // The redesigned GlobalSidebar has no top-level "Teams" nav link anymore
-    // (teams live under the collapsible "My Teams" tree); go there directly.
+    // (teams live under the collapsible "My teams" tree); go there directly.
     await page.goto('/teams');
     await expect(page).toHaveURL('http://smoke.localhost:8001/teams');
     await page.getByRole('button', { name: 'New team' }).click();
@@ -52,8 +52,7 @@ test('entity management flow: teams → projects → labels → issue labels+pro
     await expect(page.getByText(LABEL_NAME)).toBeVisible();
 
     // 5. Issues → open the pre-seeded starter issue
-    // "Issues" (Workspace group) substring-collides with "My Issues" (Support
-    // bridge) under Playwright's default fuzzy name matching — anchor on the
+    // "Issues" (Workspace group) substring-collides with "My issues" under Playwright's default fuzzy name matching — anchor on the
     // leading "Issues" text so this targets the Workspace link unambiguously.
     await page.getByRole('link', { name: /^Issues/ }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/issues');

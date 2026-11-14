@@ -1,29 +1,32 @@
-import { useEffect, useState, type CSSProperties } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { canDevelop as canDevelopFor, canUseTracker, canWorkHelpdesk, trackerEnabled } from '../auth/capabilities';
 import { useMe } from '../auth/useAuth';
 import { useIssueDrawers } from '../features/issues/useIssueDrawers';
 import { useIssues } from '../features/issues/hooks';
 import { useUnreadCount } from '../features/notifications/hooks';
-import { useProjects } from '../features/projects/hooks';
+import { useMyProjects } from '../features/projects/hooks';
 import { useTeams } from '../features/teams/hooks';
 import { usePlan } from '../features/today/planHooks';
 import { SidebarFooter } from './SidebarFooter';
+import { COUNT_PILL, MyProjects, MyTeams, NAV_COLUMN, NavIcon, type NavIconName, RED_BADGE, rowClass, rowStyle, useFolded } from './SidebarNav';
 import { BrandMark } from './ui/BrandMark';
 import { Kbd } from './ui/Kbd';
-import { NAV_ROW_HOVER, countStyle, hiBadge, navRow, sectionBtn, sectionLabel, tagBadge } from './sidebarStyles';
+import { hiBadge, sectionBtn, tagBadge } from './sidebarStyles';
 
-function persistedBool(key: string, def: boolean): boolean {
-    try { const v = localStorage.getItem(key); return v === null ? def : v === '1'; } catch { return def; }
+/** A row that is current on its own route. */
+function PageRow({ to, icon, children }: { to: string; icon: NavIconName; children: string }) {
+    return (
+        <NavLink to={to} style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => rowClass(isActive)}>
+            <NavIcon name={icon} /><span style={{ flex: 1 }}>{children}</span>
+        </NavLink>
+    );
 }
-function persistBool(key: string, val: boolean) { try { localStorage.setItem(key, val ? '1' : '0'); } catch { /* ignore */ } }
-function persistedExp(): Record<string, boolean> {
-    try { return JSON.parse(localStorage.getItem('prizy-nav-teamexp') || '{}'); } catch { return {}; }
-}
 
-const caret = (open: boolean): CSSProperties => ({ fontSize: 7, display: 'inline-block', transform: open ? 'rotate(90deg)' : 'none' });
-const box = (c: string): CSSProperties => ({ width: 12, height: 12, borderRadius: 3, background: c, display: 'inline-block' });
-
+/**
+ * The left bar of every page but Today and a project (the Workspace design): your own work first (Today, Inbox, My
+ * issues, My teams, My projects, Escalations), then the workspace's Issues, Projects and Roadmap, then the support
+ * desk for agents. Analytics, Releases and Help center are the app's own; the mockup has no such pages.
+ */
 export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const me = useMe();
     const showTracker = canUseTracker(me.data);
@@ -32,36 +35,26 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
     const canDevelop = canDevelopFor(me.data);
     const { openCreate } = useIssueDrawers();
     const { data: issuesData } = useIssues({}, { enabled: showTracker });
-    const projectCount = useProjects(undefined, { enabled: showTracker }).data?.items.length ?? 0;
     // Escalations: the issues that came from Support. The row goes when the workspace has no support desk.
     const showEscalations = showTracker && me.data?.workspace?.helpdesk_enabled === true;
-    const { data: escalatedData } = useIssues({ escalated: 'true' }, { enabled: showEscalations });
-    const escalatedCount = escalatedData?.items.length ?? 0;
+    const showDesk = canWorkHelpdesk(me.data);
     // Which issue view is open: the plain one, the "From Support" scope, or the caller's own issues.
     const location = useLocation();
     const query = new URLSearchParams(location.search);
     const onIssues = location.pathname === '/issues' || location.pathname === '/board';
     const supportMode = onIssues && query.get('escalated') === 'true';
     const mineMode = onIssues && !!me.data?.id && query.get('assignee_id') === me.data.id;
-    const issuesCurrent = location.pathname === '/issues' && !supportMode;
+    const issuesCurrent = location.pathname === '/issues' && !supportMode && !mineMode;
     const unread = useUnreadCount(!!me.data && showInbox);
     const plan = usePlan(showTracker);
     const canManage = ['owner', 'admin'].includes(me.data?.admin_level ?? '');
     const teams = useTeams({ mine: true, enabled: showTracker });
+    const projects = useMyProjects({ enabled: showTracker });
+    const [workspaceOpen, toggleWorkspace] = useFolded('prizy-nav-workspace');
 
-    const [workspaceOpen, setWorkspaceOpen] = useState(() => persistedBool('prizy-nav-workspace', true));
-    const [teamsOpen, setTeamsOpen] = useState(() => persistedBool('prizy-nav-teams', true));
-    const [teamExp, setTeamExp] = useState<Record<string, boolean>>(persistedExp);
-    useEffect(() => persistBool('prizy-nav-workspace', workspaceOpen), [workspaceOpen]);
-    useEffect(() => persistBool('prizy-nav-teams', teamsOpen), [teamsOpen]);
-    useEffect(() => { try { localStorage.setItem('prizy-nav-teamexp', JSON.stringify(teamExp)); } catch { /* ignore */ } }, [teamExp]);
-
-    const issues = issuesData?.items ?? [];
-    const activeCount = issues.filter((i) => i.status !== 'done' && i.status !== 'cancelled').length;
-    const myCount = me.data?.id ? issues.filter((i) => i.assignee_id === me.data!.id).length : 0;
+    const myCount = me.data?.id ? (issuesData?.items ?? []).filter((i) => i.assignee_id === me.data!.id).length : 0;
     const unreadCount = unread.data?.count ?? 0;
     const planCount = plan.data?.items.length ?? 0;
-    const myTeams = teams.data?.items ?? [];
 
     function openSearch() { window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true })); }
 
@@ -84,124 +77,67 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                 </div>
             )}
 
-            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {/* Today (P7-B): the tracker user's home, first in the sidebar, with the open plan count (Today v2). */}
-                {showTracker && (
-                    <div style={{ padding: '0 8px 10px' }}>
-                        <NavLink to="/today" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>☀</span>
-                            <span style={{ flex: 1 }}>Today</span>
-                            {planCount > 0 && <span data-testid="today-badge" aria-label={`${planCount} planned`} style={hiBadge}>{planCount}</span>}
-                        </NavLink>
-                    </div>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '0 6px' }}>
+                {(showTracker || showInbox) && (
+                    <nav aria-label="Your work" style={NAV_COLUMN}>
+                        {/* Today: the tracker user's home, with the open plan count. */}
+                        {showTracker && (
+                            <NavLink to="/today" style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => rowClass(isActive)}>
+                                <NavIcon name="today" /><span style={{ flex: 1 }}>Today</span>
+                                {planCount > 0 && <span data-testid="today-badge" aria-label={`${planCount} planned`} style={{ ...hiBadge, fontSize: 12.5 }}>{planCount}</span>}
+                            </NavLink>
+                        )}
+                        {showInbox && (
+                            <NavLink to="/notifications" aria-label={unreadCount > 0 ? `Inbox, ${unreadCount} unread` : 'Inbox'} style={({ isActive }) => rowStyle(isActive)} className={({ isActive }) => rowClass(isActive)}>
+                                <NavIcon name="inbox" /><span style={{ flex: 1 }}>Inbox</span>
+                                {unreadCount > 0 && <span data-testid="inbox-badge" style={RED_BADGE}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+                            </NavLink>
+                        )}
+                        {showTracker && (
+                            <Link to={me.data?.id ? `/issues?assignee_id=${me.data.id}` : '/issues'} aria-current={mineMode ? 'page' : undefined} style={rowStyle(mineMode)} className={rowClass(mineMode)}>
+                                <NavIcon name="me" /><span style={{ flex: 1 }}>My issues</span>
+                                {myCount > 0 && <span data-testid="my-issues-count" style={COUNT_PILL}>{myCount}</span>}
+                            </Link>
+                        )}
+                        {showTracker && <MyTeams teams={teams.data?.items ?? []} newTeam={canManage} />}
+                        {showTracker && <MyProjects projects={projects.data?.items ?? []} />}
+                        {showEscalations && (
+                            <Link to="/issues?escalated=true" aria-current={supportMode ? 'page' : undefined} style={rowStyle(supportMode)} className={rowClass(supportMode)}>
+                                <NavIcon name="escalations" /><span style={{ flex: 1 }}>Escalations</span>
+                            </Link>
+                        )}
+                    </nav>
                 )}
-                {/* Support bridge — mirrors Prizy.dc.html: My Issues · Escalations · Inbox · Support inbox */}
-                <div style={{ ...sectionLabel, padding: '6px 18px 6px' }}>Support bridge</div>
-                <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                    {showTracker && (
-                        <Link to={me.data?.id ? `/issues?assignee_id=${me.data.id}` : '/issues'} aria-current={mineMode ? 'page' : undefined} style={navRow(mineMode)} className={mineMode ? '' : NAV_ROW_HOVER}>
-                            <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={box('var(--accent)')} /></span>
-                            <span style={{ flex: 1 }}>My Issues</span><span style={countStyle}>{myCount}</span>
-                        </Link>
-                    )}
-                    {showEscalations && (
-                        <Link to="/issues?escalated=true" aria-current={supportMode ? 'page' : undefined} style={supportMode ? { ...navRow(true), color: 'var(--accent)' } : navRow(false)} className={supportMode ? '' : NAV_ROW_HOVER}>
-                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>↩</span><span style={{ flex: 1 }}>Escalations</span>
-                            {escalatedCount > 0 && <span data-testid="escalations-badge" style={hiBadge}>{escalatedCount > 99 ? '99+' : escalatedCount}</span>}
-                        </Link>
-                    )}
-                    {/* Inbox → notifications (design folds this into the Support bridge with the ◔ glyph) */}
-                    {showInbox && (
-                        <NavLink to="/notifications" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)} aria-label="Inbox">
-                            <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Inbox</span>
-                            {unreadCount > 0 && <span data-testid="inbox-badge" style={hiBadge}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
-                        </NavLink>
-                    )}
-                    {/* Support inbox → agent desk (design: outlined-square glyph + "Agent" badge); agent-gated so non-agents get no dead /support link */}
-                    {canWorkHelpdesk(me.data) && (
-                        <>
-                            <NavLink to="/support" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                                <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 12, height: 12, borderRadius: 3, border: '1.5px solid currentColor' }} /></span>
-                                <span style={{ flex: 1 }}>Support inbox</span>
-                                <span style={tagBadge}>Agent</span>
-                            </NavLink>
-                            <NavLink to="/support/kb" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                                <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>📚</span>
-                                <span style={{ flex: 1 }}>Knowledge base</span>
-                            </NavLink>
-                            <a href="/help" target="_blank" rel="noreferrer" style={navRow(false)} className={NAV_ROW_HOVER}>
-                                <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◎</span>
-                                <span style={{ flex: 1 }}>Help center</span>
-                                <span style={tagBadge}>Public</span>
-                            </a>
-                        </>
-                    )}
-                </div>
 
-                {/* Workspace */}
                 {showTracker && (
                     <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
-                            <button type="button" onClick={() => setWorkspaceOpen((o) => !o)} aria-expanded={workspaceOpen} style={sectionBtn} className="text-fg3 hover:text-fg2"><span aria-hidden="true" style={caret(workspaceOpen)}>▶</span>Workspace</button>
-                        </div>
+                        <button type="button" onClick={toggleWorkspace} aria-expanded={workspaceOpen} style={{ ...sectionBtn, padding: '20px 12px 6px', gap: 5 }} className="text-fg3 hover:text-fg2">
+                            <span aria-hidden="true" style={{ fontSize: 7, display: 'inline-block', transition: 'transform .15s', transform: workspaceOpen ? 'rotate(90deg)' : 'none' }}>▶</span>Workspace
+                        </button>
                         {workspaceOpen && (
-                            <nav aria-label="Workspace" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {/* Not the current row inside the "From Support" scope: Escalations is. */}
-                                <Link to="/issues" aria-current={issuesCurrent ? 'page' : undefined} style={navRow(issuesCurrent)} className={issuesCurrent ? '' : NAV_ROW_HOVER}>
-                                    <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, border: '1.6px solid currentColor' }} /></span>
-                                    <span style={{ flex: 1 }}>Issues</span>{activeCount > 0 && <span style={countStyle}>{activeCount}</span>}
+                            <nav aria-label="Workspace" style={NAV_COLUMN}>
+                                {/* Not the current row inside the "From Support" scope or on your own issues: those rows are. */}
+                                <Link to="/issues" aria-current={issuesCurrent ? 'page' : undefined} style={rowStyle(issuesCurrent)} className={rowClass(issuesCurrent)}>
+                                    <NavIcon name="issues" /><span style={{ flex: 1 }}>Issues</span>
                                 </Link>
-                                <NavLink to="/projects" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                                    <span style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 13, height: 13, borderRadius: 3, background: 'currentColor', opacity: 0.85 }} /></span>
-                                    <span style={{ flex: 1 }}>Projects</span>{projectCount > 0 && <span data-testid="projects-count" style={countStyle}>{projectCount}</span>}
-                                </NavLink>
-                                <NavLink to="/roadmap" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                                    <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>≣</span><span style={{ flex: 1 }}>Roadmap</span>
-                                </NavLink>
-                                <NavLink to="/analytics" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                                    <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>◫</span><span style={{ flex: 1 }}>Analytics</span>
-                                </NavLink>
-                                <NavLink to="/releases" style={({ isActive }) => navRow(isActive)} className={({ isActive }) => (isActive ? '' : NAV_ROW_HOVER)}>
-                                    <span aria-hidden="true" style={{ width: 16, display: 'inline-flex', justifyContent: 'center' }}>⛴</span><span style={{ flex: 1 }}>Releases</span>
-                                </NavLink>
+                                <PageRow to="/projects" icon="projects">Projects</PageRow>
+                                <PageRow to="/roadmap" icon="roadmap">Roadmap</PageRow>
+                                <PageRow to="/analytics" icon="analytics">Analytics</PageRow>
+                                <PageRow to="/releases" icon="releases">Releases</PageRow>
                             </nav>
                         )}
                     </>
                 )}
 
-                {/* My Teams */}
-                {showTracker && (
-                    <>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '16px 12px 5px 18px' }}>
-                            <button type="button" onClick={() => setTeamsOpen((o) => !o)} aria-expanded={teamsOpen} style={sectionBtn} className="text-fg3 hover:text-fg2"><span aria-hidden="true" style={caret(teamsOpen)}>▶</span>My Teams</button>
-                            {canManage && <Link to="/settings/teams" title="New team" aria-label="New team" style={{ marginLeft: 'auto', color: 'var(--fg3)', width: 24, height: 24, borderRadius: 6, fontSize: 16, lineHeight: 1, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', textDecoration: 'none' }} className="hover:bg-hover">+</Link>}
-                        </div>
-                        {teamsOpen && (
-                            <div style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                {myTeams.map((t) => {
-                                    const expanded = !!teamExp[t.id];
-                                    return (
-                                        <div key={t.id} style={{ display: 'flex', flexDirection: 'column' }}>
-                                            <button type="button" onClick={() => setTeamExp((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={expanded} style={navRow(false)} className={NAV_ROW_HOVER}>
-                                                <span aria-hidden="true" style={{ width: 12, ...caret(expanded), justifyContent: 'center', display: 'inline-flex' }}>▶</span>
-                                                <span style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}><span style={{ width: 11, height: 11, borderRadius: 3, background: t.color, display: 'inline-block' }} /></span>
-                                                <span style={{ flex: 1, textAlign: 'left' }}>{t.name}</span>
-                                                {t.member_count != null && <span style={countStyle}>{t.member_count}</span>}
-                                            </button>
-                                            {expanded && (
-                                                <div data-testid={`team-links-${t.id}`} style={{ display: 'flex', flexDirection: 'column', gap: 1, paddingLeft: 20 }}>
-                                                    <Link to={`/?team_id=${t.id}`} style={{ ...navRow(false), padding: '6px 12px', fontSize: 13.5 }} className={NAV_ROW_HOVER}><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▤</span><span style={{ flex: 1 }}>Issues</span></Link>
-                                                    <Link to={`/teams/${t.id}/cycles`} style={{ ...navRow(false), padding: '6px 12px', fontSize: 13.5 }} className={NAV_ROW_HOVER}><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>◔</span><span style={{ flex: 1 }}>Cycles</span></Link>
-                                                    <Link to={`/projects?team_id=${t.id}`} style={{ ...navRow(false), padding: '6px 12px', fontSize: 13.5 }} className={NAV_ROW_HOVER}><span aria-hidden="true" style={{ width: 14, display: 'inline-flex', justifyContent: 'center' }}>▦</span><span style={{ flex: 1 }}>Projects</span></Link>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                                {myTeams.length === 0 && <div style={{ padding: '4px 9px', fontSize: 12, color: 'var(--fg3)' }}>No teams yet.</div>}
-                            </div>
-                        )}
-                    </>
+                {/* The support desk: agent-gated, so nobody else gets a dead /support link. */}
+                {showDesk && (
+                    <nav aria-label="Support" style={{ ...NAV_COLUMN, paddingTop: showTracker || showInbox ? 16 : 0 }}>
+                        <PageRow to="/support" icon="support">Support inbox</PageRow>
+                        <PageRow to="/support/kb" icon="kb">Knowledge base</PageRow>
+                        <a href="/help" target="_blank" rel="noreferrer" style={rowStyle(false)} className={rowClass(false)}>
+                            <NavIcon name="help" /><span style={{ flex: 1 }}>Help center</span><span style={tagBadge}>Public</span>
+                        </a>
+                    </nav>
                 )}
             </div>
 
