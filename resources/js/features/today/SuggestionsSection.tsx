@@ -2,7 +2,8 @@ import { useId, useRef, useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
 import { QueryState, type QueryLike } from '../../components/ui/QueryState';
 import type { PlanSuggestion } from '../../lib/types';
-import { SUGGESTIONS_ZONE, pointerDrag, suggestionDragId, usePlanDrag } from './PlanDnd';
+import { pointerDrag } from './dragLine';
+import { SUGGESTIONS_ZONE, suggestionDragId, usePlanDrag } from './PlanDnd';
 import { useAddToPlan } from './planHooks';
 import { formatMinutes } from './planText';
 

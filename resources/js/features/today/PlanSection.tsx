@@ -9,14 +9,12 @@ import type { DayPlan, PlanIssue, PlanItem, PlanTag } from '../../lib/types';
 import { PRIORITY_LABELS } from '../issues/issueMeta';
 import { PeekLink } from '../issues/PeekLink';
 import { ProjectBadge } from '../projects/ProjectBadge';
-import { PLAN_ZONE, keyboardDrag, pointerDrag, usePlanDrag } from './PlanDnd';
+import { dropLine, keyboardDrag, pointerDrag } from './dragLine';
+import { PLAN_ZONE, usePlanDrag } from './PlanDnd';
 import { useCompletePlanItem, useRemoveFromPlan, useUndoPlanItem, useUpdatePlanItem } from './planHooks';
 import { TIME_OPTIONS, formatMinutes, projectSplit } from './planText';
 
 const FAILED = 'That change didn’t save. Try again.';
-/** Where a dragged item would land: an accent line on the row's top edge, or under the last row. */
-const LINE_ABOVE = 'inset 0 3px 0 var(--accent)';
-const LINE_BELOW = 'inset 0 -3px 0 var(--accent)';
 /** The handle and the done circle, each with the row's 12px gap: where the lines under a title start. */
 const HANDLE = 12;
 const INDENT = HANDLE + 12 + 22 + 12;
@@ -263,12 +261,6 @@ export function PlanSection({ query, plan, canDone }: { query: QueryLike; plan: 
     const items = plan?.items ?? [];
     const shownError = error || drag.error;
 
-    /** The drop line on row `i`: above the row the item would land before, or under the last row for "last". */
-    const lineFor = (i: number): string | null => {
-        if (drag.planIndex === null) return null;
-        if (drag.planIndex === i) return LINE_ABOVE;
-        return i === items.length - 1 && drag.planIndex === items.length ? LINE_BELOW : null;
-    };
     // The row (or its done entry) a change removes held the focus: hand it to the heading, not to the page.
     const change = (run: () => void, movesFocus = false) => {
         setError('');
@@ -295,7 +287,7 @@ export function PlanSection({ query, plan, canDone }: { query: QueryLike; plan: 
                                 item={item}
                                 focus={i === 0}
                                 canDone={canDone}
-                                line={lineFor(i)}
+                                line={dropLine(drag.planIndex, i, items.length, 'var(--accent)')}
                                 onDone={() => change(() => complete.mutate(item.issue.id), true)}
                                 onTime={(minutes) => change(() => update.mutate({ issueId: item.issue.id, minutes }))}
                                 onRemove={() => change(() => remove.mutate(item.issue.id), true)}

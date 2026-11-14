@@ -1,8 +1,9 @@
-import { createContext, useContext, useState, type KeyboardEventHandler, type PointerEventHandler, type ReactNode } from 'react';
-import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, closestCenter, pointerWithin, useSensor, useSensors } from '@dnd-kit/core';
-import type { Announcements, CollisionDetection, UniqueIdentifier } from '@dnd-kit/core';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { DndContext, DragOverlay, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import type { Announcements, UniqueIdentifier } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { DayPlan, PlanItem, PlanSuggestion } from '../../lib/types';
+import { placeAfterMove, rowDropIndex, rowsFirst, type Where } from './dragLine';
 import { useAddToPlanAt, useRemoveFromPlan, useUpdatePlanItem } from './planHooks';
 import { positionForMove } from './todoHooks';
 
@@ -14,11 +15,6 @@ export const PLAN_ZONE = 'zone:plan';
 /** The suggestions box: a plan item dropped on it leaves the plan. */
 export const SUGGESTIONS_ZONE = 'zone:suggestions';
 const SUGGESTION = 'suggestion:';
-/** dnd-kit hands a row both of its listeners together; a row takes the pointer's and its handle the keyboard's. */
-type Listeners = Record<string, Function> | undefined;
-export const pointerDrag = <E extends Element>(listeners: Listeners) => ({ onPointerDown: listeners?.onPointerDown as PointerEventHandler<E> | undefined });
-export const keyboardDrag = <E extends Element>(listeners: Listeners) => ({ onKeyDown: listeners?.onKeyDown as KeyboardEventHandler<E> | undefined });
-
 /** A suggestion's drag id. A plan row's is its issue id (it is also a sortable). */
 export const suggestionDragId = (issueId: string) => `${SUGGESTION}${issueId}`;
 
@@ -48,23 +44,7 @@ const parse = (id: UniqueIdentifier): Dragged => {
 };
 const isZone = (id: UniqueIdentifier) => id === PLAN_ZONE || id === SUGGESTIONS_ZONE;
 
-/** Under the pointer: a plan row first, else the zone it is in. From the keyboard: the nearest plan row. */
-const collisions: CollisionDetection = (args) => {
-    if (!args.pointerCoordinates) {
-        return closestCenter({ ...args, droppableContainers: args.droppableContainers.filter((c) => !isZone(c.id)) });
-    }
-    const hits = pointerWithin(args);
-    const row = hits.find((c) => !isZone(c.id));
-    return row ? [row] : hits.slice(0, 1);
-};
-
-/** What a drag event carries that says where the pointer is (absent from the keyboard and from announcements). */
-interface Where {
-    active: { id: UniqueIdentifier };
-    over: { id: UniqueIdentifier; rect: { top: number; height: number } } | null;
-    activatorEvent?: Event | null;
-    delta?: { y: number };
-}
+const collisions = rowsFirst(isZone);
 
 /**
  * The day's drag and drop (the Today design): one drag area around Today's plan and Could also fit today. A plan
@@ -92,18 +72,9 @@ export function PlanDnd({ plan, suggestions, children }: { plan: DayPlan | undef
         const dragged = parse(a.id);
         if (over.id === SUGGESTIONS_ZONE) return dragged.from === 'plan' ? { list: 'suggestions' } : null;
         if (over.id === PLAN_ZONE) return { list: 'plan', index: items.length };
-        const i = indexOf(String(over.id));
-        if (i < 0) return null;
-        if (activatorEvent && 'clientY' in activatorEvent && delta) {
-            const y = (activatorEvent as unknown as { clientY: number }).clientY + delta.y;
-            return { list: 'plan', index: i + (y > over.rect.top + over.rect.height / 2 ? 1 : 0) };
-        }
-        // The keyboard moves row by row: past its own place the item lands after the row, before it otherwise.
-        const from = dragged.from === 'plan' ? indexOf(dragged.issueId) : -1;
-        return { list: 'plan', index: from >= 0 && from < i ? i + 1 : i };
+        const index = rowDropIndex({ active: a, over, activatorEvent, delta }, items.map((i) => i.issue.id), dragged.from === 'plan' ? indexOf(dragged.issueId) : -1);
+        return index === null ? null : { list: 'plan', index };
     }
-    /** The place (from 0) a plan item ends at when dropped at `index`: taking it out first shifts what follows. */
-    const placeAfterMove = (from: number, index: number) => (index > from ? index - 1 : index);
 
     function track(event: Where) {
         const next = targetFor(event);
