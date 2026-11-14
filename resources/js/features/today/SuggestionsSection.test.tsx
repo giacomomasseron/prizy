@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import type { PlanSuggestion } from '../../lib/types';
+import { PlanDnd } from './PlanDnd';
 import { PlanSection } from './PlanSection';
 import { usePlan, usePlanSuggestions } from './planHooks';
 import { SuggestionsSection } from './SuggestionsSection';
@@ -45,10 +46,10 @@ function Harness() {
     const plan = usePlan();
     const list = usePlanSuggestions();
     return (
-        <>
+        <PlanDnd plan={plan.data} suggestions={list.data}>
             <PlanSection query={plan} plan={plan.data} canDone />
             <SuggestionsSection query={list} suggestions={list.data} />
-        </>
+        </PlanDnd>
     );
 }
 
@@ -79,7 +80,16 @@ describe('Today v2: could also fit today', () => {
         expect(screen.getByTestId('suggestion-count')).toHaveTextContent('2');
         expect(screen.getByText('Ranked by urgency, cycle, and who’s waiting.')).toBeInTheDocument();
         const first = suggestionRows()[0];
-        expect(within(first).getByRole('link', { name: 'Customer data not populating on escalation' })).toHaveAttribute('href', '/issues/a1');
+        // The title is plain text, as the design: the row is something to drag or + Add, not a link.
+        expect(within(first).getByTestId('suggestion-title')).toHaveTextContent('Customer data not populating on escalation');
+        expect(within(first).queryByRole('link')).toBeNull();
+        expect(first.style.cursor).toBe('grab');
+        expect(first.className).toContain('hover:bg-hover');
+        const grip = within(first).getByText('⋮⋮');
+        expect(grip).toHaveAttribute('aria-hidden', 'true');
+        expect(grip.style.width).toBe('12px');
+        // Pointer only: the row is not a keyboard stop (+ Add is).
+        expect(first).not.toHaveAttribute('tabindex');
         expect(within(first).getByText('Escalation Engine')).toBeInTheDocument();
         expect(within(first).getByText('Its support ticket breaches its SLA in 2h 10m.')).toBeInTheDocument();
         expect(within(first).getByText('3h')).toBeInTheDocument();
@@ -111,7 +121,7 @@ describe('Today v2: could also fit today', () => {
 
         expect(await screen.findByRole('alert')).toHaveTextContent('That change didn’t save. Try again.');
         await waitFor(() => expect(suggestionRows()).toHaveLength(2));
-        expect(screen.getByText('Nothing planned yet. Pick something from the suggestions below.')).toBeInTheDocument();
+        expect(screen.getByText('Nothing planned yet. Pull something up from below.')).toBeInTheDocument();
     });
 
     it('says "Everything assigned to you is planned." when nothing is left', async () => {

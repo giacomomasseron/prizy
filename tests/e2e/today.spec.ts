@@ -154,5 +154,5 @@ test('plans two starred issues, reorders them, marks one done and undoes it, and
 
     // Clean up: take both off the plan.
     for (const title of [first, second]) await page.getByRole('button', { name: `Remove from today: ${title}` }).click();
-    await expect(page.getByText('Nothing planned yet. Pick something from the suggestions below.')).toBeVisible();
+    await expect(page.getByText('Nothing planned yet. Pull something up from below.')).toBeVisible();
 });
