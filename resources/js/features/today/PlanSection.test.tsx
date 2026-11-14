@@ -173,6 +173,9 @@ describe('Today v2: today\'s plan', () => {
         expect(within(row).getByText('In review')).toBeInTheDocument();
         expect(within(row).getByText('PRZ-B2')).toBeInTheDocument();
         expect(within(row).getByRole('link', { name: 'SLA & Metrics' })).toHaveAttribute('href', '/projects/p3');
+        // No link in a card starts the browser's own link drag: that would cancel the card's drag.
+        for (const link of within(row).getAllByRole('link')) expect(link).toHaveAttribute('draggable', 'false');
+        for (const link of within(rows()[0]).getAllByRole('link')) expect(link).toHaveAttribute('draggable', 'false');
         expect(within(row).getByText('Medium priority')).toBeInTheDocument();
         expect(within(rows()[0]).getByText('Urgent')).toBeInTheDocument();
         expect(within(rows()[2]).getByText('High priority')).toBeInTheDocument();

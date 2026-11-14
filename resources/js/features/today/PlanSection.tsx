@@ -42,7 +42,7 @@ function PlanMeta({ issue, indent }: { issue: PlanIssue; indent: number }) {
             {issue.project && (
                 <>
                     <span aria-hidden="true">·</span>
-                    <Link to={`/projects/${issue.project.id}`} className="text-fg2 hover:text-accent" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+                    <Link to={`/projects/${issue.project.id}`} draggable={false} className="text-fg2 hover:text-accent" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
                         <span aria-hidden="true" style={dot(issue.project.color)} />{issue.project.name}
                     </Link>
                 </>
