@@ -24,7 +24,9 @@ export default function NotificationsPage() {
 
     const list = useNotifications(category, unreadOnly);
     const items = list.data?.items ?? [];
-    const selected = items.find((n) => n.id === selectedId) ?? null;
+    // The first notification is open on arrival, on a new filter, and when the open one leaves the list (the design).
+    // Opening it this way does not mark it read: only choosing a row does.
+    const selected = items.find((n) => n.id === selectedId) ?? items[0] ?? null;
 
     function handleCategory(c: string) {
         setCategory(c);
@@ -58,7 +60,7 @@ export default function NotificationsPage() {
                             category={category}
                             unreadOnly={unreadOnly}
                             onToggleUnread={() => setUnreadOnly((v) => !v)}
-                            selectedId={selectedId}
+                            selectedId={selected?.id ?? null}
                             onSelect={(n) => setSelectedId(n.id)}
                         />
                     </div>

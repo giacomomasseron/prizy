@@ -150,4 +150,13 @@ describe('NotificationSidebar', () => {
         expect(screen.getByRole('button', { name: 'Notification settings' })).toHaveAttribute('aria-pressed', 'true');
         expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'false');
     });
+
+    it('each filter has its icon, kept out of its name', () => {
+        wrap();
+        const icons: Record<string, string> = { All: '▤', Mentions: '@', Assigned: '→', 'From Support': '▲', Snoozed: '☾', Archived: '⌫' };
+        for (const [label, icon] of Object.entries(icons)) {
+            const glyph = screen.getByRole('button', { name: label }).querySelector('[aria-hidden="true"]');
+            expect(glyph).toHaveTextContent(icon);
+        }
+    });
 });

@@ -5,12 +5,12 @@ import { NAV_ROW_HOVER, hiBadge, tagBadge } from '../../components/sidebarStyles
 import { sideRow, sideSection, sideTitle } from '../support/supportStyles';
 
 const FILTERS = [
-    { key: 'all', label: 'All' },
-    { key: 'mention', label: 'Mentions' },
-    { key: 'assign', label: 'Assigned' },
-    { key: 'support', label: 'From Support' },
-    { key: 'snoozed', label: 'Snoozed' },
-    { key: 'archived', label: 'Archived' },
+    { key: 'all', label: 'All', icon: '▤' },
+    { key: 'mention', label: 'Mentions', icon: '@' },
+    { key: 'assign', label: 'Assigned', icon: '→' },
+    { key: 'support', label: 'From Support', icon: '▲' },
+    { key: 'snoozed', label: 'Snoozed', icon: '☾' },
+    { key: 'archived', label: 'Archived', icon: '⌫' },
 ] as const;
 
 const LEVELS = ['all', 'mentions', 'off'] as const;
@@ -78,6 +78,8 @@ export function NotificationSidebar({
                     const active = category === f.key && !settingsActive;
                     return (
                         <button key={f.key} type="button" aria-pressed={active} onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                            {/* Decorative: the label names the filter. Ink on the open filter, muted on the rest. */}
+                            <span aria-hidden="true" style={{ width: 18, display: 'inline-flex', justifyContent: 'center', flexShrink: 0, fontWeight: 700, color: active ? 'var(--fg)' : 'var(--fg3)' }}>{f.icon}</span>
                             {f.label}
                         </button>
                     );

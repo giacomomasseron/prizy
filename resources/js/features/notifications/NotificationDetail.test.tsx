@@ -55,7 +55,7 @@ describe('NotificationDetail', () => {
         });
         wrap(notification);
 
-        expect(screen.getByText('You were assigned an issue')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Alice assigned an issue to you' })).toBeInTheDocument();
         expect(screen.getByText('Alice')).toBeInTheDocument();
         expect(screen.getByText('Please take a look when you can.')).toBeInTheDocument();
 

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import NotificationsPage from './NotificationsPage';
@@ -90,7 +90,7 @@ describe('NotificationsPage', () => {
 
     it('renders a notification row and a "Mark all read" button', () => {
         renderPage();
-        expect(screen.getByText('You were assigned an issue')).toBeInTheDocument();
+        expect(within(screen.getByTestId('notif-row-n1')).getByText('You were assigned an issue')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Mark all read' })).toBeInTheDocument();
     });
 
@@ -111,11 +111,39 @@ describe('NotificationsPage', () => {
         expect(screen.getByText('Assignments')).toBeInTheDocument();
     });
 
-    it('clicking a row shows its detail in the right pane', () => {
+    it('the first notification is open on arrival, without being marked read', () => {
+        renderPage();
+        expect(screen.queryByText(/select a notification/i)).toBeNull();
+        expect(screen.getByText("You're the assignee.")).toBeInTheDocument();
+        expect(within(screen.getByTestId('notif-row-n1')).getAllByRole('button')[0]).toHaveAttribute('aria-current', 'true');
+        expect(markRead).not.toHaveBeenCalled();
+    });
+
+    it('clicking another row shows its detail in the right pane', () => {
+        renderPage();
+        fireEvent.click(screen.getByText("An issue you're assigned was unblocked"));
+        expect(screen.getByText("An issue you're assigned was unblocked.")).toBeInTheDocument();
+        expect(screen.queryByText("You're the assignee.")).toBeNull();
+    });
+
+    it('when the open notification leaves the list, the first of what is left opens', () => {
+        const view = renderPage();
+        fireEvent.click(screen.getByText("An issue you're assigned was unblocked"));
+        listItems = listItems.filter((n) => n.id !== 'n2');
+        view.rerender(
+            <QueryClientProvider client={new QueryClient()}>
+                <MemoryRouter>
+                    <NotificationsPage />
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        expect(screen.getByText("You're the assignee.")).toBeInTheDocument();
+    });
+
+    it('an empty inbox has nothing to open', () => {
+        listItems = [];
         renderPage();
         expect(screen.getByText(/select a notification/i)).toBeInTheDocument();
-        fireEvent.click(screen.getByText('You were assigned an issue'));
-        expect(screen.getByText("You're the assignee.")).toBeInTheDocument();
     });
 
     it('G3b: the inbox rail and its filters are named landmarks', () => {
@@ -128,6 +156,6 @@ describe('NotificationsPage', () => {
         useNotifications.mockReturnValueOnce({ isLoading: false, isError: true, data: undefined, refetch: vi.fn() } as never);
         renderPage();
         expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load notifications.");
-        expect(screen.queryByText(/all caught up/i)).toBeNull();
+        expect(screen.queryByText('All clear')).toBeNull();
     });
 });

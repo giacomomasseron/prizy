@@ -60,7 +60,7 @@ describe('NotificationList', () => {
     it('renders the heading, subheading, and a "Today" group header for a today-dated item', () => {
         wrap({ items: [makeItem({ created_at: new Date().toISOString() })], category: 'all' });
         expect(screen.getByRole('heading', { name: 'Inbox' })).toBeInTheDocument();
-        expect(screen.getByText('1 notifications · 1 unread')).toBeInTheDocument();
+        expect(screen.getByText('1 notification · 1 unread')).toBeInTheDocument();
         expect(screen.getByText('Today')).toBeInTheDocument();
     });
 
@@ -86,10 +86,14 @@ describe('NotificationList', () => {
         expect(screen.getByText('ENG-7')).toBeInTheDocument();
     });
 
-    it('shows "You were assigned an issue" with NO actor-name prefix for issue_assigned', () => {
+    it('an assignment names who assigned it: "Jane Doe assigned an issue to you"', () => {
         wrap({ items: [makeItem({ type: 'issue_assigned', actor: { id: 'u2', name: 'Jane Doe' } })] });
+        expect(screen.getByRole('button', { name: 'Unread: Jane Doe assigned an issue to you' })).toBeInTheDocument();
+    });
+
+    it('an assignment nobody made (the system) keeps "You were assigned an issue"', () => {
+        wrap({ items: [makeItem({ type: 'issue_assigned' })] });
         expect(screen.getByText('You were assigned an issue')).toBeInTheDocument();
-        expect(screen.queryByText('Jane Doe')).not.toBeInTheDocument();
     });
 
     it('shows "Alice" + "commented" for an issue_commented row with an actor', () => {
@@ -162,7 +166,7 @@ describe('NotificationList', () => {
 
     it('the "Unread only" toggle calls onToggleUnread and reflects state via aria-pressed', () => {
         const { onToggleUnread } = wrap({ unreadOnly: true });
-        const toggle = screen.getByRole('button', { name: 'Unread only' });
+        const toggle = screen.getByRole('button', { name: 'Showing unread' });
         expect(toggle).toHaveAttribute('aria-pressed', 'true');
         fireEvent.click(toggle);
         expect(onToggleUnread).toHaveBeenCalled();
@@ -170,7 +174,8 @@ describe('NotificationList', () => {
 
     it('shows a friendly empty state when items is empty', () => {
         wrap({ items: [] });
-        expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
+        expect(screen.getByText('All clear')).toBeInTheDocument();
+        expect(screen.getByText('This view is empty. Snoozed and archived notifications live in their own filters.')).toBeInTheDocument();
     });
 
     it('shows a per-filter empty state for the archived category', () => {
@@ -181,7 +186,7 @@ describe('NotificationList', () => {
     it('shows a loading line while isLoading', () => {
         wrap({ items: [], isLoading: true });
         expect(screen.getByText(/loading/i)).toBeInTheDocument();
-        expect(screen.queryByText(/all caught up/i)).not.toBeInTheDocument();
+        expect(screen.queryByText('All clear')).not.toBeInTheDocument();
     });
 
     it('groups items into Today / Yesterday / Earlier this week', () => {
@@ -231,7 +236,7 @@ describe('NotificationList', () => {
     it('v2: display-font h1 header, and "Unread only" turns into the yellow pill when on', () => {
         wrap({ unreadOnly: true });
         expect(screen.getByRole('heading', { name: 'Inbox' }).style.fontFamily).toBe('var(--font-display)');
-        expect(screen.getByRole('button', { name: 'Unread only' }).className).toContain('bg-hi');
+        expect(screen.getByRole('button', { name: 'Showing unread' }).className).toContain('bg-hi');
         expect(screen.getByRole('button', { name: 'Mark all read' }).className).toContain('hover:border-fg');
     });
 
@@ -278,7 +283,7 @@ describe('NotificationList', () => {
             />,
         );
         expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load notifications.");
-        expect(screen.queryByText(/all caught up/i)).toBeNull();
+        expect(screen.queryByText('All clear')).toBeNull();
     });
 
     it('G3c: only an unread row\'s primary control starts with a visually hidden "Unread: "', () => {
@@ -303,5 +308,55 @@ describe('NotificationList', () => {
         wrap();
         const snooze = screen.getByRole('button', { name: 'Snooze' });
         expect((snooze.parentElement as HTMLElement).className).toContain('[@media(hover:none)]:opacity-100');
+    });
+
+    describe('the Notifications design', () => {
+        it('counts say "notifications" for more than one', () => {
+            wrap({ items: [makeItem({ id: 'a' }), makeItem({ id: 'b', read_at: new Date().toISOString() })] });
+            expect(screen.getByText('2 notifications · 1 unread')).toBeInTheDocument();
+        });
+
+        it('the toggle reads "Unread only" while off', () => {
+            wrap({ unreadOnly: false });
+            expect(screen.getByRole('button', { name: 'Unread only' })).toHaveAttribute('aria-pressed', 'false');
+            expect(screen.queryByRole('button', { name: 'Showing unread' })).toBeNull();
+        });
+
+        it('each day says how many it holds', () => {
+            const yesterday = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+            wrap({ items: [makeItem({ id: 'a' }), makeItem({ id: 'b' }), makeItem({ id: 'c', created_at: yesterday })] });
+            expect(screen.getByTestId('day-count-Today')).toHaveTextContent(/^2$/);
+            expect(screen.getByTestId('day-count-Yesterday')).toHaveTextContent(/^1$/);
+        });
+
+        it('a row carries its kind on a chip coloured by kind, and a short time', () => {
+            const threeHoursAgo = new Date(Date.now() - 3 * 3600 * 1000).toISOString();
+            wrap({ items: [makeItem({ id: 'm', type: 'issue_mentioned', actor: { id: 'u1', name: 'Alice' }, created_at: threeHoursAgo }), makeItem({ id: 'a' })] });
+            const mention = within(screen.getByTestId('notif-row-m')).getByTestId('kind-chip');
+            expect(mention).toHaveTextContent('@ Mention');
+            expect(mention.style.color).toBe('var(--accent-ink)');
+            expect(within(screen.getByTestId('notif-row-a')).getByTestId('kind-chip').style.color).toBe('var(--blue-ink)');
+            expect(within(screen.getByTestId('notif-row-m')).getByTestId('notif-time')).toHaveTextContent(/^3h$/);
+        });
+
+        it('nothing unread: the card says so and how to see the rest', () => {
+            wrap({ items: [], unreadOnly: true });
+            expect(screen.getByText('Nothing unread')).toBeInTheDocument();
+            expect(screen.getByText('Everything in this view has been read. Turn off the unread filter to see it again.')).toBeInTheDocument();
+        });
+
+        it('the empty card is the dashed one with the yellow tick', () => {
+            wrap({ items: [] });
+            const card = screen.getByTestId('inbox-empty');
+            expect(card.style.border).toBe('var(--line) dashed var(--border2)');
+            expect(within(card).getByText('✓').style.background).toBe('var(--hi)');
+        });
+
+        it('an empty Snoozed or Archived view does not point at itself', () => {
+            wrap({ items: [], category: 'snoozed' });
+            expect(screen.getByText('All clear')).toBeInTheDocument();
+            expect(screen.getByText('No snoozed notifications')).toBeInTheDocument();
+            expect(screen.queryByText(/live in their own filters/)).toBeNull();
+        });
     });
 });
