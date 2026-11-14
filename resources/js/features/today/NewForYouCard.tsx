@@ -10,15 +10,29 @@ import { notificationMeta, notificationText, subjectPath, type NotificationCateg
 const SHOWN = 5;
 
 const KIND: Record<NotificationCategory, string> = { mention: 'Mention', assign: 'Assigned', comment: 'Comment', status: 'Status', other: 'Update' };
+/** The kind chip's colour (the design colours it by kind): ink tones, readable on the panel in both themes. */
+const KIND_INK: Record<NotificationCategory, string> = { mention: 'var(--accent-ink)', assign: 'var(--blue-ink)', comment: 'var(--fg2)', status: 'var(--fg2)', other: 'var(--fg2)' };
 
-/** The notification's line, as the inbox writes it: the actor's name first where the inbox shows it. */
+/** The notification's line, with the name of who did it first: "Maya Chen mentioned you", "Leon Kraus assigned an issue to you". */
 function lineFor(n: AppNotification): string {
     const { category } = notificationMeta(n.type);
-    return n.actor && ['mention', 'comment', 'status'].includes(category) ? `${n.actor.name} ${notificationText(n.type)}` : notificationText(n.type);
+    if (!n.actor) return notificationText(n.type);
+    if (n.type === 'issue_assigned') return `${n.actor.name} assigned an issue to you`;
+    return ['mention', 'comment', 'status'].includes(category) ? `${n.actor.name} ${notificationText(n.type)}` : notificationText(n.type);
 }
 
+/** The time as the card writes it: now, 12m, 3h, 2d. */
+function shortAgo(iso: string): string {
+    const ago = timeAgo(iso);
+    return ago === 'just now' ? 'now' : ago.replace(/ ago$/, '');
+}
+
+/** Where the avatar goes on a notice nobody sent (the system's own): a gear on a dark circle. */
+const GEAR: React.CSSProperties = { width: 28, height: 28, borderRadius: '50%', background: 'var(--fg2)', color: 'var(--bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 800, flexShrink: 0 };
+
 /**
- * New for you (the Today v2 design): up to five unread notifications, newest first, each with ✓ Mark read; Mark all
+ * New for you (the Today design): up to five unread notifications, newest first, each with who did it, its kind
+ * on a chip coloured by kind, its reference and how long ago, and ✓ Mark read; Mark all
  * read and Open Inbox →. Hidden when nothing is unread (or while the list loads or cannot load: the inbox has its own
  * page) — unless it was emptied here: then it stays and says so, so the focus it holds keeps its place.
  */
@@ -67,7 +81,7 @@ export function NewForYouCard() {
                         const line = lineFor(n);
                         return (
                             <li key={n.id} data-testid="new-for-you-row" style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 6px', borderTop: 'var(--line) solid var(--border)' }}>
-                                {avatar ? <Avatar initials={avatar.initials} color={avatar.color} size={28} title={n.actor?.name} /> : <span aria-hidden="true" style={{ width: 28, flexShrink: 0 }} />}
+                                {avatar ? <Avatar initials={avatar.initials} color={avatar.color} size={28} title={n.actor?.name} /> : <span aria-hidden="true" style={GEAR}>⚙</span>}
                                 <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
                                     {path ? (
                                         <Link to={path} onClick={() => markRead.mutate(n.id)} className="text-fg hover:text-accent" style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{line}</Link>
@@ -75,11 +89,11 @@ export function NewForYouCard() {
                                         <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{line}</span>
                                     )}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--fg3)', fontWeight: 600, flexWrap: 'wrap' }}>
-                                        <span style={{ border: 'var(--line) solid var(--border)', borderRadius: 'var(--radius-pill)', padding: '0 9px', whiteSpace: 'nowrap', color: 'var(--fg2)' }}>
+                                        <span style={{ fontSize: 12, fontWeight: 700, color: KIND_INK[meta.category], borderWidth: 'var(--line)', borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--radius-pill)', padding: '0 9px', whiteSpace: 'nowrap' }}>
                                             <span aria-hidden="true">{meta.icon} </span>{KIND[meta.category]}
                                         </span>
                                         {n.subject?.ref && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500 }}>{n.subject.ref}</span>}
-                                        <span style={{ marginLeft: 'auto' }}>{timeAgo(n.created_at)}</span>
+                                        <span data-testid="new-for-you-time" style={{ marginLeft: 'auto' }}>{shortAgo(n.created_at)}</span>
                                     </div>
                                 </div>
                                 <button
