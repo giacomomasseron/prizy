@@ -97,6 +97,34 @@ final class NotificationRepository
             ->count();
     }
 
+    /**
+     * What the Inbox shows beside each filter: the unread ones in All, Mentions, Assigned and From Support, and
+     * everything in Snoozed and Archived (those two are places to look in, not lists to read down).
+     *
+     * @return array{all: int, mention: int, assign: int, support: int, snoozed: int, archived: int}
+     */
+    public function filterCountsForUser(string $userId): array
+    {
+        $count = function (string $category, bool $unreadOnly) use ($userId): int {
+            $query = Notification::query()->where('user_id', $userId);
+            $this->applyCategory($query, $category);
+            if ($unreadOnly) {
+                $query->whereNull('read_at');
+            }
+
+            return $query->count();
+        };
+
+        return [
+            'all' => $count('all', true),
+            'mention' => $count('mention', true),
+            'assign' => $count('assign', true),
+            'support' => $count('support', true),
+            'snoozed' => $count('snoozed', false),
+            'archived' => $count('archived', false),
+        ];
+    }
+
     public function findForUser(string $id, string $userId): ?Notification
     {
         return Notification::query()->where('user_id', $userId)->find($id);

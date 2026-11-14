@@ -32,6 +32,18 @@ export function useUnreadCount(enabled = true) {
     });
 }
 
+/** What the Inbox shows beside each filter: unread ones, and everything in Snoozed and Archived. */
+export interface NotificationCounts { all: number; mention: number; assign: number; support: number; snoozed: number; archived: number }
+
+/** The number beside each Inbox filter. Under the `notifications` key, so every change to the inbox refetches it. */
+export function useNotificationCounts() {
+    return useQuery({
+        queryKey: ['notifications', 'counts'],
+        queryFn: () => api.get<NotificationCounts>('/notifications/counts'),
+        refetchOnWindowFocus: true,
+    });
+}
+
 export function useMarkRead() {
     const qc = useQueryClient();
     return useMutation({

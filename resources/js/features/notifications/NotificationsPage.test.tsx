@@ -29,6 +29,7 @@ const useNotifications = vi.fn((_category?: string, _unreadOnly?: boolean, _enab
 vi.mock('./hooks', () => ({
     useNotifications: (category?: string, unreadOnly?: boolean, enabled?: boolean) => useNotifications(category, unreadOnly, enabled),
     useUnreadCount: () => ({ data: { count: 2 } }),
+    useNotificationCounts: () => ({ data: undefined }),
     useMarkAllRead: () => ({ mutate: markAllRead }),
     useMarkRead: () => ({ mutate: markRead }),
     useMarkUnread: () => ({ mutate: markUnread }),

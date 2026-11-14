@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\SetNotificationSubscriptionRequest;
 use App\Http\Requests\Api\V1\UpdateNotificationPreferencesRequest;
 use App\Http\Resources\NotificationResource;
+use App\UseCases\Notifications\CountNotificationsByFilter;
 use App\UseCases\Notifications\CountUnread;
 use App\UseCases\Notifications\GetNotificationPreferences;
 use App\UseCases\Notifications\GetNotificationSubscriptions;
@@ -31,6 +32,7 @@ final class NotificationController extends Controller
     public function __construct(
         private readonly ListNotifications $listNotifications,
         private readonly CountUnread $countUnread,
+        private readonly CountNotificationsByFilter $countNotificationsByFilter,
         private readonly MarkNotificationRead $markNotificationRead,
         private readonly MarkNotificationUnread $markNotificationUnread,
         private readonly ToggleNotificationSnooze $toggleNotificationSnooze,
@@ -60,6 +62,12 @@ final class NotificationController extends Controller
     public function unreadCount(Request $request): JsonResponse
     {
         return response()->json(['data' => ['count' => $this->countUnread->run($request->user())]]);
+    }
+
+    /** The number beside each Inbox filter. */
+    public function counts(Request $request): JsonResponse
+    {
+        return response()->json(['data' => $this->countNotificationsByFilter->run($request->user())]);
     }
 
     public function read(Request $request, string $notification): JsonResponse
