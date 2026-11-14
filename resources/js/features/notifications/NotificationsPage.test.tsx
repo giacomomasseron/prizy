@@ -113,7 +113,7 @@ describe('NotificationsPage', () => {
 
     it('the first notification is open on arrival, without being marked read', () => {
         renderPage();
-        expect(screen.queryByText(/select a notification/i)).toBeNull();
+        expect(within(screen.getByRole('complementary', { name: 'Notification' })).getByTestId('notif-detail')).toBeInTheDocument();
         expect(screen.getByText("You're the assignee.")).toBeInTheDocument();
         expect(within(screen.getByTestId('notif-row-n1')).getAllByRole('button')[0]).toHaveAttribute('aria-current', 'true');
         expect(markRead).not.toHaveBeenCalled();
@@ -143,7 +143,8 @@ describe('NotificationsPage', () => {
     it('an empty inbox has nothing to open', () => {
         listItems = [];
         renderPage();
-        expect(screen.getByText(/select a notification/i)).toBeInTheDocument();
+        expect(screen.queryByTestId('notif-detail')).toBeNull();
+        expect(screen.queryByRole('complementary', { name: 'Notification' })).toBeNull();
     });
 
     it('G3b: the inbox rail and its filters are named landmarks', () => {

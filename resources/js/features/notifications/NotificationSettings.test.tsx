@@ -120,12 +120,31 @@ describe('NotificationSettings', () => {
         expect(screen.queryByText('Mentions')).not.toBeInTheDocument();
     });
 
-    it('v2: display-font title, sentence-case column labels, and a secondary Back button', () => {
+    it('the big heading, the ink card with its display title, and the outlined Back button', () => {
         wrap();
-        expect(screen.getByRole('heading', { name: 'Notification settings' }).style.fontFamily).toBe('var(--font-display)');
-        expect(screen.getByText('Delivery per event').style.textTransform).toBe('');
+        const h1 = screen.getByRole('heading', { level: 1, name: 'Notification settings' });
+        expect(h1.style.fontFamily).toBe('var(--font-display)');
+        expect(h1.style.fontSize).toBe('44px');
+        expect(screen.getByText('How each event reaches you, channel by channel.')).toBeInTheDocument();
+        const title = screen.getByText('Delivery per event');
+        expect(title.style.fontFamily).toBe('var(--font-display)');
+        const card = screen.getByTestId('delivery-card');
+        expect(card.style.border).toBe('var(--line) solid var(--fg)');
+        expect(card.style.boxShadow).toBe('5px 5px 0 var(--fg)');
         expect(screen.getByText('In-app').style.letterSpacing).toBe('');
         expect(screen.getByText('Email digest').style.fontFamily).toBe('var(--font-display)');
-        expect(screen.getByRole('button', { name: /Back to inbox/ }).className).toContain('border-border2');
+        expect(screen.getByRole('button', { name: /Back to inbox/ }).className.split(' ')).toContain('border-fg');
     });
+
+    it('each event says when it fires, beside its glyph', () => {
+        wrap();
+        expect(screen.getByText('Someone names you in a comment or description')).toBeInTheDocument();
+        expect(screen.getByText('An issue is assigned to you')).toBeInTheDocument();
+        expect(screen.getByText('Replies in threads you participate in')).toBeInTheDocument();
+        expect(screen.getByText('Issues you follow move between states')).toBeInTheDocument();
+        expect(screen.getByText('An issue assigned to you is no longer blocked')).toBeInTheDocument();
+        expect(screen.getByTestId('event-icon-mention')).toHaveTextContent('@');
+        expect(screen.getByTestId('event-icon-mention')).toHaveAttribute('aria-hidden', 'true');
+    });
+
 });
