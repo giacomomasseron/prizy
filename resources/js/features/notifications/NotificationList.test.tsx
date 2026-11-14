@@ -278,6 +278,28 @@ describe('NotificationList', () => {
         expect(woke.getByRole('button', { name: 'Snooze' })).toHaveAttribute('title', 'Snooze 1 day');
     });
 
+    it('tags: Urgent on a notification about an urgent issue, Automation on one nobody sent', () => {
+        const about = (priority: string) => ({ type: 'issue', id: 'i1', ref: 'PRZ-ABC123', title: 'X', path: '/issues/i1', priority });
+        wrap({ items: [
+            makeItem({ id: 'urgent', actor: { id: 'u1', name: 'Alice' }, subject: about('urgent') }),
+            makeItem({ id: 'high', actor: { id: 'u1', name: 'Alice' }, subject: about('high') }),
+            makeItem({ id: 'system', subject: about('medium') }),
+            makeItem({ id: 'both', subject: about('urgent') }),
+        ] });
+        const tags = (id: string) => within(screen.getByTestId(`notif-row-${id}`)).queryAllByTestId('notif-tag').map((t) => t.textContent);
+        expect(tags('urgent')).toEqual(['Urgent']);
+        expect(tags('high')).toEqual([]);
+        expect(tags('system')).toEqual(['Automation']);
+        expect(tags('both')).toEqual(['Urgent', 'Automation']);
+    });
+
+    it('the Urgent tag is white on red, Automation ink on yellow', () => {
+        wrap({ items: [makeItem({ id: 'both', subject: { type: 'issue', id: 'i1', ref: 'PRZ-ABC123', title: 'X', path: '/issues/i1', priority: 'urgent' } })] });
+        const [urgent, automation] = screen.getAllByTestId('notif-tag');
+        expect([urgent.style.background, urgent.style.color]).toEqual(['var(--red)', 'var(--on-accent)']);
+        expect([automation.style.background, automation.style.color]).toEqual(['var(--hi)', 'var(--on-hi)']);
+    });
+
     it('an unread title is heavy; a read one is lighter and muted', () => {
         wrap({ items: [makeItem({ id: 'u' }), makeItem({ id: 'r', read_at: new Date().toISOString() })] });
         const unread = within(screen.getByTestId('notif-row-u')).getAllByRole('button')[0];

@@ -36,6 +36,8 @@ final class NotificationResource extends JsonResource
                     'ref' => Issue::referenceFor((string) $this->subject_id),
                     'title' => $this->subject->title,
                     'path' => "/issues/{$this->subject_id}",
+                    // The Inbox tags a notification about an urgent issue.
+                    'priority' => $this->subject->priority,
                 ]),
             'read_at' => $this->read_at,
             'snoozed_until' => $this->snoozed_until,

@@ -71,6 +71,19 @@ it('reports the unread count and clears it on mark-read / read-all', function ()
     Workspace::forgetCurrent();
 });
 
+it('says how urgent the issue a notification is about is', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['title' => 'Checkout is down', 'created_by' => $user->id, 'priority' => 'urgent']);
+    makeNotif($ws, $user, ['subject_id' => $issue->id]);
+
+    $this->withToken($token)->getJson('/v1/notifications')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.subject.title', 'Checkout is down')
+        ->assertJsonPath('data.0.subject.priority', 'urgent');
+
+    Workspace::forgetCurrent();
+});
+
 it('counts what each Inbox filter holds: unread ones, and everything snoozed or archived', function (): void {
     [$token, $ws, $user] = notifWorld();
     makeNotif($ws, $user);                                                        // assigned, unread

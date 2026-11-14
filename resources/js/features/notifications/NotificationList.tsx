@@ -41,6 +41,8 @@ const card: CSSProperties = {
 };
 /** Where the avatar goes on a notice nobody sent (the system's own): a gear on a dark circle. */
 const gear: CSSProperties = { width: 36, height: 36, borderRadius: '50%', background: 'var(--fg2)', color: 'var(--bg)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, fontWeight: 800, flexShrink: 0 };
+/** A row's tag: "Urgent" (about an urgent issue), "Automation" (nobody sent it: the system did). */
+const tag: CSSProperties = { fontSize: 12, fontWeight: 800, borderRadius: 'var(--radius-pill)', padding: '1px 9px', whiteSpace: 'nowrap' };
 /** The header's two controls: roomy pills. */
 const headerPill: CSSProperties = { ...toolPillStyle, padding: '9px 18px', fontSize: 14, fontWeight: 700 };
 
@@ -201,6 +203,8 @@ export function NotificationList({
                                                                 {n.subject.ref}
                                                             </span>
                                                         )}
+                                                        {n.subject?.priority === 'urgent' && <span data-testid="notif-tag" style={{ ...tag, color: 'var(--on-accent)', background: 'var(--red)' }}>Urgent</span>}
+                                                        {!n.actor && <span data-testid="notif-tag" style={{ ...tag, color: 'var(--on-hi)', background: 'var(--hi)' }}>Automation</span>}
                                                     </div>
                                                 </div>
 
