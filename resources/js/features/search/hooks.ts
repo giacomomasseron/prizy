@@ -42,6 +42,8 @@ interface IssuePage {
     items: Issue[];
     currentPage: number;
     lastPage: number;
+    /** Every match, across all pages. */
+    total: number;
 }
 
 export function useIssueSearch(params: IssueSearchParams) {
@@ -62,6 +64,7 @@ export function useIssueSearch(params: IssueSearchParams) {
                 items: res.data,
                 currentPage: res.meta?.current_page ?? 1,
                 lastPage: res.meta?.last_page ?? 1,
+                total: res.meta?.total ?? res.data.length,
             };
         },
         // Keep the previous page on screen while the next loads, so the pager (and its focus) stays mounted.

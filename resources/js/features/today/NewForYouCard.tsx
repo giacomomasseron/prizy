@@ -2,7 +2,7 @@ import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
-import { timeAgo } from '../../lib/timeAgo';
+import { shortAgo } from '../../lib/timeAgo';
 import type { AppNotification } from '../../lib/types';
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../notifications/hooks';
 import { notificationMeta, notificationText, subjectPath, type NotificationCategory } from '../notifications/text';
@@ -19,12 +19,6 @@ function lineFor(n: AppNotification): string {
     if (!n.actor) return notificationText(n.type);
     if (n.type === 'issue_assigned') return `${n.actor.name} assigned an issue to you`;
     return ['mention', 'comment', 'status'].includes(category) ? `${n.actor.name} ${notificationText(n.type)}` : notificationText(n.type);
-}
-
-/** The time as the card writes it: now, 12m, 3h, 2d. */
-function shortAgo(iso: string): string {
-    const ago = timeAgo(iso);
-    return ago === 'just now' ? 'now' : ago.replace(/ ago$/, '');
 }
 
 /** Where the avatar goes on a notice nobody sent (the system's own): a gear on a dark circle. */
