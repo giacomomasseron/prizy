@@ -141,7 +141,7 @@ final class IssueRepository
             return new Collection;
         }
 
-        return Issue::whereIn('id', $ids)->get(['id', 'title'])->keyBy('id');
+        return Issue::whereIn('id', $ids)->get(['id', 'title', 'priority'])->keyBy('id');
     }
 
     /**

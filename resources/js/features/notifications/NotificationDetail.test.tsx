@@ -39,9 +39,9 @@ describe('NotificationDetail', () => {
     });
     afterEach(() => vi.clearAllMocks());
 
-    it('renders a muted placeholder when no notification is selected', () => {
-        wrap(null);
-        expect(screen.getByText(/select a notification/i)).toBeInTheDocument();
+    it('renders nothing when no notification is selected', () => {
+        const { container } = render(<MemoryRouter><NotificationDetail notification={null} /></MemoryRouter>);
+        expect(container).toBeEmptyDOMElement();
     });
 
     it('renders the title, actor name, body, the target link, and the reason', () => {
@@ -87,27 +87,42 @@ describe('NotificationDetail', () => {
         expect(markUnread).not.toHaveBeenCalled();
     });
 
-    it('v2: sentence-case kind tag, display title, and the ink "Open" link', () => {
+    it('the kind chip, the display title, the full-width ink "Open" link and the outlined Mark read', () => {
         wrap(makeItem({
             actor: { id: 'u1', name: 'Alice' },
             subject: { type: 'issue', id: 'i1', ref: 'PRZ-9', title: 'X', path: '/issues/i1' },
         }));
-        const kind = screen.getAllByText('Assigned to you')[0];
-        expect(kind.style.textTransform).toBe('');
-        expect(kind.style.borderRadius).toBe('var(--radius-pill)');
-        expect(screen.getByRole('heading', { level: 2 }).style.fontFamily).toBe('var(--font-display)');
+        const kind = screen.getByTestId('kind-chip');
+        expect(kind).toHaveTextContent('→ Assigned');
+        expect(kind.style.color).toBe('var(--blue-ink)'); // an ink tone, readable on the panel in both themes
+        const h2 = screen.getByRole('heading', { level: 2 });
+        expect(h2.style.fontFamily).toBe('var(--font-display)');
+        expect(h2.style.fontSize).toBe('23px');
         const open = screen.getByRole('link', { name: 'Open PRZ-9' });
         expect(open.className).toContain('bg-fg');
         expect(open.style.background).toBe('');
+        expect(open.style.display).toBe('flex');
         expect(screen.getByRole('button', { name: 'Mark read' }).className).toContain('border-border2');
         expect(screen.getByText('Why you got this').style.textTransform).toBe('');
     });
 
-    it('G3a: the kind tag writes accent text in the ink partner on its accent tint', () => {
+    it('is the ink card with the hard shadow', () => {
         wrap(makeItem());
-        const kind = screen.getAllByText('Assigned to you')[0];
-        expect(kind.style.color).toBe('var(--accent-ink)');
-        expect(kind.style.background).toBe('var(--accent2)');
+        const card = screen.getByTestId('notif-detail');
+        expect(card.style.border).toBe('var(--line) solid var(--fg)');
+        expect(card.style.boxShadow).toBe('5px 5px 0 var(--fg)');
+        expect(card.style.borderRadius).toBe('22px');
+    });
+
+    it('says when it came, beside the chip and in the Received row', () => {
+        wrap(makeItem({ created_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString() }));
+        expect(screen.getAllByText('3h ago')).toHaveLength(2);
+    });
+
+    it('a notice nobody sent shows its text without an actor line', () => {
+        wrap(makeItem({ body: 'Synced from the ticket.' }));
+        expect(screen.getByText('Synced from the ticket.')).toBeInTheDocument();
+        expect(screen.queryByTestId('notif-detail-actor')).toBeNull();
     });
 
     it('P7-C: a chat mention names the actor, links to the message in the chat, and says why', () => {

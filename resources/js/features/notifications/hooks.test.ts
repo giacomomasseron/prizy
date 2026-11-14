@@ -3,7 +3,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { createElement } from 'react';
-import { useMarkUnread, useNotifications, usePreferences, useSetPreference, useSetSubscription, useSubscriptions, useToggleArchive, useToggleSnooze, useUnreadCount } from './hooks';
+import { useMarkRead, useMarkUnread, useNotificationCounts, useNotifications, usePreferences, useSetPreference, useSetSubscription, useSubscriptions, useToggleArchive, useToggleSnooze, useUnreadCount } from './hooks';
 
 function wrapper() {
     const qc = new QueryClient();
@@ -189,5 +189,29 @@ describe('useSetSubscription', () => {
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'subscriptions'] });
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications'] });
         expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['notifications', 'unread-count'] });
+    });
+});
+
+describe('useNotificationCounts', () => {
+    const counts = { all: 7, mention: 3, assign: 1, support: 0, snoozed: 2, archived: 4 };
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('fetches what each Inbox filter holds from /v1/notifications/counts', async () => {
+        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: counts }), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+        const { result } = renderHook(() => useNotificationCounts(), { wrapper: wrapper() });
+        await waitFor(() => expect(result.current.isSuccess).toBe(true));
+        expect(result.current.data).toEqual(counts);
+        expect(firstCallUrl()).toContain('/v1/notifications/counts');
+    });
+
+    it('is fetched again after a notification is marked read (the numbers change)', async () => {
+        const fetcher = vi.fn(async (_url: string, _init?: RequestInit) => new Response(JSON.stringify({ data: counts }), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+        vi.stubGlobal('fetch', fetcher);
+        const { result } = renderHook(() => ({ counts: useNotificationCounts(), markRead: useMarkRead() }), { wrapper: wrapper() });
+        await waitFor(() => expect(result.current.counts.isSuccess).toBe(true));
+        const countFetches = () => fetcher.mock.calls.filter(([url]) => String(url).includes('/notifications/counts')).length;
+        expect(countFetches()).toBe(1);
+        result.current.markRead.mutate('n1');
+        await waitFor(() => expect(countFetches()).toBe(2));
     });
 });

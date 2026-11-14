@@ -71,6 +71,56 @@ it('reports the unread count and clears it on mark-read / read-all', function ()
     Workspace::forgetCurrent();
 });
 
+it('says how urgent the issue a notification is about is', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    $issue = Issue::factory()->for($ws, 'workspace')->create(['title' => 'Checkout is down', 'created_by' => $user->id, 'priority' => 'urgent']);
+    makeNotif($ws, $user, ['subject_id' => $issue->id]);
+
+    $this->withToken($token)->getJson('/v1/notifications')
+        ->assertStatus(200)
+        ->assertJsonPath('data.0.subject.title', 'Checkout is down')
+        ->assertJsonPath('data.0.subject.priority', 'urgent');
+
+    Workspace::forgetCurrent();
+});
+
+it('counts what each Inbox filter holds: unread ones, and everything snoozed or archived', function (): void {
+    [$token, $ws, $user] = notifWorld();
+    makeNotif($ws, $user);                                                        // assigned, unread
+    makeNotif($ws, $user, ['read_at' => now()]);                                  // assigned, read: not counted
+    makeNotif($ws, $user, ['type' => 'issue_mentioned']);                         // mention, unread
+    makeNotif($ws, $user, ['type' => 'project_mentioned']);                       // mention, unread
+    makeNotif($ws, $user, ['type' => 'issue_commented']);                         // only in All
+    makeNotif($ws, $user, ['type' => 'issue_mentioned', 'snoozed_until' => now()->addDay()]);                  // snoozed: out of the reading lists
+    makeNotif($ws, $user, ['read_at' => now(), 'snoozed_until' => now()->addDay()]);                           // snoozed and read: still in Snoozed
+    makeNotif($ws, $user, ['type' => 'issue_mentioned', 'snoozed_until' => now()->subHour()]);                 // a snooze that ran out: back in the lists
+    makeNotif($ws, $user, ['archived_at' => now()]);                              // archived
+    makeNotif($ws, $user, ['archived_at' => now(), 'snoozed_until' => now()->addDay()]);                       // archived wins over snoozed
+    // Someone else's, in the same workspace: never counted.
+    $other = User::factory()->for($ws, 'workspace')->create();
+    makeNotif($ws, $other, ['type' => 'issue_mentioned']);
+    makeNotif($ws, $other, ['archived_at' => now()]);
+
+    $this->withToken($token)->getJson('/v1/notifications/counts')
+        ->assertStatus(200)
+        ->assertExactJson(['data' => ['all' => 5, 'mention' => 3, 'assign' => 1, 'support' => 0, 'snoozed' => 2, 'archived' => 2]]);
+
+    // The All number is the bell's number.
+    $this->withToken($token)->getJson('/v1/notifications/unread-count')->assertJsonPath('data.count', 5);
+
+    Workspace::forgetCurrent();
+});
+
+it('counts nothing for someone with no notifications', function (): void {
+    [$token] = notifWorld();
+
+    $this->withToken($token)->getJson('/v1/notifications/counts')
+        ->assertStatus(200)
+        ->assertExactJson(['data' => ['all' => 0, 'mention' => 0, 'assign' => 0, 'support' => 0, 'snoozed' => 0, 'archived' => 0]]);
+
+    Workspace::forgetCurrent();
+});
+
 it('404s when marking another user notification read', function (): void {
     [$token, $ws, $user] = notifWorld();
     $other = User::factory()->for($ws, 'workspace')->create();
@@ -105,6 +155,8 @@ it('enriches the index payload with actor, body and a resolved issue subject', f
             'ref' => 'PRZ-'.strtoupper(substr($issue->id, 0, 6)),
             'title' => 'Fix the login bug',
             'path' => "/issues/{$issue->id}",
+            // The issue's own priority (the Inbox tags an urgent one); this issue was given none.
+            'priority' => 'no_priority',
         ]);
 
     Workspace::forgetCurrent();

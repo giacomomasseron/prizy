@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { useSetSubscription, useSubscriptions, useUnreadCount } from './hooks';
+import type { CSSProperties } from 'react';
+import { useNotificationCounts, useSetSubscription, useSubscriptions, useUnreadCount, type NotificationCounts } from './hooks';
 import { useTeams } from '../teams/hooks';
 import { NAV_ROW_HOVER, hiBadge, tagBadge } from '../../components/sidebarStyles';
 import { sideRow, sideSection, sideTitle } from '../support/supportStyles';
@@ -11,7 +12,13 @@ const FILTERS = [
     { key: 'support', label: 'From Support', icon: '▲' },
     { key: 'snoozed', label: 'Snoozed', icon: '☾' },
     { key: 'archived', label: 'Archived', icon: '⌫' },
-] as const;
+] as const satisfies readonly { key: keyof NotificationCounts; label: string; icon: string }[];
+
+/** Snoozed and Archived count everything in them; the others count what is unread. */
+const COUNTS_ALL_ROWS = new Set<string>(['snoozed', 'archived']);
+
+/** A filter's count while it is not the open one: quiet, in the text colour (readable in both themes). */
+const quietCount: CSSProperties = { ...hiBadge, color: 'var(--fg)', background: 'var(--border)' };
 
 const LEVELS = ['all', 'mentions', 'off'] as const;
 type SubLevel = (typeof LEVELS)[number];
@@ -45,7 +52,9 @@ export function NotificationSidebar({
     const subscriptions = useSubscriptions();
     const setSubscription = useSetSubscription();
 
-    const unreadCount = unread.data?.count ?? 0;
+    const counts = useNotificationCounts().data;
+    // All is the bell's number until the filter counts arrive (and on a server that does not have them).
+    const countFor = (key: keyof NotificationCounts): number => counts?.[key] ?? (key === 'all' ? unread.data?.count ?? 0 : 0);
     const myTeams = teams.data?.items ?? [];
     const subRows = subscriptions.data?.subscriptions ?? [];
 
@@ -63,24 +72,23 @@ export function NotificationSidebar({
         <>
             {/* Not a heading: the list pane owns the "Inbox" heading. */}
             {/* The left pad clears the floating "Expand sidebar" button when the main sidebar is hidden. */}
-            <div style={{ ...sideTitle, display: 'flex', alignItems: 'center', gap: 8, padding: '16px 16px 10px calc(16px + var(--nav-inset, 0px))' }}>
-                Inbox
-                {unreadCount > 0 && (
-                    // The title's display font and tracking would otherwise reach the badge.
-                    <span data-testid="rail-unread-badge" style={{ ...hiBadge, fontFamily: 'var(--font-sans)', letterSpacing: 'normal' }}>
-                        {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
-                )}
-            </div>
+            <div data-testid="rail-title" style={{ ...sideTitle, padding: '16px 16px 10px calc(16px + var(--nav-inset, 0px))' }}>Inbox</div>
 
             <nav aria-label="Inbox filters" style={{ padding: '0 8px', display: 'flex', flexDirection: 'column', gap: 1 }}>
                 {FILTERS.map((f) => {
                     const active = category === f.key && !settingsActive;
+                    const count = countFor(f.key);
                     return (
-                        <button key={f.key} type="button" aria-pressed={active} onClick={() => onCategory(f.key)} style={sideRow(active)} className={active ? '' : NAV_ROW_HOVER}>
+                        <button key={f.key} type="button" aria-pressed={active} onClick={() => onCategory(f.key)} style={{ ...sideRow(active), fontSize: 14.5, padding: '7px 12px' }} className={active ? '' : NAV_ROW_HOVER}>
                             {/* Decorative: the label names the filter. Ink on the open filter, muted on the rest. */}
                             <span aria-hidden="true" style={{ width: 18, display: 'inline-flex', justifyContent: 'center', flexShrink: 0, fontWeight: 700, color: active ? 'var(--fg)' : 'var(--fg3)' }}>{f.icon}</span>
-                            {f.label}
+                            <span style={{ flex: 1, textAlign: 'left' }}>{f.label}</span>
+                            {count > 0 && (
+                                <>
+                                    <span data-testid={`filter-count-${f.key}`} aria-hidden="true" style={active ? hiBadge : quietCount}>{count > 99 ? '99+' : count}</span>
+                                    <span className="sr-only">, {count}{COUNTS_ALL_ROWS.has(f.key) ? '' : ' unread'}</span>
+                                </>
+                            )}
                         </button>
                     );
                 })}

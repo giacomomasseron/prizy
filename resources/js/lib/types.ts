@@ -264,7 +264,8 @@ export interface AppNotification {
     created_at: string;
     actor?: { id: string; name: string } | null;
     body?: string | null;
-    subject?: { type: string; id: string; ref: string; title: string; path: string } | null;
+    /** `priority`: the issue's, on a notification about an issue. */
+    subject?: { type: string; id: string; ref: string; title: string; path: string; priority?: string } | null;
     snoozed_until?: string | null;
     archived_at?: string | null;
 }

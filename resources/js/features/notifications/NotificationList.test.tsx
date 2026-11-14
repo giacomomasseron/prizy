@@ -215,12 +215,12 @@ describe('NotificationList', () => {
         expect(screen.queryByText('Earlier this week')).not.toBeInTheDocument();
     });
 
-    it('renders the selected row white with a ring (v2)', () => {
+    it('the selected row is the card with the ink border and the hard shadow', () => {
         wrap({ items: [makeItem({ id: 'n7' })], selectedId: 'n7' });
         const row = screen.getByTestId('notif-row-n7');
-        expect(row.style.background).toBe('var(--panel)');
-        expect(row.style.boxShadow).toBe('inset 0 0 0 1.5px var(--field)');
-        expect(row.className).not.toContain('hover:bg-hover');
+        expect(row.className.split(' ')).toContain('border-fg');
+        expect(row.style.boxShadow).toBe('var(--pop-shadow)');
+        expect(row.style.borderRadius).toBe('18px');
     });
 
     it('scopes to a single row via within() when multiple rows are present', () => {
@@ -233,27 +233,98 @@ describe('NotificationList', () => {
         expect(within(screen.getByTestId('notif-row-r1')).getByRole('button', { name: 'Snooze' })).toBeInTheDocument();
     });
 
-    it('v2: display-font h1 header, and "Unread only" turns into the yellow pill when on', () => {
+    it('the header is the big display heading; "Unread only" turns into the yellow pill when on', () => {
         wrap({ unreadOnly: true });
-        expect(screen.getByRole('heading', { name: 'Inbox' }).style.fontFamily).toBe('var(--font-display)');
+        const h1 = screen.getByRole('heading', { level: 1, name: 'Inbox' });
+        expect(h1.style.fontFamily).toBe('var(--font-display)');
+        expect(h1.style.fontSize).toBe('44px');
+        expect(h1.querySelector('.hl')).toHaveTextContent('Inbox');
         expect(screen.getByRole('button', { name: 'Showing unread' }).className).toContain('bg-hi');
-        expect(screen.getByRole('button', { name: 'Mark all read' }).className).toContain('hover:border-fg');
+        const markAll = screen.getByRole('button', { name: 'Mark all read' });
+        expect(markAll.className.split(' ')).toContain('border-fg');
+        expect(markAll.className).toContain('hover:bg-hi');
     });
 
-    it('v2: sentence-case day labels and unselected rows whose hover is not blocked', () => {
+    it('rows are cards with a gap; an unselected one has the quiet border and no shadow', () => {
         wrap({ items: [makeItem({ id: 'a' }), makeItem({ id: 'b' })], selectedId: 'a' });
         expect(screen.getByText('Today').style.textTransform).toBe('');
         const other = screen.getByTestId('notif-row-b');
-        expect(other.className).toContain('hover:bg-hover');
-        expect(other.style.background).toBe('');
+        expect(other.className.split(' ')).toContain('border-border');
+        expect(other.className.split(' ')).toContain('bg-panel');
+        expect(other.style.boxShadow).toBe('');
+        expect(other.parentElement!.style.gap).toBe('10px');
     });
 
-    it('v2: row actions are round outlined buttons that also show on keyboard focus', () => {
+    it('row actions are round, borderless and always there (not only on hover)', () => {
         wrap();
         const snooze = screen.getByRole('button', { name: 'Snooze' });
         expect(snooze.style.borderRadius).toBe('50%');
-        expect(snooze.className).toContain('hover:border-fg');
-        expect(snooze.parentElement!.className).toContain('group-focus-within:opacity-100');
+        expect(snooze.style.width).toBe('30px');
+        expect(snooze.className).toContain('hover:bg-hover');
+        expect(snooze.parentElement!.className).not.toContain('opacity-0');
+    });
+
+    it('a snoozed row offers Unsnooze, an archived one Unarchive: both buttons undo what was done', () => {
+        const tomorrow = new Date(Date.now() + 20 * 3600 * 1000).toISOString();
+        const lastWeek = new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString();
+        wrap({ items: [makeItem({ id: 'z', snoozed_until: tomorrow }), makeItem({ id: 'x', archived_at: new Date().toISOString() }), makeItem({ id: 'woke', snoozed_until: lastWeek })] });
+        const [snoozed, archived, woke] = ['z', 'x', 'woke'].map((id) => within(screen.getByTestId(`notif-row-${id}`)));
+        fireEvent.click(snoozed.getByRole('button', { name: 'Unsnooze' }));
+        expect(toggleSnooze).toHaveBeenCalledWith('z');
+        expect(snoozed.queryByRole('button', { name: 'Snooze' })).toBeNull();
+        fireEvent.click(archived.getByRole('button', { name: 'Unarchive' }));
+        expect(toggleArchive).toHaveBeenCalledWith('x');
+        // A snooze that has run out is over: the row can be snoozed again.
+        expect(woke.getByRole('button', { name: 'Snooze' })).toHaveAttribute('title', 'Snooze 1 day');
+    });
+
+    it('tags: Urgent on a notification about an urgent issue, Automation on one nobody sent', () => {
+        const about = (priority: string) => ({ type: 'issue', id: 'i1', ref: 'PRZ-ABC123', title: 'X', path: '/issues/i1', priority });
+        wrap({ items: [
+            makeItem({ id: 'urgent', actor: { id: 'u1', name: 'Alice' }, subject: about('urgent') }),
+            makeItem({ id: 'high', actor: { id: 'u1', name: 'Alice' }, subject: about('high') }),
+            makeItem({ id: 'system', subject: about('medium') }),
+            makeItem({ id: 'both', subject: about('urgent') }),
+        ] });
+        const tags = (id: string) => within(screen.getByTestId(`notif-row-${id}`)).queryAllByTestId('notif-tag').map((t) => t.textContent);
+        expect(tags('urgent')).toEqual(['Urgent']);
+        expect(tags('high')).toEqual([]);
+        expect(tags('system')).toEqual(['Automation']);
+        expect(tags('both')).toEqual(['Urgent', 'Automation']);
+    });
+
+    it('the Urgent tag is white on red, Automation ink on yellow', () => {
+        wrap({ items: [makeItem({ id: 'both', subject: { type: 'issue', id: 'i1', ref: 'PRZ-ABC123', title: 'X', path: '/issues/i1', priority: 'urgent' } })] });
+        const [urgent, automation] = screen.getAllByTestId('notif-tag');
+        expect([urgent.style.background, urgent.style.color]).toEqual(['var(--red)', 'var(--on-accent)']);
+        expect([automation.style.background, automation.style.color]).toEqual(['var(--hi)', 'var(--on-hi)']);
+    });
+
+    it('an unread title is heavy; a read one is lighter and muted', () => {
+        wrap({ items: [makeItem({ id: 'u' }), makeItem({ id: 'r', read_at: new Date().toISOString() })] });
+        const unread = within(screen.getByTestId('notif-row-u')).getAllByRole('button')[0];
+        const read = within(screen.getByTestId('notif-row-r')).getAllByRole('button')[0];
+        expect([unread.style.fontWeight, unread.style.color]).toEqual(['800', 'var(--fg)']);
+        expect([read.style.fontWeight, read.style.color]).toEqual(['600', 'var(--fg2)']);
+    });
+
+    it('the avatar is 36px; a notice nobody sent has the gear in its place', () => {
+        wrap({ items: [makeItem({ id: 'p', actor: { id: 'u1', name: 'Alice' } }), makeItem({ id: 's' })] });
+        expect(within(screen.getByTestId('notif-row-p')).getByTitle('Alice').style.width).toBe('36px');
+        expect(within(screen.getByTestId('notif-row-p')).queryByTestId('notif-gear')).toBeNull();
+        expect(within(screen.getByTestId('notif-row-s')).getByTestId('notif-gear').style.width).toBe('36px');
+    });
+
+    it('what is given as `aside` sits beside the list, under the header', () => {
+        render(
+            <NotificationList items={[makeItem()]} isLoading={false} category="all" unreadOnly={false} onToggleUnread={vi.fn()} selectedId={null} onSelect={vi.fn()} aside={<div data-testid="the-aside" />} />,
+        );
+        const aside = screen.getByTestId('the-aside');
+        const columns = aside.closest('[data-testid="inbox-columns"]') as HTMLElement;
+        expect(columns.style.display).toBe('flex');
+        expect(columns.style.gap).toBe('24px');
+        expect(columns.contains(screen.getByTestId('notif-row-n1'))).toBe(true);
+        expect(columns.contains(screen.getByRole('heading', { level: 1 }))).toBe(false);
     });
 
     it('G3b: each notification\'s text is the row\'s button — Enter selects it, and the selected one is current', async () => {
@@ -302,12 +373,6 @@ describe('NotificationList', () => {
         const nested = within(row).getByRole('button', { name: 'Snooze' });
         expect(nested.classList.contains('row-primary')).toBe(false);
         expect(within(row).getAllByRole('button')[0].classList.contains('row-primary')).toBe(true);
-    });
-
-    it('keeps the row actions visible on a touch screen (no hover there)', () => {
-        wrap();
-        const snooze = screen.getByRole('button', { name: 'Snooze' });
-        expect((snooze.parentElement as HTMLElement).className).toContain('[@media(hover:none)]:opacity-100');
     });
 
     describe('the Notifications design', () => {

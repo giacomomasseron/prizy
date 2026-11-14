@@ -9,9 +9,9 @@ import { sideFrame } from '../support/supportStyles';
 type View = 'list' | 'settings';
 
 /**
- * Notifications page (Prizy Notifications.dc.html): a 3-pane inbox — left
- * rail (filters + subscriptions + settings entry), a center list, and a right
- * detail pane — or the settings view in place of list+detail. Owns the
+ * Notifications page (Prizy Notifications.dc.html): the left rail (filters +
+ * subscriptions + settings entry) and, under one big header, the list of
+ * cards with the open notification beside it — or the settings view. Owns the
  * view/category/unreadOnly/selectedId state and the single `useNotifications`
  * query the list and detail panes share, so the detail always reflects the
  * same data the list is showing.
@@ -46,29 +46,29 @@ export default function NotificationsPage() {
                 />
             </aside>
 
-            {view === 'settings' ? (
-                <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+            {/* Not a <main>: the app layout already is one. */}
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                {view === 'settings' ? (
                     <NotificationSettings onBack={() => setView('list')} />
-                </div>
-            ) : (
-                <>
-                    <div style={{ flex: 1, minWidth: 0, borderRight: '1px solid var(--border)', overflow: 'hidden' }}>
-                        <NotificationList
-                            items={items}
-                            isLoading={list.isLoading}
-                            query={list}
-                            category={category}
-                            unreadOnly={unreadOnly}
-                            onToggleUnread={() => setUnreadOnly((v) => !v)}
-                            selectedId={selected?.id ?? null}
-                            onSelect={(n) => setSelectedId(n.id)}
-                        />
-                    </div>
-                    <div style={{ width: 360, flexShrink: 0, background: 'var(--bg2)', overflow: 'hidden' }}>
-                        <NotificationDetail notification={selected} />
-                    </div>
-                </>
-            )}
+                ) : (
+                    <NotificationList
+                        items={items}
+                        isLoading={list.isLoading}
+                        query={list}
+                        category={category}
+                        unreadOnly={unreadOnly}
+                        onToggleUnread={() => setUnreadOnly((v) => !v)}
+                        selectedId={selected?.id ?? null}
+                        onSelect={(n) => setSelectedId(n.id)}
+                        // The open notification, beside the list. No column at all while there is nothing to open.
+                        aside={selected && (
+                            <aside aria-label="Notification" style={{ flex: '0 1 380px', minWidth: 300, overflowY: 'auto', padding: '2px 6px 8px 2px' }}>
+                                <NotificationDetail notification={selected} />
+                            </aside>
+                        )}
+                    />
+                )}
+            </div>
         </div>
     );
 }
