@@ -155,6 +155,8 @@ it('enriches the index payload with actor, body and a resolved issue subject', f
             'ref' => 'PRZ-'.strtoupper(substr($issue->id, 0, 6)),
             'title' => 'Fix the login bug',
             'path' => "/issues/{$issue->id}",
+            // The issue's own priority (the Inbox tags an urgent one); this issue was given none.
+            'priority' => 'no_priority',
         ]);
 
     Workspace::forgetCurrent();
