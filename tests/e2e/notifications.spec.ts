@@ -22,8 +22,9 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     await page.getByRole('link', { name: 'Inbox', exact: true }).click();
     await expect(page).toHaveURL(/\/notifications/);
     // Use .first() to handle the case where prior tests create additional
-    // "You were assigned an issue" notifications (e.g. the detail test).
-    await expect(page.getByText('You were assigned an issue').first()).toBeVisible();
+    // assignment notifications (e.g. the detail test). The line is "You were assigned an issue" from the system
+    // and "<Name> assigned an issue to you" from a person, so match the words both share.
+    await expect(page.getByText(/assigned an issue/i).first()).toBeVisible();
 
     // 3b. The left rail's category filters are present (e.g. "Archived").
     await expect(page.getByRole('button', { name: 'Archived' })).toBeVisible();
@@ -36,7 +37,7 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     await expect(page.getByText('Delivery per event')).toBeVisible();
     await expect(page.getByText('Assignments')).toBeVisible();
     await page.getByRole('button', { name: /Back to inbox/ }).click();
-    await expect(page.getByText('You were assigned an issue').first()).toBeVisible();
+    await expect(page.getByText(/assigned an issue/i).first()).toBeVisible();
 
     // 4. Click "Mark all read" on the /notifications page
     const markAllReadResponse = page.waitForResponse(

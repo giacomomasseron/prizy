@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { notificationMeta, notificationText, reasonFor, subjectPath } from './text';
+import { lineParts, notificationMeta, notificationText, reasonFor, subjectPath } from './text';
 
 describe('notification text', () => {
     it('maps known types and falls back for unknown', () => {
@@ -34,5 +34,22 @@ describe('notification text', () => {
         expect(reasonFor('issue_status_changed')).toBe('You follow this issue.');
         expect(reasonFor('issue_unblocked')).toBe("An issue you're assigned was unblocked.");
         expect(reasonFor('something_new')).toBe('You have a notification.');
+    });
+});
+
+describe('lineParts: who first, then what', () => {
+    const alice = { name: 'Alice' };
+    it('names who mentioned, commented or changed status', () => {
+        expect(lineParts({ type: 'issue_mentioned', actor: alice })).toEqual(['Alice', 'mentioned you']);
+        expect(lineParts({ type: 'issue_commented', actor: alice })).toEqual(['Alice', 'commented']);
+        expect(lineParts({ type: 'issue_status_changed', actor: alice })).toEqual(['Alice', 'changed status']);
+    });
+    it('names who assigned the issue', () => {
+        expect(lineParts({ type: 'issue_assigned', actor: alice })).toEqual(['Alice', 'assigned an issue to you']);
+    });
+    it('has nobody to name on a notice the system sent, or of a kind that names nobody', () => {
+        expect(lineParts({ type: 'issue_assigned', actor: null })).toEqual([null, 'You were assigned an issue']);
+        expect(lineParts({ type: 'issue_mentioned' })).toEqual([null, 'mentioned you']);
+        expect(lineParts({ type: 'issue_unblocked', actor: alice })).toEqual([null, "An issue you're assigned was unblocked"]);
     });
 });

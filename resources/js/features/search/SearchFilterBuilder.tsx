@@ -118,9 +118,13 @@ function OptionIcon({ filterKey, value, color, members }: OptionIconProps) {
 export interface SearchFilterBuilderProps {
     filters: AdvancedSearchFilters;
     onChange: (f: AdvancedSearchFilters) => void;
+    /** There is a typed query too: "Clear all" then shows for it alone. */
+    hasQuery?: boolean;
+    /** What "Clear all" does when the page has more to clear than the filters (the query). */
+    onClearAll?: () => void;
 }
 
-export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderProps) {
+export function SearchFilterBuilder({ filters, onChange, hasQuery = false, onClearAll }: SearchFilterBuilderProps) {
     const [pendingField, setPendingField] = useState<FilterKey | null>(null);
 
     const membersQuery = useMembers();
@@ -237,13 +241,13 @@ export function SearchFilterBuilder({ filters, onChange }: SearchFilterBuilderPr
                 />
 
                 {/* Clear all */}
-                {hasFilters && (
+                {(hasFilters || hasQuery) && (
                     <button
                         type="button"
                         aria-label="Clear all"
-                        onClick={() => onChange({})}
+                        onClick={() => (onClearAll ? onClearAll() : onChange({}))}
                         className="text-fg3 hover:text-fg"
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 12.5, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit' }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, padding: '4px 8px', fontFamily: 'inherit', textDecoration: 'underline' }}
                     >
                         Clear all
                     </button>

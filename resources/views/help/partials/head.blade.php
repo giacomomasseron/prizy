@@ -3,6 +3,7 @@
      ("prizy-theme") wins; otherwise the visitor's OS setting, followed live. Without JavaScript the page is light. --}}
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+@include('partials.favicon')
 <script>
 (function () {
     var root = document.documentElement, stored = null, os = null;

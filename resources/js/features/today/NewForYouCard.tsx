@@ -2,29 +2,18 @@ import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Avatar } from '../../components/ui/Avatar';
 import { avatarFor } from '../../lib/avatarFor';
-import { timeAgo } from '../../lib/timeAgo';
+import { shortAgo } from '../../lib/timeAgo';
 import type { AppNotification } from '../../lib/types';
 import { useMarkAllRead, useMarkRead, useNotifications, useUnreadCount } from '../notifications/hooks';
-import { notificationMeta, notificationText, subjectPath, type NotificationCategory } from '../notifications/text';
+import { lineParts, subjectPath } from '../notifications/text';
+import { KindChip } from '../notifications/KindChip';
 
 const SHOWN = 5;
 
-const KIND: Record<NotificationCategory, string> = { mention: 'Mention', assign: 'Assigned', comment: 'Comment', status: 'Status', other: 'Update' };
-/** The kind chip's colour (the design colours it by kind): ink tones, readable on the panel in both themes. */
-const KIND_INK: Record<NotificationCategory, string> = { mention: 'var(--accent-ink)', assign: 'var(--blue-ink)', comment: 'var(--fg2)', status: 'var(--fg2)', other: 'var(--fg2)' };
-
 /** The notification's line, with the name of who did it first: "Maya Chen mentioned you", "Leon Kraus assigned an issue to you". */
 function lineFor(n: AppNotification): string {
-    const { category } = notificationMeta(n.type);
-    if (!n.actor) return notificationText(n.type);
-    if (n.type === 'issue_assigned') return `${n.actor.name} assigned an issue to you`;
-    return ['mention', 'comment', 'status'].includes(category) ? `${n.actor.name} ${notificationText(n.type)}` : notificationText(n.type);
-}
-
-/** The time as the card writes it: now, 12m, 3h, 2d. */
-function shortAgo(iso: string): string {
-    const ago = timeAgo(iso);
-    return ago === 'just now' ? 'now' : ago.replace(/ ago$/, '');
+    const [who, what] = lineParts(n);
+    return who ? `${who} ${what}` : what;
 }
 
 /** Where the avatar goes on a notice nobody sent (the system's own): a gear on a dark circle. */
@@ -75,7 +64,6 @@ export function NewForYouCard() {
             ) : (
                 <ul aria-label="New for you" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
                     {items.map((n) => {
-                        const meta = notificationMeta(n.type);
                         const avatar = n.actor ? avatarFor(n.actor) : null;
                         const path = n.subject?.path ?? subjectPath(n.subject_type, n.subject_id);
                         const line = lineFor(n);
@@ -89,9 +77,7 @@ export function NewForYouCard() {
                                         <span style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35 }}>{line}</span>
                                     )}
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'var(--fg3)', fontWeight: 600, flexWrap: 'wrap' }}>
-                                        <span style={{ fontSize: 12, fontWeight: 700, color: KIND_INK[meta.category], borderWidth: 'var(--line)', borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 'var(--radius-pill)', padding: '0 9px', whiteSpace: 'nowrap' }}>
-                                            <span aria-hidden="true">{meta.icon} </span>{KIND[meta.category]}
-                                        </span>
+                                        <KindChip type={n.type} />
                                         {n.subject?.ref && <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 500 }}>{n.subject.ref}</span>}
                                         <span data-testid="new-for-you-time" style={{ marginLeft: 'auto' }}>{shortAgo(n.created_at)}</span>
                                     </div>

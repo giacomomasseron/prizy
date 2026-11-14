@@ -4,6 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'Prizy') }}</title>
+    @include('partials.favicon')
     {{-- Where sign-up lives (APP_SIGNUP_HOST), for links to it from a workspace host. --}}
     <meta name="prizy-signup-url" content="{{ \App\Services\SignupHost::url() }}">
     {{-- Workspaces live at {slug}.APP_BASE_DOMAIN: sign-up shows the address as it is typed. --}}

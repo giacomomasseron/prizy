@@ -59,3 +59,13 @@ export function reasonFor(type: string): string {
             return 'You have a notification.';
     }
 }
+
+/**
+ * A notification's line as [who, what]: the name of who did it first where there is one ("Maya Chen" + "mentioned
+ * you", "Leon Kraus" + "assigned an issue to you"), else [null, the plain line].
+ */
+export function lineParts(n: { type: string; actor?: { name: string } | null }): [string | null, string] {
+    if (!n.actor) return [null, notificationText(n.type)];
+    if (n.type === 'issue_assigned') return [n.actor.name, 'assigned an issue to you'];
+    return ['mention', 'comment', 'status'].includes(notificationMeta(n.type).category) ? [n.actor.name, notificationText(n.type)] : [null, notificationText(n.type)];
+}

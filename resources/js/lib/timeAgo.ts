@@ -1,3 +1,9 @@
+/** The time as a tight column writes it: now, 12m, 3h, 2d. */
+export function shortAgo(iso: string): string {
+    const ago = timeAgo(iso);
+    return ago === 'just now' ? 'now' : ago.replace(/ ago$/, '');
+}
+
 export function timeAgo(iso: string): string {
     const then = new Date(iso).getTime();
     if (Number.isNaN(then)) return '';

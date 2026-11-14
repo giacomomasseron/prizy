@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarkRead, useMarkUnread } from './hooks';
-import { notificationMeta, notificationText, reasonFor } from './text';
+import { lineParts, reasonFor } from './text';
 import { timeAgo } from '../../lib/timeAgo';
 import { avatarFor } from '../../lib/avatarFor';
 import { Avatar } from '../../components/ui/Avatar';
@@ -61,12 +61,10 @@ export function NotificationDetail({ notification }: { notification: AppNotifica
         );
     }
 
-    const meta = notificationMeta(notification.type);
     const kind = kindLabel(notification.type);
-    const showActorName = !!notification.actor && (['mention', 'comment', 'status'] as string[]).includes(meta.category);
-    const title = showActorName
-        ? `${notification.actor!.name} ${notificationText(notification.type)}`
-        : notificationText(notification.type);
+    // The same line the list shows, who first: "Leon Kraus assigned an issue to you".
+    const [who, what] = lineParts(notification);
+    const title = who ? `${who} ${what}` : what;
     const avatar = notification.actor ? avatarFor(notification.actor) : null;
     const isRead = !!notification.read_at;
 

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { CSSProperties } from 'react';
 import type { IssuePriority, Project, ProjectStatus } from '../../lib/types';
 import { PROJECT_STATUS } from '../projects/projectStatus';
@@ -13,6 +13,7 @@ import { FIELD_CLASSES, TITLE_FIELD_CLASSES, titleFieldEdge } from '../../compon
 import { chipClasses, chipStyle } from '../issues/issueStyles';
 import { alertBox, swatchStyle } from '../settings/settingsStyles';
 import { deskCard, tint } from '../support/supportStyles';
+import { readableOn } from '../../lib/readableOn';
 
 interface ProjectFormProps {
     onSuccess(project: Project): void;
@@ -66,6 +67,23 @@ const divider = (
     />
 );
 
+/** Whole days from one `YYYY-MM-DD` to another (read as calendar dates, not instants). */
+function daysBetween(from: string, to: string): number {
+    const day = (iso: string) => { const [y, m, d] = iso.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+    return Math.round((day(to) - day(from)) / 86_400_000);
+}
+
+/** How long the timeline is, as the design writes it; nothing until both dates are set (or for the same day). */
+function timelineSpan(start: string, target: string): string | null {
+    if (!start || !target) return null;
+    const days = daysBetween(start, target);
+    if (Number.isNaN(days) || days === 0) return null;
+    if (days < 0) return 'Target is before start';
+    if (days < 7) return `${days} ${days === 1 ? 'day' : 'days'}`;
+    const weeks = Math.round(days / 7);
+    return `${weeks} ${weeks === 1 ? 'week' : 'weeks'}`;
+}
+
 export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -77,6 +95,11 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
     const [targetDate, setTargetDate] = useState('');
 
     const [error, setError] = useState<string | null>(null);
+    /** Create was pressed with no name: the reminder shows until one is typed. */
+    const [tried, setTried] = useState(false);
+    const nameRef = useRef<HTMLInputElement>(null);
+    const nameMissing = !name.trim();
+    const span = timelineSpan(startDate, targetDate);
 
     const create = useCreateProject();
     const members = useMembers();
@@ -84,6 +107,11 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
 
     async function handleSubmit() {
         setError(null);
+        if (nameMissing) {
+            setTried(true);
+            nameRef.current?.focus();
+            return;
+        }
         try {
             const project = await create.mutateAsync({
                 name,
@@ -116,16 +144,20 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                     marginBottom: 4,
                 }}
             >
-                <div
+                {/* The project's badge as it will look: its initial on the chosen colour (P until it has a name). */}
+                <span
+                    data-testid="project-form-badge"
+                    aria-hidden="true"
                     style={{
-                        width: 26,
-                        height: 26,
-                        borderRadius: 8,
-                        background: color,
-                        flexShrink: 0,
+                        width: 44, height: 44, borderRadius: 14, background: color, border: '2px solid var(--fg)', color: readableOn(color),
+                        fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 21,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     }}
-                />
+                >
+                    {(name.trim()[0] ?? 'P').toUpperCase()}
+                </span>
                 <input
+                    ref={nameRef}
                     aria-label="Project name"
                     placeholder="Project name"
                     className={TITLE_FIELD_CLASSES}
@@ -261,6 +293,7 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
                         className={FIELD_CLASSES}
                         style={dateInput}
                     />
+                    {span && <span data-testid="project-form-span" style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg3)' }}>{span}</span>}
                 </PropertyRow>
 
                 {divider}
@@ -293,13 +326,17 @@ export default function ProjectForm({ onSuccess, onCancel }: ProjectFormProps) {
             <div
                 style={{
                     display: 'flex',
-                    justifyContent: 'flex-end',
+                    alignItems: 'center',
                     gap: 10,
                     marginTop: 14,
                 }}
             >
-                <Button variant="secondary" size="sm" onClick={onCancel}>Cancel</Button>
-                <Button variant="primary" size="sm" onClick={handleSubmit} disabled={!name.trim() || create.isPending}>Create project</Button>
+                {/* Create stays pressable with no name: pressing it says what is missing, a dead button would not. */}
+                {tried && nameMissing && (
+                    <span role="alert" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--red-ink)' }}>Give the project a name first.</span>
+                )}
+                <Button variant="secondary" size="sm" onClick={onCancel} style={{ marginLeft: 'auto' }}>Cancel</Button>
+                <Button variant="primary" size="sm" onClick={handleSubmit} disabled={create.isPending}>Create project →</Button>
             </div>
         </div>
     );

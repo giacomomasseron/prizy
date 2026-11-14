@@ -18,6 +18,7 @@ import { StarButton } from './StarToggle';
 import { sectionTitle } from './issueStyles';
 import { PeekProperties } from './PeekProperties';
 import { PeekTextField } from './PeekTextField';
+import { useTeams } from '../teams/hooks';
 
 const sectionHead: React.CSSProperties = { ...sectionTitle(16), marginBottom: 10 };
 const muted: React.CSSProperties = { fontSize: 13.5, color: 'var(--fg3)' };
@@ -43,6 +44,7 @@ export function PeekDrawer({ issueId, onClose }: PeekDrawerProps): React.ReactEl
 
 function PeekIssue({ issueId, onClose }: { issueId: string; onClose(): void }): React.ReactElement {
     const issue       = useIssue(issueId);
+    const teams       = useTeams();
     const activities  = useActivities(issueId);
     const comments    = useComments(issueId);
     const addComment  = useAddComment(issueId);
@@ -209,14 +211,17 @@ function PeekIssue({ issueId, onClose }: { issueId: string; onClose(): void }): 
         );
     }
 
+    const teamName = data ? teams.data?.items.find((t) => t.id === data.team_id)?.name : undefined;
+
     return (
         <Drawer open onClose={onClose} side="right" width={520} label={data ? `${issueRef(data)} ${data.title}` : 'Issue'}>
             {/* Header stays at the top while the panel scrolls; Close is always available. */}
             <div style={{ position: 'sticky', top: 0, zIndex: 1, flexShrink: 0, background: 'var(--panel)', display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)' }}>
                 {data && (
                     <>
-                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>
-                            {issueRef(data)}
+                        {/* "Platform ▸ PRZ-…": the team first, once the team list has it. */}
+                        <span data-testid="peek-ref" style={{ fontFamily: 'var(--font-mono)', fontSize: 12, color: 'var(--fg3)' }}>
+                            {teamName ? `${teamName} ▸ ` : ''}{issueRef(data)}
                         </span>
                         <StarButton issue={data} style={{ marginLeft: 'auto' }} />
                         <Link

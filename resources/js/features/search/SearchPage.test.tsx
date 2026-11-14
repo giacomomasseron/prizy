@@ -35,7 +35,7 @@ describe('SearchPage', () => {
     it('shows the empty state when there are no results', async () => {
         vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ data: [], meta: { current_page: 1, last_page: 1 } }), { status: 200 })));
         wrap(<SearchPage />);
-        expect(await screen.findByText(/No issues match/i)).toBeInTheDocument();
+        expect(await screen.findByText(/Nothing matches/i)).toBeInTheDocument();
     });
 });
 
@@ -225,10 +225,10 @@ describe('Sidebar saved views', () => {
 });
 
 describe('v2 look', () => {
-    it('v2: a "Search" page title, a pill query field, and result rows whose hover is not blocked', async () => {
+    it('v2: a "Find anything" page title, a pill query field, and result rows whose hover is not blocked', async () => {
         wrap(<SearchPage />);
-        expect(screen.getByRole('heading', { level: 1, name: 'Search' })).toBeInTheDocument();
-        expect(screen.getByLabelText('Search issues').parentElement!.className).toContain('focus-within:border-fg');
+        expect(screen.getByRole('heading', { level: 1, name: 'Find anything' })).toBeInTheDocument();
+        expect(screen.getByLabelText('Search issues').parentElement!.style.borderRadius).toBe('var(--radius-pill)');
         const row = (await screen.findAllByTestId('search-row'))[0];
         expect(row.className).toContain('hover:bg-hover');
         expect(row.style.background).toBe('');
@@ -250,12 +250,14 @@ describe('v2 look', () => {
         expect(screen.getByRole('button', { name: /^save$/i }).className).toContain('bg-fg');
     });
 
-    it('G3a: the query pill rests on the 3:1 field border and keeps its ink focus border', () => {
+    it('G3a: the query pill has an ink border at rest, as the design (well past 3:1), with the hard shadow', () => {
         wrap(<SearchPage />);
-        const classes = screen.getByLabelText('Search issues').parentElement!.className.split(' ');
-        expect(classes).toContain('border-field');
+        const pill = screen.getByLabelText('Search issues').parentElement!;
+        const classes = pill.className.split(' ');
+        expect(classes).toContain('border-fg');
         expect(classes).not.toContain('border-border2');
-        expect(classes).toContain('focus-within:border-fg');
+        expect(pill.style.borderWidth).toBe('2px');
+        expect(pill.style.boxShadow).toBe('var(--pop-shadow)');
     });
 });
 
@@ -319,7 +321,7 @@ describe('G3c: a failed search', () => {
         }));
         wrap(<SearchPage />);
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load results.");
-        expect(screen.queryByText(/No issues match your search/i)).toBeNull();
+        expect(screen.queryByText(/Nothing matches/i)).toBeNull();
     });
 });
 
@@ -363,5 +365,69 @@ describe('P7-A: the reference column', () => {
         const row = (await screen.findAllByTestId('search-row'))[0];
         const ref = Array.from(row.querySelectorAll('span')).find((s) => s.textContent === 'PRZ-I1');
         expect(ref?.style.width).toBe('76px');
+    });
+});
+
+describe('the Search design', () => {
+    const issue = { id: 'i1', title: 'Fix login bug', status: 'todo', priority: 'high', team_id: 't1', project_id: 'p1', assignee_id: null, created_by: 'u', archived_at: null, created_at: '', updated_at: new Date(Date.now() - 3 * 3600 * 1000).toISOString() };
+    function serve(issues: unknown[], meta: Record<string, number>) {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            if (String(url).includes('/search/issues')) return new Response(JSON.stringify({ data: issues, meta }), { status: 200 });
+            if (String(url).includes('/projects')) return new Response(JSON.stringify({ data: [{ id: 'p1', name: 'Unified Inbox', color: '#3f74d6' }] }), { status: 200 });
+            return new Response(JSON.stringify({ data: [] }), { status: 200 });
+        }));
+    }
+
+    it('the bar says where you are: Issues / Advanced search', () => {
+        wrap(<SearchPage />);
+        const crumbs = screen.getByRole('navigation', { name: 'Breadcrumb' });
+        expect(crumbs).toHaveTextContent('Issues/Advanced search');
+        expect(screen.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/issues');
+    });
+
+    it('counts every result, not only this page', async () => {
+        serve([issue], { current_page: 1, last_page: 3, total: 41 });
+        wrap(<SearchPage />);
+        expect(await screen.findByTestId('search-count')).toHaveTextContent('41 results');
+    });
+
+    it('says "1 result" for one', async () => {
+        serve([issue], { current_page: 1, last_page: 1, total: 1 });
+        wrap(<SearchPage />);
+        expect(await screen.findByTestId('search-count')).toHaveTextContent(/^1 result$/);
+    });
+
+    it('a row shows its project and how long ago it changed', async () => {
+        serve([issue], { current_page: 1, last_page: 1, total: 1 });
+        wrap(<SearchPage />);
+        const row = await screen.findByTestId('search-row');
+        await waitFor(() => expect(row).toHaveTextContent('Unified Inbox'));
+        expect(screen.getByTestId('search-updated')).toHaveTextContent(/^3h$/);
+    });
+
+    it('nothing found: "Clear all filters" empties the query and the filters', async () => {
+        serve([], { current_page: 1, last_page: 1, total: 0 });
+        wrap(<SearchPage />);
+        const field = screen.getByLabelText('Search issues') as HTMLInputElement;
+        fireEvent.change(field, { target: { value: 'zzz' } });
+        expect(await screen.findByText(/Nothing matches/)).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Clear all filters' }));
+        expect(field.value).toBe('');
+    });
+
+    it('"Clear all" in the filter row shows for a typed query alone, and clears it', async () => {
+        wrap(<SearchPage />);
+        expect(screen.queryByRole('button', { name: 'Clear all' })).toBeNull();
+        const field = screen.getByLabelText('Search issues') as HTMLInputElement;
+        fireEvent.change(field, { target: { value: 'login' } });
+        fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
+        expect(field.value).toBe('');
+    });
+
+    it('"Save this view" is the ink button at the end of the results line', () => {
+        wrap(<SearchPage />);
+        const save = screen.getByRole('button', { name: /save this view/i });
+        expect(save.className).toContain('bg-fg');
+        expect(save.style.marginLeft).toBe('auto');
     });
 });
