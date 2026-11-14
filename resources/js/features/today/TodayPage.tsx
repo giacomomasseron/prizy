@@ -3,6 +3,7 @@ import { useMe } from '../../auth/useAuth';
 import { FocusTimeCard } from './FocusTimeCard';
 import { firstName, greetingFor, todayLabel } from './greeting';
 import { NewForYouCard } from './NewForYouCard';
+import { PlanDnd } from './PlanDnd';
 import { PlanSection } from './PlanSection';
 import { usePlan, usePlanSuggestions } from './planHooks';
 import { headline, linkStarters } from './planText';
@@ -44,8 +45,11 @@ export default function TodayPage() {
             {/* Two columns; at phone width they stack: plan, suggestions, New for you, to-dos. */}
             <div style={{ display: 'flex', gap: 36, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                 <div style={{ flex: '1 1 560px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 40 }}>
-                    <PlanSection query={plan} plan={plan.data} canDone={canDevelop(me.data)} />
-                    <SuggestionsSection query={suggestions} suggestions={suggestions.data} />
+                    {/* One drag area: a suggestion can be dropped into the plan, and a plan item onto the suggestions. */}
+                    <PlanDnd plan={plan.data} suggestions={suggestions.data}>
+                        <PlanSection query={plan} plan={plan.data} canDone={canDevelop(me.data)} />
+                        <SuggestionsSection query={suggestions} suggestions={suggestions.data} />
+                    </PlanDnd>
                 </div>
                 <div style={{ flex: '1 1 300px', maxWidth: 400, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 26 }}>
                     <NewForYouCard />

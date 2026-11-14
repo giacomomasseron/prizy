@@ -51,8 +51,10 @@ test('# in the add box links an issue: its reference goes in, and the to-do open
     const row = page.getByTestId('todo-row').filter({ hasText: text });
     const pill = row.getByRole('link', { name: /^PRZ-[0-9A-F]{6}$/ });
     await expect(pill).toHaveAttribute('title', /Starter issue/);
+    // The pill is a link to the issue page, and a plain click opens the issue in the drawer, on Today.
+    await expect(pill).toHaveAttribute('href', /\/issues\/[0-9a-f-]{36}$/);
     await pill.click();
-    await expect(page).toHaveURL(/\/issues\/[0-9a-f-]{36}$/);
+    await expect(page).toHaveURL(/\/today\?peek=[0-9a-f-]{36}$/);
 
     await page.goto('/today');
     await page.getByTestId('todo-row').filter({ hasText: text }).getByRole('button', { name: 'Delete to-do' }).click();
@@ -154,5 +156,5 @@ test('plans two starred issues, reorders them, marks one done and undoes it, and
 
     // Clean up: take both off the plan.
     for (const title of [first, second]) await page.getByRole('button', { name: `Remove from today: ${title}` }).click();
-    await expect(page.getByText('Nothing planned yet. Pick something from the suggestions below.')).toBeVisible();
+    await expect(page.getByText('Nothing planned yet. Pull something up from below.')).toBeVisible();
 });

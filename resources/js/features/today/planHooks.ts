@@ -89,6 +89,28 @@ export function useAddToPlan(onFailed?: (suggestion: PlanSuggestion) => void) {
     );
 }
 
+/**
+ * Put a suggestion on the plan at a chosen place (a drag): it is added, then moved to `position`. Without a
+ * position it goes last, as + Add puts it.
+ */
+export function useAddToPlanAt(onFailed?: () => void) {
+    return usePlanMutation(
+        async ({ suggestion: s, position }: { suggestion: PlanSuggestion; position?: number }) => {
+            await api.post<PlanItem>('/me/plan', { issue_id: s.issue.id, minutes: s.minutes });
+            if (position !== undefined) await api.patch<PlanItem>(`/me/plan/${s.issue.id}`, { position });
+        },
+        ({ plan, suggestions }, { suggestion: s, position }) => ({
+            plan: plan && {
+                ...plan,
+                items: byPosition([...plan.items, { issue: s.issue, minutes: s.minutes, position: position ?? endPosition(plan.items), tag: s.tag, reason: s.reason, can_undo: false }]),
+            },
+            suggestions: suggestions?.filter((x) => x.issue.id !== s.issue.id),
+        }),
+        onFailed,
+        [MY_PROJECTS_KEY],
+    );
+}
+
 /** Change an item's time or move it. */
 export function useUpdatePlanItem(onFailed?: () => void) {
     return usePlanMutation(

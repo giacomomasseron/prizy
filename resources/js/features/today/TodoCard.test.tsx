@@ -3,7 +3,7 @@ import { resolve } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import type { Todo } from '../../lib/types';
 import { TodoCard } from './TodoCard';
 import { positionForMove, splitTodos, topPosition } from './todoHooks';
@@ -28,6 +28,8 @@ let holdReads = false;
 let heldIds = new Set<string>();
 /** POSTs of these texts answer 500. */
 let failTexts = new Set<string>();
+/** The issue lookup answers 500. */
+let lookupFails = false;
 let fetchMock: ReturnType<typeof vi.fn>;
 
 /** A small in-memory /v1/me/todos, plus /me, /members and the issue lookup. */
@@ -38,7 +40,7 @@ function stubApi() {
         const body = init?.body ? JSON.parse(String(init.body)) : {};
         if (u.endsWith('/me')) return j({ data: { id: 'me', name: 'Alex Rivera', is_developer: true, admin_level: 'member', is_agent: false } });
         if (u.includes('/members')) return j({ data: [{ id: 'u1', name: 'Maya Chen', is_agent: false }] });
-        if (u.includes('/issues/lookup')) return j({ data: [ISSUE] });
+        if (u.includes('/issues/lookup')) return lookupFails ? j({ title: 'Error', detail: 'Server error' }, 500) : j({ data: [ISSUE] });
         if (!u.includes('/me/todos')) return j({ data: [] });
         if (method !== 'GET' && failWrites) return j({ title: 'Error', detail: 'Server error' }, 500);
         if (method !== 'GET' && holdWrites) return new Promise<Response>(() => {});
@@ -60,9 +62,14 @@ function stubApi() {
     vi.stubGlobal('fetch', fetchMock);
 }
 
+function Where() {
+    const location = useLocation();
+    return <output data-testid="where">{location.pathname + location.search}</output>;
+}
+
 function renderCard(starters: Parameters<typeof TodoCard>[0]['starters'] = []) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    return render(<QueryClientProvider client={qc}><MemoryRouter><TodoCard starters={starters} /></MemoryRouter></QueryClientProvider>);
+    return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><TodoCard starters={starters} /><Where /></MemoryRouter></QueryClientProvider>);
 }
 
 function calls(method: string, path: string) {
@@ -77,6 +84,7 @@ beforeEach(() => {
     holdReads = false;
     heldIds = new Set();
     failTexts = new Set();
+    lookupFails = false;
     server = [
         todo('t1', 'Book 1:1 with Priya', 1),
         todo('t2', 'Read the on-call notes', 2),
@@ -443,5 +451,112 @@ describe('Today v2: linking an issue with #', () => {
         const down = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
         hash.dispatchEvent(down);
         expect(down.defaultPrevented).toBe(true);
+    });
+});
+
+describe('Today: an issue reference typed by hand', () => {
+    const add = (text: string) => {
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+        fireEvent.change(box, { target: { value: text } });
+        fireEvent.keyDown(box, { key: 'Enter' });
+        return box;
+    };
+    const lookups = () => fetchMock.mock.calls.map(([u]) => String(u)).filter((u) => u.includes('/issues/lookup'));
+    const posted = () => JSON.parse(String(calls('POST', '/me/todos')[0][1].body));
+
+    it('links the issue it names, in any letter case: the to-do gets its pill', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        const box = add('Reply to Maya about prz-abc120 today');
+
+        expect(box).toHaveValue('');
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        expect(posted()).toEqual({ text: 'Reply to Maya about prz-abc120 today', issue_id: 'i0' });
+        expect(lookups()).toHaveLength(1);
+        expect(lookups()[0]).toContain('q=PRZ-ABC120');
+        const pill = await within(openRows()[0]).findByRole('link', { name: 'PRZ-ABC120' });
+        expect(pill).toHaveAttribute('title', 'Fix login');
+        // The text stays as typed.
+        expect(openRows()[0].querySelector('[id^="todo-"]')?.textContent).toBe('Reply to Maya about prz-abc120 today PRZ-ABC120');
+    });
+
+    it('links one of today\'s issues at once, with nothing to look up', async () => {
+        holdWrites = true;
+        renderCard([ISSUE]);
+        await screen.findByText('Book 1:1 with Priya');
+        add('Update estimate on PRZ-ABC120 before standup');
+
+        await waitFor(() => expect(within(openRows()[0]).getByRole('link', { name: 'PRZ-ABC120' })).toBeInTheDocument());
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        expect(posted().issue_id).toBe('i0');
+        expect(lookups()).toEqual([]);
+    });
+
+    it('adds the to-do without a link when no issue has that reference', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        add('Chase PRZ-FFFFFF');
+
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        expect(posted()).toEqual({ text: 'Chase PRZ-FFFFFF', issue_id: null });
+        await waitFor(() => expect(openRows()[0]).toHaveTextContent('Chase PRZ-FFFFFF'));
+        expect(within(openRows()[0]).queryByRole('link')).toBeNull();
+    });
+
+    it('still adds the to-do, unlinked, when the lookup fails', async () => {
+        lookupFails = true;
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        add('Chase PRZ-ABC120');
+
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        expect(posted()).toEqual({ text: 'Chase PRZ-ABC120', issue_id: null });
+        expect(screen.queryByRole('alert')).toBeNull();
+    });
+
+    it('looks nothing up for text with no reference, or with something that only looks like one', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        add('Book a room');
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        add('See PRZ-12 and XPRZ-ABC120 and PRZ-ABC1200');
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(2));
+        expect(lookups()).toEqual([]);
+        expect(JSON.parse(String(calls('POST', '/me/todos')[1][1].body)).issue_id).toBeNull();
+    });
+
+    it('keeps the issue picked with # over another reference typed beside it', async () => {
+        const other = { id: 'i9', identifier: 'PRZ-999999', title: 'Other', status: 'todo' as const };
+        renderCard([other]);
+        await screen.findByText('Book 1:1 with Priya');
+        const box = screen.getByRole('combobox', { name: 'Add a to-do' });
+        fireEvent.change(box, { target: { value: 'PRZ-999999 and #fix' } });
+        await screen.findByRole('option', { name: /Fix login/ });
+        fireEvent.keyDown(box, { key: 'Enter' }); // picks PRZ-ABC120
+        fireEvent.keyDown(box, { key: 'Enter' });
+
+        await waitFor(() => expect(calls('POST', '/me/todos')).toHaveLength(1));
+        expect(posted().issue_id).toBe('i0');
+    });
+});
+
+describe('Today: a to-do\'s pill and its small print, as the design', () => {
+    it('opens the linked issue in the drawer, on Today; the pill stays a link to the issue page', async () => {
+        server = [todo('t1', 'Ping Maya on PRZ-ABC120', 1, { issue: ISSUE })];
+        renderCard();
+        const pill = within((await screen.findAllByTestId('todo-row'))[0]).getByRole('link', { name: 'PRZ-ABC120' });
+        expect(pill).toHaveAttribute('href', '/issues/i0');
+        expect(pill).toHaveAttribute('draggable', 'false');
+        fireEvent.click(pill);
+        expect(screen.getByTestId('where')).toHaveTextContent('/today?peek=i0');
+    });
+
+    it('dims ✕ to 45% and a done to-do\'s text to 60%', async () => {
+        renderCard();
+        await screen.findByText('Book 1:1 with Priya');
+        const del = within(openRows()[0]).getByRole('button', { name: 'Delete to-do' });
+        expect(del.className).toContain('opacity-45');
+        expect(del.className).toContain('hover:opacity-100');
+        expect(screen.getByText('Update the estimate').style.opacity).toBe('0.6');
     });
 });

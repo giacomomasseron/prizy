@@ -1,8 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import type { PlanItem } from '../../lib/types';
+import { PlanDnd } from './PlanDnd';
 import { PlanSection } from './PlanSection';
 import { usePlan } from './planHooks';
 
@@ -65,12 +66,18 @@ function stubApi() {
 
 function Harness({ canDone }: { canDone: boolean }) {
     const plan = usePlan();
-    return <PlanSection query={plan} plan={plan.data} canDone={canDone} />;
+    const location = useLocation();
+    return (
+        <PlanDnd plan={plan.data} suggestions={undefined}>
+            <PlanSection query={plan} plan={plan.data} canDone={canDone} />
+            <output data-testid="where">{location.pathname + location.search}</output>
+        </PlanDnd>
+    );
 }
 
 function renderSection(canDone = true) {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-    return render(<QueryClientProvider client={qc}><MemoryRouter><Harness canDone={canDone} /></MemoryRouter></QueryClientProvider>);
+    return render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/today']}><Harness canDone={canDone} /></MemoryRouter></QueryClientProvider>);
 }
 
 function calls(method: string, path: string) {
@@ -108,8 +115,53 @@ describe('Today v2: today\'s plan', () => {
         expect(within(focus).getByText('Why first?').parentElement).toHaveTextContent('Why first? Its support ticket breaches its SLA in 2h 10m.');
         expect(within(focus).getByRole('link', { name: 'Start working →' })).toHaveAttribute('href', '/issues/a1');
         expect(within(focus).getByRole('button', { name: 'Done' })).toBeInTheDocument();
-        expect(within(focus).queryByRole('button', { name: /^Mark done/ })).toBeNull();
+        // The focus card has the done circle too, as every row.
+        expect(within(focus).getByRole('button', { name: 'Mark done: Customer data not populating on escalation' })).toBeInTheDocument();
         expect(within(rows()[1]).queryByText('Start here')).toBeNull();
+    });
+
+    it('opens an item in the drawer, on Today, from its title and from Start working →; both stay links to its page', async () => {
+        renderSection();
+        await screen.findByText('Customer data not populating on escalation');
+
+        const title = within(rows()[1]).getByRole('link', { name: 'Review: SLA breach warning banner' });
+        expect(title).toHaveAttribute('href', '/issues/b2');
+        fireEvent.click(title);
+        expect(screen.getByTestId('where')).toHaveTextContent('/today?peek=b2');
+
+        fireEvent.click(within(rows()[0]).getByRole('link', { name: 'Start working →' }));
+        expect(screen.getByTestId('where')).toHaveTextContent('/today?peek=a1');
+    });
+
+    it('leaves a modified click on a title to the browser: it opens the issue page in a new tab', async () => {
+        renderSection();
+        await screen.findByText('Customer data not populating on escalation');
+        fireEvent.click(within(rows()[1]).getByRole('link', { name: 'Review: SLA breach warning banner' }), { ctrlKey: true });
+        expect(screen.getByTestId('where')).toHaveTextContent(/^\/today$/);
+    });
+
+    it('lays a row out as the design: the whole card drags, the lines under the title start 58px in', async () => {
+        renderSection();
+        await screen.findByText('Customer data not populating on escalation');
+        for (const r of rows()) {
+            expect(r.style.cursor).toBe('grab');
+            expect(r.style.transform).toBe('');
+            expect(within(r).getByRole('button', { name: 'Reorder' }).style.width).toBe('12px');
+            expect((within(r).getByText(/^PRZ-/).parentElement as HTMLElement).style.margin).toBe('4px 0px 0px 58px');
+        }
+        expect((within(rows()[0]).getByText('Why first?').closest('div') as HTMLElement).style.margin).toBe('14px 0px 0px 58px');
+        expect(rows()[0].style.boxShadow).toBe('6px 6px 0 var(--fg)');
+        expect(rows()[1].style.boxShadow).toBe('');
+    });
+
+    it('completes the focus item from its circle', async () => {
+        renderSection();
+        await screen.findByText('Customer data not populating on escalation');
+
+        fireEvent.click(within(rows()[0]).getByRole('button', { name: 'Mark done: Customer data not populating on escalation' }));
+
+        await waitFor(() => expect(within(rows()[0]).getByRole('link', { name: 'Review: SLA breach warning banner' })).toBeInTheDocument());
+        expect(calls('POST', '/me/plan/a1/done')).toHaveLength(1);
     });
 
     it('shows each row with its title link, tag, and the id · project · priority line', async () => {
@@ -121,6 +173,9 @@ describe('Today v2: today\'s plan', () => {
         expect(within(row).getByText('In review')).toBeInTheDocument();
         expect(within(row).getByText('PRZ-B2')).toBeInTheDocument();
         expect(within(row).getByRole('link', { name: 'SLA & Metrics' })).toHaveAttribute('href', '/projects/p3');
+        // No link in a card starts the browser's own link drag: that would cancel the card's drag.
+        for (const link of within(row).getAllByRole('link')) expect(link).toHaveAttribute('draggable', 'false');
+        for (const link of within(rows()[0]).getAllByRole('link')) expect(link).toHaveAttribute('draggable', 'false');
         expect(within(row).getByText('Medium priority')).toBeInTheDocument();
         expect(within(rows()[0]).getByText('Urgent')).toBeInTheDocument();
         expect(within(rows()[2]).getByText('High priority')).toBeInTheDocument();
@@ -226,6 +281,13 @@ describe('Today v2: today\'s plan', () => {
         const escalation = screen.getByRole('link', { name: 'Escalation Engine 3h 45m' });
         expect(escalation).toHaveAttribute('href', '/projects/p2');
         expect(screen.getByRole('link', { name: 'SLA & Metrics 30m' })).toBeInTheDocument();
+        // Each chip starts with the project's lettered square, as the sidebar's My projects.
+        const badge = escalation.querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(badge).toHaveTextContent(/^E$/);
+        expect(badge.style.width).toBe('20px');
+        expect(badge.style.borderRadius).toBe('7px');
+        expect(badge.style.background).toBe('rgb(176, 106, 224)');
+        expect(escalation.style.padding).toBe('4px 12px 4px 6px');
     });
 
     it('hides Working across when no item has a project', async () => {
@@ -240,7 +302,10 @@ describe('Today v2: today\'s plan', () => {
         items = [];
         renderSection();
 
-        expect(await screen.findByText('Nothing planned yet. Pick something from the suggestions below.')).toBeInTheDocument();
+        const empty = await screen.findByText('Nothing planned yet. Pull something up from below.');
+        // No dashed box at rest: the design dashes it only while something is dragged over it.
+        expect(empty.style.border).toBe('');
+        expect(screen.getByTestId('plan-zone').style.outline).toBe('');
         expect(screen.getByTestId('plan-count')).toHaveTextContent('0');
     });
 
