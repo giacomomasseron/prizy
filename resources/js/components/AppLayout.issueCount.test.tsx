@@ -4,9 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../auth/useAuth', () => ({
-    // is_developer: true — this fixture exercises the issue-count badge rendering, not tracker
-    // authorization (see GlobalSidebar.test.tsx); a non-developer member would now have the Workspace
-    // nav (and its badge) hidden entirely by the tracker gating, which is unrelated to this test's concern.
+    // is_developer: true — this fixture exercises the My issues count, not tracker authorization (see
+    // GlobalSidebar.test.tsx); a non-developer member has no My issues row at all.
     useMe: () => ({ data: { id: 'u1', name: 'Test User', admin_level: 'member', is_developer: true } }),
     useLogout: () => ({ mutate: vi.fn() }),
 }));
@@ -19,7 +18,7 @@ vi.mock('../features/issues/hooks', () => ({
                 {
                     id: 'i1', status: 'in_progress', title: 'A', priority: 'low', description: null,
                     estimate: null, due_date: null, sort_order: 0, team_id: 't1', project_id: null,
-                    cycle_id: null, parent_issue_id: null, assignee_id: null, created_by: 'u1',
+                    cycle_id: null, parent_issue_id: null, assignee_id: 'u1', created_by: 'u1',
                     archived_at: null, labels: [],
                     created_at: '2026-07-04T00:00:00.000000Z', updated_at: '2026-07-04T00:00:00.000000Z',
                 },
@@ -55,18 +54,12 @@ function mountLayout() {
     );
 }
 
-describe('AppLayout issues count badge', () => {
-    it('shows active issue count (excludes done/cancelled) next to Issues nav', () => {
+describe('AppLayout: the My issues count', () => {
+    it('counts the issues assigned to you, and the Issues row carries no count', () => {
         mountLayout();
-        // 1 active (in_progress), 1 done — badge should show "1"
-        expect(screen.getByText('1')).toBeInTheDocument();
-    });
-
-    it('badge count matches exactly the number of non-done non-cancelled issues', () => {
-        mountLayout();
-        // Verify we get exactly the count "1" (not "2" which would include done)
-        const badge = screen.getByText('1');
-        expect(badge).toBeInTheDocument();
+        // Two issues in the list; one is yours.
+        expect(screen.getByTestId('my-issues-count').textContent).toBe('1');
+        expect(screen.getByRole('link', { name: 'Issues' })).toHaveTextContent(/^Issues$/);
         expect(screen.queryByText('2')).toBeNull();
     });
 });

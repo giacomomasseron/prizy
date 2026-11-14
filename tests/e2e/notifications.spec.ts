@@ -50,8 +50,7 @@ test('notifications: inbox badge, /notifications page, mark all read', async ({ 
     await unreadCountRefetch;
 
     // 5. Navigate back to issues list; inbox badge should now be hidden (count = 0)
-    // "Issues" (Workspace group) substring-collides with "My Issues" (Support
-    // bridge) under Playwright's default fuzzy name matching — anchor on the
+    // "Issues" (Workspace group) substring-collides with "My issues" under Playwright's default fuzzy name matching — anchor on the
     // leading "Issues" text so this targets the Workspace link unambiguously.
     await page.getByRole('link', { name: /^Issues/ }).click();
     await expect(page).toHaveURL('http://smoke.localhost:8001/issues');

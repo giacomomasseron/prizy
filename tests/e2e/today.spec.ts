@@ -63,8 +63,11 @@ test('Today has its own left bar: « or [ hides it, and Menu » brings it back',
     await page.goto('/today');
     const bar = page.getByRole('complementary', { name: 'Sidebar' });
     await expect(bar.getByRole('navigation', { name: 'Your work' }).getByRole('link', { name: /Today/ })).toHaveAttribute('aria-current', 'page');
-    await expect(bar.getByRole('navigation', { name: 'Workspace' }).getByRole('link', { name: 'Cycles' })).toBeVisible();
-    await expect(bar.getByText('Support bridge')).toHaveCount(0);
+    await expect(bar.getByRole('navigation', { name: 'Workspace' }).getByRole('link', { name: 'Roadmap' })).toBeVisible();
+    // Cycles are reached from a team now: no workspace-wide row.
+    await expect(bar.getByRole('link', { name: 'Cycles' })).toHaveCount(0);
+    await expect(bar.getByRole('button', { name: 'My teams', exact: true })).toBeVisible();
+    await expect(bar.getByRole('button', { name: 'Hide sidebar' })).toBeVisible();
 
     await bar.getByRole('button', { name: 'Hide sidebar' }).click();
     await expect(bar).toHaveCount(0);

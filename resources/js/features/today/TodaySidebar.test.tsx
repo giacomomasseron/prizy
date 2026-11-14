@@ -148,8 +148,8 @@ describe('Today v2: the left bar', () => {
         expect(fetchMock.mock.calls.filter(([u]) => /\/me\/plan|\/projects/.test(String(u)))).toEqual([]);
     });
 
-    it('lists Today (current, with the plan count), My issues, Inbox and Escalations', async () => {
-        renderSidebar({ items: [planned('a', null), planned('b', null)] });
+    it('lists Today (current, with the plan count), Inbox, My issues, My teams, My projects and Escalations, in that order', async () => {
+        renderSidebar({ items: [planned('a', null), planned('b', null)], projects: [project('p1', 'Unified Inbox')] });
         const nav = within(screen.getByRole('navigation', { name: 'Your work' }));
 
         const today = nav.getByRole('link', { name: /Today/ });
@@ -160,6 +160,22 @@ describe('Today v2: the left bar', () => {
         expect(nav.getByRole('link', { name: 'Inbox' })).toHaveAttribute('href', '/notifications');
         expect(nav.getByRole('link', { name: 'Escalations' })).toHaveAttribute('href', '/issues?escalated=true');
         expect(nav.queryByRole('button', { name: 'Escalations' })).toBeNull();
+
+        const rows = [
+            today, nav.getByRole('link', { name: 'Inbox' }), nav.getByRole('link', { name: 'My issues' }),
+            nav.getByRole('button', { name: 'My teams' }), await nav.findByRole('button', { name: 'My projects' }),
+            nav.getByRole('link', { name: 'Escalations' }),
+        ];
+        for (let i = 1; i < rows.length; i++) {
+            expect(rows[i - 1].compareDocumentPosition(rows[i]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        }
+        for (const row of rows) {
+            expect(row.style.fontSize).toBe('15px');
+            const icon = row.querySelector('svg') as SVGElement;
+            expect(icon, row.textContent ?? '').not.toBeNull();
+            expect(icon.getAttribute('width')).toBe('16');
+            expect(icon.parentElement).toHaveAttribute('aria-hidden', 'true');
+        }
     });
 
     it('drops Escalations when the workspace has no support desk', async () => {
@@ -189,18 +205,46 @@ describe('Today v2: the left bar', () => {
         expect(screen.getByRole('link', { name: 'Inbox' })).toHaveTextContent(/^Inbox$/);
     });
 
-    it('lists Workspace: Issues, your team\'s Cycles and Projects', async () => {
+    it('lists Workspace: Issues, Projects and Roadmap, each with its icon and no Cycles row', async () => {
         renderSidebar();
         const nav = within(screen.getByRole('navigation', { name: 'Workspace' }));
+        expect(nav.getAllByRole('link').map((l) => l.textContent)).toEqual(['Issues', 'Projects', 'Roadmap']);
         expect(nav.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/issues');
-        await waitFor(() => expect(nav.getByRole('link', { name: 'Cycles' })).toHaveAttribute('href', '/teams/t1/cycles'));
         expect(nav.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects');
+        expect(nav.getByRole('link', { name: 'Roadmap' })).toHaveAttribute('href', '/roadmap');
+        for (const link of nav.getAllByRole('link')) expect(link.querySelector('svg')).not.toBeNull();
     });
 
-    it('sends Cycles to the team list when you are in no team', async () => {
-        renderSidebar({ teams: [] });
-        await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/teams'))).toBe(true));
-        expect(screen.getByRole('link', { name: 'Cycles' })).toHaveAttribute('href', '/teams');
+    it('My teams is open with each team closed; a team opens to its own Issues, Cycles and Projects', async () => {
+        const user = userEvent.setup();
+        renderSidebar();
+        const nav = within(screen.getByRole('navigation', { name: 'Your work' }));
+        expect(nav.getByRole('button', { name: 'My teams' })).toHaveAttribute('aria-expanded', 'true');
+        const team = await nav.findByRole('button', { name: /Platform team/ });
+        expect(team).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByRole('link', { name: 'Cycles' })).toBeNull();
+        const square = team.querySelector('[aria-hidden="true"]') as HTMLElement;
+        expect(square.style.width).toBe('20px');
+        expect(square.style.background).toBe('rgb(109, 105, 242)');
+
+        await user.click(team);
+        const links = within(screen.getByTestId('team-links-t1'));
+        expect(links.getAllByRole('link').map((l) => l.textContent)).toEqual(['Issues', 'Cycles', 'Projects']);
+        expect(links.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/issues?team_id=t1');
+        expect(links.getByRole('link', { name: 'Cycles' })).toHaveAttribute('href', '/teams/t1/cycles');
+        expect(links.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects?team_id=t1');
+        // Today's bar has no + for a new team: the mockup draws none.
+        expect(screen.queryByRole('link', { name: 'New team' })).toBeNull();
+    });
+
+    it('My teams folds away', async () => {
+        const user = userEvent.setup();
+        renderSidebar();
+        const nav = within(screen.getByRole('navigation', { name: 'Your work' }));
+        await nav.findByRole('button', { name: /Platform team/ });
+        await user.click(nav.getByRole('button', { name: 'My teams' }));
+        expect(nav.getByRole('button', { name: 'My teams' })).toHaveAttribute('aria-expanded', 'false');
+        expect(nav.queryByRole('button', { name: /Platform team/ })).toBeNull();
     });
 
     it('lists My projects by name with their initial, each with its count on today\'s plan', async () => {
@@ -210,7 +254,7 @@ describe('Today v2: the left bar', () => {
             items: [planned('a', engine), planned('b', engine), planned('d', null)],
         });
 
-        const nav = within(await screen.findByRole('navigation', { name: 'My projects' }));
+        const nav = within(await screen.findByRole('group', { name: 'My projects' }));
         await waitFor(() => expect(nav.getAllByRole('link')).toHaveLength(2));
         await waitFor(() => expect(nav.getAllByRole('link')[0]).toHaveTextContent('Escalation Engine2 on today’s plan'));
         const links = nav.getAllByRole('link');
@@ -230,7 +274,7 @@ describe('Today v2: the left bar', () => {
             items: [planned('c', { id: 'p3', name: 'Shipped project', color: '#3a9a68' })],
         });
 
-        const nav = within(await screen.findByRole('navigation', { name: 'My projects' }));
+        const nav = within(await screen.findByRole('group', { name: 'My projects' }));
         await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/me/plan'))).toBe(true));
         expect(nav.getAllByRole('link').map((l) => l.textContent)).toEqual(['UUnified Inbox']);
     });
@@ -239,15 +283,27 @@ describe('Today v2: the left bar', () => {
         renderSidebar();
         await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('/projects'))).toBe(true));
         await screen.findByText('Alex Rivera');
-        expect(screen.queryByRole('navigation', { name: 'My projects' })).toBeNull();
+        expect(screen.queryByRole('group', { name: 'My projects' })).toBeNull();
         expect(screen.queryByText('My projects')).toBeNull();
+    });
+
+    it('My projects folds away', async () => {
+        const user = userEvent.setup();
+        renderSidebar({ projects: [project('p1', 'Unified Inbox')] });
+        const toggle = await screen.findByRole('button', { name: 'My projects' });
+        expect(toggle).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByRole('link', { name: 'Unified Inbox' })).toBeInTheDocument();
+        await user.click(toggle);
+        expect(toggle).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByRole('link', { name: 'Unified Inbox' })).toBeNull();
     });
 
     it('ends with you and your team, your account menu, and a round theme toggle', async () => {
         const user = userEvent.setup();
         renderSidebar();
         expect(await screen.findByText('Alex Rivera')).toBeInTheDocument();
-        expect(await screen.findByText('Platform team')).toBeInTheDocument();
+        // Your first team, under your name (the same team is also a row of My teams).
+        expect(await within(screen.getByTestId('user-menu-trigger')).findByText('Platform team')).toBeInTheDocument();
 
         // The account block takes the free width, so the toggle sits at the right edge and a long name ellipsizes.
         expect(screen.getByTestId('user-menu-trigger').parentElement).toHaveStyle({ display: 'block', minWidth: '0px' });

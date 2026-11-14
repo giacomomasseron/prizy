@@ -60,8 +60,9 @@ describe('AppLayout sidebar', () => {
     it('renders the redesigned sidebar sections', async () => {
         renderLayout();
         expect(await screen.findByText('Workspace')).toBeInTheDocument();
-        expect(screen.getByText('My Teams')).toBeInTheDocument();
-        expect(screen.getByText('Support bridge')).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: 'My teams' })).toBeInTheDocument();
+        expect(screen.getByRole('navigation', { name: 'Your work' })).toBeInTheDocument();
+        expect(screen.queryByText('Support bridge')).toBeNull();
     });
 
     it('collapses the sidebar and shows a re-open control', async () => {
@@ -259,11 +260,11 @@ describe('AppLayout project sidebar swap', () => {
     it('shows the project sidebar (not the global one) on a project route', async () => {
         renderLayout('member', '/projects/p1/issues');
         expect(await screen.findByRole('link', { name: /All projects/ })).toBeInTheDocument();
-        expect(screen.queryByText('My Teams')).toBeNull(); // global nav hidden
+        expect(screen.queryByText('My teams')).toBeNull(); // global nav hidden
     });
     it('shows the global nav on a non-project route', async () => {
         renderLayout('member', '/');
-        expect(await screen.findByText('My Teams')).toBeInTheDocument();
+        expect(await screen.findByText('My teams')).toBeInTheDocument();
     });
 
     it('G3b: the sidebar is a named landmark and the page has exactly one main', async () => {
@@ -279,15 +280,18 @@ describe('Today v2: the left bar in the layout', () => {
 
     it('shows Today\'s own left bar on /today', async () => {
         renderLayout('member', '/today');
-        expect(await screen.findByRole('navigation', { name: 'Your work' })).toBeInTheDocument();
-        expect(screen.queryByText('Support bridge')).toBeNull();
+        expect(await screen.findByRole('button', { name: 'Hide sidebar' })).toBeInTheDocument();
+        expect(screen.getByRole('navigation', { name: 'Your work' })).toBeInTheDocument();
+        // The shared bar's own controls are not there.
+        expect(screen.queryByRole('button', { name: 'Collapse sidebar' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'Search' })).toBeNull();
         expect(screen.getByRole('complementary', { name: 'Sidebar' }).style.padding).toBe('18px 14px 14px');
     });
 
     it('keeps the global left bar off /today', async () => {
         renderLayout('member', '/issues');
-        expect(await screen.findByText('Support bridge')).toBeInTheDocument();
-        expect(screen.queryByRole('navigation', { name: 'Your work' })).toBeNull();
+        expect(await screen.findByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+        expect(screen.queryByRole('button', { name: 'Hide sidebar' })).toBeNull();
         expect(screen.getByRole('complementary', { name: 'Sidebar' }).style.padding).toBe('18px 8px 12px');
     });
 
@@ -357,7 +361,7 @@ describe('Today v2: the left bar in the layout', () => {
 
     it('leaves [ alone off Today', async () => {
         renderLayout('member', '/issues');
-        await screen.findByText('Support bridge');
+        await screen.findByRole('button', { name: 'Collapse sidebar' });
         (document.activeElement as HTMLElement | null)?.blur();
         fireEvent.keyDown(window, { key: '[' });
         expect(screen.getByRole('complementary', { name: 'Sidebar' })).toBeInTheDocument();

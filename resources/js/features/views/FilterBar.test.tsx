@@ -186,3 +186,71 @@ describe('FilterBar saved views across list and board', () => {
         expect(await screen.findByText('at /issues?status=todo')).toBeInTheDocument();
     });
 });
+
+describe('FilterBar: the Mine chip', () => {
+    beforeEach(() => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+            const j = (b: unknown, s = 200) =>
+                new Response(JSON.stringify(b), { status: s, headers: { 'Content-Type': 'application/json' } });
+            if (/\/v1\/me(\?|$)/.test(url)) return j({ data: devUser });
+            return j({ data: [], links: { next: null } });
+        }));
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it('sits between Views and + Filter, off on the plain list', async () => {
+        renderBar('/issues');
+        const mine = await screen.findByRole('button', { name: 'Mine' });
+        expect(mine).toHaveAttribute('aria-pressed', 'false');
+        expect(mine.className).toContain('bg-panel');
+        const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+        expect(follows(screen.getByRole('button', { name: 'Views' }), mine)).toBe(true);
+        expect(follows(mine, screen.getByRole('button', { name: '+ Filter' }))).toBe(true);
+    });
+
+    it('shows only your issues when pressed, keeping the other filters, and gives them back when pressed again', async () => {
+        const user = userEvent.setup();
+        renderBar('/issues?status=todo&sort=priority');
+        const mine = await screen.findByRole('button', { name: 'Mine' });
+        // The chip needs your id: it is disabled until /me answers.
+        await waitFor(() => expect(mine).toBeEnabled());
+
+        await user.click(mine);
+        expect(new URLSearchParams(screen.getByTestId('qs').textContent ?? '').get('assignee_id')).toBe('u1');
+        expect(screen.getByTestId('qs').textContent).toContain('status=todo');
+        expect(screen.getByTestId('qs').textContent).toContain('sort=priority');
+        expect(mine).toHaveAttribute('aria-pressed', 'true');
+        expect(mine.className).toContain('bg-fg');
+
+        await user.click(mine);
+        expect(screen.getByTestId('qs').textContent).not.toContain('assignee_id');
+        expect(screen.getByTestId('qs').textContent).toContain('status=todo');
+        expect(mine).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('is on when the list is already filtered to you alone, and off for someone else or for several people', async () => {
+        const first = renderBar('/issues?assignee_id=u1');
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Mine' })).toHaveAttribute('aria-pressed', 'true'));
+        first.unmount();
+
+        const second = renderBar('/issues?assignee_id=u2');
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Mine' })).toBeEnabled());
+        expect(screen.getByRole('button', { name: 'Mine' })).toHaveAttribute('aria-pressed', 'false');
+        second.unmount();
+
+        renderBar('/issues?assignee_id=u1,u2');
+        await waitFor(() => expect(screen.getByRole('button', { name: 'Mine' })).toBeEnabled());
+        expect(screen.getByRole('button', { name: 'Mine' })).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('replaces someone else\'s issues with yours, and stays inside the "From Support" scope', async () => {
+        const user = userEvent.setup();
+        renderBar('/issues?assignee_id=u2&escalated=true');
+        const mine = await screen.findByRole('button', { name: 'Mine' });
+        await waitFor(() => expect(mine).toBeEnabled());
+        await user.click(mine);
+        const qs = new URLSearchParams(screen.getByTestId('qs').textContent ?? '');
+        expect(qs.get('assignee_id')).toBe('u1');
+        expect(qs.get('escalated')).toBe('true');
+    });
+});

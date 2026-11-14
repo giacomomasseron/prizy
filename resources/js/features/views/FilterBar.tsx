@@ -9,7 +9,7 @@ import { useMembers } from '../members/hooks';
 import { useProjects } from '../projects/hooks';
 import { useTeams } from '../teams/hooks';
 import type { IssueFilters } from '../issues/hooks';
-import { HI_PILL_CLASSES, POP_ITEM_CLASSES, TOOL_PILL_CLASSES, popItemStyle, popoverStyle, toolPillStyle } from '../issues/issueStyles';
+import { HI_PILL_CLASSES, POP_ITEM_CLASSES, TOOL_PILL_CLASSES, chipClasses, chipStyle, popItemStyle, popoverStyle, toolPillStyle } from '../issues/issueStyles';
 import { BUILTIN_VIEWS, FILTER_FIELDS, type FilterKey, NON_FILTER_KEYS, PRESET_PILLS, SORT_OPTIONS, filtersToParams, paramsToFilters } from './filters';
 import { useCreateSavedView, useDeleteSavedView, useSavedViews } from './hooks';
 import { Button } from '../../components/ui/Button';
@@ -124,6 +124,8 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
     }
 
     const activeKeys = Object.keys(filters).filter((k) => !NON_FILTER_KEYS.includes(k));
+    const myId = me.data?.id;
+    const mineOn = !!myId && filters.assignee_id === myId;
 
     // The active view is read off the URL, so it survives a reload and drops itself when a filter changes.
     // A built-in view ignores the sort (it sets none); a saved view carries its own sort and its own page.
@@ -214,6 +216,10 @@ export function FilterBar({ viewType }: { viewType: 'list' | 'board' }) {
                     </div>
                 )}
             </div>
+
+            {/* Mine: only the issues assigned to you. It reads and writes the assignee filter, so the pill, the
+                "My issues" view and the sidebar's My issues row all agree with it. */}
+            <button type="button" aria-pressed={mineOn} disabled={!myId} onClick={() => setFilter('assignee_id', mineOn ? null : myId!)} className={chipClasses(mineOn)} style={chipStyle}>Mine</button>
 
             {/* + Filter dropdown */}
             <div style={{ position: 'relative' }}>
