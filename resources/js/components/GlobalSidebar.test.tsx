@@ -127,7 +127,7 @@ describe('GlobalSidebar', () => {
         await screen.findByRole('link', { name: 'Unified Inbox' });
         expect(nav.getByRole('link', { name: 'Issues' })).toHaveTextContent(/^Issues$/);
         expect(nav.getByRole('link', { name: 'Projects' })).toHaveTextContent(/^Projects$/);
-        expect(team).toHaveTextContent(/^Smoke Team▶$/);
+        expect(team).toHaveTextContent(/^Smoke Team$/);
         expect(screen.queryByTestId('projects-count')).toBeNull();
         expect(screen.queryByTestId('escalations-badge')).toBeNull();
         const calls = vi.mocked(fetch).mock.calls.map((c) => String(c[0]));
@@ -203,6 +203,33 @@ describe('GlobalSidebar', () => {
         expect(teamLinks.getByRole('link', { name: 'Issues' })).toHaveAttribute('href', '/issues?team_id=t1');
         expect(teamLinks.getByRole('link', { name: 'Cycles' })).toHaveAttribute('href', '/teams/t1/cycles');
         expect(teamLinks.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects?team_id=t1');
+    });
+    it('the fold carets are drawn, not typed: a small triangle that points right when shut and down when open', async () => {
+        const user = userEvent.setup();
+        projects = [{ id: 'p1', name: 'Unified Inbox', color: '#5b8def' }];
+        renderSidebar();
+        await screen.findByRole('button', { name: /Smoke Team/ });
+        await screen.findByRole('button', { name: 'My projects' });
+        const caretOf = (name: string | RegExp) => screen.getByRole('button', { name }).querySelector('[data-caret]') as HTMLElement;
+        for (const name of ['My teams', /Smoke Team/, 'My projects', 'Workspace']) {
+            const toggle = screen.getByRole('button', { name });
+            // A typed ▶ is drawn by whatever font has it, which on some devices is a colour emoji.
+            expect(toggle.textContent, String(name)).not.toMatch(/[▶▸▾▼]/);
+            const caret = caretOf(name);
+            expect(caret, String(name)).not.toBeNull();
+            expect(caret).toHaveAttribute('aria-hidden', 'true');
+            const svg = caret.querySelector('svg') as SVGElement;
+            expect(svg.getAttribute('width')).toBe('7');
+            expect(svg.querySelector('path')?.getAttribute('fill')).toBe('currentColor');
+            const open = toggle.getAttribute('aria-expanded') === 'true';
+            expect(caret.style.transform).toBe(open ? 'rotate(90deg)' : 'none');
+            await user.click(toggle);
+            expect(caretOf(name).style.transform).toBe(open ? 'none' : 'rotate(90deg)');
+            await user.click(screen.getByRole('button', { name }));
+        }
+        // The group carets are quiet; the Workspace one takes the heading's own colour.
+        expect(caretOf('My teams').style.color).toBe('var(--fg3)');
+        expect(caretOf('Workspace').style.color).toBe('');
     });
     it('My teams folds away, and stays folded on the next visit', async () => {
         const user = userEvent.setup();

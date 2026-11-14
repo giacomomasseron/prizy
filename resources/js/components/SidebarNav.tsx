@@ -58,8 +58,17 @@ export function NavIcon({ name }: { name: NavIconName }) {
     );
 }
 
-function Caret({ open }: { open: boolean }) {
-    return <span aria-hidden="true" style={{ fontSize: 7, display: 'inline-block', color: 'var(--fg3)', transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none' }}>▶</span>;
+/**
+ * The fold caret: a small solid triangle, pointing right when shut and down when open. Drawn rather than typed: a
+ * typed ▶ is drawn by whichever font has one, and on some devices that is a colour emoji. `color` is left out where
+ * the caret takes the colour of the text beside it.
+ */
+export function Caret({ open, color }: { open: boolean; color?: string }) {
+    return (
+        <span aria-hidden="true" data-caret="" style={{ display: 'inline-flex', flexShrink: 0, color, transition: 'transform .15s', transform: open ? 'rotate(90deg)' : 'none' }}>
+            <svg width="7" height="7" viewBox="0 0 7 7"><path d="M1 .5 6.5 3.5 1 6.5z" fill="currentColor" /></svg>
+        </span>
+    );
 }
 
 function stored<T>(key: string, fallback: T): T {
@@ -77,7 +86,7 @@ export function useFolded(key: string, openByDefault = true): [boolean, () => vo
 function GroupToggle({ icon, label, open, onToggle, grow = false }: { icon: NavIconName; label: string; open: boolean; onToggle: () => void; grow?: boolean }) {
     return (
         <button type="button" onClick={onToggle} aria-expanded={open} className={ROW_HOVER} style={grow ? { ...ROW, flex: 1, minWidth: 0 } : ROW}>
-            <NavIcon name={icon} /><span style={{ flex: 1 }}>{label}</span><Caret open={open} />
+            <NavIcon name={icon} /><span style={{ flex: 1 }}>{label}</span><Caret open={open} color="var(--fg3)" />
         </button>
     );
 }
@@ -114,7 +123,7 @@ export function MyTeams({ teams, newTeam = false }: { teams: Team[]; newTeam?: b
                                 <button type="button" onClick={() => setExpanded((m) => ({ ...m, [t.id]: !m[t.id] }))} aria-expanded={isOpen} className={ROW_HOVER} style={SUB_ROW}>
                                     <span aria-hidden="true" style={square(t.color)} />
                                     <span style={ONE_LINE}>{t.name}</span>
-                                    <Caret open={isOpen} />
+                                    <Caret open={isOpen} color="var(--fg3)" />
                                 </button>
                                 {isOpen && (
                                     <div data-testid={`team-links-${t.id}`} style={{ ...NAV_COLUMN, paddingLeft: 12 }}>

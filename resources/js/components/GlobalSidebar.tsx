@@ -8,7 +8,7 @@ import { useMyProjects } from '../features/projects/hooks';
 import { useTeams } from '../features/teams/hooks';
 import { usePlan } from '../features/today/planHooks';
 import { SidebarFooter } from './SidebarFooter';
-import { COUNT_PILL, MyProjects, MyTeams, NAV_COLUMN, NavIcon, type NavIconName, RED_BADGE, rowClass, rowStyle, useFolded } from './SidebarNav';
+import { Caret, COUNT_PILL, MyProjects, MyTeams, NAV_COLUMN, NavIcon, type NavIconName, RED_BADGE, rowClass, rowStyle, useFolded } from './SidebarNav';
 import { BrandMark } from './ui/BrandMark';
 import { Kbd } from './ui/Kbd';
 import { hiBadge, sectionBtn, tagBadge } from './sidebarStyles';
@@ -112,7 +112,7 @@ export function GlobalSidebar({ onCollapse }: { onCollapse: () => void }) {
                 {showTracker && (
                     <>
                         <button type="button" onClick={toggleWorkspace} aria-expanded={workspaceOpen} style={{ ...sectionBtn, padding: '20px 12px 6px', gap: 5 }} className="text-fg3 hover:text-fg2">
-                            <span aria-hidden="true" style={{ fontSize: 7, display: 'inline-block', transition: 'transform .15s', transform: workspaceOpen ? 'rotate(90deg)' : 'none' }}>▶</span>Workspace
+                            <Caret open={workspaceOpen} />Workspace
                         </button>
                         {workspaceOpen && (
                             <nav aria-label="Workspace" style={NAV_COLUMN}>
