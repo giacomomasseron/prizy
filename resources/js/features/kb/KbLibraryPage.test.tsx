@@ -1,7 +1,7 @@
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmProvider } from '../../components/ui/ConfirmProvider';
 import KbLibraryPage from './KbLibraryPage';
@@ -22,6 +22,8 @@ const library = { categories: [
 ] };
 
 function j(b: unknown, status = 200) { return new Response(JSON.stringify(b), { status, headers: { 'Content-Type': 'application/json' } }); }
+/** Stands in for the editor route: shows the query string the library sent it. */
+function NewArticleProbe() { return <div data-testid="new-article">{useLocation().search}</div>; }
 function renderPage(lib: unknown = library) {
     vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: lib }) : j({ data: {} }))));
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -163,13 +165,42 @@ describe('KbLibraryPage', () => {
         expect(await screen.findByText('1 article · 1 live · 1 category')).toBeInTheDocument();
     });
 
-    it('v2: the scope title is a display h1 on the highlighter, with one New article button', async () => {
+    it('v2: the scope title is a display h1 on the highlighter', async () => {
         renderPage();
         const h1 = await screen.findByRole('heading', { level: 1, name: 'All articles' });
         expect(h1.style.fontFamily).toBe('var(--font-display)');
         expect(h1.querySelector('.hl')).toHaveTextContent('All articles');
+    });
+
+    it('New article is in the top bar too, as the design, beside the one in the toolbar', async () => {
+        renderPage();
         await screen.findByText('Published one');
-        expect(screen.getAllByRole('button', { name: '＋ New article' })).toHaveLength(1);
+        expect(within(screen.getByRole('banner')).getByRole('button', { name: '＋ New article' })).toBeInTheDocument();
+        expect(screen.getAllByRole('button', { name: '＋ New article' })).toHaveLength(2);
+    });
+
+    it('the top bar\'s New article opens a new article in the first section', async () => {
+        vi.stubGlobal('fetch', vi.fn(async (url: string) => (url.includes('/kb/library') ? j({ data: library }) : j({ data: {} }))));
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(
+            <QueryClientProvider client={qc}>
+                <MemoryRouter initialEntries={['/support/kb']}>
+                    <Routes>
+                        <Route path="/support/kb" element={<KbLibraryPage />} />
+                        <Route path="/support/kb/new" element={<NewArticleProbe />} />
+                    </Routes>
+                </MemoryRouter>
+            </QueryClientProvider>,
+        );
+        await screen.findByText('Published one');
+        fireEvent.click(within(screen.getByRole('banner')).getByRole('button', { name: '＋ New article' }));
+        expect(await screen.findByTestId('new-article')).toHaveTextContent(/^\?section=.+/);
+    });
+
+    it('the top bar has no New article until there is a category to put it in', async () => {
+        renderPage({ categories: [] });
+        await screen.findByText('No categories yet');
+        expect(screen.queryByRole('button', { name: '＋ New article' })).toBeNull();
     });
 
     it('v2: shows no empty state while the library is still loading', () => {

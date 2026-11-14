@@ -64,7 +64,12 @@ export default function KbLibraryPage() {
 
     return (
         <KbShell>
-            <KbHeader title="Knowledge base" subtitle={subtitle} />
+            <KbHeader
+                title="Knowledge base"
+                subtitle={subtitle}
+                // In the top bar too, as the design: there from any scroll position. Only once an article has somewhere to go.
+                action={canWrite && lib.isSuccess && categories.length > 0 ? <Button size="sm" onClick={newArticle}>＋ New article</Button> : undefined}
+            />
             <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
                 <KbTree categories={categories} node={node} onSelect={setNode} totalArticles={totalArticles} onOpenModal={setModal} readOnly={!canWrite} />
                 <section style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
