@@ -34,15 +34,51 @@ function wrap(onSuccess = vi.fn(), onCancel = vi.fn()) {
 }
 
 describe('ProjectForm', () => {
-    it('disables Create project button when name is empty', () => {
+    it('with no name, Create project says to give one first, posts nothing and puts the cursor in the name', async () => {
         wrap();
-        expect(screen.getByRole('button', { name: /Create project/i })).toBeDisabled();
+        const create = screen.getByRole('button', { name: /Create project/i });
+        expect(create).not.toBeDisabled();
+        expect(screen.queryByText('Give the project a name first.')).toBeNull();
+        await userEvent.click(create);
+        expect(screen.getByRole('alert')).toHaveTextContent('Give the project a name first.');
+        expect(mockMutate).not.toHaveBeenCalled();
+        expect(screen.getByLabelText('Project name')).toHaveFocus();
     });
 
-    it('enables Create project button when name is filled', async () => {
+    it('the reminder goes once a name is typed', async () => {
         wrap();
-        await userEvent.type(screen.getByPlaceholderText(/project name/i), 'My Project');
-        expect(screen.getByRole('button', { name: /Create project/i })).not.toBeDisabled();
+        await userEvent.click(screen.getByRole('button', { name: /Create project/i }));
+        await userEvent.type(screen.getByLabelText('Project name'), 'M');
+        expect(screen.queryByText('Give the project a name first.')).toBeNull();
+    });
+
+    it('a name of spaces only is no name', async () => {
+        wrap();
+        await userEvent.type(screen.getByLabelText('Project name'), '   ');
+        await userEvent.click(screen.getByRole('button', { name: /Create project/i }));
+        expect(screen.getByRole('alert')).toHaveTextContent('Give the project a name first.');
+        expect(mockMutate).not.toHaveBeenCalled();
+    });
+
+    it('the badge carries the name\'s initial on the chosen colour (P before a name)', async () => {
+        wrap();
+        const badge = screen.getByTestId('project-form-badge');
+        expect(badge).toHaveTextContent(/^P$/);
+        await userEvent.type(screen.getByLabelText('Project name'), 'my project');
+        expect(badge).toHaveTextContent(/^M$/);
+        expect(badge.style.border).toBe('2px solid var(--fg)');
+    });
+
+    it('the timeline says how long it is, or that the target is before the start', async () => {
+        wrap();
+        expect(screen.queryByTestId('project-form-span')).toBeNull();
+        const [start, target] = [screen.getByLabelText(/start/i), screen.getByLabelText(/target/i)];
+        await userEvent.type(start, '2026-11-02');
+        await userEvent.type(target, '2027-01-29');
+        expect(screen.getByTestId('project-form-span')).toHaveTextContent(/^13 weeks$/);
+        await userEvent.clear(target);
+        await userEvent.type(target, '2026-10-01');
+        expect(screen.getByTestId('project-form-span')).toHaveTextContent('Target is before start');
     });
 
     it('submits with status and priority when selected', async () => {
