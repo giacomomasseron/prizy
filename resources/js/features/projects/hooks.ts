@@ -24,6 +24,17 @@ export function useProjects(filters?: { team_id?: string }, options?: { enabled?
     });
 }
 
+/**
+ * The Projects page's Mine chip: every project of yours (you lead it, or it holds open work of yours), whatever its
+ * status, inside the team when the page shows a team's projects. useMyProjects keeps the active ones only.
+ */
+export function useAllMyProjects(teamId?: string) {
+    return useQuery({
+        queryKey: ['projects', 'mine-all', teamId ?? null],
+        queryFn: () => api.page<Project>(`/projects?filter[mine]=true${teamId ? `&filter[team_id]=${encodeURIComponent(teamId)}` : ''}`),
+    });
+}
+
 export const MY_PROJECTS_KEY = ['projects', { mine: true }] as const;
 
 /**

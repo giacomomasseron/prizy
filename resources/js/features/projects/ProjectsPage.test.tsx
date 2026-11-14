@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
@@ -95,7 +95,8 @@ describe('ProjectsPage', () => {
             }),
         ]);
         expect(await screen.findByText('Alpha Project')).toBeInTheDocument();
-        expect(screen.getByText('In Progress')).toBeInTheDocument();
+        // The status is also a filter chip above the table: look in the row.
+        expect(within(screen.getByTestId('project-row-p1')).getByText('In Progress')).toBeInTheDocument();
         expect(screen.getByText('Alice Smith')).toBeInTheDocument();
         expect(screen.getByText('62%')).toBeInTheDocument();
         expect(screen.getByText('14')).toBeInTheDocument();
@@ -139,8 +140,8 @@ describe('ProjectsPage', () => {
         ]);
         expect(await screen.findByText('Alpha Project')).toBeInTheDocument();
         expect(screen.getByText('Beta Project')).toBeInTheDocument();
-        expect(screen.getByText('In Progress')).toBeInTheDocument();
-        expect(screen.getByText('Planning')).toBeInTheDocument();
+        expect(within(screen.getByTestId('project-row-p1')).getByText('In Progress')).toBeInTheDocument();
+        expect(within(screen.getByTestId('project-row-p2')).getByText('Planning')).toBeInTheDocument();
         expect(screen.getByText('Alice Smith')).toBeInTheDocument();
         expect(screen.getByText('No lead')).toBeInTheDocument();
         expect(screen.getByText('62%')).toBeInTheDocument();
@@ -297,5 +298,97 @@ describe('ProjectsPage', () => {
         expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't load projects.");
         expect(screen.queryByText('No projects yet.')).toBeNull();
         expect(screen.queryByText('0')).toBeNull();
+    });
+});
+
+describe('ProjectsPage: the filter chips', () => {
+    beforeEach(() => mockNavigate.mockReset());
+    afterEach(() => vi.unstubAllGlobals());
+
+    const all = [
+        makeProject({ id: 'p1', name: 'Alpha Project', status: 'in_progress' }),
+        makeProject({ id: 'p2', name: 'Beta Project', status: 'planning' }),
+        makeProject({ id: 'p3', name: 'Gamma Project', status: 'in_progress' }),
+        makeProject({ id: 'p4', name: 'Delta Project', status: 'completed' }),
+    ];
+
+    /** The server calls `mine` the projects with these ids. */
+    function renderWithMine(projects: Project[], mineIds: string[], path = '/projects') {
+        const fetchMock = vi.fn(async (url: string) => {
+            if (url.includes('/v1/me')) return j({ data: meOwnerDev });
+            if (url.includes('/projects') && url.includes('filter[mine]=true')) return j({ data: projects.filter((p) => mineIds.includes(p.id)), links: { next: null, prev: null } });
+            if (url.includes('/projects')) return j({ data: projects, links: { next: null, prev: null } });
+            return j({ data: {} });
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+        render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={[path]}><ProjectsPage /></MemoryRouter></QueryClientProvider>);
+        return fetchMock;
+    }
+    const names = () => screen.queryAllByTestId(/^project-row-/).map((r) => r.querySelector('a')?.textContent);
+
+    it('offers All, Mine and one chip per status the projects have, each with its count; All is on', async () => {
+        renderWithMine(all, ['p2', 'p3']);
+        const chips = within(await screen.findByRole('group', { name: 'Filter projects' }));
+        await waitFor(() => expect(chips.getByRole('button', { name: /^Mine/ })).toHaveTextContent(/^Mine2$/));
+        expect(chips.getAllByRole('button').map((b) => b.textContent)).toEqual(['All4', 'Mine2', 'Planning1', 'In Progress2', 'Completed1']);
+        expect(chips.getByRole('button', { name: /^All/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(chips.getByRole('button', { name: /^All/ }).className).toContain('bg-fg');
+        expect(chips.getByRole('button', { name: /^Mine/ })).toHaveAttribute('aria-pressed', 'false');
+        expect(names()).toEqual(['Alpha Project', 'Beta Project', 'Gamma Project', 'Delta Project']);
+        expect(screen.getByTestId('projects-count')).toHaveTextContent(/^4$/);
+    });
+
+    it('Mine keeps the projects the server calls yours, and the heading count follows', async () => {
+        const user = userEvent.setup();
+        const fetchMock = renderWithMine(all, ['p2', 'p3']);
+        const chips = within(await screen.findByRole('group', { name: 'Filter projects' }));
+        await waitFor(() => expect(chips.getByRole('button', { name: /^Mine/ })).toHaveTextContent(/^Mine2$/));
+        await user.click(chips.getByRole('button', { name: /^Mine/ }));
+        expect(names()).toEqual(['Beta Project', 'Gamma Project']);
+        expect(screen.getByTestId('projects-count')).toHaveTextContent(/^2$/);
+        expect(chips.getByRole('button', { name: /^Mine/ })).toHaveAttribute('aria-pressed', 'true');
+        expect(chips.getByRole('button', { name: /^All/ })).toHaveAttribute('aria-pressed', 'false');
+        // Every status counts as yours here, unlike the sidebar's list of active ones.
+        const asked = fetchMock.mock.calls.map(([u]) => String(u)).filter((u) => u.includes('filter[mine]=true'));
+        expect(asked.length).toBeGreaterThan(0);
+        expect(asked.filter((u) => u.includes('filter[status]'))).toEqual([]);
+    });
+
+    it('a status chip keeps that status; All gives everything back', async () => {
+        const user = userEvent.setup();
+        renderWithMine(all, []);
+        const chips = within(await screen.findByRole('group', { name: 'Filter projects' }));
+        await user.click(chips.getByRole('button', { name: /^In Progress/ }));
+        expect(names()).toEqual(['Alpha Project', 'Gamma Project']);
+        await user.click(chips.getByRole('button', { name: /^Completed/ }));
+        expect(names()).toEqual(['Delta Project']);
+        await user.click(chips.getByRole('button', { name: /^All/ }));
+        expect(names()).toHaveLength(4);
+    });
+
+    it('says "No projects match this filter." under the column headings when a chip matches nothing', async () => {
+        const user = userEvent.setup();
+        renderWithMine(all, []);
+        const chips = within(await screen.findByRole('group', { name: 'Filter projects' }));
+        await waitFor(() => expect(chips.getByRole('button', { name: /^Mine/ })).toHaveTextContent(/^Mine0$/));
+        await user.click(chips.getByRole('button', { name: /^Mine/ }));
+        expect(screen.getByText('No projects match this filter.')).toBeInTheDocument();
+        expect(names()).toEqual([]);
+        expect(screen.getByText('Progress')).toBeInTheDocument(); // the column headings stay
+        expect(screen.getByTestId('projects-count')).toHaveTextContent(/^0$/);
+        expect(screen.queryByText('No projects yet.')).toBeNull();
+    });
+
+    it('shows no chips while there are no projects at all', async () => {
+        renderWithMine([], []);
+        expect(await screen.findByText('No projects yet.')).toBeInTheDocument();
+        expect(screen.queryByRole('group', { name: 'Filter projects' })).toBeNull();
+    });
+
+    it('asks for your projects inside the team when the list is a team\'s', async () => {
+        const fetchMock = renderWithMine(all, ['p1'], '/projects?team_id=t9');
+        await screen.findByRole('group', { name: 'Filter projects' });
+        await waitFor(() => expect(fetchMock.mock.calls.some(([u]) => String(u).includes('filter[mine]=true') && String(u).includes('filter[team_id]=t9'))).toBe(true));
     });
 });

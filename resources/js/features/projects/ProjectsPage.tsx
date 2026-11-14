@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { useProjects, useDeleteProject } from './hooks';
+import { useAllMyProjects, useProjects, useDeleteProject } from './hooks';
 import { useMe } from '../../auth/useAuth';
 import { canDevelop as canDevelopFor } from '../../auth/capabilities';
 import { PROJECT_STATUS } from './projectStatus';
@@ -12,8 +12,9 @@ import { Button } from '../../components/ui/Button';
 import { QueryState } from '../../components/ui/QueryState';
 import { avatarFor } from '../../lib/avatarFor';
 import { ApiError } from '../../lib/apiClient';
-import type { Project } from '../../lib/types';
+import type { Project, ProjectStatus } from '../../lib/types';
 import { useConfirm } from '../../components/ui/ConfirmProvider';
+import { chipClasses, chipStyle } from '../issues/issueStyles';
 import { ROW_FOCUS_CLASSES, ROW_PRIMARY_CLASSES, onRowLinkClick, rowPrimary } from '../../components/ui/rowPrimary';
 
 const COL = 'minmax(180px,1fr) 150px 160px 180px 90px 54px 22px';
@@ -31,6 +32,21 @@ export default function ProjectsPage() {
     const [error, setError] = useState<string | null>(null);
     const rows = projects.data?.items ?? [];
 
+    // The filter chips (the Workspace design): All, Mine, then one per status these projects have.
+    const [picked, setPicked] = useState<'all' | 'mine' | ProjectStatus>('all');
+    const mine = useAllMyProjects(teamId);
+    const mineIds = new Set((mine.data?.items ?? []).map((p) => p.id));
+    const chips: Array<{ key: typeof picked; label: string; keeps: (p: Project) => boolean }> = [
+        { key: 'all', label: 'All', keeps: () => true },
+        { key: 'mine', label: 'Mine', keeps: (p) => mineIds.has(p.id) },
+        ...(Object.keys(PROJECT_STATUS) as ProjectStatus[])
+            .filter((status) => rows.some((p) => p.status === status))
+            .map((status) => ({ key: status, label: PROJECT_STATUS[status].label, keeps: (p: Project) => p.status === status })),
+    ];
+    // A status chip goes away with its last project: fall back to All.
+    const chip = chips.find((c) => c.key === picked) ?? chips[0];
+    const shown = rows.filter(chip.keeps);
+
     async function remove(p: Project) {
         setError(null);
         if (!(await confirm({ title: `Delete ${p.name}?`, danger: true }))) return;
@@ -43,7 +59,7 @@ export default function ProjectsPage() {
                 title="All projects"
                 actions={canDevelop ? <Button variant="primary" onClick={() => navigate('/create?tab=project')}>New project</Button> : undefined}
             >
-                {projects.data !== undefined && <span style={pageCount}>{rows.length}</span>}
+                {projects.data !== undefined && <span data-testid="projects-count" style={pageCount}>{shown.length}</span>}
             </PageHeader>
 
             <div style={{ padding: '4px 26px 40px' }}>
@@ -54,6 +70,16 @@ export default function ProjectsPage() {
                 )}
 
                 <QueryState query={projects} what="projects">
+                    {rows.length > 0 && (
+                        <div role="group" aria-label="Filter projects" style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '0 4px 16px' }}>
+                            {chips.map((c) => (
+                                <button key={c.key} type="button" aria-pressed={c === chip} onClick={() => setPicked(c.key)} className={chipClasses(c === chip)} style={chipStyle}>
+                                    {c.label}<span style={{ marginLeft: 6, opacity: 0.6, fontSize: 12 }}>{rows.filter(c.keeps).length}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {rows.length > 0 && (
                         <div style={{ ...cardStyle, borderRadius: 18, overflowX: 'auto' }}>
                             <div style={{ minWidth: 942 }}>
@@ -67,7 +93,9 @@ export default function ProjectsPage() {
                                 <span />
                             </div>
 
-                            {rows.map((p) => {
+                            {shown.length === 0 && <div style={{ padding: '28px 20px', textAlign: 'center', color: 'var(--fg3)', fontSize: 14 }}>No projects match this filter.</div>}
+
+                            {shown.map((p) => {
                                 const st = PROJECT_STATUS[p.status];
                                 return (
                                     <div
