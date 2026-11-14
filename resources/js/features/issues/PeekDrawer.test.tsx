@@ -18,6 +18,8 @@ const assignMutate = vi.fn();
 const setLabelsMutate = vi.fn();
 let overrideIssue: typeof issue | null = null;
 let loadingIssue = false;
+// Whether the team list has arrived (the header names the issue's team from it).
+let teamsLoaded = true;
 let issueLabels: { id: string; name: string; color: string; group: string | null }[] = [];
 // Read-only by default (no tracker write access); the editing tests sign in a developer.
 let me: Record<string, unknown> = { id: 'u1', name: 'Me' };
@@ -41,7 +43,7 @@ vi.mock('./hooks', () => ({
 }));
 vi.mock('../members/hooks', () => ({ useMembers: () => ({ data: [{ id: 'u2', name: 'Maya Chen', is_agent: true }, { id: 'u1', name: 'Alex Rivera', is_agent: false }] }) }));
 vi.mock('../projects/hooks', () => ({ useProjects: () => ({ data: { items: [{ id: 'p2', name: 'Escalation Engine', color: '#b06ae0' }, { id: 'p1', name: 'Unified Inbox', color: '#5b8def' }] } }) }));
-vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [{ id: 'c24', name: 'Cycle 24' }, { id: 'c25', name: 'Cycle 25' }] } }) }));
+vi.mock('../teams/hooks', () => ({ useCycles: () => ({ data: { items: [{ id: 'c24', name: 'Cycle 24' }, { id: 'c25', name: 'Cycle 25' }] } }), useTeams: () => ({ data: teamsLoaded ? { items: [{ id: 't1', name: 'Platform', color: '#5b8def' }] } : undefined }) }));
 vi.mock('../releases/hooks', () => ({ useReleases: () => ({ data: [{ id: 'r1', name: 'v1.4', shipped_at: null }] }) }));
 vi.mock('../labels/hooks', () => ({ useLabels: () => ({ data: { items: [{ id: 'l1', name: 'Bug', color: '#d93a3f', group: null }, { id: 'l2', name: 'Support', color: '#3a8f4d', group: null }] } }) }));
 vi.mock('../../auth/useAuth', () => ({ useMe: () => ({ data: me }) }));
@@ -55,6 +57,17 @@ describe('PeekDrawer', () => {
         expect(screen.getByText('Attachments missing')).toBeInTheDocument();
         expect(screen.getByText(/Acme Corp/)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /Open original ticket/ })).toHaveAttribute('href', '/support/tickets/tk1');
+    });
+    it('the header says the team before the reference: "Platform ▸ PRZ-…"', () => {
+        render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+        expect(screen.getByTestId('peek-ref')).toHaveTextContent(/^Platform ▸ PRZ-[0-9A-Z]+$/);
+    });
+    it('the header is the reference alone until the team is known', () => {
+        teamsLoaded = false;
+        try {
+            render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
+            expect(screen.getByTestId('peek-ref')).toHaveTextContent(/^PRZ-[0-9A-Z]+$/);
+        } finally { teamsLoaded = true; }
     });
     it('has an Open full page header link to the issue', () => {
         render(wrap(<PeekDrawer issueId="i1" onClose={vi.fn()} />));
